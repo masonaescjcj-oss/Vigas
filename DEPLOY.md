@@ -38,7 +38,7 @@ npx supabase@latest secrets set OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://ap
 ## ۳. Deploy فانکشن‌ها
 
 ```bash
-npx supabase@latest functions deploy agent-run agent-resume agent-fork projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files
+npx supabase@latest functions deploy agent-run agent-resume agent-fork projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
 ```
 
 ```bash
@@ -79,6 +79,10 @@ select jobname, schedule, active from cron.job;
 ```
 
 باید سه جاب ببینی: ورکر هر ۱۰ ثانیه، ریست روزانهٔ متر free، و پاک‌سازی sandbox_usage هر ۵ دقیقه.
+
+## ۴.۷. فعال‌سازی ورود ناشناس (لازم برای حالت مهمان)
+
+داشبورد → **Authentication → Providers → Anonymous sign-ins** را روشن کن. بدون آن دکمهٔ «Continue as Guest» خطای صادقانه می‌دهد (قبلاً یک سشن جعلی می‌ساخت که هیچ درخواستی به بک‌اند با آن کار نمی‌کرد).
 
 ## ۵. سوییچ فرانت‌اند به production
 
