@@ -621,6 +621,22 @@ export const AgentChatScreen = () => {
 
       const runRow = [...fresh].reverse().find((t) => t.tool_name === "agent-run");
       if (runRow && (runRow.status === "success" || runRow.status === "failed")) {
+        if (runRow.status === "success") {
+          // Last snapshot may still show steps as "running" — the run is over,
+          // so settle every non-failed step to completed.
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === execId
+                ? {
+                    ...m,
+                    steps: (m.steps ?? []).map((s: any) =>
+                      s.status === "failed" ? s : { ...s, status: "completed" },
+                    ),
+                  }
+                : m,
+            ),
+          );
+        }
         const finalText =
           runRow.status === "success"
             ? String(runRow.tool_output?.final_text ?? "Done.")
@@ -1124,6 +1140,23 @@ export const AgentChatScreen = () => {
                     }
 
                     if (step.type === "tool_run") {
+                      const isFailed = step.status === "failed";
+                      const isDone = step.status === "completed";
+                      const badgeBg = isFailed
+                        ? (isLight ? "#FEE2E2" : "#7F1D1D")
+                        : isDone
+                          ? (isLight ? "#DCFCE7" : "#14532D")
+                          : (isLight ? "#FEF3C7" : "#78350F");
+                      const badgeFg = isFailed
+                        ? (isLight ? "#DC2626" : "#FCA5A5")
+                        : isDone
+                          ? (isLight ? "#16A34A" : "#86EFAC")
+                          : (isLight ? "#D97706" : "#FCD34D");
+                      const badgeLabel = isFailed
+                        ? `${step.errorCount ?? 1} failed >`
+                        : isDone
+                          ? "done"
+                          : "running…";
                       return (
                         <View key={sIdx} className="flex-row items-center justify-between py-2 my-1">
                           <View className="flex-row items-center">
@@ -1131,9 +1164,9 @@ export const AgentChatScreen = () => {
                             <Text style={{ color: textSecondary }} className="text-xs font-mono">{step.tool}</Text>
                           </View>
 
-                          <View style={{ backgroundColor: isLight ? "#FEE2E2" : "#7F1D1D" }} className="px-2.5 py-1 rounded-md flex-row items-center">
-                            <Text style={{ color: isLight ? "#DC2626" : "#FCA5A5" }} className="text-[11px] font-mono font-medium mr-1">
-                              {step.errorCount} failed &gt;
+                          <View style={{ backgroundColor: badgeBg }} className="px-2.5 py-1 rounded-md flex-row items-center">
+                            <Text style={{ color: badgeFg }} className="text-[11px] font-mono font-medium mr-1">
+                              {badgeLabel}
                             </Text>
                           </View>
                         </View>
