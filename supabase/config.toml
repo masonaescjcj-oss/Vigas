@@ -1,0 +1,63 @@
+# Supabase CLI configuration (auth-relevant excerpt).
+# Merge this [auth] section into your project's supabase/config.toml. Secrets are
+# read from environment variables via env(...).
+
+project_id = "issac"
+
+[auth]
+enabled = true
+# Public URL of the site; used for redirect allow-listing.
+site_url = "https://issac.app"
+additional_redirect_urls = ["issac://auth-callback"]  # deep link for the mobile app
+
+# --- Session management ---
+jwt_expiry = 3600                     # access-token lifetime: 1 hour
+enable_refresh_token_rotation = true  # rotate refresh tokens on every use
+refresh_token_reuse_interval = 10     # seconds a just-rotated token stays valid (retry window)
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true           # require email verification
+secure_password_change = true
+
+# --- OAuth providers ---
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+
+# Sign in with Apple is mandatory for iOS apps that offer any third-party login.
+[auth.external.apple]
+enabled = true
+client_id = "env(APPLE_CLIENT_ID)"
+secret = "env(APPLE_CLIENT_SECRET)"
+
+# User-facing functions require a Supabase Auth JWT. RevenueCat calls its
+# webhook with the configured Authorization value instead, so platform JWT
+# verification is disabled only for that external webhook.
+[functions.projects-create]
+verify_jwt = true
+[functions.projects-list]
+verify_jwt = true
+[functions.projects-update]
+verify_jwt = true
+[functions.projects-delete]
+verify_jwt = true
+[functions.agent-run]
+verify_jwt = true
+[functions.agent-resume]
+verify_jwt = true
+[functions.agent-fork]
+verify_jwt = true
+[functions.checkpoint-create]
+verify_jwt = false
+[functions.checkpoint-restore]
+verify_jwt = false
+[functions.usage-check]
+verify_jwt = true
+[functions.revenuecat-sync]
+verify_jwt = true
+[functions.revenuecat-webhook]
+verify_jwt = false
+[functions.queue-worker]
+verify_jwt = false

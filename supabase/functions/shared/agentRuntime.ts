@@ -1,0 +1,349 @@
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import {
+  createAgentRuntime,
+  emptyUsage,
+  type AgentRuntime,
+  type AgentSession,
+  type AgentSessionSummary,
+  type ChatMessage,
+  type ChatModel,
+  type SessionPersistence,
+  type UsageStats,
+} from "../../../src/core/agent/index.ts";
+import { AppError, asAppError } from "./errorHandler.ts";
+import { PROJECT_FILES_BUCKET, StorageWorkspace } from "./storage.ts";
+import { SandboxManager } from "../../../src/infra/sandbox/sandboxManager.ts";
+import { LocalSandboxProvider } from "./localProvider.ts";
+
+type SessionRow = Record<string, unknown>;
+
+function iso(milliseconds: number): string {
+  const date = new Date(milliseconds);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
+}
+
+function usageFrom(row: unknown): UsageStats {
+  const value = (row && typeof row === "object" ? row : {}) as Partial<UsageStats>;
+  return {
+    inputTokens: Number(value.inputTokens ?? 0),
+    outputTokens: Number(value.outputTokens ?? 0),
+    toolCalls: Number(value.toolCalls ?? 0),
+    steps: Number(value.steps ?? 0),
+  };
+}
+
+function rowToSession(row: SessionRow): AgentSession {
+  return {
+    id: String(row.id),
+    title: (row.title as string | null) ?? undefined,
+    parentId: (row.parent_id as string | null) ?? undefined,
+    forkedFromIndex: row.forked_from_index == null ? undefined : Number(row.forked_from_index),
+    sandboxProfile: String(row.profile ?? "standard"),
+    status: (row.status as AgentSession["status"]) ?? "active",
+    createdAt: new Date(String(row.created_at)).getTime(),
+    updatedAt: new Date(String(row.updated_at)).getTime(),
+    messages: (row.transcript as ChatMessage[]) ?? [],
+    usage: usageFrom(row.usage),
+  };
+}
+
+export class EdgeSessionStore implements SessionPersistence {
+  constructor(
+    private readonly client: SupabaseClient,
+    private readonly userId: string,
+    private readonly projectId: string,
+  ) {}
+
+  async save(session: AgentSession): Promise<void> {
+    const { error } = await this.client.from("agent_sessions").upsert({
+      id: session.id,
+      project_id: this.projectId,
+      user_id: this.userId,
+      title: session.title ?? null,
+      parent_id: session.parentId ?? null,
+      forked_from_index: session.forkedFromIndex ?? null,
+      status: session.status,
+      profile: session.sandboxProfile,
+      usage: session.usage,
+      transcript: session.messages,
+      token_usage_total: session.usage.inputTokens + session.usage.outputTokens,
+      created_at: iso(session.createdAt),
+      updated_at: iso(session.updatedAt),
+    }, { onConflict: "id" });
+    if (error) asAppError(error, "Saving agent session");
+  }
+
+  async load(id: string): Promise<AgentSession | null> {
+    const { data, error } = await this.client.from("agent_sessions").select("*").eq("id", id).eq("user_id", this.userId).eq("project_id", this.projectId).maybeSingle();
+    if (error) asAppError(error, "Loading agent session");
+    return data ? rowToSession(data) : null;
+  }
+
+  async list(): Promise<AgentSessionSummary[]> {
+    const { data, error } = await this.client.from("agent_sessions").select("id,title,status,parent_id,transcript,updated_at").eq("user_id", this.userId).eq("project_id", this.projectId).order("updated_at", { ascending: false });
+    if (error) asAppError(error, "Listing agent sessions");
+    return (data ?? []).map((row) => {
+      const session = rowToSession(row);
+      return { id: session.id, title: session.title, status: session.status, messageCount: session.messages.length, updatedAt: session.updatedAt, parentId: session.parentId };
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await this.client.from("agent_sessions").delete().eq("id", id).eq("user_id", this.userId).eq("project_id", this.projectId);
+    if (error) asAppError(error, "Deleting agent session");
+  }
+}
+
+export class SupabaseAuditSink {
+  private readonly ids = new Map<string, string>();
+  constructor(private readonly client: SupabaseClient) {}
+  async record(entry: { sessionId: string; toolName: string; phase: "start" | "end"; callIndex: number; decision?: string; ok?: boolean; error?: string; durationMs?: number; at: number }): Promise<void> {
+    const key = `${entry.sessionId}:${entry.callIndex}`;
+    if (entry.phase === "start") {
+      const { data, error } = await this.client.from("agent_tasks").insert({ session_id: entry.sessionId, tool_name: entry.toolName, tool_input: { call_index: entry.callIndex }, status: "running" }).select("id").single();
+      if (error || !data) throw error ?? new Error("agent_tasks insert returned no row");
+      this.ids.set(key, String(data.id));
+      return;
+    }
+    const id = this.ids.get(key);
+    if (!id) return;
+    const { error } = await this.client.from("agent_tasks").update({ status: entry.ok ? "success" : "failed", duration_ms: entry.durationMs ?? null, tool_output: entry.error ? { error: entry.error } : { decision: entry.decision ?? "allow" } }).eq("id", id);
+    if (error) throw error;
+  }
+}
+
+function apiMessages(messages: ChatMessage[]): Array<{ role: "user" | "assistant"; content: unknown }> {
+  const converted: Array<{ role: "user" | "assistant"; content: unknown }> = [];
+  for (const message of messages) {
+    if (message.role === "system") {
+      converted.push({ role: "user", content: `[Runtime context]\n${message.content}` });
+    } else if (message.role === "user") {
+      converted.push({ role: "user", content: message.content });
+    } else if (message.role === "assistant") {
+      const blocks: unknown[] = [];
+      if (message.content) blocks.push({ type: "text", text: message.content });
+      for (const tool of message.toolCalls ?? []) blocks.push({ type: "tool_use", id: tool.id, name: tool.name, input: tool.input });
+      converted.push({ role: "assistant", content: blocks.length === 1 && (blocks[0] as { type?: string }).type === "text" ? message.content : blocks });
+    } else if (message.role === "tool") {
+      converted.push({ role: "user", content: [{ type: "tool_result", tool_use_id: message.toolCallId ?? message.id, content: message.content, is_error: message.isError === true }] });
+    }
+  }
+  const normalized: Array<{ role: "user" | "assistant"; content: unknown }> = [];
+  for (const item of converted) {
+    const last = normalized.at(-1);
+    if (last?.role === item.role) {
+      const left = Array.isArray(last.content) ? last.content : [{ type: "text", text: String(last.content) }];
+      const right = Array.isArray(item.content) ? item.content : [{ type: "text", text: String(item.content) }];
+      last.content = [...left, ...right];
+    } else normalized.push(item);
+  }
+  if (!normalized.length || normalized[0].role !== "user") normalized.unshift({ role: "user", content: "Continue the task." });
+  return normalized;
+}
+
+export class AnthropicChatModel implements ChatModel {
+  private readonly apiKey: string;
+  private readonly model: string;
+  private readonly maxTokens: number;
+  constructor() {
+    this.apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+    this.model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5";
+    this.maxTokens = Number(Deno.env.get("ANTHROPIC_MAX_TOKENS") ?? 8_192);
+    if (!this.apiKey) throw new AppError(500, "SERVER_MISCONFIGURED", "ANTHROPIC_API_KEY is not configured.");
+    if (!Number.isInteger(this.maxTokens) || this.maxTokens < 256 || this.maxTokens > 64_000) throw new AppError(500, "SERVER_MISCONFIGURED", "ANTHROPIC_MAX_TOKENS must be between 256 and 64000.");
+  }
+  async generate(params: { systemPrompt: string; messages: ChatMessage[]; tools: Array<{ name: string; description: string; parameters: unknown }> }): Promise<{ text?: string; toolCalls?: Array<{ id: string; name: string; input: Record<string, unknown> }>; usage?: { inputTokens: number; outputTokens: number } }> {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": this.apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: this.model, max_tokens: this.maxTokens, system: params.systemPrompt, messages: apiMessages(params.messages), tools: params.tools.map((tool) => ({ name: tool.name, description: tool.description, input_schema: tool.parameters })) }),
+    });
+    const body = await response.json().catch(() => null) as { content?: Array<Record<string, unknown>>; usage?: { input_tokens?: number; output_tokens?: number }; error?: { message?: string } } | null;
+    if (!response.ok || !body) throw new AppError(502, "MODEL_UNAVAILABLE", body?.error?.message ?? "The agent model request failed.");
+    const text = (body.content ?? []).filter((block) => block.type === "text").map((block) => String(block.text ?? "")).join("");
+    const toolCalls = (body.content ?? []).filter((block) => block.type === "tool_use").map((block) => ({ id: String(block.id), name: String(block.name), input: (block.input as Record<string, unknown>) ?? {} }));
+    return { text: text || undefined, toolCalls: toolCalls.length ? toolCalls : undefined, usage: { inputTokens: Number(body.usage?.input_tokens ?? 0), outputTokens: Number(body.usage?.output_tokens ?? 0) } };
+  }
+}
+
+export class OpenAIChatModel implements ChatModel {
+  private readonly apiKey: string;
+  private readonly model: string;
+  private readonly baseUrl: string;
+
+  constructor() {
+    this.apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("AI_API_KEY") || "";
+    this.model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o";
+    this.baseUrl = Deno.env.get("OPENAI_BASE_URL") ?? "https://api.openai.com/v1";
+    if (!this.apiKey) throw new AppError(500, "SERVER_MISCONFIGURED", "OPENAI_API_KEY is not configured.");
+  }
+
+  async generate(params: {
+    systemPrompt: string;
+    messages: ChatMessage[];
+    tools: Array<{ name: string; description: string; parameters: unknown }>;
+  }): Promise<{
+    text?: string;
+    toolCalls?: Array<{ id: string; name: string; input: Record<string, unknown> }>;
+    usage?: { inputTokens: number; outputTokens: number };
+  }> {
+    const formattedMessages = [
+      { role: "system", content: params.systemPrompt },
+      ...params.messages.map((msg) => {
+        if (msg.role === "assistant") {
+          return {
+            role: "assistant" as const,
+            content: msg.content || null,
+            tool_calls: msg.toolCalls?.map((tc) => ({
+              id: tc.id,
+              type: "function" as const,
+              function: {
+                name: tc.name,
+                arguments: JSON.stringify(tc.input),
+              },
+            })),
+          };
+        } else if (msg.role === "tool") {
+          return {
+            role: "tool" as const,
+            tool_call_id: msg.toolCallId ?? msg.id,
+            content: msg.content || "",
+          };
+        } else {
+          return {
+            role: msg.role === "system" ? ("system" as const) : ("user" as const),
+            content: msg.content || "",
+          };
+        }
+      }),
+    ];
+
+    const formattedTools = params.tools.map((tool) => ({
+      type: "function" as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      },
+    }));
+
+    const body: Record<string, unknown> = {
+      model: this.model,
+      messages: formattedMessages,
+      temperature: 0.2,
+    };
+
+    if (formattedTools.length > 0) {
+      body.tools = formattedTools;
+    }
+
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "authorization": `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data) {
+      throw new AppError(
+        502,
+        "MODEL_UNAVAILABLE",
+        data?.error?.message ?? `OpenAI request failed with status ${response.status}`
+      );
+    }
+
+    const choice = data.choices?.[0];
+    const text = choice?.message?.content;
+    const openAiToolCalls = choice?.message?.tool_calls;
+
+    const toolCalls = openAiToolCalls?.map((tc: any) => {
+      let input = {};
+      try {
+        input = JSON.parse(tc.function.arguments);
+      } catch {
+        // Fallback parsing
+      }
+      return {
+        id: tc.id,
+        name: tc.function.name,
+        input,
+      };
+    });
+
+    return {
+      text: text || undefined,
+      toolCalls: toolCalls?.length ? toolCalls : undefined,
+      usage: {
+        inputTokens: Number(data.usage?.prompt_tokens ?? 0),
+        outputTokens: Number(data.usage?.completion_tokens ?? 0),
+      },
+    };
+  }
+}
+
+export interface RuntimeFactoryOptions {
+  client: SupabaseClient;
+  user: User;
+  projectId: string;
+  sandboxPath?: string;
+  profile?: "standard" | "readonly";
+  onMessage?: (message: ChatMessage) => void;
+  sessionId?: string;
+  sandboxManager?: SandboxManager;
+}
+
+export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRuntime {
+  const prefix = options.sandboxPath ?? `users/${options.user.id}/projects/${options.projectId}`;
+  const sandboxProvider = Deno.env.get("E2B_API_KEY") ? undefined : new LocalSandboxProvider();
+  const sandboxManager = options.sandboxManager ?? new SandboxManager(options.client, sandboxProvider);
+  const workspace = new StorageWorkspace({ client: options.client, bucket: PROJECT_FILES_BUCKET, prefix, projectId: options.projectId, userId: options.user.id, sessionId: options.sessionId, sandboxManager });
+  return createAgentRuntime({
+    sandboxRoot: workspace.root,
+    workspace,
+    store: new EdgeSessionStore(options.client, options.user.id, options.projectId),
+    model: Deno.env.get("OPENAI_API_KEY") || Deno.env.get("AI_API_KEY") || !Deno.env.get("ANTHROPIC_API_KEY")
+      ? new OpenAIChatModel()
+      : new AnthropicChatModel(),
+    profile: options.profile ?? "standard",
+    autoApproveAsk: true,
+    maxSteps: Number(Deno.env.get("AGENT_MAX_STEPS") ?? 12),
+    compaction: {
+      maxTokens: Number(Deno.env.get("AGENT_COMPACT_MAX_TOKENS") ?? 48_000),
+      keepRecent: Number(Deno.env.get("AGENT_COMPACT_KEEP_RECENT") ?? 8),
+    },
+    idFactory: () => crypto.randomUUID(),
+    onMessage: options.onMessage,
+    auditSink: new SupabaseAuditSink(options.client),
+  });
+}
+
+export async function ensureSession(
+  client: SupabaseClient,
+  userId: string,
+  projectId: string,
+  sessionId: string,
+  profile: "standard" | "readonly",
+  title?: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const { data: existing, error: lookupError } = await client.from("agent_sessions").select("id").eq("id", sessionId).eq("user_id", userId).eq("project_id", projectId).maybeSingle();
+  if (lookupError) asAppError(lookupError, "Loading agent session");
+  if (existing) return;
+  const { error } = await client.from("agent_sessions").insert({ id: sessionId, project_id: projectId, user_id: userId, status: "active", model_provider: "claude", profile, title: title ?? null, usage: emptyUsage(), transcript: [], created_at: now, updated_at: now });
+  if (error) asAppError(error, "Creating agent session");
+}
+
+export async function assertProjectOwner(client: SupabaseClient, userId: string, projectId: string): Promise<{ id: string; sandbox_path: string }> {
+  const { data, error } = await client.from("projects").select("id,sandbox_path").eq("id", projectId).eq("user_id", userId).maybeSingle();
+  if (error) asAppError(error, "Loading project");
+  if (!data) throw new AppError(404, "PROJECT_NOT_FOUND", "Project was not found.");
+  const expected = `users/${userId}/projects/${projectId}`;
+  const storedPath = String(data.sandbox_path ?? "").replace(/^\/+|\/+$/g, "");
+  if (storedPath !== expected && !storedPath.startsWith(`${expected}/`)) {
+    throw new AppError(409, "INVALID_PROJECT_SANDBOX", "The project sandbox path is invalid; recreate the project before running an agent.");
+  }
+  return data;
+}

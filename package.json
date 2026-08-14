@@ -1,0 +1,23 @@
+{
+  "name": "@issac/core-agent",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Issac agent core: tools, sandbox, permissions, hooks, sessions.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "deno": "^2.9.3",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "dependencies": {
+    "@sentry/deno": "^10.66.0",
+    "@supabase/supabase-js": "^2.95.0",
+    "e2b": "2.35.0",
+    "zod": "^3.24.2"
+  }
+}

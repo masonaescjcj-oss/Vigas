@@ -1,0 +1,298 @@
+/**
+ * loop.ts
+ * ---------------------------------------------------------------------------
+ * The agent execution loop and the per-tool security pipeline.
+ *
+ * For each model step:
+ *   1. (optionally) compact the transcript if it is getting long
+ *   2. ask the model for the next turn (text and/or tool calls)
+ *   3. for every requested tool call, run the security pipeline:
+ *        PreToolUse hooks -> policy engine -> (ask -> confirm) -> execute
+ *        -> PostToolUse hooks
+ *   4. append results and repeat until the model returns a final text answer
+ *
+ * The model is an injected interface, so the same loop drives a real LLM in
+ * production and a deterministic ScriptedModel in tests.
+ *
+ * (Phase-1 substrate: the loop skeleton. Phase-2 adds the security pipeline.)
+ * ---------------------------------------------------------------------------
+ */
+
+import type { AgentControl, ToolRegistry, ToolRisk, Workspace } from "./toolRegistry.ts";
+import type { AgentSession, ChatMessage, ToolCall } from "./session/sessionStore.ts";
+import type { PermissionDecision, PolicyEngine } from "./permissions/policyEngine.ts";
+import type { HookRunner } from "./hooks/hookRunner.ts";
+import { compactHistory, type Summarizer } from "./session/compact.ts";
+
+const STRICTNESS: Record<PermissionDecision, number> = { allow: 0, ask: 1, deny: 2 };
+
+/* ---- Model interface ----------------------------------------------------- */
+
+export interface ModelToolSchema {
+  name: string;
+  description: string;
+  parameters: unknown;
+}
+
+export interface ModelResponse {
+  text?: string;
+  toolCalls?: ToolCall[];
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
+export interface ChatModel {
+  generate(params: {
+    systemPrompt: string;
+    messages: ChatMessage[];
+    tools: ModelToolSchema[];
+  }): Promise<ModelResponse>;
+}
+
+export type ConfirmFn = (req: {
+  toolName: string;
+  input: Record<string, unknown>;
+  reason: string;
+}) => Promise<boolean> | boolean;
+
+/* ---- Runtime control (plan mode, todos, subagents) ----------------------- */
+
+export interface RuntimeControlOptions {
+  idFactory: () => string;
+  onPlanChange?: (planMode: boolean, plan?: string) => void;
+  onTodos?: (todos: Array<{ subject: string; status: string }>) => void;
+  subagentRunner?: (opts: { description: string; prompt: string; role?: string }) => Promise<string>;
+}
+
+export class RuntimeControl implements AgentControl {
+  planMode = false;
+  todos: Array<{ subject: string; status: string }> = [];
+  private readonly subagents = new Map<string, { id: string; summary: string }>();
+
+  constructor(private readonly opts: RuntimeControlOptions) {}
+
+  async enterPlanMode(): Promise<void> {
+    this.planMode = true;
+    this.opts.onPlanChange?.(true);
+  }
+  async exitPlanMode(plan: string): Promise<void> {
+    this.planMode = false;
+    this.opts.onPlanChange?.(false, plan);
+  }
+  async setTodos(todos: Array<{ subject: string; status: string }>): Promise<void> {
+    this.todos = todos;
+    this.opts.onTodos?.(todos);
+  }
+  async spawnSubagent(opts: { description: string; prompt: string; role?: string }): Promise<{ id: string; summary: string }> {
+    const id = this.opts.idFactory();
+    const summary = this.opts.subagentRunner
+      ? await this.opts.subagentRunner(opts)
+      : `Subagent "${opts.description}" ran with no external runner configured.`;
+    const rec = { id, summary };
+    this.subagents.set(id, rec);
+    return rec;
+  }
+  async waitForSubagents(ids: string[]): Promise<Array<{ id: string; summary: string }>> {
+    return ids.map((id) => this.subagents.get(id) ?? { id, summary: "unknown subagent" });
+  }
+}
+
+/* ---- Loop ---------------------------------------------------------------- */
+
+export interface LoopDeps {
+  model: ChatModel;
+  registry: ToolRegistry;
+  workspace: Workspace;
+  policy: PolicyEngine;
+  hooks: HookRunner;
+  systemPrompt: string;
+  root: string;
+  now: () => number;
+  idFactory: () => string;
+  control?: AgentControl & { planMode: boolean };
+  confirm?: ConfirmFn;
+  /** When true, "ask" decisions auto-approve (trusted/autonomous mode). */
+  autoApproveAsk?: boolean;
+  maxSteps?: number;
+  compaction?: { maxTokens: number; keepRecent: number; summarizer?: Summarizer };
+  onMessage?: (m: ChatMessage) => void;
+}
+
+export interface LoopRunResult {
+  finalText: string;
+  session: AgentSession;
+  steps: number;
+  stoppedReason: "final" | "max-steps";
+}
+
+/** Run the security pipeline for a single tool call and return the tool message. */
+async function executeToolCall(
+  tc: ToolCall,
+  deps: LoopDeps,
+  control: AgentControl & { planMode: boolean },
+  session: AgentSession,
+): Promise<ChatMessage> {
+  const tool = deps.registry.get(tc.name);
+  const risk: ToolRisk = tool?.risk ?? "exec";
+  const callIndex = session.usage.toolCalls;
+
+  const preCtx = {
+    sessionId: session.id,
+    toolName: tc.name,
+    risk,
+    input: tc.input,
+    sandboxRoot: deps.root,
+    profileName: session.sandboxProfile,
+    callIndex,
+  };
+
+  const hookDecision = await deps.hooks.runPre(preCtx);
+  const policyResult = deps.policy.evaluate({ toolName: tc.name, risk, input: tc.input });
+
+  let decision: PermissionDecision = policyResult.decision;
+  let reason = policyResult.reason;
+  if (hookDecision && STRICTNESS[hookDecision.decision] > STRICTNESS[decision]) {
+    decision = hookDecision.decision;
+    reason = hookDecision.reason;
+  }
+
+  if (decision === "ask") {
+    const approved = deps.autoApproveAsk
+      ? true
+      : deps.confirm
+        ? await deps.confirm({ toolName: tc.name, input: tc.input, reason })
+        : false;
+    if (approved) {
+      decision = "allow";
+    } else {
+      decision = "deny";
+      reason = deps.confirm || deps.autoApproveAsk ? `Declined: ${reason}` : `No confirmation handler; denied by default (${reason})`;
+    }
+  }
+
+  const start = deps.now();
+  let result: { content: string; isError?: boolean };
+  let error: string | undefined;
+
+  if (decision === "deny") {
+    result = { content: `⛔ Blocked by policy: ${reason}`, isError: true };
+  } else {
+    try {
+      result = await deps.registry.invoke(tc.name, tc.input, {
+        workspace: deps.workspace,
+        control,
+        root: deps.root,
+        planMode: control.planMode,
+      });
+    } catch (e) {
+      error = (e as Error).message;
+      result = { content: `Tool error: ${error}`, isError: true };
+    }
+  }
+
+  const durationMs = deps.now() - start;
+  await deps.hooks.runPost({ ...preCtx, decision, result, error, durationMs });
+  session.usage.toolCalls += 1;
+
+  return {
+    id: deps.idFactory(),
+    role: "tool",
+    content: result.content,
+    toolCallId: tc.id,
+    isError: result.isError,
+    createdAt: deps.now(),
+  };
+}
+
+/** Drive the agent to a final answer, mutating `session` in place. */
+export async function runAgentLoop(
+  session: AgentSession,
+  userPrompt: string,
+  deps: LoopDeps,
+): Promise<LoopRunResult> {
+  const control =
+    deps.control ?? new RuntimeControl({ idFactory: deps.idFactory });
+
+  const push = (m: ChatMessage) => {
+    session.messages.push(m);
+    deps.onMessage?.(m);
+  };
+
+  push({ id: deps.idFactory(), role: "user", content: userPrompt, createdAt: deps.now() });
+
+  const maxSteps = deps.maxSteps ?? 12;
+  const toolSchemas: ModelToolSchema[] = deps.registry
+    .toApiSchema()
+    .map((t) => ({ name: t.function.name, description: t.function.description, parameters: t.function.parameters }));
+
+  let finalText = "";
+  let stoppedReason: "final" | "max-steps" = "max-steps";
+  let step = 0;
+
+  for (; step < maxSteps; step++) {
+    session.usage.steps += 1;
+
+    if (deps.compaction) {
+      const res = await compactHistory(session.messages, {
+        maxTokens: deps.compaction.maxTokens,
+        keepRecent: deps.compaction.keepRecent,
+        summarizer: deps.compaction.summarizer,
+        now: deps.now,
+        idFactory: deps.idFactory,
+      });
+      if (res.compacted) session.messages = res.messages;
+    }
+
+    const resp = await deps.model.generate({
+      systemPrompt: deps.systemPrompt,
+      messages: session.messages,
+      tools: toolSchemas,
+    });
+
+    if (resp.usage) {
+      session.usage.inputTokens += resp.usage.inputTokens;
+      session.usage.outputTokens += resp.usage.outputTokens;
+    }
+
+    if (resp.toolCalls && resp.toolCalls.length > 0) {
+      push({
+        id: deps.idFactory(),
+        role: "assistant",
+        content: resp.text ?? "",
+        toolCalls: resp.toolCalls,
+        createdAt: deps.now(),
+      });
+      for (const tc of resp.toolCalls) {
+        const toolMsg = await executeToolCall(tc, deps, control, session);
+        push(toolMsg);
+      }
+      continue;
+    }
+
+    finalText = resp.text ?? "";
+    push({ id: deps.idFactory(), role: "assistant", content: finalText, createdAt: deps.now() });
+    stoppedReason = "final";
+    step += 1;
+    break;
+  }
+
+  session.updatedAt = deps.now();
+  return { finalText, session, steps: step, stoppedReason };
+}
+
+/* ---- Deterministic model for tests & the README demo --------------------- */
+
+/**
+ * A scripted model that replays a fixed list of turns, then returns a final
+ * message. Real deployments implement {@link ChatModel} over an LLM API.
+ */
+export class ScriptedModel implements ChatModel {
+  private i = 0;
+  constructor(
+    private readonly turns: ModelResponse[],
+    private readonly fallbackText = "Done.",
+  ) {}
+  async generate(): Promise<ModelResponse> {
+    if (this.i < this.turns.length) return this.turns[this.i++];
+    return { text: this.fallbackText, usage: { inputTokens: 1, outputTokens: 1 } };
+  }
+}
