@@ -100,11 +100,6 @@ export const ProfileMainScreen = () => {
             onPress={() => navigation.navigate("SecuritySettings")}
           />
           <SettingsRow
-            label="Notifications"
-            icon="🔔"
-            onPress={() => navigation.navigate("NotificationSettings")}
-          />
-          <SettingsRow
             label="Help & Support"
             icon="❓"
             onPress={() => navigation.navigate("HelpSupport")}

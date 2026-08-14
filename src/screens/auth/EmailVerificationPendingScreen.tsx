@@ -18,16 +18,18 @@
 
 import React, { useState, useEffect } from "react";
 import { View, SafeAreaView, TouchableOpacity, Alert } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { AuthStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
-import { type AuthStackParamList } from "../../navigation/types";
 
 type RouteProps = RouteProp<AuthStackParamList, "EmailVerificationPending">;
 
 export const EmailVerificationPendingScreen = () => {
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { email } = route.params;
 
   // --------------------------------------------------------------------------
@@ -55,18 +57,14 @@ export const EmailVerificationPendingScreen = () => {
     if (cooldown > 0) return;
     setResending(true);
     try {
-      // Re-trigger signup email resend via Supabase Auth
-      const { error } = await supabase.auth.signUp({ 
-        email, 
-        password: "dummy_resend_password"
-      });
-      
-      Alert.alert("Resent", "Verification email has been resent successfully.");
-      setCooldown(60); // Reset 60s cooldown
-    } catch (e: any) {
-      console.warn("Dev mode fallback: Simulating verification email resend to:", email);
-      Alert.alert("Resent", "Verification email has been resent (Dev Fallback).");
+      // The correct API for this is auth.resend — signUp would try to create a
+      // second account with a throwaway password.
+      const { error } = await supabase.auth.resend({ type: "signup", email });
+      if (error) throw error;
+      notify("Resent", "Verification email has been resent.");
       setCooldown(60);
+    } catch (e: any) {
+      notify("Could not resend", e?.message ?? "Please try again in a moment.");
     } finally {
       setResending(false);
     }
@@ -113,7 +111,7 @@ export const EmailVerificationPendingScreen = () => {
 
         {/* Back to Sign In Action Button */}
         <TouchableOpacity
-          onPress={() => navigation.navigate("Login" as any)}
+          onPress={() => navigation.navigate("Login")}
           className="w-full py-4 bg-[#141414] rounded-2xl items-center justify-center active:bg-[#1E1E1E]"
         >
           <Text className="text-zinc-300 text-sm font-semibold">Back to Sign In</Text>

@@ -47,19 +47,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const user = get().user;
     if (!user) return;
 
-    // Local/Guest mode fallback to bypass Supabase queries for demo accounts
-    if (user.id.startsWith("guest") || user.id.startsWith("dev")) {
-      set({
-        profile: {
-          id: user.id,
-          email: user.email || "guest@issac.dev",
-          display_name: user.id.startsWith("guest") ? "کاربر مهمان" : user.email?.split("@")[0] || "کاربر دمو",
-          subscription_tier: "free",
-        }
-      });
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from("profiles")

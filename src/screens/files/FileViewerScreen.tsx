@@ -10,6 +10,7 @@
 
 import React, { useEffect, useState } from "react";
 import { View, TextInput, ScrollView, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -48,7 +49,7 @@ export const FileViewerScreen = () => {
         setContent(text);
         setEditedContent(text);
       } catch (e: any) {
-        Alert.alert("Load Error", e.message || "Failed to read file.");
+        notify("Load Error", e.message || "Failed to read file.");
       } finally {
         setLoading(false);
       }
@@ -59,7 +60,7 @@ export const FileViewerScreen = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const blob = new Blob([editedContent], { type: "text/plain" });
+      const blob = new Blob([editedContent], { type: "text/plain" } as unknown as BlobOptions);
       const { error } = await supabase.storage
         .from("project-files")
         .upload(filePath, blob, { upsert: true });
@@ -68,44 +69,62 @@ export const FileViewerScreen = () => {
       
       setContent(editedContent);
       setIsEditing(false);
-      Alert.alert("Saved Successfully", "Changes sent to Sandbox.");
+      notify("Saved Successfully", "Changes sent to Sandbox.");
     } catch (e: any) {
-      Alert.alert("Save Error", e.message || "Failed to save file.");
+      notify("Save Error", e.message || "Failed to save file.");
     } finally {
       setSaving(false);
     }
   };
 
-  // Simple logic to render diff comparison (simulated changes for preview)
+  /**
+   * Unsaved-changes diff: compares the buffer being edited against the version
+   * loaded from Storage. (A checkpoint-to-checkpoint diff needs a backend
+   * endpoint that does not exist yet.)
+   */
   const renderDiffLines = () => {
     const originalLines = content.split("\n");
-    // Simulated modification: inserts a new line and deletes one for presentation
-    return originalLines.map((line, idx) => {
-      if (idx === 2) {
-        return (
-          <View key={idx} className="bg-red-500/10 px-2 py-0.5 border-l-2 border-red-500" style={{ backgroundColor: `${colors.failed}15` }}>
-            <Text variant="code" className="text-red-600 text-xs" style={{ color: colors.failed }}>- {line}</Text>
-          </View>
+    const editedLines = editedContent.split("\n");
+    const max = Math.max(originalLines.length, editedLines.length);
+    const rows: React.ReactNode[] = [];
+
+    for (let i = 0; i < max; i += 1) {
+      const before = originalLines[i];
+      const after = editedLines[i];
+      if (before === after) {
+        if (before !== undefined) {
+          rows.push(
+            <View key={`ctx-${i}`} className="px-2 py-0.5">
+              <Text variant="code" className="text-xs">{before}</Text>
+            </View>,
+          );
+        }
+        continue;
+      }
+      if (before !== undefined) {
+        rows.push(
+          <View key={`del-${i}`} className="px-2 py-0.5 border-l-2" style={{ backgroundColor: `${colors.failed}15`, borderLeftColor: colors.failed }}>
+            <Text variant="code" className="text-xs" style={{ color: colors.failed }}>- {before}</Text>
+          </View>,
         );
       }
-      if (idx === 3) {
-        return (
-          <React.Fragment key={idx}>
-            <View className="bg-green-500/10 px-2 py-0.5 border-l-2 border-green-500" style={{ backgroundColor: `${colors.success}15` }}>
-              <Text variant="code" className="text-green-600 text-xs" style={{ color: colors.success }}>+ {line} (edited by agent)</Text>
-            </View>
-            <View className="bg-green-500/10 px-2 py-0.5 border-l-2 border-green-500" style={{ backgroundColor: `${colors.success}15` }}>
-              <Text variant="code" className="text-green-600 text-xs" style={{ color: colors.success }}>+ // Add sync variable</Text>
-            </View>
-          </React.Fragment>
+      if (after !== undefined) {
+        rows.push(
+          <View key={`add-${i}`} className="px-2 py-0.5 border-l-2" style={{ backgroundColor: `${colors.success}15`, borderLeftColor: colors.success }}>
+            <Text variant="code" className="text-xs" style={{ color: colors.success }}>+ {after}</Text>
+          </View>,
         );
       }
+    }
+
+    if (rows.length === 0 || content === editedContent) {
       return (
-        <View key={idx} className="px-2 py-0.5">
-          <Text variant="code" className="text-xs">{line}</Text>
+        <View className="py-8 items-center">
+          <Text variant="caption" className="opacity-70">No unsaved changes.</Text>
         </View>
       );
-    });
+    }
+    return rows;
   };
 
   return (

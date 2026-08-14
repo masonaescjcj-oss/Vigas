@@ -8,7 +8,10 @@
 
 import React, { useEffect, useState } from "react";
 import { View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { UsageChart } from "../../components/UsageChart";
@@ -18,23 +21,15 @@ import { supabase } from "../../services/supabase";
 
 export const TokenUsageScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile } = useAuthStore();
 
   const [tokensUsed, setTokensUsed] = useState(0);
   const [tokensLimit, setTokensLimit] = useState(100000);
   const [loading, setLoading] = useState(false);
 
-  // Simulated daily data points for UsageChart
-  const mockUsageData = [
-    { dayLabel: "Jul 24", value: 1200 },
-    { dayLabel: "Jul 25", value: 3400 },
-    { dayLabel: "Jul 26", value: 4500 },
-    { dayLabel: "Jul 27", value: 2100 },
-    { dayLabel: "Jul 28", value: 8900 },
-    { dayLabel: "Jul 29", value: 6500 },
-    { dayLabel: "Jul 30", value: 11000 },
-  ];
+  // Real per-period history from usage_metering (one row per period).
+  const [usageHistory, setUsageHistory] = useState<Array<{ dayLabel: string; value: number }>>([]);
 
   useEffect(() => {
     const fetchUsage = async () => {
@@ -42,19 +37,28 @@ export const TokenUsageScreen = () => {
       try {
         const { data, error } = await supabase
           .from("usage_metering")
-          .select("tokens_used, plan_limit_tokens")
-          .maybeSingle();
+          .select("tokens_used, plan_limit_tokens, period_start")
+          .order("period_start", { ascending: false })
+          .limit(7);
 
-        if (!error && data) {
-          setTokensUsed(data.tokens_used);
-          setTokensLimit(data.plan_limit_tokens);
+        if (error) throw error;
+        const rows = data ?? [];
+        if (rows.length > 0) {
+          setTokensUsed(rows[0].tokens_used ?? 0);
+          setTokensLimit(rows[0].plan_limit_tokens ?? 0);
+          setUsageHistory(
+            [...rows].reverse().map((row) => ({
+              dayLabel: new Date(row.period_start).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+              value: row.tokens_used ?? 0,
+            })),
+          );
         } else {
-          // Mock display if table empty
-          setTokensUsed(36500);
-          setTokensLimit(100000);
+          setTokensUsed(0);
+          setTokensLimit(0);
+          setUsageHistory([]);
         }
-      } catch (e) {
-        console.error(e);
+      } catch (e: any) {
+        notify("Could not load usage", e?.message ?? "Please try again.");
       } finally {
         setLoading(false);
       }
@@ -112,8 +116,17 @@ export const TokenUsageScreen = () => {
           )}
         </View>
 
-        {/* 2. Usage chart component */}
-        <UsageChart data={mockUsageData} maxVal={12000} />
+        {/* 2. Usage chart — real per-period history */}
+        {usageHistory.length > 0 ? (
+          <UsageChart
+            data={usageHistory}
+            maxVal={Math.max(1, ...usageHistory.map((point) => point.value))}
+          />
+        ) : (
+          <View className="py-8 items-center">
+            <Text variant="caption" className="opacity-70">No usage history yet.</Text>
+          </View>
+        )}
 
         {/* 3. Upgrade callout */}
         {isCloseToLimit && (
@@ -129,7 +142,7 @@ export const TokenUsageScreen = () => {
             </Text>
             <Button
               label="View Packages"
-              onPress={() => navigation.navigate("Paywall" as any)}
+              onPress={() => navigation.navigate("Paywall", {})}
               className="mt-4 w-full"
             />
           </View>

@@ -15,18 +15,18 @@
 
 import React from "react";
 import { View, SafeAreaView, TouchableOpacity, Alert, Platform } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { type AuthStackParamList } from "../../navigation/types";
-import { useAuthStore } from "../../stores/authStore";
+import { supabase } from "../../services/supabase";
 import { useThemeStore } from "../../theme/store";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Welcome">;
 
 export const WelcomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { setSession } = useAuthStore();
   const { mode } = useThemeStore();
 
   const isLight = mode === "light";
@@ -38,38 +38,33 @@ export const WelcomeScreen = () => {
   const textSecondary = isLight ? "#475569" : "#A1A1AA";
   const textMuted = isLight ? "#64748B" : "#71717A";
 
+  /**
+   * Real anonymous sign-in: Supabase issues a genuine JWT, so RLS reads and
+   * edge-function calls work exactly as they do for a signed-up user (a faked
+   * client-side session cannot do either). Requires "Allow anonymous sign-ins"
+   * to be enabled in Supabase → Authentication → Providers.
+   */
   const runGuestLogin = async () => {
-    const mockSession = {
-      access_token: "guest_token_retrocode",
-      token_type: "bearer",
-      expires_in: 3600,
-      refresh_token: "guest_refresh",
-      user: {
-        id: "guest-user-uuid",
-        app_metadata: {},
-        user_metadata: { full_name: "Retro Code Guest" },
-        aud: "authenticated",
-        created_at: new Date().toISOString(),
-        email: "guest@retrocode.dev",
-      },
-    };
-    void setSession(mockSession as any);
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      notify("Guest mode unavailable", `${error.message}\n\nEnable "Allow anonymous sign-ins" in your Supabase Auth settings, or create an account.`,);
+    }
   };
 
   const handleGuestMode = () => {
     if (Platform.OS === "web") {
-      const confirm = window.confirm("Guest login provides immediate access to Retro Code IDE. Continue as Guest?");
-      if (confirm) {
+      const webConfirm = (globalThis as { confirm?: (message: string) => boolean }).confirm;
+      if (!webConfirm || webConfirm("Continue as a guest? You can create an account later to keep your projects.")) {
         void runGuestLogin();
       }
     } else {
       Alert.alert(
         "Guest Mode",
-        "Guest mode provides immediate access to Retro Code IDE. Continue as Guest?",
+        "Continue as a guest? You can create an account later to keep your projects.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Confirm", onPress: runGuestLogin }
-        ]
+          { text: "Continue", onPress: runGuestLogin },
+        ],
       );
     }
   };

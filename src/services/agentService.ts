@@ -16,6 +16,7 @@ import { API_ORIGIN, IS_LOCAL_API, invokeFunction } from "./functionsClient";
 export interface AgentSessionData {
   id: string;
   project_id: string;
+  title?: string | null;
   status: "active" | "completed" | "failed" | "archived" | "paused";
   model_provider: string;
   token_usage_total: number;

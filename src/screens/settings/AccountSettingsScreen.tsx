@@ -9,13 +9,15 @@
  */
 
 import React, { useState } from "react";
-import { View, TextInput, Alert, ScrollView, SafeAreaView } from "react-native";
+import { View, TextInput, Alert, ScrollView, SafeAreaView, TouchableOpacity } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "../../services/supabase";
+import { invokeFunction } from "../../services/functionsClient";
 
 export const AccountSettingsScreen = () => {
   const { colors } = useTheme();
@@ -47,9 +49,9 @@ export const AccountSettingsScreen = () => {
 
       if (error) throw error;
       await loadProfile();
-      Alert.alert("Profile Updated", "Display name changed successfully.");
+      notify("Profile Updated", "Display name changed successfully.");
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Update failed.");
+      notify("Error", e.message || "Update failed.");
     } finally {
       setSavingProfile(false);
     }
@@ -57,7 +59,7 @@ export const AccountSettingsScreen = () => {
 
   const handleUpdatePassword = async () => {
     if (!newPassword || newPassword !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
+      notify("Error", "Passwords do not match.");
       return;
     }
 
@@ -65,12 +67,12 @@ export const AccountSettingsScreen = () => {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      Alert.alert("Password Updated", "Your password has been changed successfully.");
+      notify("Password Updated", "Your password has been changed successfully.");
       setNewPassword("");
       setConfirmPassword("");
       setCurrentPassword("");
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      notify("Error", e.message);
     } finally {
       setUpdatingPassword(false);
     }
@@ -78,22 +80,19 @@ export const AccountSettingsScreen = () => {
 
   const handleDeleteAccount = async () => {
     if (deleteWord !== "DELETE") {
-      Alert.alert("Error", "Please type 'DELETE' to confirm.");
+      notify("Error", "Please type 'DELETE' to confirm.");
       return;
     }
 
     setDeletingAccount(true);
     try {
-      // In a real app, delete user record in public.profiles which cascades or triggers auth delete
-      const { error } = await supabase.functions.invoke("user-delete", { method: "POST" });
-      if (error) throw error;
-      
-      Alert.alert("Account Deleted", "Your account and data have been successfully deleted.");
+      // Real deletion: removes Storage objects then the auth user (rows cascade).
+      await invokeFunction("user-delete", { method: "POST" });
+      notify("Account deleted", "Your account, projects and files have been permanently deleted.");
       await signOut();
     } catch (e: any) {
-      // Fallback simulate success for presentation if function is draft
-      Alert.alert("Account Deleted", "Your account and all your projects have been successfully deleted.");
-      await signOut();
+      // Never claim success here — the account still exists.
+      notify("Could not delete the account", e?.message ?? "Please try again or contact support.");
     } finally {
       setDeletingAccount(false);
     }

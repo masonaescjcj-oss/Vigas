@@ -1,13 +1,24 @@
 /**
  * frontend/src/hooks/useSubscription.ts
  * ---------------------------------------------------------------------------
- * Wrapper hook for RevenueCat SDK Purchases.
- * Manages active subscriptions, tier checks, and billing queries.
+ * Subscription state. The server side is real (subscriptions table +
+ * revenuecat-webhook / revenuecat-sync), but there is NO purchase client yet:
+ * `react-native-purchases` is not installed and no store products are
+ * configured, so nothing here can actually charge a card or grant a tier.
+ *
+ * This hook therefore reports the real tier from `profiles` and refuses to
+ * pretend a purchase happened. It used to `setTimeout(1500)` and then announce
+ * "payment successful", which is the worst possible lie in an app: the user
+ * believes they paid, nothing was charged, and no entitlement was granted.
+ *
+ * To finish this: install react-native-purchases, configure products in App
+ * Store Connect / Play Console + RevenueCat, then implement purchase() here and
+ * let revenuecat-webhook write the tier.
  * ---------------------------------------------------------------------------
  */
 
-import { useState, useEffect } from "react";
-import { Alert } from "react-native";
+import { useState } from "react";
+import { notify } from "../services/notify";
 import { useAuthStore } from "../stores/authStore";
 
 export interface SubscriptionPackage {
@@ -18,42 +29,31 @@ export interface SubscriptionPackage {
   savings?: string;
 }
 
+/** True once a purchase SDK + store products are wired up. */
+export const PURCHASES_AVAILABLE = false;
+
+const NOT_AVAILABLE_TITLE = "Purchases not available yet";
+const NOT_AVAILABLE_BODY =
+  "In-app purchases aren't wired up in this build. No payment was attempted and nothing was charged.";
+
 export const useSubscription = () => {
   const { profile, loadProfile } = useAuthStore();
-  const [offerings, setOfferings] = useState<SubscriptionPackage[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Set up mock offerings matching standard product packages
-  useEffect(() => {
-    setOfferings([
-      { id: "pkg_monthly", title: "اشتراک ماهانه پرو (Pro Monthly)", priceString: "$19.99", period: "monthly" },
-      { id: "pkg_yearly", title: "اشتراک سالانه پرو (Pro Yearly)", priceString: "$149.99", period: "yearly", savings: "صرفه‌جویی ۳۷٪" },
-    ]);
-  }, []);
+  // No store connection yet, so there are no offerings to show.
+  const offerings: SubscriptionPackage[] = [];
 
-  const purchasePackage = async (pkg: SubscriptionPackage) => {
-    setLoading(true);
-    try {
-      // Simulation of RevenueCat payment gateway interface
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      Alert.alert("پرداخت موفق", `خرید بسته ${pkg.title} با موفقیت انجام شد.`);
-      
-      // Update profile status in Supabase (simulate webhooks sync)
-      await loadProfile();
-    } catch (e: any) {
-      Alert.alert("خرید ناموفق", e.message || "پرداخت توسط درگاه رد شد.");
-    } finally {
-      setLoading(false);
-    }
+  const purchasePackage = async (_pkg: SubscriptionPackage) => {
+    notify(NOT_AVAILABLE_TITLE, NOT_AVAILABLE_BODY);
   };
 
   const restorePurchases = async () => {
+    // Refreshing the profile is genuinely useful: if a subscription was granted
+    // server-side (webhook/sync), this picks it up.
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      Alert.alert("بازیابی موفق", "خریدهای قبلی شما با موفقیت بازیابی شد.");
-    } catch (e: any) {
-      Alert.alert("خطا", "یافتن خرید قبلی ناموفق بود.");
+      await loadProfile();
+      notify("Refreshed", "Your subscription status has been re-read from the server.");
     } finally {
       setLoading(false);
     }
@@ -61,6 +61,7 @@ export const useSubscription = () => {
 
   return {
     offerings,
+    purchasesAvailable: PURCHASES_AVAILABLE,
     isLoading: loading,
     activeSubscription: profile?.subscription_tier || "free",
     purchasePackage,

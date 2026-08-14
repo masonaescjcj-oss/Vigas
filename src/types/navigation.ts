@@ -39,7 +39,6 @@ export type ProfileStackParamList = {
   AccountSettings: undefined;
   Preferences: undefined;
   SecuritySettings: undefined;
-  NotificationSettings: undefined;
   HelpSupport: undefined;
   About: undefined;
   PrivacyPolicy: undefined;
@@ -63,5 +62,4 @@ export type RootStackParamList = {
   ManageSubscription: undefined;
   TokenUsage: undefined;
   GlobalSearch: undefined;
-  NotificationInbox: undefined;
 };

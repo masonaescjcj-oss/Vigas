@@ -18,8 +18,9 @@
     "noEmit": true
   },
   "include": [
-    "src/core",
-    "src/infra"
+    "src",
+    "App.tsx",
+    "nativewind-env.d.ts"
   ],
   "extends": "expo/tsconfig.base"
 }

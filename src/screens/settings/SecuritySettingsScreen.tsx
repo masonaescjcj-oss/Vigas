@@ -10,6 +10,7 @@
 
 import React, { useState } from "react";
 import { View, ScrollView, TouchableOpacity, Alert, SafeAreaView } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { SettingsRow } from "../../components/SettingsRow";
@@ -34,10 +35,10 @@ export const SecuritySettingsScreen = () => {
     setTwoFactorEnabled,
   } = useSettingsStore();
 
-  const [sessions, setSessions] = useState<DeviceSession[]>([
-    { id: "sess-1", name: "iPhone 15 Pro (This device)", location: "Tehran, Iran", lastActive: "Active now" },
-    { id: "sess-2", name: "MacBook Pro M3", location: "Tehran, Iran", lastActive: "12 hours ago" },
-  ]);
+  // Listing other devices requires Supabase admin session APIs (service-role);
+  // the client can only see its own session, so this list stays empty instead of
+  // inventing devices and locations.
+  const [sessions, setSessions] = useState<DeviceSession[]>([]);
 
   const handleDisconnectSession = (id: string, name: string) => {
     Alert.alert(
@@ -50,7 +51,7 @@ export const SecuritySettingsScreen = () => {
           style: "destructive",
           onPress: () => {
             setSessions(sessions.filter((s) => s.id !== id));
-            Alert.alert("Success", "Device has been successfully signed out.");
+            notify("Success", "Device has been successfully signed out.");
           }
         }
       ]

@@ -11,23 +11,23 @@
  * All state handlers, streaming message updates, connector toggles, project management,
  * and checkpoint rollbacks have clear placeholders pointing to your Deno/Express API endpoints.
  * 
- * Featured Agent Ecosystem:
- *   - Skills.sh (#1 Flagship Connector): Open ecosystem for AI Agent Skills, UI/UX Design Systems,
- *     Lucide Icons, Automated Testing, and React Native Performance Optimization.
  * ============================================================================
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Switch, Platform, ActivityIndicator } from "react-native";
+import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Switch, Platform, ActivityIndicator, Alert } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useThemeStore } from "../../theme/store";
-import { MOCK_FILE_TREE } from "../../services/mockData";
 import { type ProjectNavigationProp } from "../../navigation/types";
 import { useProjects } from "../../hooks/useProjects";
-import { agentService, type AgentTaskData } from "../../services/agentService";
-import { getProjectFiles } from "../../services/fileService";
+import { agentService, type AgentTaskData, type AgentSessionData } from "../../services/agentService";
+import { getProjectCheckpoints, relativeTime, type CheckpointRow } from "../../services/checkpointService";
+import { useAuthStore } from "../../stores/authStore";
+import { getUsage, type UsageSummary } from "../../services/usageService";
+import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
@@ -153,241 +153,12 @@ const PROJECT_TEMPLATE_CHOICES = [
   { id: "blank", label: "⬜ Blank" },
 ];
 
-/**
- * Connectors Dataset & Deep Info Structure
- * #1 FLAGSHIP CONNECTOR: Skills.sh AI Agent Skills Repository
- * BACKEND INTEGRATION: Fetch from `GET /api/connectors` and sync OAuth/CLI skill installations.
- */
-const INITIAL_CONNECTORS_DATA = [
-  { 
-    id: "skillsh", 
-    name: "Skills.sh Open Ecosystem", 
-    icon: "puzzle", 
-    color: "#C084FC",
-    description: "Install procedural AI skills, UI/UX design rules, vector icons & testing workflows", 
-    category: "Popular", 
-    connected: true,
-    developer: "Skills.sh Open Community",
-    overviewBullets: [
-      "Access 1,000+ open-source AI Agent Skills (SKILL.md standard repository)",
-      "UI & Vector Icon Mastery: Auto-generate Lucide, Heroicons, and sleek glassmorphism UI",
-      "React Native & Expo Optimizer: Deep performance tuning, state management & bundle reduction",
-      "Automated Testing & Refactoring: Auto-generate Jest & Playwright suites with zero setup",
-      "Direct CLI integration: Install custom workspace skills via 'npx skills add <repo>'"
-    ]
-  },
-  { 
-    id: "gdrive", 
-    name: "Google Drive", 
-    icon: "drive", 
-    color: "#38BDF8",
-    description: "Get in-depth answers from your Google Drive content", 
-    category: "Popular", 
-    connected: true,
-    developer: "Google LLC",
-    overviewBullets: [
-      "Search across your Google Drive documents, sheets, and presentations",
-      "Read document text and attachments to ground answers in your personal files",
-      "Access team shared drives and organization knowledge base",
-      "Surface relevant document context during chat & coding sessions"
-    ]
-  },
-  { 
-    id: "gmail", 
-    name: "Gmail with Calendar", 
-    icon: "mail", 
-    color: "#EF4444",
-    description: "Search, create, and manage your emails and calendar events", 
-    category: "Popular", 
-    connected: true,
-    developer: "Google LLC",
-    overviewBullets: [
-      "Search across your Gmail inbox, sent items, and custom labels",
-      "Read email threads and attachments to ground responses in communications",
-      "Create draft emails and schedule calendar meetings automatically",
-      "Surface event context and relevant past email correspondence"
-    ]
-  },
-  { 
-    id: "onedrive", 
-    name: "OneDrive", 
-    icon: "cloud", 
-    color: "#0284C7",
-    description: "Get in-depth answers from your OneDrive content", 
-    category: "Popular", 
-    connected: false,
-    developer: "Microsoft Corporation",
-    overviewBullets: [
-      "Search files stored in your Microsoft OneDrive cloud storage",
-      "Extract text from Word, Excel, PowerPoint, and PDF files",
-      "Seamless synchronization with Microsoft 365 cloud files"
-    ]
-  },
-  { 
-    id: "sharepoint", 
-    name: "Sharepoint", 
-    icon: "briefcase", 
-    color: "#0D9488",
-    description: "Get in-depth answers from your Sharepoint content", 
-    category: "Popular", 
-    connected: false,
-    developer: "Microsoft Corporation",
-    overviewBullets: [
-      "Search enterprise intranet sites and document libraries",
-      "Access team workspace documents and company policies",
-      "Enforce enterprise role-based permissions automatically"
-    ]
-  },
-  { 
-    id: "dropbox", 
-    name: "Dropbox", 
-    icon: "box", 
-    color: "#3B82F6",
-    description: "Get in-depth answers from your Dropbox content", 
-    category: "Popular", 
-    connected: false,
-    developer: "Dropbox Inc.",
-    overviewBullets: [
-      "Search files across all your connected Dropbox folders",
-      "Extract content from shared project folders and team spaces"
-    ]
-  },
-  { 
-    id: "box", 
-    name: "Box", 
-    icon: "inbox", 
-    color: "#2563EB",
-    description: "Access secure cloud content management files", 
-    category: "Popular", 
-    connected: false,
-    developer: "Box Inc.",
-    overviewBullets: [
-      "Access secure cloud content management files",
-      "Search governance-controlled enterprise documents"
-    ]
-  },
-  { 
-    id: "notion", 
-    name: "Notion", 
-    icon: "file-text", 
-    color: "#F4F4F5",
-    description: "Search and create content on your Notion pages", 
-    category: "Popular", 
-    connected: false,
-    developer: "Notion Labs Inc.",
-    overviewBullets: [
-      "Search workspace wiki pages, databases, and meeting notes",
-      "Create and edit Notion pages directly through agent tools",
-      "Query structured database tables and task boards"
-    ]
-  },
-  { 
-    id: "outlook", 
-    name: "Outlook", 
-    icon: "mail", 
-    color: "#2563EB",
-    description: "Search your emails and calendar events", 
-    category: "Popular", 
-    connected: false,
-    developer: "Microsoft Corporation",
-    overviewBullets: [
-      "Search across your Outlook inbox, sent items, and folders",
-      "Read messages, threads, and attachments to ground answers in your communications",
-      "Search calendar events, meetings, and invitations",
-      "Surface scheduling context and surface relevant past correspondence"
-    ]
-  },
-  { 
-    id: "github", 
-    name: "GitHub", 
-    icon: "github", 
-    color: "#E4E4E7",
-    description: "Search and manage your GitHub repositories", 
-    category: "Popular", 
-    connected: true,
-    developer: "GitHub Inc.",
-    overviewBullets: [
-      "Search code, issues, and pull requests across your repositories",
-      "Review commits, diffs, and pull request review comments",
-      "Manage repository issues and trigger CI workflow runs"
-    ]
-  },
-];
 
 /**
  * Pinned & Recent Agent Sessions History
  * BACKEND INTEGRATION: Fetch from `GET /api/sessions/history`
  */
-const PINNED_SESSIONS = [
-  {
-    id: "pin-1",
-    title: "Fix the login flow redirect issue",
-    time: "2 hr ago",
-    prBadge: "1 merged",
-    badgeType: "purple",
-    extraBadge: "+3",
-  },
-  {
-    id: "pin-2",
-    title: "Kiro mobile app story book demo",
-    time: "4 hr ago",
-    prBadge: "2 open",
-    badgeType: "blue",
-    extraBadge: "+n"
-  }
-];
 
-const RECENT_SESSIONS = [
-  {
-    id: "rec-1",
-    title: "Can you refactor this component to use hooks?",
-    time: "15min ago",
-    prBadge: "2 open",
-    badgeType: "blue"
-  },
-  {
-    id: "rec-2",
-    title: "Write unit tests for the notification module",
-    time: "45hr ago",
-    prBadge: "3 merged",
-    badgeType: "purple"
-  },
-  {
-    id: "rec-3",
-    title: "Implement drag and drop for the kanban board",
-    time: "1hr ago",
-    prBadge: "3 merged",
-    badgeType: "purple"
-  },
-  {
-    id: "rec-4",
-    title: "Update the onboarding carousel copy",
-    time: "2hr ago",
-    prBadge: "2 open",
-    badgeType: "blue"
-  },
-  {
-    id: "rec-5",
-    title: "Add dark mode support to the settings page a",
-    time: "3hr ago",
-    prBadge: "1 unknown",
-    badgeType: "amber"
-  },
-  {
-    id: "rec-6",
-    title: "Debug memory leak in websocket connection",
-    time: "6hr ago",
-    prBadge: "1 closed",
-    badgeType: "gray"
-  },
-  {
-    id: "rec-7",
-    title: "Set up CI pipeline for the new monorepo",
-    time: "1d 6hr ago",
-    prBadge: "1 closed",
-    badgeType: "gray"
-  }
-];
 
 // ============================================================================
 // 2. MAIN SCREEN COMPONENT
@@ -434,7 +205,8 @@ export const AgentChatScreen = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const runStartedAtRef = useRef<string | null>(null);
-  const { projects, createProject } = useProjects();
+  const { projects, createProject, deleteProject } = useProjects();
+  const { profile, user, signOut } = useAuthStore();
 
   // On-device live preview state (Phase 2 killer feature)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -444,11 +216,28 @@ export const AgentChatScreen = () => {
   // Template picked in the New Project dialog
   const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+
+  // Real project files for the file-tree sheet
+  const [fileEntries, setFileEntries] = useState<ProjectFileEntry[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [filesError, setFilesError] = useState<string | null>(null);
+
+  // Real chat sessions per project, for the drawer tree
+  const [drawerSessions, setDrawerSessions] = useState<Record<string, AgentSessionData[]>>({});
+  const [drawerQuery, setDrawerQuery] = useState("");
+
+  // Real checkpoints for the active project
+  const [checkpoints, setCheckpoints] = useState<CheckpointRow[]>([]);
+  const [checkpointsLoading, setCheckpointsLoading] = useState(false);
+
+  // Real token usage (usage-check → usage_metering)
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
   
   // Modal Visibility Controllers
   const [showDrawerModal, setShowDrawerModal] = useState(false);        // Drawer Dashboard
   const [showAddToChatModal, setShowAddToChatModal] = useState(false);  // '+' Add to Chat Sheet
-  const [showConnectorsModal, setShowConnectorsModal] = useState(false);  // Connectors Sheet
   const [showProjectsModal, setShowProjectsModal] = useState(false);    // Projects List Sheet
   const [showNewProjectModal, setShowNewProjectModal] = useState(false); // New Project Dialog
   const [showModelsModal, setShowModelsModal] = useState(false);        // Models Selector Sheet
@@ -456,8 +245,6 @@ export const AgentChatScreen = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);      // Master Profile Settings Modal
   const [showPreviewModal, setShowPreviewModal] = useState(false);      // Live Web App Sandbox Preview Modal
   const [showCheckpointsModal, setShowCheckpointsModal] = useState(false); // Git Checkpoints Rollback Modal
-  const [showDiffModal, setShowDiffModal] = useState(false);            // Side-by-Side Code Diff Viewer Modal
-  const [selectedDiffFile, setSelectedDiffFile] = useState<any>(null);
 
   // Auto-complete Popups (@ Mentions & / Commands)
   const [showMentionsPopup, setShowMentionsPopup] = useState(false);
@@ -482,12 +269,6 @@ export const AgentChatScreen = () => {
   const [capMemory, setCapMemory] = useState(false);
   const [selectedToolAccess, setSelectedToolAccess] = useState<"auto" | "ondemand" | "always">("auto");
   const [hapticFeedback, setHapticFeedback] = useState(true);
-
-  // Connectors State & Filters
-  const [connectorsList, setConnectorsList] = useState(INITIAL_CONNECTORS_DATA);
-  const [selectedConnectorDetail, setSelectedConnectorDetail] = useState<any>(null);
-  const [connectorsFilter, setConnectorsFilter] = useState("Popular");
-  const [connectorsSearch, setConnectorsSearch] = useState("");
 
   // Projects Form Search State
   const [newProjectName, setNewProjectName] = useState("");
@@ -572,6 +353,92 @@ export const AgentChatScreen = () => {
     if (showPreviewModal) void loadPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showPreviewModal]);
+
+  /** Load real chat sessions for every project when the drawer opens. */
+  useEffect(() => {
+    if (!showDrawerModal || projects.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        projects.map(async (project) => {
+          try {
+            return [project.id, await agentService.getProjectSessions(project.id)] as const;
+          } catch {
+            return [project.id, [] as AgentSessionData[]] as const;
+          }
+        }),
+      );
+      if (!cancelled) setDrawerSessions(Object.fromEntries(entries));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDrawerModal, projects.length]);
+
+  /** Load real token usage when the usage sub-screen opens. */
+  useEffect(() => {
+    if (profileSubScreen !== "usage") return;
+    let cancelled = false;
+    setUsageLoading(true);
+    setUsageError(null);
+    (async () => {
+      try {
+        const summary = await getUsage();
+        if (!cancelled) setUsage(summary);
+      } catch (e) {
+        if (!cancelled) {
+          setUsage(null);
+          setUsageError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setUsageLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profileSubScreen]);
+
+  /** Load real checkpoints when the checkpoints modal opens. */
+  useEffect(() => {
+    if (!showCheckpointsModal) return;
+    let cancelled = false;
+    setCheckpointsLoading(true);
+    (async () => {
+      try {
+        const projectId = await ensureProjectId();
+        const rows = await getProjectCheckpoints(projectId);
+        if (!cancelled) setCheckpoints(rows);
+      } catch {
+        if (!cancelled) setCheckpoints([]);
+      } finally {
+        if (!cancelled) setCheckpointsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCheckpointsModal]);
+
+  /** Load the real file list whenever the file-tree sheet opens. */
+  useEffect(() => {
+    if (!showFileModal) return;
+    let cancelled = false;
+    setFilesLoading(true);
+    setFilesError(null);
+    (async () => {
+      try {
+        const projectId = await ensureProjectId();
+        const files = await getProjectFiles(projectId);
+        if (!cancelled) setFileEntries(toFileEntries(files));
+      } catch (e) {
+        if (!cancelled) {
+          setFileEntries([]);
+          setFilesError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setFilesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFileModal]);
 
   /**
    * Send Message Action — wired to the real backend:
@@ -740,23 +607,6 @@ export const AgentChatScreen = () => {
     }
   };
 
-  /**
-   * Connector Connect / Disconnect Action
-   * BACKEND INTEGRATION: Call `POST /api/connectors/:id/toggle` or trigger OAuth flow.
-   * Special case for `skillsh`: Executes `npx skills add` CLI in backend.
-   */
-  const handleToggleConnectorConnection = (connId: string) => {
-    setConnectorsList(prev => prev.map(item => {
-      if (item.id === connId) {
-        const nextState = !item.connected;
-        if (selectedConnectorDetail?.id === connId) {
-          setSelectedConnectorDetail({ ...selectedConnectorDetail, connected: nextState });
-        }
-        return { ...item, connected: nextState };
-      }
-      return item;
-    }));
-  };
 
   // Open Projects Sheet from Drawer
   const handleOpenProjectsFromDrawer = () => {
@@ -764,12 +614,6 @@ export const AgentChatScreen = () => {
     setShowProjectsModal(true);
   };
 
-  // Open Connectors Sheet from Drawer
-  const handleOpenConnectorsFromDrawer = () => {
-    setShowDrawerModal(false);
-    setSelectedConnectorDetail(null);
-    setShowConnectorsModal(true);
-  };
 
   // Open Master Profile Settings from Drawer
   const handleOpenProfileFromDrawer = () => {
@@ -785,47 +629,103 @@ export const AgentChatScreen = () => {
    * 2. Clears active messages so the Project Conversations List View is rendered.
    * 3. User can pick an existing conversation card OR type in the bottom input to create a new thread.
    */
-  const handleOpenProjectFolder = (projectName: string) => {
+  /** Really sign out (this used to only close the settings sheet). */
+  const handleSignOut = async () => {
+    setShowProfileModal(false);
+    try {
+      await signOut();
+    } catch (e) {
+      notify("Could not sign out", e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  /** Delete a project (and its files) from the projects sheet, with confirmation. */
+  const handleDeleteProjectFromSheet = (projectId: string, projectName: string) => {
+    const run = async () => {
+      try {
+        await deleteProject(projectId);
+        if (activeProjectId === projectId) {
+          setActiveProjectId(null);
+          setActiveProjectName("");
+          setActiveSessionId(null);
+          setMessages([]);
+          setThreadTitle("");
+        }
+      } catch (e) {
+        notify("Could not delete", e instanceof Error ? e.message : String(e));
+      }
+    };
+    const message = `Delete “${projectName}” and all of its files? This cannot be undone.`;
+    if (Platform.OS === "web") {
+      const webConfirm = (globalThis as { confirm?: (m: string) => boolean }).confirm;
+      if (!webConfirm || webConfirm(message)) void run();
+    } else {
+      Alert.alert("Delete project", message, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: run },
+      ]);
+    }
+  };
+
+  const handleOpenProjectFolder = (projectId: string, projectName: string) => {
     setShowDrawerModal(false);
     setIsIncognito(false);
+    setActiveProjectId(projectId);
     setActiveProjectName(projectName);
+    setActiveSessionId(null);
+    runStartedAtRef.current = null;
+    setThreadTitle("");
     setMessages([]); // Shows Project Conversations List View
   };
 
   /**
-   * LOAD SPECIFIC CHAT SESSION UNDER A PROJECT
-   * BACKEND INTEGRATION: Call `GET /api/sessions/:sessionId/messages`
+   * Load a real session: fetch its transcript from agent_sessions and render it.
+   * Continuing the thread then goes through agent-run with this session id.
    */
-  const handleLoadSession = (session: any, projectName?: string) => {
+  const handleLoadSession = async (
+    session: { id: string; title?: string | null },
+    project: { id: string; name: string },
+  ) => {
     setShowDrawerModal(false);
     setIsIncognito(false);
-    if (projectName) {
-      setActiveProjectName(projectName);
+    setActiveProjectId(project.id);
+    setActiveProjectName(project.name);
+    setActiveSessionId(session.id);
+    runStartedAtRef.current = null;
+    setThreadTitle(session.title ?? "");
+    setMessages([
+      { id: `loading_${session.id}`, role: "assistant", content: "Loading conversation…", createdAt: Date.now() },
+    ]);
+
+    try {
+      const full = await agentService.getSession(session.id);
+      const transcript = Array.isArray(full.transcript) ? full.transcript : [];
+      const restored = transcript
+        .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && m?.content)
+        .map((m: any, index: number) => ({
+          id: m.id ?? `restored_${session.id}_${index}`,
+          role: m.role,
+          content: String(m.content),
+          createdAt: m.createdAt ?? Date.now(),
+        }));
+      setMessages(
+        restored.length
+          ? restored
+          : [{
+              id: `empty_${session.id}`,
+              role: "assistant",
+              content: "This conversation has no messages yet. Send a prompt to continue it.",
+              createdAt: Date.now(),
+            }],
+      );
+    } catch (e) {
+      setMessages([{
+        id: `err_${session.id}`,
+        role: "assistant",
+        content: `⚠️ Could not load this conversation: ${e instanceof Error ? e.message : String(e)}`,
+        createdAt: Date.now(),
+      }]);
     }
-    setThreadTitle(session.title);
-
-    const userMsg = {
-      id: `msg_user_${session.id}`,
-      role: "user",
-      content: session.title,
-      createdAt: Date.now() - 7200000,
-    };
-
-    const assistantMsg = {
-      id: `msg_agent_${session.id}`,
-      role: "assistant",
-      content: `Loaded previous conversation for **"${session.title}"** inside **${projectName || activeProjectName || "Retro Code"}**.\n\nI am ready to continue building. What's the next step?`,
-      createdAt: Date.now() - 7199000,
-      hasCodeEdit: true,
-      checkpointHash: "e5509a3",
-      steps: [
-        { type: "command", cmd: "git status", status: "completed" },
-        { type: "thought", text: `Restored context for thread "${session.title}".` },
-        { type: "text", text: `Thread context restored. Any new input will be appended to this thread in ${projectName || activeProjectName || "Retro Code"}.` }
-      ]
-    };
-
-    setMessages([userMsg, assistantMsg]);
   };
 
   /**
@@ -963,7 +863,7 @@ export const AgentChatScreen = () => {
               activeOpacity={0.8}
             >
               <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left mr-1" numberOfLines={1}>
-                {isIncognito ? "Incognito Chat" : (threadTitle || "Fix the login flow redirect issue")}
+                {isIncognito ? "Incognito Chat" : (threadTitle || activeProjectName || "New chat")}
               </Text>
               <VectorIcon name="chevron-down" size={10} color={isLight ? "#64748B" : "#71717A"} />
             </TouchableOpacity>
@@ -1045,40 +945,38 @@ export const AgentChatScreen = () => {
                 Recent Conversations ({activeProjectName})
               </Text>
 
-              {/* List of Previous Conversations for this Project */}
+              {/* Real conversations for this project */}
               <View className="space-y-3">
-                {([
-                  { id: "p-s-1", title: "Fix the login flow redirect issue", time: "2 hr ago", prBadge: "1 merged", badgeType: "purple" },
-                  { id: "p-s-2", title: "Can you refactor this component to use hooks?", time: "15min ago", prBadge: "2 open", badgeType: "blue" },
-                  { id: "p-s-3", title: "Write unit tests for the notification module", time: "45hr ago", prBadge: "3 merged", badgeType: "purple" },
-                  { id: "p-s-4", title: "Implement drag and drop for the kanban board", time: "1hr ago", prBadge: "3 merged", badgeType: "purple" },
-                  { id: "p-s-5", title: "Update the onboarding carousel copy", time: "2hr ago", prBadge: "2 open", badgeType: "blue" }
-                ]).map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    onPress={() => handleLoadSession(item, activeProjectName)}
-                    style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414", borderColor: isLight ? "#E2E8F0" : "rgba(39, 39, 42, 0.4)" }}
-                    className="mb-3 p-4 rounded-2xl border active:opacity-80 shadow-sm"
-                  >
-                    <Text style={{ color: textPrimary }} className="text-sm font-semibold mb-2 text-left" numberOfLines={1}>
-                      {item.title}
+                {(activeProjectId ? drawerSessions[activeProjectId] ?? [] : []).length === 0 ? (
+                  <View className="items-center py-8 px-4">
+                    <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
+                      No conversations in this project yet. Type below to start one.
                     </Text>
-                    <View className="flex-row items-center justify-between">
-                      <Text style={{ color: textSecondary }} className="text-xs">{item.time} · PRs</Text>
-                      <View className={`px-2.5 py-0.5 rounded-full ${
-                        item.badgeType === "purple" ? (isLight ? "bg-purple-100" : "bg-purple-950/90") :
-                        item.badgeType === "blue" ? (isLight ? "bg-sky-100" : "bg-blue-950/90") : (isLight ? "bg-slate-100" : "bg-zinc-800")
-                      }`}>
-                        <Text className={`text-xs font-semibold ${
-                          item.badgeType === "purple" ? (isLight ? "text-purple-700" : "text-purple-300") :
-                          item.badgeType === "blue" ? (isLight ? "text-sky-700" : "text-blue-300") : (isLight ? "text-slate-600" : "text-zinc-400")
-                        }`}>
-                          {item.prBadge}
+                  </View>
+                ) : (
+                  (drawerSessions[activeProjectId!] ?? []).map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() =>
+                        handleLoadSession(item, { id: activeProjectId!, name: activeProjectName })
+                      }
+                      style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414", borderColor: isLight ? "#E2E8F0" : "rgba(39, 39, 42, 0.4)" }}
+                      className="mb-3 p-4 rounded-2xl border active:opacity-80 shadow-sm"
+                    >
+                      <Text style={{ color: textPrimary }} className="text-sm font-semibold mb-2 text-left" numberOfLines={1}>
+                        {item.title || "Untitled chat"}
+                      </Text>
+                      <View className="flex-row items-center justify-between">
+                        <Text style={{ color: textSecondary }} className="text-xs">
+                          {relativeTime(item.updated_at ?? item.created_at)}
+                        </Text>
+                        <Text style={{ color: textMuted }} className="text-[10px] font-mono">
+                          {item.token_usage_total ? `${item.token_usage_total.toLocaleString()} tokens` : item.status}
                         </Text>
                       </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  ))
+                )}
               </View>
             </ScrollView>
           ) : (
@@ -1203,43 +1101,6 @@ export const AgentChatScreen = () => {
                       );
                     }
 
-                    /* File Modification Step -> Triggers Interactive Diff Viewer Modal */
-                    if (step.type === "file_edit") {
-                      return (
-                        <TouchableOpacity
-                          key={sIdx}
-                          onPress={() => {
-                            setSelectedDiffFile(step);
-                            setShowDiffModal(true);
-                          }}
-                          style={{ backgroundColor: isLight ? "#F1F5F9" : "#181524", borderColor: isLight ? "#E2E8F0" : "transparent" }}
-                          className="flex-row items-center justify-between py-2.5 px-3.5 my-1.5 rounded-xl border shadow-sm"
-                          activeOpacity={0.8}
-                        >
-                          <View className="flex-row items-center">
-                            <VectorIcon name="code" size={14} color="#10B981" style={{ marginRight: 6 }} />
-                            <Text style={{ color: textSecondary }} className="text-xs font-mono mr-2">
-                              {step.editsCount} edits to
-                            </Text>
-                            <View style={{ backgroundColor: isLight ? "#E2E8F0" : "#241D35" }} className="px-1.5 py-0.5 rounded mr-2">
-                              <Text style={{ color: "#D97706" }} className="text-[10px] font-mono font-bold">{step.ext}</Text>
-                            </View>
-                            <Text style={{ color: textPrimary }} className="text-xs font-mono font-semibold">{step.file}</Text>
-                          </View>
-
-                          <View className="flex-row items-center">
-                            <Text style={{ color: "#16A34A" }} className="text-xs font-mono font-bold mr-2">
-                              +{step.additions}
-                            </Text>
-                            <Text style={{ color: "#DC2626" }} className="text-xs font-mono font-bold mr-2">
-                              -{step.deletions}
-                            </Text>
-                            <VectorIcon name="arrow-right" size={12} color={isLight ? "#6D42C7" : "#A855F7"} />
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    }
-
                     return null;
                   })}
 
@@ -1335,7 +1196,7 @@ export const AgentChatScreen = () => {
               ].map(item => (
                 <TouchableOpacity
                   key={item.cmd}
-                  onPress={() => handleSelectSlash(item.cmd)}
+                  onPress={() => handleSelectSlashCommand(item.cmd)}
                   style={{ backgroundColor: isLight ? "#FFFFFF" : "transparent" }}
                   className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
                 >
@@ -1510,88 +1371,9 @@ export const AgentChatScreen = () => {
                 />
               </View>
 
-              <TouchableOpacity
-                onPress={() => {
-                  setShowAddToChatModal(false);
-                  setSelectedConnectorDetail(null);
-                  setShowConnectorsModal(true);
-                }}
-                className="flex-row items-center justify-between p-4 active:opacity-80"
-              >
-                <View className="flex-row items-center">
-                  <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-9 h-9 rounded-full items-center justify-center mr-3">
-                    <VectorIcon name="puzzle" size={16} color="#C084FC" />
-                  </View>
-                  <Text style={{ color: textPrimary }} className="text-sm font-semibold">Connectors & Agent Skills</Text>
-                </View>
-                <VectorIcon name="chevron-right" size={14} color={isLight ? "#6E6D68" : "#71717A"} />
-              </TouchableOpacity>
             </View>
 
           </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 5. MODAL 2: INTERACTIVE CODE DIFF VIEWER (GREEN '+' & RED '-')      */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showDiffModal}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowDiffModal(false)}
-      >
-        <View style={{ backgroundColor: "#000000" }} className="flex-1 bg-black">
-          <View className="flex-row items-center justify-between px-5 py-4 bg-[#09090B]">
-            <TouchableOpacity onPress={() => setShowDiffModal(false)} className="p-1 flex-row items-center">
-              <VectorIcon name="x" size={14} color="#A1A1AA" style={{ marginRight: 6 }} />
-              <Text className="text-zinc-400 text-sm font-semibold">Close</Text>
-            </TouchableOpacity>
-            
-            <View className="flex-row items-center">
-              <Text style={{ color: "#FBBF24" }} className="text-xs font-mono font-bold mr-2">TS</Text>
-              <Text className="text-white text-sm font-mono font-bold">{selectedDiffFile?.file || "util.ts"}</Text>
-            </View>
-
-            <View className="flex-row items-center space-x-2">
-              <TouchableOpacity className="bg-emerald-600 px-3 py-1 rounded-lg mr-2 active:bg-emerald-500">
-                <Text className="text-white text-xs font-bold">Accept All</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="bg-red-950 px-3 py-1 rounded-lg active:bg-red-900">
-                <Text className="text-red-300 text-xs font-bold">Reject</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <ScrollView className="flex-1 px-4 py-4 font-mono" showsVerticalScrollIndicator={false}>
-            <View className="bg-[#0D0D11] p-4 rounded-2xl">
-              <Text className="text-zinc-500 text-xs font-mono mb-2">// src/auth/util.ts diff view</Text>
-
-              <Text className="text-zinc-400 text-xs font-mono leading-6">
-                {"  export function handleAuthRedirect(req: Request) {"}
-              </Text>
-
-              <View className="bg-red-950/40 p-1 rounded my-1 border-l-4 border-red-500">
-                <Text className="text-red-400 text-xs font-mono leading-6">
-                  {"-   return Response.redirect('/dashboard');"}
-                </Text>
-              </View>
-
-              <View className="bg-emerald-950/40 p-1 rounded my-1 border-l-4 border-emerald-500">
-                <Text className="text-emerald-400 text-xs font-mono leading-6">
-                  {"+   const returnUrl = req.url.searchParams.get('returnUrl') || '/dashboard';"}
-                </Text>
-                <Text className="text-emerald-400 text-xs font-mono leading-6">
-                  {"+   return Response.redirect(returnUrl);"}
-                </Text>
-              </View>
-
-              <Text className="text-zinc-400 text-xs font-mono leading-6">
-                {"  }"}
-              </Text>
-            </View>
-          </ScrollView>
-
         </View>
       </Modal>
 
@@ -1659,102 +1441,99 @@ export const AgentChatScreen = () => {
               <VectorIcon name="chevron-right" size={12} color={isLight ? "#64748B" : "#71717A"} />
             </TouchableOpacity>
 
-            {/* Skills.sh Agent Connectors Trigger */}
-            <TouchableOpacity 
-              onPress={handleOpenConnectorsFromDrawer}
-              style={{ backgroundColor: isLight ? "#F3E8FF" : "rgba(58, 12, 95, 0.4)" }}
-              className="flex-row items-center py-3 px-3.5 rounded-2xl mb-4 border border-purple-500/20 active:opacity-80"
-            >
-              <VectorIcon name="puzzle" size={18} color="#C084FC" style={{ marginRight: 12 }} />
-              <View className="flex-1">
-                <Text style={{ color: isLight ? "#581C87" : "#FFFFFF" }} className="text-sm font-bold text-left">Skills.sh Ecosystem</Text>
-                <Text style={{ color: isLight ? "#7E22CE" : "#D8B4FE" }} className="text-[10px] text-left">1,000+ AI Agent Skills & Icons</Text>
-              </View>
-              <Text style={{ color: isLight ? "#6B21A8" : "#E9D5FF" }} className="text-xs font-bold">Featured ➔</Text>
-            </TouchableOpacity>
-
-            {/* PROJECT GROUPED CHAT SESSIONS TREE */}
+            {/* PROJECT GROUPED CHAT SESSIONS TREE — real projects + sessions */}
             <View className="mb-6">
               <Text style={{ color: textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-4 px-1">
                 Projects & Workspace Chats
               </Text>
 
-              {[
-                {
-                  projectId: "proj-1",
-                  projectName: "Landing Page SaaS",
-                  sessions: [
-                    { id: "s-1", title: "Fix the login flow redirect issue", time: "2 hr ago", prBadge: "1 merged", badgeType: "purple" },
-                    { id: "s-2", title: "Can you refactor this component to use hooks?", time: "15min ago", prBadge: "2 open", badgeType: "blue" },
-                    { id: "s-3", title: "Write unit tests for the notification module", time: "45hr ago", prBadge: "3 merged", badgeType: "purple" },
-                  ]
-                },
-                {
-                  projectId: "proj-2",
-                  projectName: "Analytics Admin Dashboard",
-                  sessions: [
-                    { id: "s-4", title: "Kiro mobile app story book demo", time: "4 hr ago", prBadge: "2 open", badgeType: "blue" },
-                    { id: "s-5", title: "Implement drag and drop for the kanban board", time: "1hr ago", prBadge: "3 merged", badgeType: "purple" },
-                  ]
-                },
-                {
-                  projectId: "proj-3",
-                  projectName: "E-Commerce Expo App",
-                  sessions: [
-                    { id: "s-6", title: "Update the onboarding carousel copy", time: "2hr ago", prBadge: "2 open", badgeType: "blue" },
-                    { id: "s-7", title: "Debug memory leak in websocket connection", time: "6hr ago", prBadge: "1 closed", badgeType: "gray" },
-                  ]
-                }
-              ].map((group) => (
-                <View key={group.projectId} className="mb-5">
-                  {/* Folder Header */}
-                  <TouchableOpacity 
-                    onPress={() => handleOpenProjectFolder(group.projectName)}
-                    className="flex-row items-center justify-between mb-2 px-1 active:opacity-80"
-                  >
-                    <View className="flex-row items-center flex-1 mr-2">
-                      <VectorIcon name="folder" size={16} color="#F59E0B" style={{ marginRight: 8 }} />
-                      <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
-                        {group.projectName}
-                      </Text>
-                    </View>
-
-                    <View style={{ backgroundColor: isLight ? "#E2E8F0" : "#1C1C1C" }} className="px-2.5 py-1 rounded-lg">
-                      <Text style={{ color: isLight ? "#6B21A8" : "#D8B4FE" }} className="text-[10px] font-mono font-bold">Open</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Grouped Nested Chat Sessions */}
-                  <View style={{ borderColor: isLight ? "#CBD5E1" : "rgba(39, 39, 42, 0.8)" }} className="pl-3 ml-2 border-l">
-                    {group.sessions.map((item) => (
+              {projects.length === 0 ? (
+                <View className="items-center py-8 px-4">
+                  <VectorIcon name="folder" size={26} color="#52525B" style={{ marginBottom: 10 }} />
+                  <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
+                    No projects yet. Create one to start building.
+                  </Text>
+                </View>
+              ) : (
+                projects.map((project) => {
+                  const sessions = (drawerSessions[project.id] ?? []).filter((s) =>
+                    !drawerQuery.trim() ||
+                    (s.title ?? "").toLowerCase().includes(drawerQuery.trim().toLowerCase()),
+                  );
+                  return (
+                    <View key={project.id} className="mb-5">
+                      {/* Folder Header */}
                       <TouchableOpacity
-                        key={item.id}
-                        onPress={() => handleLoadSession(item, group.projectName)}
-                        style={{ backgroundColor: isLight ? "#FFFFFF" : "#121212", borderColor: isLight ? "#E2E8F0" : "transparent" }}
-                        className="p-3 rounded-xl mb-2 border active:opacity-80 shadow-sm"
+                        onPress={() => handleOpenProjectFolder(project.id, project.name)}
+                        className="flex-row items-center justify-between mb-2 px-1 active:opacity-80"
                       >
-                        <Text style={{ color: textPrimary }} className="text-xs font-medium mb-1.5 text-left font-sans" numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <View className="flex-row items-center justify-between">
-                          <Text style={{ color: textSecondary }} className="text-[10px]">{item.time}</Text>
-                          <View className={`px-2 py-0.5 rounded-full ${
-                            item.badgeType === "purple" ? (isLight ? "bg-purple-100" : "bg-purple-950/80") :
-                            item.badgeType === "blue" ? (isLight ? "bg-sky-100" : "bg-blue-950/80") : (isLight ? "bg-slate-100" : "bg-zinc-800")
-                          }`}>
-                            <Text className={`text-[9px] font-medium ${
-                              item.badgeType === "purple" ? (isLight ? "text-purple-700" : "text-purple-300") :
-                              item.badgeType === "blue" ? (isLight ? "text-sky-700" : "text-blue-300") : (isLight ? "text-slate-600" : "text-zinc-400")
-                            }`}>
-                              {item.prBadge}
-                            </Text>
-                          </View>
+                        <View className="flex-row items-center flex-1 mr-2">
+                          <VectorIcon name="folder" size={16} color="#F59E0B" style={{ marginRight: 8 }} />
+                          <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
+                            {project.name}
+                          </Text>
+                        </View>
+
+                        <View style={{ backgroundColor: isLight ? "#E2E8F0" : "#1C1C1C" }} className="px-2.5 py-1 rounded-lg">
+                          <Text style={{ color: isLight ? "#6B21A8" : "#D8B4FE" }} className="text-[10px] font-mono font-bold">Open</Text>
                         </View>
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              ))}
+
+                      {/* Real sessions for this project */}
+                      <View style={{ borderColor: isLight ? "#CBD5E1" : "rgba(39, 39, 42, 0.8)" }} className="pl-3 ml-2 border-l">
+                        {sessions.length === 0 ? (
+                          <Text style={{ color: textMuted }} className="text-[10px] py-2 text-left">
+                            {drawerSessions[project.id] ? "No chats yet" : "Loading…"}
+                          </Text>
+                        ) : (
+                          sessions.map((item) => (
+                            <TouchableOpacity
+                              key={item.id}
+                              onPress={() => handleLoadSession(item, project)}
+                              style={{ backgroundColor: isLight ? "#FFFFFF" : "#121212", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+                              className="p-3 rounded-xl mb-2 border active:opacity-80 shadow-sm"
+                            >
+                              <Text style={{ color: textPrimary }} className="text-xs font-medium mb-1.5 text-left font-sans" numberOfLines={1}>
+                                {item.title || "Untitled chat"}
+                              </Text>
+                              <View className="flex-row items-center justify-between">
+                                <Text style={{ color: textSecondary }} className="text-[10px]">
+                                  {relativeTime(item.updated_at ?? item.created_at)}
+                                </Text>
+                                <View
+                                  style={{
+                                    backgroundColor:
+                                      item.status === "completed"
+                                        ? (isLight ? "#DCFCE7" : "#14532D")
+                                        : item.status === "failed"
+                                          ? (isLight ? "#FEE2E2" : "#7F1D1D")
+                                          : (isLight ? "#F1F5F9" : "#27272A"),
+                                  }}
+                                  className="px-2 py-0.5 rounded-full"
+                                >
+                                  <Text
+                                    style={{
+                                      color:
+                                        item.status === "completed"
+                                          ? (isLight ? "#15803D" : "#86EFAC")
+                                          : item.status === "failed"
+                                            ? (isLight ? "#DC2626" : "#FCA5A5")
+                                            : (isLight ? "#475569" : "#A1A1AA"),
+                                    }}
+                                    className="text-[9px] font-medium"
+                                  >
+                                    {item.status}
+                                  </Text>
+                                </View>
+                              </View>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
             </View>
           </ScrollView>
 
@@ -1763,14 +1542,18 @@ export const AgentChatScreen = () => {
             <View className="flex-1 flex-row items-center bg-[#141414] px-3.5 py-2.5 rounded-full mr-3">
               <VectorIcon name="search" size={14} color="#A1A1AA" style={{ marginRight: 8 }} />
               <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search..."
+                value={drawerQuery}
+                onChangeText={setDrawerQuery}
+                placeholder="Search chats..."
                 placeholderTextColor="#71717A"
                 className="flex-1 text-zinc-100 text-xs text-left"
                 style={{ color: "#F4F4F5" }}
               />
-              <VectorIcon name="tool" size={14} color="#A1A1AA" />
+              {drawerQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setDrawerQuery("")} className="p-1">
+                  <VectorIcon name="x" size={12} color="#A1A1AA" />
+                </TouchableOpacity>
+              )}
             </View>
 
             <TouchableOpacity 
@@ -1779,198 +1562,6 @@ export const AgentChatScreen = () => {
             >
               <VectorIcon name="edit" size={18} color="#FFFFFF" />
             </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 7. MODAL 4: CONNECTORS SHEET & CONNECTOR DETAIL VIEW                 */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showConnectorsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowConnectorsModal(false)}
-      >
-        <View className="flex-1 justify-end bg-black/80">
-          <View className="h-[85%] bg-[#121212] rounded-t-[32px] p-4 relative">
-            <View className="items-center mb-3">
-              <View className="w-12 h-1.5 bg-zinc-700 rounded-full opacity-60" />
-            </View>
-
-            {selectedConnectorDetail ? (
-              <View className="flex-1 flex-col justify-between">
-                <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                  <View className="flex-row items-center mb-4">
-                    <TouchableOpacity 
-                      onPress={() => setSelectedConnectorDetail(null)}
-                      className="w-10 h-10 rounded-full bg-[#242424] items-center justify-center"
-                    >
-                      <VectorIcon name="arrow-left" size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View className="items-center mb-6">
-                    <View className="w-20 h-20 rounded-3xl bg-[#262626] items-center justify-center mb-3 shadow-xl">
-                      <VectorIcon name={selectedConnectorDetail.icon} size={36} color={selectedConnectorDetail.color || "#C084FC"} />
-                    </View>
-                    <Text className="text-white text-2xl font-bold mb-1 text-center">{selectedConnectorDetail.name}</Text>
-                    <Text className="text-zinc-400 text-xs text-center px-4 leading-5">
-                      {selectedConnectorDetail.description}
-                    </Text>
-                  </View>
-
-                  <View className="mb-6">
-                    <Text className="text-white text-sm font-bold mb-3 text-left">Overview</Text>
-                    {selectedConnectorDetail.overviewBullets?.map((bullet: string, bIdx: number) => (
-                      <View key={bIdx} className="flex-row items-start mb-2.5">
-                        <Text className="text-zinc-500 text-xs mr-2">•</Text>
-                        <Text className="text-zinc-300 text-xs flex-1 leading-5 text-left">{bullet}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View className="mb-6 space-y-2">
-                    <TouchableOpacity className="flex-row items-center justify-between p-3.5 rounded-2xl bg-[#1E1E1E] mb-2 active:bg-[#282828]">
-                      <View className="flex-row items-center">
-                        <VectorIcon name="globe" size={16} color="#A1A1AA" style={{ marginRight: 10 }} />
-                        <Text className="text-zinc-200 text-xs font-semibold">Website</Text>
-                      </View>
-                      <VectorIcon name="arrow-right" size={12} color="#71717A" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity className="flex-row items-center justify-between p-3.5 rounded-2xl bg-[#1E1E1E] mb-2 active:bg-[#282828]">
-                      <View className="flex-row items-center">
-                        <VectorIcon name="file-text" size={16} color="#A1A1AA" style={{ marginRight: 10 }} />
-                        <Text className="text-zinc-200 text-xs font-semibold">Documentation</Text>
-                      </View>
-                      <VectorIcon name="arrow-right" size={12} color="#71717A" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity className="flex-row items-center justify-between p-3.5 rounded-2xl bg-[#1E1E1E] mb-2 active:bg-[#282828]">
-                      <View className="flex-row items-center">
-                        <VectorIcon name="tool" size={16} color="#A1A1AA" style={{ marginRight: 10 }} />
-                        <Text className="text-zinc-200 text-xs font-semibold">Support</Text>
-                      </View>
-                      <VectorIcon name="arrow-right" size={12} color="#71717A" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <Text className="text-zinc-500 text-xs text-left mb-4">
-                    Developed by {selectedConnectorDetail.developer || "Third Party"}
-                  </Text>
-                </ScrollView>
-
-                <TouchableOpacity
-                  onPress={() => handleToggleConnectorConnection(selectedConnectorDetail.id)}
-                  style={{ backgroundColor: selectedConnectorDetail.connected ? "#1F2937" : "#6D42C7" }}
-                  className="w-full py-4 rounded-3xl items-center justify-center active:opacity-90 shadow-xl"
-                >
-                  <Text style={{ color: selectedConnectorDetail.connected ? "#9CA3AF" : "#FFFFFF" }} className="text-sm font-bold">
-                    {selectedConnectorDetail.connected ? "Disconnect Ecosystem" : "Install Skills.sh Ecosystem"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View className="flex-1">
-                <View className="flex-row items-center justify-between mb-2 px-1">
-                  <Text className="text-white text-xl font-bold">Connectors & Agent Skills</Text>
-                  <TouchableOpacity 
-                    onPress={() => setShowConnectorsModal(false)}
-                    className="w-8 h-8 rounded-full bg-[#242424] items-center justify-center"
-                  >
-                    <VectorIcon name="x" size={14} color="#A1A1AA" />
-                  </TouchableOpacity>
-                </View>
-
-                <Text className="text-zinc-400 text-xs leading-5 px-1 mb-4 text-left">
-                  Connect your apps, cloud services, and install Skills.sh AI agent skill modules.
-                </Text>
-
-                <View className="flex-row items-center bg-[#1E1E1E] px-3.5 py-2.5 rounded-2xl mb-4">
-                  <VectorIcon name="search" size={14} color="#A1A1AA" style={{ marginRight: 10 }} />
-                  <TextInput
-                    value={connectorsSearch}
-                    onChangeText={setConnectorsSearch}
-                    placeholder="Search connectors & skills..."
-                    placeholderTextColor="#71717A"
-                    className="flex-1 text-zinc-100 text-xs text-left"
-                    style={{ color: "#F4F4F5" }}
-                  />
-                </View>
-
-                <View style={{ height: 44 }} className="mb-3">
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ alignItems: "center", paddingRight: 10 }}
-                  >
-                    {["Popular", "AI Skills", "Connected", "Data & Analytics", "Services"].map((cat) => {
-                      const isCatSelected = connectorsFilter === cat;
-                      return (
-                        <TouchableOpacity
-                          key={cat}
-                          onPress={() => setConnectorsFilter(cat)}
-                          activeOpacity={0.8}
-                          style={{
-                            backgroundColor: isCatSelected ? "#E4E4E7" : "#1E1E1E",
-                          }}
-                          className="px-4 py-2 rounded-full mr-2 flex-row items-center justify-center"
-                        >
-                          <Text 
-                            style={{ color: isCatSelected ? "#000000" : "#D4D4D8" }}
-                            className="text-xs font-semibold"
-                          >
-                            {cat}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-                  {connectorsList.map((conn) => (
-                    <TouchableOpacity
-                      key={conn.id}
-                      onPress={() => setSelectedConnectorDetail(conn)}
-                      className={`flex-row items-center p-3.5 rounded-2xl mb-3 active:bg-[#242424] ${
-                        conn.id === "skillsh" 
-                          ? "bg-purple-950/30" 
-                          : "bg-[#1A1A1A]"
-                      }`}
-                    >
-                      <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3.5 ${
-                        conn.id === "skillsh" ? "bg-purple-900/40" : "bg-[#262626]"
-                      }`}>
-                        <VectorIcon name={conn.icon} size={20} color={conn.color || "#C084FC"} />
-                      </View>
-
-                      <View className="flex-1">
-                        <View className="flex-row items-center">
-                          <Text className="text-white text-sm font-bold text-left mb-0.5 mr-2">{conn.name}</Text>
-                          {conn.id === "skillsh" && (
-                            <View className="bg-purple-900/80 px-2 py-0.5 rounded">
-                              <Text className="text-purple-300 text-[9px] font-mono uppercase font-bold">Featured Ecosystem</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text className="text-zinc-400 text-xs text-left leading-4 opacity-80" numberOfLines={2}>
-                          {conn.description}
-                        </Text>
-                      </View>
-
-                      {conn.connected && (
-                        <View className="bg-emerald-950/80 px-2 py-0.5 rounded-md ml-2">
-                          <Text className="text-emerald-400 text-[10px] font-mono">Connected</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
           </View>
         </View>
       </Modal>
@@ -2029,44 +1620,48 @@ export const AgentChatScreen = () => {
                 <VectorIcon name="plus" size={18} color="#D97706" />
               </TouchableOpacity>
 
-              {[
-                {
-                  title: "Landing Page SaaS",
-                  desc: "Next.js + Tailwind CSS modern landing page for AI builder",
-                  date: "2026/07/25"
-                },
-                {
-                  title: "Analytics Admin Dashboard",
-                  desc: "React dashboard with Chart.js and Supabase database",
-                  date: "2026/07/24"
-                },
-                {
-                  title: "E-Commerce Expo App",
-                  desc: "React Native mobile app with Stripe checkout integration",
-                  date: "2026/07/22"
-                }
-              ].map((proj) => (
-                <TouchableOpacity
-                  key={proj.title}
-                  onPress={() => {
-                    setShowProjectsModal(false);
-                    setActiveProjectName(proj.title);
-                    setThreadTitle(proj.title);
-                  }}
-                  style={{ backgroundColor: isLight ? "#F7F4EF" : "#1A1A1A", borderColor: isLight ? "#EAE6DF" : "transparent" }}
-                  className="mb-3.5 p-4 rounded-2xl border active:opacity-80 shadow-sm"
-                >
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text style={{ color: textPrimary }} className="text-base font-bold text-left">{proj.title}</Text>
-                    <TouchableOpacity style={{ backgroundColor: isLight ? "#EAE6DF" : "#262626" }} className="w-7 h-7 rounded-lg items-center justify-center">
-                      <VectorIcon name="trash" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
-                    </TouchableOpacity>
-                  </View>
+              {projects.length === 0 ? (
+                <View className="items-center py-10 px-4">
+                  <VectorIcon name="folder" size={28} color="#52525B" style={{ marginBottom: 10 }} />
+                  <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
+                    No projects yet — tap “New Project” above to create your first one.
+                  </Text>
+                </View>
+              ) : (
+                projects.map((proj) => (
+                  <TouchableOpacity
+                    key={proj.id}
+                    onPress={() => {
+                      setShowProjectsModal(false);
+                      handleOpenProjectFolder(proj.id, proj.name);
+                    }}
+                    style={{ backgroundColor: isLight ? "#F7F4EF" : "#1A1A1A", borderColor: isLight ? "#EAE6DF" : "transparent" }}
+                    className="mb-3.5 p-4 rounded-2xl border active:opacity-80 shadow-sm"
+                  >
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text style={{ color: textPrimary }} className="text-base font-bold text-left flex-1 mr-2" numberOfLines={1}>
+                        {proj.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteProjectFromSheet(proj.id, proj.name)}
+                        style={{ backgroundColor: isLight ? "#EAE6DF" : "#262626" }}
+                        className="w-7 h-7 rounded-lg items-center justify-center"
+                      >
+                        <VectorIcon name="trash" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
+                      </TouchableOpacity>
+                    </View>
 
-                  <Text style={{ color: textSecondary }} className="text-xs text-left mb-3 leading-5">{proj.desc}</Text>
-                  <Text style={{ color: textMuted }} className="text-[10px] text-left">Last viewed: {proj.date}</Text>
-                </TouchableOpacity>
-              ))}
+                    {proj.description ? (
+                      <Text style={{ color: textSecondary }} className="text-xs text-left mb-3 leading-5" numberOfLines={2}>
+                        {proj.description}
+                      </Text>
+                    ) : null}
+                    <Text style={{ color: textMuted }} className="text-[10px] text-left">
+                      Created {relativeTime(proj.created_at)}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -2235,26 +1830,36 @@ export const AgentChatScreen = () => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              {[
-                { id: "cp-1", title: "Refactored Auth Redirect & Session Cookie", time: "10 mins ago", hash: "e5509a3" },
-                { id: "cp-2", title: "Added Incognito Mode & Connectors Sheet", time: "1 hr ago", hash: "a88f20b" },
-                { id: "cp-3", title: "Initial App Setup & Navigation", time: "3 hrs ago", hash: "c1103de" }
-              ].map((cp) => (
-                <View key={cp.id} className="mb-4 p-4 rounded-2xl bg-[#1A1A1A] flex-row items-center justify-between">
-                  <View className="flex-1 mr-3">
+              {checkpointsLoading ? (
+                <View className="py-10 items-center">
+                  <ActivityIndicator size="small" color="#C084FC" />
+                  <Text className="text-zinc-500 text-xs mt-3">Loading checkpoints…</Text>
+                </View>
+              ) : checkpoints.length === 0 ? (
+                <View className="py-10 items-center px-6">
+                  <VectorIcon name="rotate-ccw" size={26} color="#52525B" style={{ marginBottom: 10 }} />
+                  <Text className="text-zinc-300 text-sm font-bold mb-2">No checkpoints yet</Text>
+                  <Text className="text-zinc-500 text-xs text-center leading-5">
+                    Snapshots are created server-side during agent runs. Restoring one is an
+                    admin-only operation today.
+                  </Text>
+                </View>
+              ) : (
+                checkpoints.map((cp) => (
+                  <View key={cp.id} className="mb-4 p-4 rounded-2xl bg-[#1A1A1A]">
                     <View className="flex-row items-center mb-1">
                       <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2" />
-                      <Text className="text-white text-sm font-bold text-left">{cp.title}</Text>
+                      <Text className="text-white text-sm font-bold text-left flex-1" numberOfLines={1}>
+                        {cp.label || "Checkpoint"}
+                      </Text>
                     </View>
-                    <Text className="text-zinc-400 text-xs text-left font-mono">{cp.time} · {cp.hash}</Text>
+                    <Text className="text-zinc-400 text-xs text-left font-mono">
+                      {relativeTime(cp.created_at)} · {cp.id.slice(0, 7)}
+                      {cp.file_count != null ? ` · ${cp.file_count} files` : ""}
+                    </Text>
                   </View>
-
-                  <TouchableOpacity className="bg-purple-950/80 px-3 py-1.5 rounded-xl active:bg-purple-900 flex-row items-center">
-                    <Text className="text-purple-300 text-xs font-semibold mr-1">Rollback</Text>
-                    <VectorIcon name="rotate-ccw" size={12} color="#C084FC" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
@@ -2293,8 +1898,12 @@ export const AgentChatScreen = () => {
                       <VectorIcon name="user" size={18} color="#C084FC" />
                     </View>
                     <View className="flex-1">
-                      <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>guest@retrocode.dev</Text>
-                      <Text style={{ color: textSecondary }} className="text-xs text-left">developer@retrocode.dev</Text>
+                      <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
+                        {profile?.display_name || user?.email?.split("@")[0] || "Guest"}
+                      </Text>
+                      <Text style={{ color: textSecondary }} className="text-xs text-left" numberOfLines={1}>
+                        {user?.email ?? (user?.is_anonymous ? "Guest session (not saved)" : "Not signed in")}
+                      </Text>
                     </View>
                   </View>
 
@@ -2348,22 +1957,8 @@ export const AgentChatScreen = () => {
                       <VectorIcon name="settings" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
                       <View>
                         <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">Capabilities</Text>
-                        <Text style={{ color: textSecondary }} className="text-xs text-left">4 enabled</Text>
+                        <Text style={{ color: textSecondary }} className="text-xs text-left">{[capWebSearch, capArtifacts, capCodeExecution, capSwitchModels, capMemory].filter(Boolean).length} enabled</Text>
                       </View>
-                    </View>
-                    <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowProfileModal(false);
-                      setShowConnectorsModal(true);
-                    }}
-                    className="flex-row items-center justify-between p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center">
-                      <VectorIcon name="puzzle" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">Connectors & Agent Skills</Text>
                     </View>
                     <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
                   </TouchableOpacity>
@@ -2423,8 +2018,8 @@ export const AgentChatScreen = () => {
                   </View>
                 </View>
 
-                <TouchableOpacity 
-                  onPress={() => setShowProfileModal(false)}
+                <TouchableOpacity
+                  onPress={handleSignOut}
                   className="w-full py-3.5 rounded-full bg-red-500/10 items-center justify-center mb-8 active:opacity-80"
                 >
                   <Text className="text-red-500 text-sm font-bold">Sign Out</Text>
@@ -2698,92 +2293,68 @@ export const AgentChatScreen = () => {
               </View>
 
               <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-                <View className="mb-6">
-                  <Text className="text-white text-sm font-bold mb-1 text-left">Available usage-based credits</Text>
-                  <TouchableOpacity activeOpacity={0.7} className="mb-4">
-                    <Text className="text-zinc-400 text-xs text-left">
-                      Learn more <Text className="text-zinc-500 text-xs">about how credits work.</Text>
+                {usageLoading ? (
+                  <View className="py-12 items-center">
+                    <ActivityIndicator size="small" color="#8B5CF6" />
+                    <Text className="text-zinc-500 text-xs mt-3">Loading usage…</Text>
+                  </View>
+                ) : usage ? (
+                  <>
+                    <View className="bg-[#141414] p-4 rounded-2xl mb-4">
+                      <View className="flex-row items-center justify-between mb-3">
+                        <Text className="text-zinc-400 text-xs">Plan</Text>
+                        <Text className="text-white text-xs font-bold uppercase">{usage.tier}</Text>
+                      </View>
+
+                      <Text className="text-zinc-400 text-xs text-left mb-1">Tokens used this period</Text>
+                      <Text className="text-white text-2xl font-bold text-left mb-3">
+                        {usage.tokensUsed.toLocaleString()}
+                        {usage.tokenLimit ? (
+                          <Text className="text-zinc-500 text-sm font-medium"> / {usage.tokenLimit.toLocaleString()}</Text>
+                        ) : null}
+                      </Text>
+
+                      {usage.tokenLimit > 0 && (
+                        <View className="h-2 bg-[#27272A] rounded-full overflow-hidden mb-2">
+                          <View
+                            style={{
+                              width: `${Math.min(100, Math.round((usage.tokensUsed / usage.tokenLimit) * 100))}%`,
+                              backgroundColor: usage.remaining > 0 ? "#8B5CF6" : "#F87171",
+                            }}
+                            className="h-full rounded-full"
+                          />
+                        </View>
+                      )}
+
+                      <Text className="text-zinc-500 text-[11px] text-left">
+                        {usage.remaining > 0
+                          ? `${usage.remaining.toLocaleString()} tokens remaining`
+                          : "Limit reached — new agent runs are blocked until the period resets."}
+                      </Text>
+                    </View>
+
+                    <View className="flex-row justify-between">
+                      <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl">
+                        <Text className="text-white text-xs font-bold mb-2">Agent runs</Text>
+                        <Text className="text-white text-xl font-bold text-left">{usage.requests.toLocaleString()}</Text>
+                        <Text className="text-zinc-500 text-[10px] text-left">this period</Text>
+                      </View>
+                      <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl">
+                        <Text className="text-white text-xs font-bold mb-2">Resets</Text>
+                        <Text className="text-white text-sm font-bold text-left">
+                          {usage.periodEnd ? new Date(usage.periodEnd).toLocaleDateString() : "—"}
+                        </Text>
+                        <Text className="text-zinc-500 text-[10px] text-left">end of period</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <View className="py-12 items-center px-6">
+                    <Text className="text-zinc-400 text-xs text-center leading-5">
+                      {usageError ?? "Usage is unavailable right now."}
                     </Text>
-                  </TouchableOpacity>
-
-                  <View className="bg-[#141414] p-4 rounded-2xl mb-3">
-                    <View className="flex-row items-center justify-between mb-4">
-                      <View>
-                        <Text className="text-zinc-400 text-xs text-left mb-1">Available credits</Text>
-                        <Text className="text-white text-2xl font-bold text-left">0</Text>
-                      </View>
-                      <TouchableOpacity className="bg-zinc-100 px-4 py-2 rounded-full active:bg-white items-center justify-center">
-                        <Text style={{ color: "#000000", fontWeight: "700", fontSize: 12 }}>Add credits</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View className="bg-red-950/40 p-3 rounded-xl">
-                      <Text className="text-red-400 text-xs font-bold text-left mb-1">
-                        ⓘ You're out of credits
-                      </Text>
-                      <Text className="text-red-300/80 text-[11px] text-left leading-4">
-                        Add more credits or log on to desktop to enable auto-refill.
-                      </Text>
-                    </View>
                   </View>
-
-                  <View className="bg-[#141414] px-4 py-3 rounded-xl flex-row justify-between">
-                    <Text className="text-zinc-400 text-xs font-medium">Credit grant</Text>
-                    <Text className="text-zinc-400 text-xs font-medium">Amount granted</Text>
-                  </View>
-                </View>
-
-                <View className="mb-6">
-                  <Text className="text-white text-sm font-bold mb-3 text-left">Credit usage</Text>
-                  <View className="flex-row flex-wrap justify-between">
-                    <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl mb-3">
-                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-white text-xs font-bold">Text usage</Text>
-                        <VectorIcon name="chart" size={15} color="#A1A1AA" />
-                      </View>
-                      <Text className="text-white text-xl font-bold mb-0.5 text-left">0</Text>
-                      <Text className="text-zinc-500 text-[10px] text-left">credits this month</Text>
-                    </View>
-
-                    <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl mb-3">
-                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-white text-xs font-bold">Image usage</Text>
-                        <VectorIcon name="image" size={15} color="#A1A1AA" />
-                      </View>
-                      <Text className="text-white text-xl font-bold mb-0.5 text-left">0</Text>
-                      <Text className="text-zinc-500 text-[10px] text-left">credits this month</Text>
-                    </View>
-
-                    <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl mb-3">
-                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-white text-xs font-bold">Video usage</Text>
-                        <VectorIcon name="video" size={15} color="#A1A1AA" />
-                      </View>
-                      <Text className="text-white text-xl font-bold mb-0.5 text-left">0</Text>
-                      <Text className="text-zinc-500 text-[10px] text-left">credits this month</Text>
-                    </View>
-
-                    <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl mb-3">
-                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-white text-xs font-bold">Audio usage</Text>
-                        <VectorIcon name="mic" size={15} color="#A1A1AA" />
-                      </View>
-                      <Text className="text-white text-xl font-bold mb-0.5 text-left">0</Text>
-                      <Text className="text-zinc-500 text-[10px] text-left">credits this month</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View className="bg-[#141414] rounded-2xl overflow-hidden">
-                  <View className="flex-row justify-between px-4 py-3 bg-[#1A1A1A]">
-                    <Text className="text-zinc-400 text-xs font-medium">Session</Text>
-                    <Text className="text-zinc-400 text-xs font-medium">Date</Text>
-                    <Text className="text-zinc-400 text-xs font-medium">Credits</Text>
-                  </View>
-                  <View className="py-8 items-center justify-center">
-                    <Text className="text-zinc-500 text-xs">No usage for specific dates</Text>
-                  </View>
-                </View>
+                )}
               </ScrollView>
             </View>
           )}
@@ -2863,11 +2434,6 @@ export const AgentChatScreen = () => {
                             <Text className="text-sky-400 text-[9px] font-mono uppercase">{model.badge}</Text>
                           </View>
                         )}
-                        {model.badgeExtra && (
-                          <View className="bg-emerald-500/20 px-1.5 py-0.5 rounded">
-                            <Text className="text-emerald-400 text-[9px] font-mono uppercase">{model.badgeExtra}</Text>
-                          </View>
-                        )}
                       </View>
 
                       {isSelected && (
@@ -2917,25 +2483,33 @@ export const AgentChatScreen = () => {
             </View>
 
             <ScrollView className="flex-1">
-              {MOCK_FILE_TREE.map((node) => (
-                <View key={node.name} className="mb-3 pl-2">
-                  <View className="flex-row items-center mb-1">
-                    <VectorIcon name={node.type === "folder" ? "folder" : "file-text"} size={14} color="#F59E0B" style={{ marginRight: 6 }} />
-                    <Text className="text-zinc-300 text-xs font-mono font-bold">
-                      {node.name}
-                    </Text>
-                  </View>
-                  {node.children?.map((child) => (
-                    <View key={child.name} className="py-2.5 px-3 bg-[#1A1A1A] rounded-xl flex-row justify-between items-center mb-1.5">
-                      <View className="flex-row items-center">
-                        <VectorIcon name="file-text" size={13} color="#38BDF8" style={{ marginRight: 6 }} />
-                        <Text className="text-zinc-300 text-xs font-mono">{child.name}</Text>
-                      </View>
-                      <Text className="text-zinc-500 text-[10px]">{child.size}</Text>
-                    </View>
-                  ))}
+              {filesLoading ? (
+                <View className="py-10 items-center">
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                  <Text className="text-zinc-500 text-xs mt-3">Loading project files…</Text>
                 </View>
-              ))}
+              ) : fileEntries.length === 0 ? (
+                <View className="py-10 items-center px-6">
+                  <VectorIcon name="folder" size={28} color="#52525B" style={{ marginBottom: 10 }} />
+                  <Text className="text-zinc-400 text-xs text-center leading-5">
+                    {filesError ?? "No files yet — ask the agent to build something and they'll appear here."}
+                  </Text>
+                </View>
+              ) : (
+                fileEntries.map((entry) => (
+                  <View
+                    key={entry.path}
+                    className="py-2.5 px-3 bg-[#1A1A1A] rounded-xl flex-row justify-between items-center mb-1.5"
+                    style={{ marginLeft: entry.depth * 12 }}
+                  >
+                    <View className="flex-row items-center flex-1 mr-2">
+                      <VectorIcon name="file-text" size={13} color="#38BDF8" style={{ marginRight: 6 }} />
+                      <Text numberOfLines={1} className="text-zinc-300 text-xs font-mono">{entry.path}</Text>
+                    </View>
+                    <Text className="text-zinc-500 text-[10px]">{entry.sizeLabel}</Text>
+                  </View>
+                ))
+              )}
             </ScrollView>
           </View>
         </View>

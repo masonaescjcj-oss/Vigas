@@ -19,12 +19,15 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, SafeAreaView, TouchableOpacity } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { AuthStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
 
 export const ResetPasswordScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
 
   // --------------------------------------------------------------------------
   // STATE MANAGEMENT & FORM CONTROLLERS
@@ -40,34 +43,31 @@ export const ResetPasswordScreen = () => {
   const handleUpdatePassword = async () => {
     // 1. Check empty inputs
     if (!password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all password fields.");
+      notify("Error", "Please fill in all password fields.");
       return;
     }
     // 2. Check password match
     if (password !== confirmPassword) {
-      Alert.alert("Error", "New password and confirmation do not match.");
+      notify("Error", "New password and confirmation do not match.");
       return;
     }
     // 3. Check password length requirement
     if (password.length < 6) {
-      Alert.alert("Error", "New password must be at least 6 characters.");
+      notify("Error", "New password must be at least 6 characters.");
       return;
     }
 
     setLoading(true);
     try {
-      // 4. Update user password via Supabase Auth API
+      // Requires the recovery session created by opening the emailed link.
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
 
       Alert.alert("Success", "Your password has been changed successfully. Please log in.", [
-        { text: "Sign In", onPress: () => navigation.navigate("Login" as any) }
+        { text: "Sign In", onPress: () => navigation.navigate("Login") }
       ]);
     } catch (e: any) {
-      console.warn("Dev mode fallback: Simulating password update success");
-      Alert.alert("Success", "Password updated (Dev Fallback). Please sign in.", [
-        { text: "Sign In", onPress: () => navigation.navigate("Login" as any) }
-      ]);
+      notify("Could not update the password", e?.message ?? "Open the reset link from your email again, then retry.",);
     } finally {
       setLoading(false);
     }

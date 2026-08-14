@@ -61,23 +61,8 @@ export const GlobalSearchScreen = () => {
       }
     });
 
-    // Simulated matches for Chats and Files
-    if ("settings".includes(lowerQuery) || "auth".includes(lowerQuery)) {
-      matches.push({
-        id: "chat-sim-1",
-        title: "Message: Configure Auth Service",
-        subtitle: "Found in last week's session",
-        category: "chats",
-        targetId: "proj-1"
-      });
-      matches.push({
-        id: "file-sim-1",
-        title: "authStore.ts",
-        subtitle: "Found in path frontend/src/stores/",
-        category: "files",
-        targetId: "proj-1"
-      });
-    }
+    // Chat and file search need a server-side full-text endpoint, which does not
+    // exist yet — inventing results here would be worse than showing none.
 
     setResults(matches);
   }, [query, projects]);
@@ -89,7 +74,7 @@ export const GlobalSearchScreen = () => {
     }
 
     if (res.category === "projects" || res.category === "chats") {
-      navigation.navigate("ChatSession", { projectId: res.targetId });
+      navigation.navigate("ProjectDetail", { projectId: res.targetId });
     } else {
       navigation.navigate("ProjectDetail", { projectId: res.targetId });
     }

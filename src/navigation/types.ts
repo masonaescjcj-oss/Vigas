@@ -1,39 +1,23 @@
 /**
  * frontend/src/navigation/types.ts
  * ---------------------------------------------------------------------------
- * Type-safe navigation parameters and types for all screen routes.
- * Covers AuthStack, MainTabs, and ProjectStack.
+ * Compatibility re-export. The single source of truth for route params is
+ * `src/types/navigation.ts`; this file used to hold a stale, divergent copy
+ * (AuthStackParamList = { Auth }) that silently broke every screen importing
+ * from here.
  * ---------------------------------------------------------------------------
  */
 
-import { NavigatorScreenParams } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { ProjectStackParamList } from "../types/navigation";
 
-// 1. Auth Stack Routes
-export type AuthStackParamList = {
-  Auth: undefined;
-};
+export type {
+  AuthStackParamList,
+  ProjectStackParamList,
+  ProfileStackParamList,
+  MainTabParamList,
+  RootStackParamList,
+} from "../types/navigation";
 
-// 3. Project Stack Routes (Nested inside Projects tab)
-export type ProjectStackParamList = {
-  ProjectList: undefined;
-  ChatSession: {
-    projectId: string;
-    sessionId?: string;
-  };
-};
-
-// 2. Main Tab Routes
-export type MainTabParamList = {
-  ProjectsTab: NavigatorScreenParams<ProjectStackParamList>;
-  SettingsTab: undefined;
-};
-
-// Global Root Stack list to handle authenticated switching
-export type RootStackParamList = {
-  AuthStack: NavigatorScreenParams<AuthStackParamList>;
-  MainTabs: NavigatorScreenParams<MainTabParamList>;
-};
-
-// Convenience typing exports for navigation hooks inside screens
+/** Convenience typing for `useNavigation()` inside project-stack screens. */
 export type ProjectNavigationProp = NativeStackNavigationProp<ProjectStackParamList>;

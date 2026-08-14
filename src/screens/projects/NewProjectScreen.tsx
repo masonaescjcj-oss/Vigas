@@ -8,6 +8,7 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -29,32 +30,37 @@ export const NewProjectScreen = () => {
 
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
-  const [activeTemplate, setActiveTemplate] = useState("blank");
+  const [activeTemplate, setActiveTemplate] = useState("landing");
   const [creating, setCreating] = useState(false);
 
+  // Must mirror supabase/functions/shared/templates.ts — anything else is
+  // rejected by projects-create with UNKNOWN_TEMPLATE.
   const templates: Template[] = [
-    { key: "blank", name: "Blank Project", desc: "Clean development sandbox with no template files", emoji: "📁" },
-    { key: "nextjs", name: "Next.js Web App", desc: "Next.js 14 modern React framework", emoji: "⚛️" },
-    { key: "react-native", name: "React Native App", desc: "Expo SDK 51 mobile framework", emoji: "📱" },
-    { key: "python", name: "Python Backend", desc: "Python sandbox environment with pip & pytest", emoji: "🐍" },
+    { key: "landing", name: "Landing Page", desc: "Hero, features and a call to action", emoji: "🚀" },
+    { key: "todo", name: "Todo App", desc: "Task list saved in the browser", emoji: "✅" },
+    { key: "gallery", name: "Photo Gallery", desc: "Responsive grid with a lightbox", emoji: "🖼️" },
+    { key: "blog", name: "Blog", desc: "Post list and reading view", emoji: "📝" },
+    { key: "quiz", name: "Quiz App", desc: "Multiple-choice quiz with scoring", emoji: "🧠" },
+    { key: "blank", name: "Blank Project", desc: "Empty workspace — the agent starts from scratch", emoji: "📁" },
   ];
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert("Error", "Please enter a project name.");
+      notify("Error", "Please enter a project name.");
       return;
     }
 
     setCreating(true);
     try {
       const created = await createProject({
-        name,
-        description: `${desc} (Template: ${activeTemplate})`.trim(),
+        name: name.trim(),
+        description: desc.trim() || undefined,
+        template: activeTemplate,
       });
       // Navigate straight to the detail page
       navigation.replace("ProjectDetail", { projectId: created.id });
     } catch (e: any) {
-      Alert.alert("Error creating project", e.message || "Operation failed.");
+      notify("Error creating project", e.message || "Operation failed.");
     } finally {
       setCreating(false);
     }

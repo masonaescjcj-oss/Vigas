@@ -9,6 +9,8 @@
 import React, { useState } from "react";
 import { View, ScrollView, TouchableOpacity, Alert, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -23,13 +25,12 @@ interface Invoice {
 
 export const ManageSubscriptionScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile } = useAuthStore();
 
-  const [invoices, setInvoices] = useState<Invoice[]>([
-    { id: "inv-001", amount: "$19.99", date: "2026-06-20", status: "paid" },
-    { id: "inv-002", amount: "$19.99", date: "2026-05-20", status: "paid" },
-  ]);
+  // Receipts live with Apple/Google/RevenueCat; there is no invoice endpoint in
+  // this backend, so the list stays empty rather than showing invented charges.
+  const [invoices] = useState<Invoice[]>([]);
 
   const handleCancelSubscription = () => {
     Alert.alert(
@@ -89,7 +90,7 @@ export const ManageSubscriptionScreen = () => {
               </Text>
               <Button
                 label="Upgrade to Pro"
-                onPress={() => navigation.navigate("Paywall" as any)}
+                onPress={() => navigation.navigate("Paywall", {})}
                 className="mt-6 w-full"
               />
             </React.Fragment>

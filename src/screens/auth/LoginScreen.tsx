@@ -8,6 +8,7 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
@@ -36,34 +37,17 @@ export const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields.");
+      notify("Error", "Please fill in all fields.");
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
+      // On success AppNavigator's onAuthStateChange listener swaps the stack.
     } catch (e: any) {
-      console.warn("Dev mode fallback: Mocking login successful due to error:", e.message || e);
-      const mockUser = {
-        id: "dev-user-id",
-        email: email,
-        created_at: new Date().toISOString(),
-      };
-      const mockProfile = {
-        id: "dev-user-id",
-        email: email,
-        display_name: email.split("@")[0],
-        subscription_tier: "free" as const,
-      };
-      
-      useAuthStore.setState({
-        user: mockUser as any,
-        session: { access_token: "mock-token", user: mockUser } as any,
-        profile: mockProfile,
-        initialized: true
-      });
+      notify("Sign in failed", e?.message ?? "Could not sign you in. Check your email and password.");
     } finally {
       setLoading(false);
     }

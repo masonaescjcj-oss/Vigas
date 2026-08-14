@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState } from "react";
 import { View, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -28,34 +29,13 @@ export const SessionHistoryScreen = () => {
 
   useEffect(() => {
     const fetchSessions = async () => {
-      setLoading(false);
+      setLoading(true);
       try {
         const data = await agentService.getProjectSessions(projectId);
         setSessions(data);
-      } catch (e) {
-        // Fallback for presentation
-        setSessions([
-          {
-            id: "sess-1",
-            project_id: projectId,
-            status: "completed",
-            model_provider: "claude",
-            token_usage_total: 12500,
-            transcript: [{ role: "user", content: "Create login form" }],
-            created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-            updated_at: new Date(Date.now() - 3600000 * 23).toISOString(),
-          },
-          {
-            id: "sess-2",
-            project_id: projectId,
-            status: "active",
-            model_provider: "claude",
-            token_usage_total: 24500,
-            transcript: [{ role: "user", content: "Fix shell tests" }],
-            created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-            updated_at: new Date(Date.now() - 3600000).toISOString(),
-          }
-        ]);
+      } catch (e: any) {
+        setSessions([]);
+        notify("Could not load chat history", e?.message ?? "Please try again.");
       } finally {
         setLoading(false);
       }

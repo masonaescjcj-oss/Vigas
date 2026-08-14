@@ -10,6 +10,7 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -43,7 +44,7 @@ export const ProjectSettingsScreen = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert("Error", "Project name cannot be empty.");
+      notify("Error", "Project name cannot be empty.");
       return;
     }
 
@@ -53,32 +54,32 @@ export const ProjectSettingsScreen = () => {
         id: projectId,
         updates: { name, description: desc },
       });
-      Alert.alert("Success", "Project settings updated successfully.");
+      notify("Success", "Project settings updated successfully.");
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert("Error", e.message || "An error occurred.");
+      notify("Error", e.message || "An error occurred.");
     } finally {
       setSaving(false);
     }
   };
 
   const handleArchive = () => {
-    Alert.alert("Archive Project", "Project archived and will be hidden from the project list.");
+    notify("Archive Project", "Project archived and will be hidden from the project list.");
   };
 
   const handleDelete = async () => {
     if (deleteConfirmText !== project?.name) {
-      Alert.alert("Error", "To confirm deletion, please type the project name exactly.");
+      notify("Error", "To confirm deletion, please type the project name exactly.");
       return;
     }
 
     setDeleting(true);
     try {
       await deleteProject(projectId);
-      Alert.alert("Deleted successfully", "Project and its sandbox were successfully deleted.");
+      notify("Deleted successfully", "Project and its sandbox were successfully deleted.");
       navigation.popToTop(); // Go back to Project list screen
     } catch (e: any) {
-      Alert.alert("Delete Error", e.message || "Failed to delete project.");
+      notify("Delete Error", e.message || "Failed to delete project.");
     } finally {
       setDeleting(false);
     }

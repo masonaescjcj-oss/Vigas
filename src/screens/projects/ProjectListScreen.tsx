@@ -1,51 +1,48 @@
 /**
  * frontend/src/screens/projects/ProjectListScreen.tsx
  * ============================================================================
- * PURE UI/UX PRESENTATIONAL SCREEN — (NO BUSINESS LOGIC / NO API CALLS)
- * ============================================================================
- * Visual layout showcase for Projects List with Modal dialog for creating projects.
- * Uses static mock data for clean UI/UX demonstration.
- * ============================================================================
+ * Projects list backed by the real projects-list / projects-create /
+ * projects-delete edge functions via the useProjects hook.
  */
 
 import React, { useState } from "react";
-import { View, FlatList, TouchableOpacity, Modal, TextInput, SafeAreaView } from "react-native";
+import { View, FlatList, TouchableOpacity, Modal, TextInput, SafeAreaView, Alert } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { useTheme } from "../../theme/ThemeProvider";
-import { MOCK_PROJECTS } from "../../services/mockData";
+import { useProjects } from "../../hooks/useProjects";
 import { type ProjectNavigationProp } from "../../navigation/types";
 
 export const ProjectListScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<ProjectNavigationProp>();
+  const { projects: projectsList, createProject, deleteProject } = useProjects();
 
-  // Static Presentation State
-  const [projectsList, setProjectsList] = useState(MOCK_PROJECTS);
   const [modalVisible, setModalVisible] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDesc, setNewProjectDesc] = useState("");
 
-  const handleCreateMockProject = () => {
+  const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
-    const newProj = {
-      id: `proj_mock_${Date.now()}`,
-      name: newProjectName,
-      description: newProjectDesc || "پروژه جدید شبیه‌سازی‌شده",
-      sandbox_path: `users/mock/projects/${newProjectName.toLowerCase()}`,
-      last_opened_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-    };
-    setProjectsList([newProj, ...projectsList]);
-    setModalVisible(false);
-    setNewProjectName("");
-    setNewProjectDesc("");
-    navigation.navigate("ChatSession", { projectId: newProj.id });
+    try {
+      const created = await createProject({ name: newProjectName.trim(), description: newProjectDesc || undefined });
+      setModalVisible(false);
+      setNewProjectName("");
+      setNewProjectDesc("");
+      navigation.navigate("ProjectDetail", { projectId: created.id });
+    } catch (e: any) {
+      notify("Could not create the project", e?.message ?? "Please try again.");
+    }
   };
 
-  const handleDeleteMockProject = (id: string) => {
-    setProjectsList(projectsList.filter(p => p.id !== id));
+  const handleDeleteProject = async (id: string) => {
+    try {
+      await deleteProject(id);
+    } catch (e: any) {
+      notify("Could not delete the project", e?.message ?? "Please try again.");
+    }
   };
 
   return (
@@ -85,7 +82,7 @@ export const ProjectListScreen = () => {
           contentContainerStyle={{ padding: 16 }}
           renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => navigation.navigate("ChatSession", { projectId: item.id })}
+              onPress={() => navigation.navigate("ProjectDetail", { projectId: item.id })}
               className="bg-surfaceRaised p-4 rounded-card border border-borderHairline mb-3 flex-row justify-between items-center shadow-sm"
               style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
               activeOpacity={0.9}
@@ -107,7 +104,7 @@ export const ProjectListScreen = () => {
 
               {/* Action Button */}
               <TouchableOpacity
-                onPress={() => handleDeleteMockProject(item.id)}
+                onPress={() => handleDeleteProject(item.id)}
                 className="p-2 rounded-full"
                 style={{ backgroundColor: `${colors.failed}15` }}
               >
@@ -173,7 +170,7 @@ export const ProjectListScreen = () => {
               />
               <Button
                 label="ایجاد پروژه"
-                onPress={handleCreateMockProject}
+                onPress={handleCreateProject}
                 className="flex-1 ml-2"
               />
             </View>

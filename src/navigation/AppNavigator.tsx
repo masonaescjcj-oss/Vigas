@@ -45,7 +45,6 @@ import { ProfileMainScreen } from "../screens/settings/ProfileMainScreen";
 import { AccountSettingsScreen } from "../screens/settings/AccountSettingsScreen";
 import { PreferencesScreen } from "../screens/settings/PreferencesScreen";
 import { SecuritySettingsScreen } from "../screens/settings/SecuritySettingsScreen";
-import { NotificationSettingsScreen } from "../screens/settings/NotificationSettingsScreen";
 import { HelpSupportScreen } from "../screens/settings/HelpSupportScreen";
 import { AboutScreen } from "../screens/settings/AboutScreen";
 
@@ -58,7 +57,6 @@ import { PaywallScreen } from "../screens/subscription/PaywallScreen";
 import { ManageSubscriptionScreen } from "../screens/subscription/ManageSubscriptionScreen";
 import { TokenUsageScreen } from "../screens/subscription/TokenUsageScreen";
 import { GlobalSearchScreen } from "../screens/search/GlobalSearchScreen";
-import { NotificationInboxScreen } from "../screens/notifications/NotificationInboxScreen";
 
 // Types
 import {
@@ -136,7 +134,6 @@ const ProfileNavigator = () => {
       <ProfileStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
       <ProfileStack.Screen name="Preferences" component={PreferencesScreen} />
       <ProfileStack.Screen name="SecuritySettings" component={SecuritySettingsScreen} />
-      <ProfileStack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <ProfileStack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <ProfileStack.Screen name="About" component={AboutScreen} />
       <ProfileStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
@@ -193,6 +190,8 @@ export const AppNavigator = () => {
     return null;
   }
 
+  // Cast: the container is typed from the runtime navigator, which does not
+  // carry the nested param lists, so the literal config cannot be inferred.
   const linking = {
     prefixes: ["issac://"],
     config: {
@@ -223,7 +222,7 @@ export const AppNavigator = () => {
       <NoInternetBanner />
 
       {/* 2. Navigation Container Stacks */}
-      <NavigationContainer linking={linking}>
+      <NavigationContainer linking={linking as never}>
         <RootStack.Navigator
           screenOptions={{
             headerShown: false,
@@ -241,7 +240,6 @@ export const AppNavigator = () => {
                 <RootStack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} />
                 <RootStack.Screen name="TokenUsage" component={TokenUsageScreen} />
                 <RootStack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
-                <RootStack.Screen name="NotificationInbox" component={NotificationInboxScreen} />
               </RootStack.Group>
             </React.Fragment>
           ) : (

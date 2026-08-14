@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, ScrollView, TouchableOpacity, FlatList, ActivityIndicator, SafeAreaView, Alert } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -47,7 +48,8 @@ export const ProjectDetailScreen = () => {
   const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
 
   // Sandbox status indicator
-  const [sandboxStatus, setSandboxStatus] = useState<"Running" | "Idle" | "Stopped">("Running");
+  // There is no live sandbox-status endpoint; sandboxes are created per job and
+  // destroyed right after, so a persistent "Running" badge would be a lie.
 
   useEffect(() => {
     // Load checkpoints from Supabase migrations or custom tables if present
@@ -60,17 +62,11 @@ export const ProjectDetailScreen = () => {
           .eq("project_id", projectId)
           .order("created_at", { ascending: false });
 
-        if (!error && data) {
-          setCheckpoints(data as Checkpoint[]);
-        } else {
-          // Mock checkpoints if table empty for presentation
-          setCheckpoints([
-            { id: "ch-1", description: "Initial setup and adding template files", created_at: new Date(Date.now() - 3600000 * 2).toISOString() },
-            { id: "ch-2", description: "Fix frontend login form and connect webhook", created_at: new Date(Date.now() - 3600000).toISOString() },
-          ]);
-        }
-      } catch (e) {
-        console.error(e);
+        if (error) throw error;
+        setCheckpoints((data ?? []) as Checkpoint[]);
+      } catch (e: any) {
+        setCheckpoints([]);
+        notify("Could not load checkpoints", e?.message ?? "Please try again.");
       } finally {
         setLoadingCheckpoints(false);
       }
@@ -78,26 +74,16 @@ export const ProjectDetailScreen = () => {
     void fetchCheckpoints();
   }, [projectId]);
 
+  /** checkpoint-restore is service-role only, so the client can't restore yet. */
   const handleRollback = (desc: string) => {
-    Alert.alert(
-      "Rollback Project",
-      `Do you want to rollback all active project files to "${desc}"? Unsaved changes will be lost.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Confirm Rollback", 
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Success", "Project has been rolled back successfully.");
-            refreshFiles();
-          } 
-        }
-      ]
+    notify(
+      "Restore not available yet",
+      `Restoring “${desc}” is an admin-only operation in this build. Nothing was changed.`,
     );
   };
 
-  const handleCompare = (c1: string, c2: string) => {
-    Alert.alert("Compare Changes (Diff)", "Difference between checkpoints will be shown in the next phase.");
+  const handleCompare = (_c1: string, _c2: string) => {
+    notify("Diff not available", "There is no checkpoint-to-checkpoint diff endpoint yet.");
   };
 
   return (
@@ -117,15 +103,9 @@ export const ProjectDetailScreen = () => {
           <Text variant="h3" className="font-uiSemiBold">
             {project?.name || "Active Project"}
           </Text>
-          <View className="flex-row items-center mt-1">
-            <View 
-              className="w-2.5 h-2.5 rounded-full mr-1.5"
-              style={{ backgroundColor: colors.accentTeal }}
-            />
-            <Text variant="caption" className="opacity-70 text-[10px]">
-              Sandbox: {sandboxStatus}
-            </Text>
-          </View>
+          <Text variant="caption" className="opacity-70 text-[10px] mt-1">
+            {loadingFiles ? "Loading files…" : `${tree.length} file${tree.length === 1 ? "" : "s"}`}
+          </Text>
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate("ProjectSettings", { projectId })} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>

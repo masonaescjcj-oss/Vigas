@@ -6,6 +6,8 @@ import { handler as projectsDeleteHandler } from "./supabase/functions/projects-
 import { handler as projectsListHandler } from "./supabase/functions/projects-list/index.ts";
 import { handler as projectsUpdateHandler } from "./supabase/functions/projects-update/index.ts";
 import { handler as projectFilesHandler } from "./supabase/functions/project-files/index.ts";
+import { handler as userDeleteHandler } from "./supabase/functions/user-delete/index.ts";
+import { handler as usageCheckHandler } from "./supabase/functions/usage-check/index.ts";
 import { corsHeaders } from "./supabase/functions/shared/http.ts";
 
 const PORT = 54321;
@@ -43,6 +45,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await projectsUpdateHandler(req);
     } else if (path === "/functions/v1/project-files") {
       res = await projectFilesHandler(req);
+    } else if (path === "/functions/v1/usage-check") {
+      res = await usageCheckHandler(req);
+    } else if (path === "/functions/v1/user-delete") {
+      res = await userDeleteHandler(req);
     }
 
     // ── Direct DB query endpoints (bypass RLS using service client) ──

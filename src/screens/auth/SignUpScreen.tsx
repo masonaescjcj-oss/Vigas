@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
@@ -73,44 +74,27 @@ export const SignUpScreen = () => {
 
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields.");
+      notify("Error", "Please fill in all fields.");
       return;
     }
     if (emailError || matchError) {
-      Alert.alert("Error", "Please fix the form errors.");
+      notify("Error", "Please fix the form errors.");
       return;
     }
     if (!acceptedTerms) {
-      Alert.alert("Error", "Please accept the terms and conditions.");
+      notify("Error", "Please accept the terms and conditions.");
       return;
     }
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
       if (error) throw error;
-      
-      navigation.replace("EmailVerificationPending", { email });
+      // With email confirmation on, there is no session yet — wait for the link.
+      // With it off, Supabase returns a session and the navigator switches itself.
+      if (!data.session) navigation.replace("EmailVerificationPending", { email: email.trim() });
     } catch (e: any) {
-      console.warn("Dev mode fallback: Mocking signup successful due to error:", e.message || e);
-      const mockUser = {
-        id: "dev-user-id",
-        email: email,
-        created_at: new Date().toISOString(),
-      };
-      const mockProfile = {
-        id: "dev-user-id",
-        email: email,
-        display_name: email.split("@")[0],
-        subscription_tier: "free" as const,
-      };
-      
-      useAuthStore.setState({
-        user: mockUser as any,
-        session: { access_token: "mock-token", user: mockUser } as any,
-        profile: mockProfile,
-        initialized: true
-      });
+      notify("Sign up failed", e?.message ?? "Could not create your account.");
     } finally {
       setLoading(false);
     }

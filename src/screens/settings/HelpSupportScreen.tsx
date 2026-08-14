@@ -9,11 +9,14 @@
  */
 
 import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, TextInput, Alert, SafeAreaView } from "react-native";
+import { View, ScrollView, TouchableOpacity, TextInput, Alert, SafeAreaView, Linking } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { useTheme } from "../../theme/ThemeProvider";
+
+const SUPPORT_EMAIL = "support@retrocode.app";
 
 interface FaqItem {
   q: string;
@@ -39,18 +42,27 @@ export const HelpSupportScreen = () => {
 
   const handleSendTicket = async () => {
     if (!ticketSubject || !ticketMsg) {
-      Alert.alert("Error", "Please fill in the subject and message of the support ticket.");
+      notify("Error", "Please fill in the subject and message of the support ticket.");
       return;
     }
 
+    // There is no ticketing backend, so hand the message to the user's mail
+    // client instead of pretending it was submitted and discarding it.
     setSending(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      Alert.alert("Ticket Sent", "Your support message has been submitted. It will be answered as soon as possible.");
+      const url =
+        `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(ticketSubject)}` +
+        `&body=${encodeURIComponent(ticketMsg)}`;
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) throw new Error("No mail app is available on this device.");
+      await Linking.openURL(url);
       setTicketMsg("");
       setTicketSubject("");
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      notify(
+        "Could not open your mail app",
+        `Please email us directly at ${SUPPORT_EMAIL}.`,
+      );
     } finally {
       setSending(false);
     }

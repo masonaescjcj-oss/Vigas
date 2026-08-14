@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState } from "react";
 import { View, FlatList, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -41,17 +42,11 @@ export const CheckpointListScreen = () => {
           .eq("project_id", projectId)
           .order("created_at", { ascending: false });
 
-        if (!error && data) {
-          setCheckpoints(data as Checkpoint[]);
-        } else {
-          // Fallback presentation mock
-          setCheckpoints([
-            { id: "ch-1", description: "Initial setup and adding template files", created_at: new Date(Date.now() - 3600000 * 2).toISOString() },
-            { id: "ch-2", description: "Fix frontend login form and connect webhook", created_at: new Date(Date.now() - 3600000).toISOString() },
-          ]);
-        }
-      } catch (e) {
-        console.error(e);
+        if (error) throw error;
+        setCheckpoints((data ?? []) as Checkpoint[]);
+      } catch (e: any) {
+        setCheckpoints([]);
+        notify("Could not load checkpoints", e?.message ?? "Please try again.");
       } finally {
         setLoading(false);
       }
@@ -59,18 +54,15 @@ export const CheckpointListScreen = () => {
     void fetchCheckpoints();
   }, [projectId]);
 
+  /**
+   * Restoring a snapshot is a service-role operation on the backend
+   * (checkpoint-restore uses requireServiceRole), so the client cannot perform
+   * it yet. Say so instead of reporting a rollback that never happened.
+   */
   const handleRollback = (desc: string) => {
-    Alert.alert(
-      "Rollback Project",
-      `Do you want to rollback all active project files to "${desc}"? Unsaved changes will be lost.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Confirm Rollback", 
-          style: "destructive",
-          onPress: () => Alert.alert("Success", "Project has been rolled back successfully.")
-        }
-      ]
+    notify(
+      "Restore not available yet",
+      `Restoring “${desc}” is an admin-only operation in this build. Nothing was changed.`,
     );
   };
 

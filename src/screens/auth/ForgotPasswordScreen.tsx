@@ -19,6 +19,7 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, SafeAreaView, TouchableOpacity } from "react-native";
+import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
@@ -40,24 +41,20 @@ export const ForgotPasswordScreen = () => {
   const handleReset = async () => {
     // 1. Validate non-empty email
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your registered email address.");
+      notify("Error", "Please enter your registered email address.");
       return;
     }
 
     setLoading(true);
     try {
-      // 2. Trigger Supabase Password Recovery with custom Retro Code DeepLink Scheme
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "retrocode://reset-password",
+      // Scheme must match the linking prefix registered in AppNavigator ("issac://").
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: "issac://reset-password",
       });
       if (error) throw error;
-
-      // 3. Update view state to display success confirmation card
       setSent(true);
     } catch (e: any) {
-      console.warn("Dev mode fallback: Simulating recovery link dispatch for:", email);
-      // Dev mode fallback for seamless offline testing
-      setSent(true);
+      notify("Could not send the link", e?.message ?? "Please check the address and try again.");
     } finally {
       setLoading(false);
     }

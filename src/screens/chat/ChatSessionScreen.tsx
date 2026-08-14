@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { View, ScrollView, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from "react-native";
+import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { ChatBubble } from "../../components/ChatBubble";
@@ -19,7 +20,7 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { useAgentSession } from "../../hooks/useAgentSession";
 import { type ProjectStackParamList } from "../../navigation/types";
 
-type ChatScreenRouteProp = RouteProp<ProjectStackParamList, "ChatSession">;
+type ChatScreenRouteProp = RouteProp<ProjectStackParamList, "AgentChat">;
 
 export const ChatSessionScreen = () => {
   const { colors } = useTheme();
@@ -55,17 +56,17 @@ export const ChatSessionScreen = () => {
         await sendPrompt({ projectId, prompt: text });
       } else {
         // Start a brand-new session
-        const res = await sendPrompt({ 
-          projectId, 
+        const res = await sendPrompt({
+          projectId,
           prompt: text,
           title: text.slice(0, 30) // Use beginning of prompt as session title
         });
-        if (res.session_id) {
-          setActiveSessionId(res.session_id);
-        }
+        // Starting a run returns the new session id; resuming does not.
+        const newSessionId = (res as { session_id?: string }).session_id;
+        if (newSessionId) setActiveSessionId(newSessionId);
       }
     } catch (e: any) {
-      Alert.alert("خطا در ارتباط با ایجنت", e.message || "شروع ایجنت با خطا مواجه شد.");
+      notify("خطا در ارتباط با ایجنت", e.message || "شروع ایجنت با خطا مواجه شد.");
     }
   };
 
@@ -84,10 +85,10 @@ export const ChatSessionScreen = () => {
           onPress: async () => {
             try {
               const forked = await forkSession({ atMessageIndex: midIndex });
-              Alert.alert("نشست منشعب شد", "سشن جدید با موفقیت ایجاد گردید.");
+              notify("نشست منشعب شد", "سشن جدید با موفقیت ایجاد گردید.");
               setActiveSessionId(forked.id);
             } catch (e: any) {
-              Alert.alert("خطا در ایجاد انشعاب", e.message);
+              notify("خطا در ایجاد انشعاب", e.message);
             }
           }
         }
@@ -187,7 +188,7 @@ export const ChatSessionScreen = () => {
                   <ToolCallCard
                     key={task.id}
                     toolName={task.tool_name}
-                    status={task.status}
+                    status={task.status === "pending" ? "running" : task.status}
                     input={task.tool_input ? JSON.stringify(task.tool_input) : undefined}
                     output={task.tool_output ? JSON.stringify(task.tool_output) : undefined}
                   />
