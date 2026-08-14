@@ -50,23 +50,31 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
     // Load the Agent Core lazily. This keeps the worker's authenticated health
     // path lightweight and prevents an optional sandbox SDK from becoming a
     // module-boot dependency when the queue is empty.
-    const { createEdgeAgentRuntime } = await import("../shared/agentRuntime.ts");
+    const { createEdgeAgentRuntime, createEdgeSandboxManager } = await import("../shared/agentRuntime.ts");
     const payload = job.payload;
     const mode = payload.mode === "resume" ? "resume" : "run";
-    const runtime = createEdgeAgentRuntime({
-      client,
-      user: { id: job.user_id } as User,
-      projectId: job.project_id,
-      sandboxPath: String(payload.sandbox_path ?? ""),
-      sessionId: job.session_id,
-      profile: payload.profile === "readonly" ? "readonly" : "standard",
-    });
-    const result = await withSentrySpan("agent.execute", "agent.run", async () => await runtime.run(String(payload.prompt ?? ""), { sessionId: job.session_id, title: typeof payload.title === "string" ? payload.title : undefined }));
-    await recordUsage(client, job.user_id, result.usage.inputTokens + result.usage.outputTokens);
-    const { error } = await client.rpc("complete_agent_job", { p_job_id: job.id, p_result: { final_text: result.finalText, usage: result.usage, mode } });
-    if (error) throw error;
-    await setTask(client, job.session_id, "success", { final_text: result.finalText, usage: result.usage });
-    return { processed: true, status: "completed", jobId: job.id };
+    const sandboxManager = createEdgeSandboxManager(client);
+    try {
+      const runtime = createEdgeAgentRuntime({
+        client,
+        user: { id: job.user_id } as User,
+        projectId: job.project_id,
+        sandboxPath: String(payload.sandbox_path ?? ""),
+        sessionId: job.session_id,
+        profile: payload.profile === "readonly" ? "readonly" : "standard",
+        sandboxManager,
+      });
+      const result = await withSentrySpan("agent.execute", "agent.run", async () => await runtime.run(String(payload.prompt ?? ""), { sessionId: job.session_id, title: typeof payload.title === "string" ? payload.title : undefined }));
+      await recordUsage(client, job.user_id, result.usage.inputTokens + result.usage.outputTokens);
+      const { error } = await client.rpc("complete_agent_job", { p_job_id: job.id, p_result: { final_text: result.finalText, usage: result.usage, mode } });
+      if (error) throw error;
+      await setTask(client, job.session_id, "success", { final_text: result.finalText, usage: result.usage });
+      return { processed: true, status: "completed", jobId: job.id };
+    } finally {
+      // Cost control: never leave a sandbox warm after the job — idle warm time
+      // is billed the same as work. The next job simply reacquires one.
+      await sandboxManager.destroySession(job.session_id).catch(() => undefined);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const decision = retryDecision(job.attempts);

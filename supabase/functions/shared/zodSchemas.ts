@@ -8,6 +8,7 @@ export const EmptyInputSchema = z.object({}).strict();
 export const ProjectCreateSchema = z.object({
   name: trimmed(100),
   description: z.string().trim().max(2_000).nullable().optional(),
+  template: z.string().trim().min(1).max(40).optional(),
 }).strict();
 
 export const ProjectCursorSchema = z.object({

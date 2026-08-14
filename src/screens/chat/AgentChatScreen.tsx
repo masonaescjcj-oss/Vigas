@@ -18,7 +18,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Switch } from "react-native";
+import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Switch, Platform, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -27,6 +27,21 @@ import { MOCK_FILE_TREE } from "../../services/mockData";
 import { type ProjectNavigationProp } from "../../navigation/types";
 import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData } from "../../services/agentService";
+import { getProjectFiles } from "../../services/fileService";
+import { buildPreviewHtml } from "../../services/previewBuilder";
+
+/** On web, render the preview document in a sandboxed iframe. Native gets the
+ * WebView-based preview with the store build (Phase 4). */
+const WebPreviewFrame = ({ html }: { html: string }) => {
+  if (Platform.OS !== "web") return null;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { unstable_createElement } = require("react-native-web");
+  return unstable_createElement("iframe", {
+    srcDoc: html,
+    sandbox: "allow-scripts allow-modals",
+    style: { flex: 1, width: "100%", height: "100%", border: "0", borderRadius: 16, backgroundColor: "#0f1115" },
+  });
+};
 
 // ============================================================================
 // ROCK-SOLID CRASH-PROOF VECTOR ICON SYSTEM (SVG / HD VECTOR GLYPHS)
@@ -120,9 +135,20 @@ const VectorIcon = ({ name, size = 16, color = "#A1A1AA", style }: { name: strin
  */
 const AI_MODELS_DATA = [
   { id: "auto", name: "Auto", icon: "zap", color: "#F59E0B", category: "Best", description: "Automatically selects the best model for your prompt", supportsThinking: true },
-  { id: "deepseek-chat", name: "DeepSeek V3", icon: "code", color: "#38BDF8", badge: "default", category: "Best", description: "Fast, economical coding model" },
+  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "zap", color: "#22C55E", badge: "default", category: "Best", description: "Fast general coding model (current default)" },
+  { id: "deepseek-chat", name: "DeepSeek V3", icon: "code", color: "#38BDF8", category: "Best", description: "Fast, economical coding model" },
   { id: "deepseek-reasoner", name: "DeepSeek R1", icon: "sparkles", color: "#6366F1", category: "Best", description: "Deep reasoning for complex tasks", supportsThinking: true },
   { id: "claude-sonnet-5", name: "Claude Sonnet 5", icon: "cpu", color: "#F97316", badge: "pro", category: "Best", description: "Anthropic's premium coding model", supportsThinking: true },
+];
+
+/** Starter templates — must mirror supabase/functions/shared/templates.ts */
+const PROJECT_TEMPLATE_CHOICES = [
+  { id: "landing", label: "🚀 Landing" },
+  { id: "todo", label: "✅ Todo" },
+  { id: "gallery", label: "🖼️ Gallery" },
+  { id: "blog", label: "📝 Blog" },
+  { id: "quiz", label: "🧠 Quiz" },
+  { id: "blank", label: "⬜ Blank" },
 ];
 
 /**
@@ -407,6 +433,15 @@ export const AgentChatScreen = () => {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const runStartedAtRef = useRef<string | null>(null);
   const { projects, createProject } = useProjects();
+
+  // On-device live preview state (Phase 2 killer feature)
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  // Template picked in the New Project dialog
+  const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   
   // Modal Visibility Controllers
   const [showDrawerModal, setShowDrawerModal] = useState(false);        // Drawer Dashboard
@@ -509,11 +544,32 @@ export const AgentChatScreen = () => {
       setActiveProjectName(existing.name);
       return existing.id;
     }
-    const created = await createProject({ name: activeProjectName || "My First App" });
+    const created = await createProject({ name: activeProjectName || "My First App", template: "landing" });
     setActiveProjectId(created.id);
     setActiveProjectName(created.name);
     return created.id;
   };
+
+  /** Load the project's files and build the on-device preview document. */
+  const loadPreview = async () => {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const projectId = await ensureProjectId();
+      const files = await getProjectFiles(projectId);
+      setPreviewHtml(buildPreviewHtml(files));
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Refresh the preview every time the modal opens.
+  useEffect(() => {
+    if (showPreviewModal) void loadPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPreviewModal]);
 
   /**
    * Send Message Action — wired to the real backend:
@@ -641,6 +697,9 @@ export const AgentChatScreen = () => {
           runRow.status === "success"
             ? String(runRow.tool_output?.final_text ?? "Done.")
             : `⚠️ Agent run failed: ${String(runRow.tool_output?.error ?? "unknown error")}`;
+        const touchedWorkspace = fresh.some((t) =>
+          ["write", "edit", "apply_patch", "bash"].includes(t.tool_name),
+        );
         setMessages((prev) => [
           ...prev,
           {
@@ -648,6 +707,7 @@ export const AgentChatScreen = () => {
             role: "assistant",
             content: finalText,
             createdAt: Date.now(),
+            hasCodeEdit: runRow.status === "success" && touchedWorkspace,
           },
         ]);
         setIsExecuting(false);
@@ -764,18 +824,40 @@ export const AgentChatScreen = () => {
   };
 
   /**
-   * Create New Project Action
-   * BACKEND INTEGRATION: Call `POST /api/projects`
+   * Create New Project Action — creates the project via projects-create and
+   * seeds it with the selected starter template.
    */
-  const handleCreateNewProject = () => {
-    if (!newProjectName.trim()) return;
-    setShowNewProjectModal(false);
-    setShowProjectsModal(false);
-    setIsIncognito(false);
-    setActiveProjectName(newProjectName);
-    setThreadTitle(newProjectName);
-    setMessages([]);
-    setNewProjectName("");
+  const handleCreateNewProject = async () => {
+    if (!newProjectName.trim() || isCreatingProject) return;
+    setIsCreatingProject(true);
+    try {
+      const created = await createProject({ name: newProjectName.trim(), template: newProjectTemplate });
+      setActiveProjectId(created.id);
+      setActiveProjectName(created.name);
+      setThreadTitle(created.name);
+      setActiveSessionId(null);
+      runStartedAtRef.current = null;
+      setMessages([]);
+      setNewProjectName("");
+      setIsIncognito(false);
+      setShowNewProjectModal(false);
+      setShowProjectsModal(false);
+      // Show the fresh template right away — instant gratification.
+      setShowPreviewModal(true);
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_err_${Date.now()}`,
+          role: "assistant",
+          content: `⚠️ Failed to create the project: ${e instanceof Error ? e.message : String(e)}`,
+          createdAt: Date.now(),
+        },
+      ]);
+      setShowNewProjectModal(false);
+    } finally {
+      setIsCreatingProject(false);
+    }
   };
 
   /**
@@ -787,6 +869,8 @@ export const AgentChatScreen = () => {
     setThreadTitle("");
     setInputText("");
     setIsExecuting(false);
+    setActiveSessionId(null);
+    runStartedAtRef.current = null;
   };
 
   const isChatActive = messages.length > 0;
@@ -1191,17 +1275,19 @@ export const AgentChatScreen = () => {
                         <VectorIcon name="arrow-right" size={12} color={isLight ? "#16A34A" : "#34D399"} />
                       </TouchableOpacity>
 
-                      {/* Targeted Git Checkpoint Rollback Button */}
-                      <TouchableOpacity
-                        onPress={() => setShowCheckpointsModal(true)}
-                        style={{ backgroundColor: isLight ? "#F1F5F9" : "#1C1C1C", borderColor: isLight ? "#E2E8F0" : "transparent" }}
-                        className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 border shadow-sm"
-                        activeOpacity={0.8}
-                      >
-                        <VectorIcon name="rotate-ccw" size={13} color={isLight ? "#6D42C7" : "#C084FC"} style={{ marginRight: 6 }} />
-                        <Text style={{ color: textPrimary }} className="text-xs font-semibold mr-1">Checkpoint ({msg.checkpointHash || "e5509a3"})</Text>
-                        <Text style={{ color: isLight ? "#6D42C7" : "#C084FC" }} className="text-xs font-mono font-bold">Rollback</Text>
-                      </TouchableOpacity>
+                      {/* Targeted Git Checkpoint Rollback Button (only when a real checkpoint exists) */}
+                      {msg.checkpointHash && (
+                        <TouchableOpacity
+                          onPress={() => setShowCheckpointsModal(true)}
+                          style={{ backgroundColor: isLight ? "#F1F5F9" : "#1C1C1C", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+                          className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 border shadow-sm"
+                          activeOpacity={0.8}
+                        >
+                          <VectorIcon name="rotate-ccw" size={13} color={isLight ? "#6D42C7" : "#C084FC"} style={{ marginRight: 6 }} />
+                          <Text style={{ color: textPrimary }} className="text-xs font-semibold mr-1">Checkpoint ({msg.checkpointHash})</Text>
+                          <Text style={{ color: isLight ? "#6D42C7" : "#C084FC" }} className="text-xs font-mono font-bold">Rollback</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   )}
 
@@ -2030,16 +2116,43 @@ export const AgentChatScreen = () => {
               onChangeText={setNewProjectName}
               placeholder="e.g. AI Portfolio App..."
               placeholderTextColor="#71717A"
-              className="bg-[#242424] p-3 rounded-xl text-white text-xs mb-5 text-left"
+              className="bg-[#242424] p-3 rounded-xl text-white text-xs mb-4 text-left"
               style={{ color: "#FFFFFF" }}
             />
 
-            <TouchableOpacity 
+            <Text className="text-zinc-400 text-xs mb-2 text-left">Start from a template:</Text>
+            <View className="flex-row flex-wrap mb-4">
+              {PROJECT_TEMPLATE_CHOICES.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  onPress={() => setNewProjectTemplate(t.id)}
+                  className="px-3 py-2 rounded-xl mr-2 mb-2"
+                  style={{ backgroundColor: newProjectTemplate === t.id ? "#F59E0B" : "#242424" }}
+                >
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: newProjectTemplate === t.id ? "#000000" : "#A1A1AA" }}
+                  >
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
               onPress={handleCreateNewProject}
+              disabled={isCreatingProject}
               className="bg-amber-500 py-3 rounded-xl items-center shadow-lg flex-row justify-center"
+              style={{ opacity: isCreatingProject ? 0.6 : 1 }}
             >
-              <Text className="text-black text-xs font-bold mr-1.5">Create & Open Project</Text>
-              <VectorIcon name="arrow-right" size={14} color="#000000" />
+              {isCreatingProject ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <>
+                  <Text className="text-black text-xs font-bold mr-1.5">Create & Open Project</Text>
+                  <VectorIcon name="arrow-right" size={14} color="#000000" />
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -2064,30 +2177,47 @@ export const AgentChatScreen = () => {
               <VectorIcon name="eye" size={16} color="#34D399" style={{ marginRight: 6 }} />
               <Text className="text-white text-base font-bold">Live App Preview</Text>
             </View>
-            <TouchableOpacity className="p-1 flex-row items-center">
+            <TouchableOpacity onPress={loadPreview} className="p-1 flex-row items-center">
               <VectorIcon name="rotate-ccw" size={12} color="#38BDF8" style={{ marginRight: 4 }} />
               <Text className="text-sky-400 text-xs font-bold">Refresh</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="flex-1 bg-[#111113] items-center justify-center p-6">
-            <View className="w-full h-full bg-[#18181B] rounded-3xl p-4 flex-col justify-between">
+          <View className="flex-1 bg-[#111113] p-4">
+            <View className="w-full h-full bg-[#18181B] rounded-3xl p-4 flex-col">
               <View className="flex-row items-center justify-between pb-3">
                 <View className="flex-row space-x-1.5">
                   <View className="w-3 h-3 rounded-full bg-red-500" />
                   <View className="w-3 h-3 rounded-full bg-amber-500" />
                   <View className="w-3 h-3 rounded-full bg-emerald-500" />
                 </View>
-                <Text className="text-zinc-400 text-xs font-mono">http://localhost:3000</Text>
-              </View>
-
-              <View className="flex-1 items-center justify-center">
-                <VectorIcon name="cpu" size={44} color="#10B981" style={{ marginBottom: 16 }} />
-                <Text className="text-white text-lg font-bold mb-2">Live Artifact Sandbox Running</Text>
-                <Text className="text-zinc-400 text-xs text-center px-6 leading-5">
-                  Your Next.js & React components are compiled and running live in this sandbox container.
+                <Text className="text-zinc-400 text-xs font-mono">
+                  {activeProjectName ? activeProjectName.toLowerCase().replace(/\s+/g, "-") + ".app" : "preview"}
                 </Text>
               </View>
+
+              {previewLoading ? (
+                <View className="flex-1 items-center justify-center">
+                  <ActivityIndicator size="large" color="#8B5CF6" />
+                  <Text className="text-zinc-400 text-xs mt-4">Building on-device preview…</Text>
+                </View>
+              ) : previewError ? (
+                <View className="flex-1 items-center justify-center px-6">
+                  <VectorIcon name="x" size={32} color="#F87171" style={{ marginBottom: 12 }} />
+                  <Text className="text-white text-sm font-bold mb-2">Preview failed</Text>
+                  <Text className="text-zinc-400 text-xs text-center leading-5">{previewError}</Text>
+                </View>
+              ) : previewHtml && Platform.OS === "web" ? (
+                <WebPreviewFrame html={previewHtml} />
+              ) : (
+                <View className="flex-1 items-center justify-center px-6">
+                  <VectorIcon name="mobile" size={36} color="#10B981" style={{ marginBottom: 12 }} />
+                  <Text className="text-white text-sm font-bold mb-2">Native preview coming soon</Text>
+                  <Text className="text-zinc-400 text-xs text-center leading-5">
+                    The WebView-powered preview ships with the native build (Phase 4). Use the web app to preview for now.
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </View>

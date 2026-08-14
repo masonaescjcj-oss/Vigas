@@ -20,8 +20,8 @@ export const useProjects = () => {
 
   // Mutation: Create a project
   const createProjectMutation = useMutation({
-    mutationFn: (variables: { name: string; description?: string }) =>
-      projectService.createProject(variables.name, variables.description),
+    mutationFn: (variables: { name: string; description?: string; template?: string }) =>
+      projectService.createProject(variables.name, variables.description, variables.template),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },

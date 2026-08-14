@@ -295,10 +295,17 @@ export interface RuntimeFactoryOptions {
   sandboxManager?: SandboxManager;
 }
 
+/** Builds the sandbox manager with the same provider selection the runtime uses
+ * (E2B when configured, local temp-dir provider otherwise). Exposed so the
+ * queue worker can destroy the session sandbox as soon as a job finishes. */
+export function createEdgeSandboxManager(client: SupabaseClient): SandboxManager {
+  const sandboxProvider = Deno.env.get("E2B_API_KEY") ? undefined : new LocalSandboxProvider();
+  return new SandboxManager(client, sandboxProvider);
+}
+
 export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRuntime {
   const prefix = options.sandboxPath ?? `users/${options.user.id}/projects/${options.projectId}`;
-  const sandboxProvider = Deno.env.get("E2B_API_KEY") ? undefined : new LocalSandboxProvider();
-  const sandboxManager = options.sandboxManager ?? new SandboxManager(options.client, sandboxProvider);
+  const sandboxManager = options.sandboxManager ?? createEdgeSandboxManager(options.client);
   const workspace = new StorageWorkspace({ client: options.client, bucket: PROJECT_FILES_BUCKET, prefix, projectId: options.projectId, userId: options.user.id, sessionId: options.sessionId, sandboxManager });
   return createAgentRuntime({
     sandboxRoot: workspace.root,

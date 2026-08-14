@@ -46,6 +46,31 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     const sessionMatch = path.match(/^\/api\/sessions\/([^/]+)\/tasks$/);
     const singleSessionMatch = path.match(/^\/api\/sessions\/([^/]+)$/);
     const projectSessionsMatch = path.match(/^\/api\/project-sessions\/([^/]+)$/);
+    const projectBundleMatch = path.match(/^\/api\/projects\/([^/]+)\/bundle$/);
+
+    // Text-file bundle of a project's Storage prefix — feeds the on-device preview.
+    if (!res && projectBundleMatch && req.method === "GET") {
+      const { createServiceClient } = await import("./supabase/functions/shared/supabase.ts");
+      const { listStorageFiles, downloadBlob, PROJECT_FILES_BUCKET } = await import("./supabase/functions/shared/storage.ts");
+      const service = createServiceClient();
+      const { data: project, error } = await service.from("projects").select("sandbox_path").eq("id", projectBundleMatch[1]).maybeSingle();
+      if (error || !project) {
+        res = new Response(JSON.stringify({ error: error?.message ?? "Project not found" }), { status: error ? 500 : 404, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
+      } else {
+        const prefix = String(project.sandbox_path).replace(/^\/+|\/+$/g, "");
+        const paths = await listStorageFiles(service, PROJECT_FILES_BUCKET, prefix);
+        const files: Record<string, string> = {};
+        for (const fullPath of paths) {
+          const rel = fullPath.slice(prefix.length + 1);
+          if (!rel || rel === ".keep") continue;
+          if (!/\.(html?|css|js|mjs|json|txt|md|svg)$/i.test(rel)) continue;
+          const blob = await downloadBlob(service, PROJECT_FILES_BUCKET, fullPath);
+          if (blob.size > 512_000) continue; // skip oversized files
+          files[rel] = await blob.text();
+        }
+        res = new Response(JSON.stringify({ files }), { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
+      }
+    }
 
     if (!res && sessionMatch && req.method === "GET") {
       const { createServiceClient } = await import("./supabase/functions/shared/supabase.ts");

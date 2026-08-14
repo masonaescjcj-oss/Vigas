@@ -27,10 +27,12 @@ export const projectService = {
     return data.projects ?? [];
   },
 
-  /** Create a new project using the projects-create Edge Function. */
-  async createProject(name: string, description?: string): Promise<Project> {
+  /** Create a new project using the projects-create Edge Function.
+   * `template` seeds the project's Storage with a starter app (see
+   * supabase/functions/shared/templates.ts). */
+  async createProject(name: string, description?: string, template?: string): Promise<Project> {
     const data = await invokeFunction<{ project?: Project } & Project>("projects-create", {
-      body: { name, description },
+      body: { name, description, ...(template && template !== "blank" ? { template } : {}) },
     });
     return (data.project ?? data) as Project;
   },
