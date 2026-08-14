@@ -17,7 +17,7 @@
  * ============================================================================
  */
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Switch } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
@@ -25,6 +25,8 @@ import { useTheme } from "../../theme/ThemeProvider";
 import { useThemeStore } from "../../theme/store";
 import { MOCK_FILE_TREE } from "../../services/mockData";
 import { type ProjectNavigationProp } from "../../navigation/types";
+import { useProjects } from "../../hooks/useProjects";
+import { agentService, type AgentTaskData } from "../../services/agentService";
 
 // ============================================================================
 // ROCK-SOLID CRASH-PROOF VECTOR ICON SYSTEM (SVG / HD VECTOR GLYPHS)
@@ -111,17 +113,16 @@ const VectorIcon = ({ name, size = 16, color = "#A1A1AA", style }: { name: strin
  * AI Models Directory
  * BACKEND INTEGRATION: Replace with `GET /api/models` to fetch dynamic model capability metadata.
  */
+/**
+ * Real model lineup. NOTE: model selection is not yet forwarded to the backend
+ * (the worker's model comes from server env: OPENAI_MODEL / ANTHROPIC_MODEL);
+ * plumbing the per-request model choice is a Phase 3 roadmap item.
+ */
 const AI_MODELS_DATA = [
   { id: "auto", name: "Auto", icon: "zap", color: "#F59E0B", category: "Best", description: "Automatically selects the best model for your prompt", supportsThinking: true },
-  { id: "sonar-2", name: "Sonar 2", icon: "globe", color: "#38BDF8", category: "Best", description: "Standard fast web search model" },
-  { id: "gpt-5.6-terra", name: "GPT-5.6 Terra", icon: "zap", color: "#22C55E", category: "Best", description: "Balanced speed & general reasoning" },
-  { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", icon: "zap", color: "#10B981", badge: "max", category: "Best", description: "High capacity OpenAI reasoning engine" },
-  { id: "gemini-3.1-pro", name: "Gemini 3.1 Pro", icon: "sparkles", color: "#A855F7", category: "Best", description: "Google's multimodal high intelligence model" },
-  { id: "claude-sonnet-5", name: "Claude Sonnet 5", icon: "code", color: "#F97316", category: "Best", description: "Anthropic's newest reasoning model", supportsThinking: true },
-  { id: "claude-opus-5", name: "Claude Opus 5", icon: "cpu", color: "#EC4899", badge: "max", badgeExtra: "new", category: "Best", description: "Maximum capability complex coding model", supportsThinking: true },
-  { id: "grok-4.5", name: "Grok 4.5", icon: "zap", color: "#94A3B8", category: "Best", description: "xAI latest reasoning model" },
-  { id: "glm-5.2", name: "GLM-5.2", icon: "layers", color: "#6366F1", category: "Best", description: "Advanced multilingual & coding model" },
-  { id: "kimi-k2.6", name: "Kimi K2.6", icon: "sparkles", color: "#06B6D4", category: "Best", description: "Moonshot long-context reasoning model" },
+  { id: "deepseek-chat", name: "DeepSeek V3", icon: "code", color: "#38BDF8", badge: "default", category: "Best", description: "Fast, economical coding model" },
+  { id: "deepseek-reasoner", name: "DeepSeek R1", icon: "sparkles", color: "#6366F1", category: "Best", description: "Deep reasoning for complex tasks", supportsThinking: true },
+  { id: "claude-sonnet-5", name: "Claude Sonnet 5", icon: "cpu", color: "#F97316", badge: "pro", category: "Best", description: "Anthropic's premium coding model", supportsThinking: true },
 ];
 
 /**
@@ -400,6 +401,12 @@ export const AgentChatScreen = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [threadTitle, setThreadTitle] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
+
+  // Live agent session wiring (agent-run → job_queue → queue-worker → agent_tasks)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const runStartedAtRef = useRef<string | null>(null);
+  const { projects, createProject } = useProjects();
   
   // Modal Visibility Controllers
   const [showDrawerModal, setShowDrawerModal] = useState(false);        // Drawer Dashboard
@@ -490,21 +497,34 @@ export const AgentChatScreen = () => {
   };
 
   /**
-   * Send Message Action
-   * BACKEND INTEGRATION:
-   *   Invoke `POST /api/chat/messages` with payload:
-   *   { prompt: inputText, model: selectedModelId, isIncognito, project: activeProjectName }
-   *   Receive SSE (Server-Sent Events) stream for steps, commands, diffs, and text.
+   * Resolve the project this chat runs against: the selected one, the first
+   * existing project, or a freshly created default project.
    */
-  const handleSend = () => {
-    if (!inputText.trim()) return;
-
-    const userPromptText = inputText;
-    const isFirstPrompt = messages.length === 0;
-
-    if (isFirstPrompt && !isIncognito) {
-      setThreadTitle("Fix the login flow redirect issue");
+  const ensureProjectId = async (): Promise<string> => {
+    if (activeProjectId) return activeProjectId;
+    const existing =
+      projects.find((p) => p.name === activeProjectName) ?? projects[0];
+    if (existing) {
+      setActiveProjectId(existing.id);
+      setActiveProjectName(existing.name);
+      return existing.id;
     }
+    const created = await createProject({ name: activeProjectName || "My First App" });
+    setActiveProjectId(created.id);
+    setActiveProjectName(created.name);
+    return created.id;
+  };
+
+  /**
+   * Send Message Action — wired to the real backend:
+   * agent-run enqueues a job (HTTP 202) → queue-worker executes the Agent Core
+   * in the sandbox → progress is polled from agent_tasks (see effect below).
+   */
+  const handleSend = async () => {
+    if (!inputText.trim() || isExecuting) return;
+
+    const userPromptText = inputText.trim();
+    const isFirstPrompt = messages.length === 0;
 
     const userMsg = {
       id: `msg_${Date.now()}`,
@@ -513,40 +533,119 @@ export const AgentChatScreen = () => {
       createdAt: Date.now(),
       isIncognito,
     };
-
     setMessages((prev) => [...prev, userMsg]);
     setInputText("");
     setShowMentionsPopup(false);
     setShowSlashPopup(false);
+
+    if (isIncognito) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_agent_${Date.now()}`,
+          role: "assistant",
+          content:
+            "Incognito mode is not connected to the agent backend yet — turn it off to run the agent.",
+          createdAt: Date.now(),
+          isIncognito,
+        },
+      ]);
+      return;
+    }
+
+    if (isFirstPrompt) setThreadTitle(userPromptText.slice(0, 48));
     setIsExecuting(true);
 
-    // MOCK RESPONSE SIMULATION (Replace with SSE Stream event listeners from backend)
-    setTimeout(() => {
-      const assistantMsg = {
-        id: `msg_agent_${Date.now()}`,
-        role: "assistant",
-        content: isIncognito
-          ? "Incognito response: This conversation is not saved to history or used for training."
-          : "I'll look into the redirect issue. Let me start by checking the recent commits to the auth module and then trace the redirect logic.",
-        createdAt: Date.now(),
-        isIncognito,
-        hasCodeEdit: !isIncognito,
-        checkpointHash: "e5509a3",
-        steps: isIncognito ? [] : [
-          { type: "command", cmd: "git log --oneline -8 src/auth/", status: "completed" },
-          { type: "thought", text: "Commit e5509a3 extracted redirect logic to utils — that's likely where the return URL handling was dropped. Let me check that diff." },
-          { type: "command", cmd: "git diff e5509a3~1..e5509a3 -- src/auth/", status: "completed" },
-          { type: "text", text: "Found it. When the redirect logic was extracted to getPostLoginRedirect(), the returnUrl parameter from the query string and session was dropped. The function always returns /dashboard. Let me fix the utility and its call site." },
-          { type: "file_edit", editsCount: 2, ext: "TS", file: "util.ts", additions: 48, deletions: 12 },
-          { type: "text", text: "Now let me run the existing auth tests plus add a targeted test for this redirect case." },
-          { type: "tool_run", tool: "test_runner · auth flow suite", status: "failed", errorCount: 2 }
-        ]
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+    try {
+      const projectId = await ensureProjectId();
+      runStartedAtRef.current = new Date().toISOString();
+      const res = await agentService.startAgentRun(projectId, userPromptText, {
+        title: userPromptText.slice(0, 48),
+        sessionId: activeSessionId ?? undefined,
+      });
+      setActiveSessionId(res.session_id);
+    } catch (e) {
       setIsExecuting(false);
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 1400);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_err_${Date.now()}`,
+          role: "assistant",
+          content: `⚠️ Failed to start the agent: ${e instanceof Error ? e.message : String(e)}`,
+          createdAt: Date.now(),
+        },
+      ]);
+    }
   };
+
+  /**
+   * Poll agent_tasks while a job is executing. Each tool call renders as a
+   * live "tool_run" step; the terminal "agent-run" row carries the final text
+   * (or the error) and ends the run. Polling works in both local-guest mode
+   * (no RLS-visible rows for Realtime) and production.
+   */
+  useEffect(() => {
+    if (!activeSessionId || !isExecuting) return;
+    let cancelled = false;
+
+    const tick = async () => {
+      let tasks: AgentTaskData[];
+      try {
+        tasks = await agentService.getSessionTasks(activeSessionId);
+      } catch {
+        return; // transient fetch error — keep polling
+      }
+      if (cancelled) return;
+
+      const since = runStartedAtRef.current;
+      const fresh = tasks.filter((t) => !since || t.created_at >= since);
+
+      const steps = fresh
+        .filter((t) => t.tool_name !== "agent-run")
+        .map((t) => ({
+          type: "tool_run",
+          tool: t.tool_name,
+          status: t.status === "success" ? "completed" : t.status,
+          errorCount: t.status === "failed" ? 1 : undefined,
+        }));
+
+      const execId = `exec_${since ?? activeSessionId}`;
+      setMessages((prev) => {
+        const withoutExec = prev.filter((m) => m.id !== execId);
+        if (steps.length === 0) return withoutExec;
+        return [
+          ...withoutExec,
+          { id: execId, role: "assistant", content: "", createdAt: Date.now(), steps },
+        ];
+      });
+
+      const runRow = [...fresh].reverse().find((t) => t.tool_name === "agent-run");
+      if (runRow && (runRow.status === "success" || runRow.status === "failed")) {
+        const finalText =
+          runRow.status === "success"
+            ? String(runRow.tool_output?.final_text ?? "Done.")
+            : `⚠️ Agent run failed: ${String(runRow.tool_output?.error ?? "unknown error")}`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg_agent_${Date.now()}`,
+            role: "assistant",
+            content: finalText,
+            createdAt: Date.now(),
+          },
+        ]);
+        setIsExecuting(false);
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }
+    };
+
+    void tick();
+    const interval = setInterval(tick, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeSessionId, isExecuting]);
 
   /**
    * Toggle Incognito State (Clears active thread memory for privacy)

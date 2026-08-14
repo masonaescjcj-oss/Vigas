@@ -8,23 +8,14 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { projectService, type Project } from "../services/projectService";
-import { MOCK_PROJECTS } from "../services/mockData";
 
 export const useProjects = () => {
   const queryClient = useQueryClient();
 
-  // Query: Get all projects (Falls back to MOCK_PROJECTS if empty for UI Preview)
+  // Query: Get all projects
   const projectsQuery = useQuery({
     queryKey: ["projects"],
-    queryFn: async () => {
-      try {
-        const live = await projectService.getProjects();
-        return live && live.length > 0 ? live : MOCK_PROJECTS;
-      } catch (e) {
-        console.warn("UI Preview Mode: Using MOCK_PROJECTS");
-        return MOCK_PROJECTS;
-      }
-    },
+    queryFn: () => projectService.getProjects(),
   });
 
   // Mutation: Create a project
@@ -54,7 +45,7 @@ export const useProjects = () => {
   });
 
   return {
-    projects: projectsQuery.data || MOCK_PROJECTS,
+    projects: (projectsQuery.data ?? []) as Project[],
     isLoading: projectsQuery.isLoading,
     error: projectsQuery.error,
     refetch: projectsQuery.refetch,
