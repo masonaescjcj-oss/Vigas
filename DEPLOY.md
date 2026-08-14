@@ -84,6 +84,32 @@ select jobname, schedule, active from cron.job;
 
 داشبورد → **Authentication → Providers → Anonymous sign-ins** را روشن کن. بدون آن دکمهٔ «Continue as Guest» خطای صادقانه می‌دهد (قبلاً یک سشن جعلی می‌ساخت که هیچ درخواستی به بک‌اند با آن کار نمی‌کرد).
 
+## ۴.۸. ساخت اپ موبایل (EAS)
+
+`app.json` و `eas.json` و آیکون/اسپلش آماده‌اند (`assets/` — هنر جای‌گزین‌شدنی است). یک‌بار:
+
+```bash
+npx eas-cli@latest login
+```
+
+```bash
+npx eas-cli@latest init
+```
+
+کلید عمومی Supabase را به‌عنوان EAS secret بده (بدون آن، اپِ ساخته‌شده احراز هویت نمی‌کند):
+
+```bash
+npx eas-cli@latest secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <anon-key>
+```
+
+خروجی نصبی اندروید برای تست:
+
+```bash
+npx eas-cli@latest build -p android --profile preview
+```
+
+نسخهٔ iOS روی ابر ساخته می‌شود (مک لازم نیست) و با `eas submit` به TestFlight می‌رود.
+
 ## ۵. سوییچ فرانت‌اند به production
 
 در build نهایی، `EXPO_PUBLIC_API_URL` را حذف کن (پیش‌فرض کد، آدرس فانکشن‌های ابری است) — یا صریح بگذار:
