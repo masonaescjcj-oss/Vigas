@@ -12,24 +12,6 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { type AuthStackParamList } from "../../navigation/types";
-
-type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Onboarding">;
-
-interface Slide {
-  title: string;
-  subtitle: string;
-  desc: string;
-  badge: string;
-  badgeColor: string;
-  heroEmblems: string[];
-}
-
-import React, { useState } from "react";
-import { View, SafeAreaView, TouchableOpacity } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Text } from "../../components/Typography";
-import { type AuthStackParamList } from "../../navigation/types";
 import { useThemeStore } from "../../theme/store";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Onboarding">;

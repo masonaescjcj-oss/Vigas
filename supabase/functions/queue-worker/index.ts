@@ -104,4 +104,6 @@ export async function handler(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(withSentryHandler("queue-worker", handler));
+if (import.meta.main) {
+  Deno.serve(withSentryHandler("queue-worker", handler));
+}
