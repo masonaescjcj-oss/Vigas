@@ -1,35 +1,21 @@
 {
-  "passed": 4,
-  "total": 4,
-  "totalTokens": 32900,
+  "passed": 2,
+  "total": 2,
+  "totalTokens": 19257,
   "results": [
     {
-      "id": "edit-heading",
+      "id": "add-css-and-link",
       "pass": true,
-      "ms": 19214,
-      "tokens": 8210,
-      "steps": 3
+      "ms": 35001,
+      "tokens": 13986,
+      "steps": 5
     },
     {
-      "id": "extend-data-array",
+      "id": "count-files",
       "pass": true,
-      "ms": 23226,
-      "tokens": 8303,
-      "steps": 3
-    },
-    {
-      "id": "emoji-precision-edit",
-      "pass": true,
-      "ms": 23015,
-      "tokens": 8236,
-      "steps": 3
-    },
-    {
-      "id": "targeted-css-change",
-      "pass": true,
-      "ms": 28987,
-      "tokens": 8151,
-      "steps": 3
+      "ms": 18984,
+      "tokens": 5271,
+      "steps": 2
     }
   ]
 }

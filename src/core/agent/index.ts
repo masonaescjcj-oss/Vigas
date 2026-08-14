@@ -99,6 +99,8 @@ export interface AgentRuntimeOptions {
   notifier?: Notifier;
   networkAllowlist?: string[];
   rules?: PermissionRule[];
+  /** False when the workspace is virtual (Storage-backed) — see PolicyEngineConfig. */
+  followSymlinks?: boolean;
   extraTools?: ToolDefinition[];
   extraHooks?: HookSet;
   confirm?: ConfirmFn;
@@ -209,6 +211,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     sandboxRoot: options.sandboxRoot,
     rules: options.rules ?? DEFAULT_RULES,
     networkAllowlist: options.networkAllowlist ?? [],
+    followSymlinks: options.followSymlinks,
   });
 
   const clock = () => now();

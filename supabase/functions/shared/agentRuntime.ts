@@ -97,17 +97,24 @@ export class EdgeSessionStore implements SessionPersistence {
 export class SupabaseAuditSink {
   private readonly ids = new Map<string, string>();
   constructor(private readonly client: SupabaseClient) {}
-  async record(entry: { sessionId: string; toolName: string; phase: "start" | "end"; callIndex: number; decision?: string; ok?: boolean; error?: string; durationMs?: number; at: number }): Promise<void> {
+  async record(entry: { sessionId: string; toolName: string; phase: "start" | "end"; callIndex: number; decision?: string; ok?: boolean; error?: string; durationMs?: number; at: number; target?: string; metrics?: Record<string, number> }): Promise<void> {
     const key = `${entry.sessionId}:${entry.callIndex}`;
     if (entry.phase === "start") {
-      const { data, error } = await this.client.from("agent_tasks").insert({ session_id: entry.sessionId, tool_name: entry.toolName, tool_input: { call_index: entry.callIndex }, status: "running" }).select("id").single();
+      const { data, error } = await this.client.from("agent_tasks").insert({ session_id: entry.sessionId, tool_name: entry.toolName, tool_input: { call_index: entry.callIndex, target: entry.target ?? null }, status: "running" }).select("id").single();
       if (error || !data) throw error ?? new Error("agent_tasks insert returned no row");
       this.ids.set(key, String(data.id));
       return;
     }
     const id = this.ids.get(key);
     if (!id) return;
-    const { error } = await this.client.from("agent_tasks").update({ status: entry.ok ? "success" : "failed", duration_ms: entry.durationMs ?? null, tool_output: entry.error ? { error: entry.error } : { decision: entry.decision ?? "allow" } }).eq("id", id);
+    const { error } = await this.client.from("agent_tasks").update({
+      status: entry.ok ? "success" : "failed",
+      duration_ms: entry.durationMs ?? null,
+      tool_input: { call_index: entry.callIndex, target: entry.target ?? null },
+      tool_output: entry.error
+        ? { error: entry.error, decision: entry.decision ?? "allow" }
+        : { decision: entry.decision ?? "allow", metrics: entry.metrics ?? null },
+    }).eq("id", id);
     if (error) throw error;
   }
 }
@@ -315,6 +322,10 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
       ? new OpenAIChatModel()
       : new AnthropicChatModel(),
     profile: options.profile ?? "standard",
+    // The workspace lives in Storage, not on this host's filesystem, so
+    // resolving sandbox paths against the real FS would falsely deny valid
+    // targets (e.g. list_dir "."). Textual containment still applies.
+    followSymlinks: false,
     autoApproveAsk: true,
     maxSteps: Number(Deno.env.get("AGENT_MAX_STEPS") ?? 12),
     compaction: {

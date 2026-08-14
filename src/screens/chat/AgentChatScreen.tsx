@@ -29,6 +29,8 @@ import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData } from "../../services/agentService";
 import { getProjectFiles } from "../../services/fileService";
 import { buildPreviewHtml } from "../../services/previewBuilder";
+import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
+import { AgentMessageText } from "../../components/AgentMessageText";
 
 /** On web, render the preview document in a sandboxed iframe. Native gets the
  * WebView-based preview with the store build (Phase 4). */
@@ -661,8 +663,11 @@ export const AgentChatScreen = () => {
         .map((t) => ({
           type: "tool_run",
           tool: t.tool_name,
-          status: t.status === "success" ? "completed" : t.status,
-          errorCount: t.status === "failed" ? 1 : undefined,
+          target: t.tool_input?.target ?? undefined,
+          status: t.status === "success" ? "completed" : t.status === "failed" ? "failed" : "running",
+          metrics: t.tool_output?.metrics ?? undefined,
+          durationMs: t.duration_ms ?? undefined,
+          error: t.tool_output?.error ?? undefined,
         }));
 
       const execId = `exec_${since ?? activeSessionId}`;
@@ -1143,16 +1148,28 @@ export const AgentChatScreen = () => {
               }
 
               /* Assistant Response Component Stream */
+              const toolRunSteps: ToolRunStep[] = (msg.steps ?? []).filter(
+                (s: any) => s?.type === "tool_run",
+              );
+              const otherSteps = (msg.steps ?? []).filter((s: any) => s?.type !== "tool_run");
+
               return (
                 <View key={msg.id} className="mb-6">
-                  {msg.content && (
-                    <Text style={{ color: textPrimary }} className="text-sm leading-6 text-left mb-3 font-sans">
-                      {msg.content}
-                    </Text>
+                  {/* Terminal-style execution log: one panel per agent turn */}
+                  {toolRunSteps.length > 0 && (
+                    <ToolRunPanel isLight={isLight}>
+                      {toolRunSteps.map((step, sIdx) => (
+                        <ToolRunRow key={sIdx} step={step} isLight={isLight} />
+                      ))}
+                    </ToolRunPanel>
                   )}
 
-                  {/* Render Execution Steps (Commands, Diffs, Tool Runs) */}
-                  {msg.steps?.map((step: any, sIdx: number) => {
+                  {msg.content ? (
+                    <AgentMessageText content={msg.content} isLight={isLight} textColor={textPrimary} />
+                  ) : null}
+
+                  {/* Legacy step renderers (commands, thoughts, diff cards) */}
+                  {otherSteps.map((step: any, sIdx: number) => {
                     if (step.type === "command") {
                       return (
                         <View key={sIdx} className="flex-row items-center justify-between py-2 my-1">
@@ -1220,40 +1237,6 @@ export const AgentChatScreen = () => {
                             <VectorIcon name="arrow-right" size={12} color={isLight ? "#6D42C7" : "#A855F7"} />
                           </View>
                         </TouchableOpacity>
-                      );
-                    }
-
-                    if (step.type === "tool_run") {
-                      const isFailed = step.status === "failed";
-                      const isDone = step.status === "completed";
-                      const badgeBg = isFailed
-                        ? (isLight ? "#FEE2E2" : "#7F1D1D")
-                        : isDone
-                          ? (isLight ? "#DCFCE7" : "#14532D")
-                          : (isLight ? "#FEF3C7" : "#78350F");
-                      const badgeFg = isFailed
-                        ? (isLight ? "#DC2626" : "#FCA5A5")
-                        : isDone
-                          ? (isLight ? "#16A34A" : "#86EFAC")
-                          : (isLight ? "#D97706" : "#FCD34D");
-                      const badgeLabel = isFailed
-                        ? `${step.errorCount ?? 1} failed >`
-                        : isDone
-                          ? "done"
-                          : "running…";
-                      return (
-                        <View key={sIdx} className="flex-row items-center justify-between py-2 my-1">
-                          <View className="flex-row items-center">
-                            <VectorIcon name="tool" size={13} color={isLight ? "#64748B" : "#A1A1AA"} style={{ marginRight: 6 }} />
-                            <Text style={{ color: textSecondary }} className="text-xs font-mono">{step.tool}</Text>
-                          </View>
-
-                          <View style={{ backgroundColor: badgeBg }} className="px-2.5 py-1 rounded-md flex-row items-center">
-                            <Text style={{ color: badgeFg }} className="text-[11px] font-mono font-medium mr-1">
-                              {badgeLabel}
-                            </Text>
-                          </View>
-                        </View>
                       );
                     }
 

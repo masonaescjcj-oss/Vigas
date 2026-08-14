@@ -81,7 +81,7 @@ export const sandboxPathEscapeRule: PermissionRule = {
   description: "Deny any file operation whose target resolves outside the sandbox root.",
   evaluate(ev) {
     for (const p of ev.targetPaths) {
-      if (!isPathAllowed(p, { sandboxRoot: ev.sandboxRoot })) {
+      if (!isPathAllowed(p, { sandboxRoot: ev.sandboxRoot, followSymlinks: ev.followSymlinks })) {
         return { decision: "deny", reason: `Target path "${p}" is outside the sandbox root.` };
       }
     }

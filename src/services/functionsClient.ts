@@ -64,9 +64,16 @@ export async function invokeFunction<T>(
   }
 
   if (!res.ok) {
+    // Edge functions return two shapes: flat {code,message} and nested
+    // {error:{code,message}}. Pick the string out of either — otherwise the UI
+    // renders "[object Object]".
+    const nested = data?.error && typeof data.error === "object" ? data.error : undefined;
     const message =
-      data?.message ?? data?.error ?? (raw || res.statusText || `HTTP ${res.status}`);
-    throw new FunctionsError(res.status, data?.code, String(message));
+      data?.message ??
+      nested?.message ??
+      (typeof data?.error === "string" ? data.error : undefined) ??
+      (raw || res.statusText || `HTTP ${res.status}`);
+    throw new FunctionsError(res.status, data?.code ?? nested?.code, String(message));
   }
   return data as T;
 }

@@ -49,10 +49,28 @@ npx supabase@latest functions deploy queue-worker --no-verify-jwt
 
 ## ۴. Vault برای cron ورکر (SQL Editor داشبورد)
 
+> ☠️ **تلهٔ شمارهٔ یک (این‌جا واقعاً گیر کردیم):** فانکشن ورکر **اول** `QUEUE_WORKER_SECRET_V2` را می‌خواند و فقط اگر نبود `QUEUE_WORKER_SECRET`. اگر یک `_V2` قدیمی از جولای در Secrets ابری مانده باشد، مقدار جدیدی که در `QUEUE_WORKER_SECRET` گذاشتی **نادیده گرفته می‌شود** و cron با ۴۰۱ رد می‌شود (jobها ابدی pending می‌مانند).
+>
+> **این سه مقدار باید عیناً یکی باشند:** (۱) سکرت ابری فانکشن، (۲) سکرت Vault به نام `queue_worker_secret`، (۳) `.env` محلی. ساده‌ترین راه: `QUEUE_WORKER_SECRET_V2` را در ابر هم روی همان مقدار ست کن.
+
 ```sql
 select vault.create_secret('https://qnrsiukutehcqjhmpuze.supabase.co/functions/v1/queue-worker', 'queue_worker_url');
 select vault.create_secret('<همان QUEUE_WORKER_SECRET>', 'queue_worker_secret');
 ```
+
+اگر قبلاً ساخته شده و باید مقدارش را عوض کنی (`create_secret` روی نام تکراری خطا می‌دهد):
+
+```sql
+select vault.update_secret((select id from vault.secrets where name = 'queue_worker_secret'), '<مقدار-جدید>');
+```
+
+## ۴.۵. تست سلامت خودکار (بعد از هر deploy اجرا کن)
+
+```bash
+npx deno run --allow-all --env-file=.env scripts/cloud-check.ts
+```
+
+هر چهار بخش را چک می‌کند: deploy بودن ۱۴ فانکشن، کار کردن cron→pg_net→worker، پذیرش سکرت توسط ورکر، و نبودِ job گیرکرده.
 
 بررسی فعال بودن زمان‌بندی‌ها:
 

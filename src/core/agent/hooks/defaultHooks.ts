@@ -30,6 +30,12 @@ export interface AuditEntry {
   error?: string;
   durationMs?: number;
   at: number; // epoch ms, supplied by caller (keeps this module deterministic)
+  /** Short human-readable target of the call (file path, command, pattern) so
+   * clients can render "edit index.html" instead of a bare tool name. Never
+   * contains file contents. */
+  target?: string;
+  /** Small numeric result summary for the client UI (lines, +/-, matches). */
+  metrics?: Record<string, number>;
 }
 
 export interface AuditSink {
@@ -55,6 +61,99 @@ export type Clock = () => number;
 
 /* ---- 1. Audit log hook (pre + post) -------------------------------------- */
 
+const TARGET_MAX = 120;
+
+function clip(value: string): string {
+  const single = value.replace(/\s+/g, " ").trim();
+  return single.length > TARGET_MAX ? `${single.slice(0, TARGET_MAX - 1)}…` : single;
+}
+
+function countLines(text: string): number {
+  if (!text) return 0;
+  return text.split("\n").filter((line, index, all) => line !== "" || index < all.length - 1).length;
+}
+
+/**
+ * A short label for what a tool call acted on — the file path, the command, the
+ * search pattern. Deliberately never includes file contents so audit rows stay
+ * small and free of user data.
+ */
+export function describeToolTarget(toolName: string, input: Record<string, unknown>): string | undefined {
+  const str = (key: string): string | undefined =>
+    typeof input[key] === "string" && input[key] ? String(input[key]) : undefined;
+
+  switch (toolName) {
+    case "read":
+    case "write":
+    case "edit":
+      return str("file_path") ?? str("path");
+    case "apply_patch": {
+      const patch = str("patch") ?? "";
+      const names = [...patch.matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm)].map((m) => m[1].trim());
+      if (names.length === 1) return clip(names[0]);
+      if (names.length > 1) return clip(`${names[0]} +${names.length - 1} more`);
+      return undefined;
+    }
+    case "bash":
+      return str("command") ? clip(str("command")!) : undefined;
+    case "glob":
+      return str("pattern");
+    case "grep_files": {
+      const pattern = str("pattern");
+      const glob = str("glob");
+      return pattern ? clip(glob ? `${pattern} in ${glob}` : pattern) : undefined;
+    }
+    case "list_dir":
+      return str("path") ?? ".";
+    case "task":
+      return str("description") ? clip(str("description")!) : undefined;
+    default:
+      return str("file_path") ?? str("path") ?? undefined;
+  }
+}
+
+/** Numeric summary of a finished call: lines read/written, +/- on edits. */
+export function describeToolMetrics(
+  toolName: string,
+  input: Record<string, unknown>,
+  resultContent: string,
+): Record<string, number> | undefined {
+  const str = (key: string): string => (typeof input[key] === "string" ? String(input[key]) : "");
+
+  switch (toolName) {
+    case "read": {
+      const lines = countLines(resultContent);
+      return lines ? { lines } : undefined;
+    }
+    case "write": {
+      const lines = countLines(str("contents"));
+      return lines ? { plus: lines } : undefined;
+    }
+    case "edit": {
+      const plus = countLines(str("new_string"));
+      const minus = countLines(str("old_string"));
+      return plus || minus ? { plus, minus } : undefined;
+    }
+    case "apply_patch": {
+      const patch = str("patch");
+      const plus = (patch.match(/^\+(?!\+\+)/gm) ?? []).length;
+      const minus = (patch.match(/^-(?!--)/gm) ?? []).length;
+      return plus || minus ? { plus, minus } : undefined;
+    }
+    case "grep_files": {
+      const matches = countLines(resultContent);
+      return matches ? { matches } : undefined;
+    }
+    case "glob":
+    case "list_dir": {
+      const entries = countLines(resultContent);
+      return entries ? { entries } : undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
 export function createAuditHooks(sink: AuditSink, clock: Clock): {
   pre: PreToolUseHook;
   post: PostToolUseHook;
@@ -66,19 +165,23 @@ export function createAuditHooks(sink: AuditSink, clock: Clock): {
       phase: "start",
       callIndex: ctx.callIndex,
       at: clock(),
+      target: describeToolTarget(ctx.toolName, ctx.input),
     });
   };
   const post: PostToolUseHook = async (ctx: PostToolUseContext) => {
+    const failed = ctx.result.isError || !!ctx.error;
     await sink.record({
       sessionId: ctx.sessionId,
       toolName: ctx.toolName,
       phase: "end",
       callIndex: ctx.callIndex,
       decision: ctx.decision,
-      ok: !ctx.result.isError && !ctx.error,
+      ok: !failed,
       error: ctx.error ?? (ctx.result.isError ? ctx.result.content : undefined),
       durationMs: ctx.durationMs,
       at: clock(),
+      target: describeToolTarget(ctx.toolName, ctx.input),
+      metrics: failed ? undefined : describeToolMetrics(ctx.toolName, ctx.input, ctx.result.content ?? ""),
     });
   };
   return { pre, post };

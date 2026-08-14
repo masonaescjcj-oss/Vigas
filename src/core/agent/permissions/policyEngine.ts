@@ -32,6 +32,8 @@ export interface ToolCallEvaluation {
   sandboxRoot: string;
   /** Hostnames the agent is allowed to reach from shell commands. */
   networkAllowlist: string[];
+  /** Whether containment checks may resolve symlinks on the host filesystem. */
+  followSymlinks: boolean;
 }
 
 export interface PermissionRule {
@@ -94,6 +96,14 @@ export interface PolicyEngineConfig {
   rules: PermissionRule[];
   networkAllowlist?: string[];
   /**
+   * Resolve symlinks on the host filesystem when checking sandbox containment.
+   * Defaults to true (correct for a real on-disk workspace). Set false for a
+   * virtual workspace — e.g. Storage-backed — where sandbox paths do not exist
+   * on the host and resolving them against the real filesystem produces false
+   * denials. The textual containment check still blocks `../` escapes.
+   */
+  followSymlinks?: boolean;
+  /**
    * Default decision when no rule matches, keyed by risk. Sensible defaults are
    * provided; callers may override (e.g. make "exec" allow in trusted CI).
    */
@@ -135,6 +145,7 @@ export class PolicyEngine {
       profile: this.config.profile,
       sandboxRoot: this.config.sandboxRoot,
       networkAllowlist: this.config.networkAllowlist ?? [],
+      followSymlinks: this.config.followSymlinks !== false,
     };
 
     // Strictest-wins among *matching* rules. The per-risk default applies only
