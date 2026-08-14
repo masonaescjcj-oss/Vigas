@@ -11,6 +11,10 @@ export const ProjectCreateSchema = z.object({
   template: z.string().trim().min(1).max(40).optional(),
 }).strict();
 
+export const ProjectFilesSchema = z.object({
+  projectId: uuid,
+}).strict();
+
 export const ProjectCursorSchema = z.object({
   createdAt: z.string().datetime({ offset: true }),
   id: uuid,

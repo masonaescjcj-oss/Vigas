@@ -70,12 +70,34 @@ export async function uploadBlob(
   const { error } = await client.storage.from(bucket).upload(cleanSegment(path), data, {
     upsert: true,
     contentType,
-    cacheControl: "3600",
+    // Project files change constantly (agent edits, previews, evals). Any CDN
+    // caching causes stale read-after-write: the agent or the preview can see
+    // an old version right after an edit. Never cache.
+    cacheControl: "0",
   });
   if (error) throw new Error(`Storage upload failed: ${error.message}`);
 }
 
 export async function downloadBlob(client: SupabaseClient, bucket: string, path: string): Promise<Blob> {
+  // Supabase's Smart CDN invalidates updated objects asynchronously (up to
+  // ~60s), so a plain download right after an upsert can return the previous
+  // version — the agent would read stale file contents right after editing.
+  // A unique query param makes every read a distinct cache key, forcing the
+  // origin. Falls back to the SDK path if the direct fetch is unavailable.
+  const base = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+  if (base && key) {
+    const objectPath = cleanSegment(path).split("/").map(encodeURIComponent).join("/");
+    const res = await fetch(
+      `${base}/storage/v1/object/authenticated/${bucket}/${objectPath}?cb=${crypto.randomUUID()}`,
+      { headers: { Authorization: `Bearer ${key}`, apikey: key } },
+    );
+    if (res.ok) return await res.blob();
+    if (res.status === 404 || res.status === 400) {
+      throw new Error(`Storage download failed: file not found (${cleanSegment(path)})`);
+    }
+    // other statuses: fall through to the SDK client
+  }
   const { data, error } = await client.storage.from(bucket).download(cleanSegment(path));
   if (error || !data) throw new Error(`Storage download failed: ${error?.message ?? "file not found"}`);
   return data;
