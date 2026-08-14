@@ -26,16 +26,18 @@
 
 > پیش‌نیاز همهٔ فازها. بدون این‌ها جلو نرویم.
 
-- [ ] **کلید OpenAI لو رفته را revoke کن** (فقط خودت می‌توانی: platform.openai.com → API Keys). این کلید در `agentRuntime.ts:175`، `src/utils/aiConfig.ts` و `.env` هاردکد شده.
-- [ ] `git init` + `.gitignore` (شامل `.env`، `node_modules`، `supabase/.temp`) + کامیت اولیه — شبکهٔ ایمنی قبل از هر تغییر.
-- [ ] **رفع ۴ باگ شناخته‌شده:**
-  1. `queue-worker/index.ts` پروفایل (`readonly`) را به رانتایم پاس نمی‌دهد → کاربر readonly دسترسی کامل می‌گیرد.
-  2. `projectService.ts` حذف پروژه را با `POST` می‌زند ولی `projects-delete` فقط `DELETE` می‌پذیرد → حذف واقعی انجام نمی‌شود.
-  3. کلید هاردکد را از `agentRuntime.ts` و `aiConfig.ts` حذف کن؛ فقط env.
-  4. Compaction در `createEdgeAgentRuntime` فعال نیست → مکالمه‌های طولانی منفجر می‌شوند.
-- [ ] **حذف کد مرده:** `src/agent/` (کپی تکراری)، `src/server.ts` + `src/controllers/aiController.ts` + `src/utils/aiConfig.ts` (سرور تریدینگ بی‌ربط)، `agentService.supabase.ts` (بعد از ادغام منطقش در فاز ۱)، `shared/agentSse.ts`.
-- [ ] `LOCAL_DEV_BYPASS` هرگز در محیط deploy‌شده ست نشود.
-- [ ] مستندات متناقض را علامت‌گذاری کن: `BACKEND_INTEGRATION_HANDBOOK.md` معماری خیالی توصیف می‌کند — یا حذف یا بازنویسی.
+- [ ] **کلید OpenAI لو رفته را revoke کن** (فقط خودت می‌توانی: platform.openai.com → API Keys). ⚠️ **سکرت ورکر (`QUEUE_WORKER_SECRET_V2`) هم باید عوض شود** — مقدارش در HANDOVER_GUIDE.md لو رفته بود.
+- [x] `git init` + `.gitignore` (شامل `.env`، `node_modules`، `supabase/.temp`) + کامیت اولیه. ✅ کامیت `73a1192`
+- [x] **رفع ۴ باگ شناخته‌شده:** ✅
+  1. ~~queue-worker پروفایل را پاس نمی‌دهد~~ → اصلاح شد (`profile` از payload خوانده می‌شود).
+  2. ~~projectService حذف را با POST می‌زند~~ → به `DELETE` اصلاح شد.
+  3. ~~کلید هاردکد~~ → حذف شد؛ بدون env خطای SERVER_MISCONFIGURED می‌دهد (fail closed).
+  4. ~~Compaction غیرفعال~~ → فعال شد (آستانهٔ ۴۸k توکن، ۸ پیام اخیر verbatim؛ قابل تنظیم با env).
+  - (بونوس) مدل پیش‌فرض Anthropic که بازنشسته شده بود → `claude-sonnet-5`.
+- [x] **حذف کد مرده:** ✅ `src/agent/`، `src/server.ts`، `src/controllers/`، `src/utils/aiConfig.ts`، `shared/agentSse.ts` حذف شدند + وابستگی‌های بلااستفاده (express, cors, openai, dotenv) از package.json. (`agentService.supabase.ts` می‌ماند تا فاز ۱.)
+- [ ] `LOCAL_DEV_BYPASS` هرگز در محیط deploy‌شده ست نشود (چک در فاز ۳ هنگام deploy).
+- [x] مستندات متناقض علامت‌گذاری شد: بنر «OUTDATED» روی `BACKEND_INTEGRATION_HANDBOOK.md` + redact سکرت از `HANDOVER_GUIDE.md` + اصلاح ارجاع‌های `NOTICE.md`.
+- [x] **وضعیت تست‌ها:** typecheck (محدود به `src/core` + `src/infra`) ✅ سبز، ۴۹ تست vitest ✅، ۶ تست Deno ✅، deno check فایل‌های ویرایش‌شده ✅. (typecheck فرانت‌اند به پکیج Expo در فاز ۱ منتقل می‌شود — وابستگی‌هایش در این پکیج تعریف نشده.)
 
 **خروجی فاز:** ریپوی گیت تمیز، بدون secret در کد، بدون باگ شناخته‌شده.
 
