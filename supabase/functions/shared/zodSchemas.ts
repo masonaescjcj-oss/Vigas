@@ -11,9 +11,38 @@ export const ProjectCreateSchema = z.object({
   template: z.string().trim().min(1).max(40).optional(),
 }).strict();
 
+/**
+ * A path inside the project. Anything that could escape the project's prefix —
+ * a leading slash, a "..", a backslash, a NUL — is rejected here rather than
+ * normalised, so there is one obvious rule instead of a sanitiser to audit.
+ */
+const projectRelativePath = z.string().trim().min(1).max(400)
+  .refine((value) => !value.startsWith("/") && !value.includes("\\") && !value.includes("\0"), {
+    message: "Path must be relative and use forward slashes.",
+  })
+  .refine((value) => !value.split("/").some((segment) => segment === ".." || segment === "."), {
+    message: "Path must not contain . or .. segments.",
+  });
+
 export const ProjectFilesSchema = z.object({
   projectId: uuid,
-}).strict();
+  /** Omitted means "list": return every text file in the project. */
+  action: z.enum(["write", "delete", "rename"]).optional(),
+  path: projectRelativePath.optional(),
+  /** write only. */
+  content: z.string().max(512_000).optional(),
+  /** rename only. */
+  toPath: projectRelativePath.optional(),
+}).strict().refine(
+  (input) => input.action === undefined || input.path !== undefined,
+  { message: "path is required for write, delete and rename." },
+).refine(
+  (input) => input.action !== "write" || input.content !== undefined,
+  { message: "content is required for write." },
+).refine(
+  (input) => input.action !== "rename" || input.toPath !== undefined,
+  { message: "toPath is required for rename." },
+);
 
 export const ProjectCursorSchema = z.object({
   createdAt: z.string().datetime({ offset: true }),

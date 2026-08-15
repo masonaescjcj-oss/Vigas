@@ -11,8 +11,10 @@ import { View, ScrollView, TouchableOpacity, ActivityIndicator, SafeAreaView } f
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { FileTreeItem } from "../../components/FileTreeItem";
+import { TextPromptModal } from "../../components/TextPromptModal";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useFileTree } from "../../hooks/useFileTree";
+import { useFileActions } from "../../hooks/useFileActions";
 import { type ProjectStackParamList, type ProjectNavigationProp } from "../../navigation/types";
 
 type RouteProps = RouteProp<ProjectStackParamList, "FileTree">;
@@ -24,6 +26,7 @@ export const FileTreeScreen = () => {
   const { projectId } = route.params;
 
   const { tree, isLoading, refresh, toggleFolder, expandedFolders } = useFileTree(projectId);
+  const fileActions = useFileActions(projectId, refresh);
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
@@ -51,7 +54,7 @@ export const FileTreeScreen = () => {
         </View>
       ) : tree.length === 0 ? (
         <View className="flex-1 items-center justify-center p-6">
-          <Text variant="caption">No files found in Sandbox.</Text>
+          <Text variant="caption">This project has no files yet.</Text>
         </View>
       ) : (
         <ScrollView className="flex-1">
@@ -60,12 +63,24 @@ export const FileTreeScreen = () => {
               key={node.path}
               node={node}
               projectId={projectId}
-              isExpanded={expandedFolders.has(node.path)}
+              expandedFolders={expandedFolders}
               onToggle={toggleFolder}
+              onRename={fileActions.requestRename}
+              onDelete={fileActions.requestDelete}
             />
           ))}
         </ScrollView>
       )}
+
+      <TextPromptModal
+        visible={fileActions.renaming !== null}
+        title="Rename file"
+        description="The file keeps its folder — this is just the name."
+        initialValue={fileActions.renaming?.name ?? ""}
+        confirmLabel="Rename"
+        onCancel={fileActions.cancelRename}
+        onConfirm={fileActions.confirmRename}
+      />
 
     </SafeAreaView>
   );

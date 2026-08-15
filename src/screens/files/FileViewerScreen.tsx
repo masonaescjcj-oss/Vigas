@@ -1,9 +1,11 @@
 /**
  * frontend/src/screens/files/FileViewerScreen.tsx
  * ---------------------------------------------------------------------------
- * Screen to view and edit file contents:
- *   - Fetches content from Supabase Storage.
- *   - Allows manual editing and syncing back to Sandbox.
+ * Screen to view and edit one file:
+ *   - Reads and writes through the project-files function. Storage is private
+ *     and its RLS grants the client nothing, so the old direct download came
+ *     back denied and the save was silently rejected — this screen could not
+ *     open a file, let alone save one.
  *   - Diff Viewer showing added (green) and removed (red) lines when changes occur.
  * ---------------------------------------------------------------------------
  */
@@ -15,7 +17,7 @@ import { useRoute, useNavigation, type RouteProp } from "@react-navigation/nativ
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { useTheme } from "../../theme/ThemeProvider";
-import { supabase } from "../../services/supabase";
+import { getProjectFiles, writeProjectFile } from "../../services/fileService";
 import { type ProjectStackParamList } from "../../navigation/types";
 
 type RouteProps = RouteProp<ProjectStackParamList, "FileViewer">;
@@ -36,40 +38,36 @@ export const FileViewerScreen = () => {
   const fileTitle = filePath.split("/").pop() || "File";
 
   useEffect(() => {
+    let cancelled = false;
     const fetchFileContent = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.storage
-          .from("project-files")
-          .download(filePath);
-
-        if (error) throw error;
-        
-        const text = await data.text();
+        const files = await getProjectFiles(projectId);
+        const text = files[filePath];
+        if (cancelled) return;
+        if (text === undefined) {
+          notify("File not available", `${filePath} is not a text file this editor can open.`);
+          return;
+        }
         setContent(text);
         setEditedContent(text);
       } catch (e: any) {
-        notify("Load Error", e.message || "Failed to read file.");
+        if (!cancelled) notify("Load Error", e.message || "Failed to read file.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     void fetchFileContent();
-  }, [filePath]);
+    return () => { cancelled = true; };
+  }, [projectId, filePath]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const blob = new Blob([editedContent], { type: "text/plain" } as unknown as BlobOptions);
-      const { error } = await supabase.storage
-        .from("project-files")
-        .upload(filePath, blob, { upsert: true });
-
-      if (error) throw error;
-      
+      await writeProjectFile(projectId, filePath, editedContent);
       setContent(editedContent);
       setIsEditing(false);
-      notify("Saved Successfully", "Changes sent to Sandbox.");
+      notify("Saved", "The file was updated in your project.");
     } catch (e: any) {
       notify("Save Error", e.message || "Failed to save file.");
     } finally {

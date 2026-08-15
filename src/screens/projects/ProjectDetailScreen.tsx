@@ -15,9 +15,11 @@ import { useRoute, useNavigation, type RouteProp } from "@react-navigation/nativ
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { FileTreeItem } from "../../components/FileTreeItem";
+import { TextPromptModal } from "../../components/TextPromptModal";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useProjects } from "../../hooks/useProjects";
 import { useFileTree } from "../../hooks/useFileTree";
+import { useFileActions } from "../../hooks/useFileActions";
 import {
   getProjectCheckpoints,
   relativeTime,
@@ -41,6 +43,7 @@ export const ProjectDetailScreen = () => {
 
   // Load sandbox files
   const { tree, isLoading: loadingFiles, refresh: refreshFiles, toggleFolder, expandedFolders } = useFileTree(projectId);
+  const fileActions = useFileActions(projectId, refreshFiles);
 
   // Checkpoints list
   const [checkpoints, setCheckpoints] = useState<CheckpointRow[]>([]);
@@ -191,8 +194,10 @@ export const ProjectDetailScreen = () => {
                     key={node.path}
                     node={node}
                     projectId={projectId}
-                    isExpanded={expandedFolders.has(node.path)}
+                    expandedFolders={expandedFolders}
                     onToggle={toggleFolder}
+                    onRename={fileActions.requestRename}
+                    onDelete={fileActions.requestDelete}
                   />
                 ))}
               </ScrollView>
@@ -246,6 +251,16 @@ export const ProjectDetailScreen = () => {
           </View>
         )}
       </View>
+
+      <TextPromptModal
+        visible={fileActions.renaming !== null}
+        title="Rename file"
+        description="The file keeps its folder — this is just the name."
+        initialValue={fileActions.renaming?.name ?? ""}
+        confirmLabel="Rename"
+        onCancel={fileActions.cancelRename}
+        onConfirm={fileActions.confirmRename}
+      />
 
     </SafeAreaView>
   );

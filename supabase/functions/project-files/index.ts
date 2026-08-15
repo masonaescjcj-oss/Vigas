@@ -4,7 +4,7 @@ import { AppError, assertMethod, errorResponse, parseJson } from "../shared/erro
 import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
-import { PROJECT_FILES_BUCKET, downloadBlob, listStorageFiles } from "../shared/storage.ts";
+import { PROJECT_FILES_BUCKET, downloadBlob, joinStoragePath, listStorageFiles, uploadBlob } from "../shared/storage.ts";
 
 /** Text sources the preview can render. JSX/TS belong here: without them a
  * React project the agent wrote is invisible to the preview. */
@@ -12,8 +12,14 @@ const TEXT_FILE = /\.(html?|css|jsx?|tsx?|mjs|cjs|json|txt|md|svg)$/i;
 const MAX_FILE_BYTES = 512_000;
 const MAX_TOTAL_BYTES = 3_000_000;
 
-/** Returns the text files of a project the caller owns — feeds the on-device
- * live preview. Binary and oversized files are skipped. */
+/**
+ * Reads and edits a project's text files.
+ *
+ * Without an `action` it returns every text file — the bundle the on-device
+ * preview renders. With one it writes, deletes or renames a single file, which
+ * is how the file viewer and file tree change anything: the client has no
+ * direct access to the Storage objects.
+ */
 export async function handler(req: Request): Promise<Response> {
   const requestId = crypto.randomUUID();
   const headers = corsHeaders(req);
@@ -36,6 +42,33 @@ export async function handler(req: Request): Promise<Response> {
     if (!project) throw new AppError(404, "PROJECT_NOT_FOUND", "Project was not found.");
 
     const prefix = String(project.sandbox_path ?? "").replace(/^\/+|\/+$/g, "");
+
+    // Storage RLS gives the client no access to these objects at all — reads
+    // come back empty and writes are refused — so editing a file has to go
+    // through here, where ownership has just been proven.
+    if (input.action) {
+      const target = joinStoragePath(prefix, input.path!);
+      if (input.action === "write") {
+        if (!TEXT_FILE.test(input.path!)) {
+          throw new AppError(400, "UNSUPPORTED_FILE_TYPE", "Only text project files can be edited here.");
+        }
+        await uploadBlob(service, PROJECT_FILES_BUCKET, target, input.content!, "text/plain");
+        return json({ ok: true, path: input.path }, 200, headers);
+      }
+      if (input.action === "delete") {
+        const { error: removeError } = await service.storage.from(PROJECT_FILES_BUCKET).remove([target]);
+        if (removeError) throw new AppError(500, "STORAGE_ERROR", removeError.message);
+        return json({ ok: true, path: input.path }, 200, headers);
+      }
+      // rename
+      const destination = joinStoragePath(prefix, input.toPath!);
+      const { error: moveError } = await service.storage
+        .from(PROJECT_FILES_BUCKET)
+        .move(target, destination);
+      if (moveError) throw new AppError(409, "RENAME_FAILED", moveError.message);
+      return json({ ok: true, path: input.toPath }, 200, headers);
+    }
+
     const paths = await listStorageFiles(service, PROJECT_FILES_BUCKET, prefix);
     const files: Record<string, string> = {};
     let total = 0;

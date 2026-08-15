@@ -1,8 +1,12 @@
 /**
  * frontend/src/components/FileTreeItem.tsx
  * ---------------------------------------------------------------------------
- * Renders a single node (file or directory) in the file explorer tree.
- * Folders can be expanded/collapsed. Clicking a file navigates to the FileViewer.
+ * One node of the file explorer. Folders expand, files open in the viewer, and
+ * a long press offers rename and delete.
+ *
+ * Expansion state is passed down as the whole set rather than a boolean:
+ * children used to be rendered with `isExpanded={false}` hardcoded, so a folder
+ * inside a folder could never be opened no matter what the hook recorded.
  * ---------------------------------------------------------------------------
  */
 
@@ -18,62 +22,72 @@ import { type ProjectNavigationProp } from "../navigation/types";
 interface FileTreeItemProps {
   node: FileNode;
   projectId: string;
-  isExpanded: boolean;
+  expandedFolders: Set<string>;
   onToggle: (path: string) => void;
+  /** Omitted when the tree is read-only. */
+  onRename?: (node: FileNode) => void;
+  onDelete?: (node: FileNode) => void;
   level?: number;
+}
+
+/** Monochrome lucide names — the icon map has no emoji. */
+function iconFor(node: FileNode, isExpanded: boolean): string {
+  if (node.isDir) return isExpanded ? "chevron-down" : "chevron-right";
+  switch (node.name.split(".").pop()?.toLowerCase()) {
+    case "ts":
+    case "tsx":
+    case "js":
+    case "jsx":
+    case "mjs":
+    case "cjs":
+      return "code";
+    case "json":
+      return "settings";
+    case "css":
+      return "type";
+    case "html":
+    case "htm":
+      return "globe";
+    case "svg":
+    case "png":
+    case "jpg":
+    case "jpeg":
+      return "image";
+    default:
+      return "file-text";
+  }
 }
 
 export const FileTreeItem: React.FC<FileTreeItemProps> = ({
   node,
   projectId,
-  isExpanded,
+  expandedFolders,
   onToggle,
+  onRename,
+  onDelete,
   level = 0,
 }) => {
   const { colors } = useTheme();
   const navigation = useNavigation<ProjectNavigationProp>();
 
   const isDir = node.isDir;
+  const isExpanded = expandedFolders.has(node.path);
 
   const handlePress = () => {
-    if (isDir) {
-      onToggle(node.path);
-    } else {
-      // Open file in FileViewer
-      navigation.navigate("FileViewer", { projectId, filePath: node.path });
-    }
+    if (isDir) onToggle(node.path);
+    else navigation.navigate("FileViewer", { projectId, filePath: node.path });
   };
 
   const handleLongPress = () => {
-    Alert.alert("File actions", `Manage "${node.name}"`, [
+    // Folders are not objects in Storage, only prefixes, so there is nothing to
+    // rename or delete for them.
+    if (isDir || (!onRename && !onDelete)) return;
+    const actions: Array<{ text: string; style?: "cancel" | "destructive"; onPress?: () => void }> = [
       { text: "Cancel", style: "cancel" },
-      { text: "Rename", onPress: () => Alert.alert("Rename", "Renaming files is not available yet.") },
-      { text: "Delete", style: "destructive", onPress: () => Alert.alert("Delete", "Deleting files is not available yet.") },
-    ]);
-  };
-
-  // Get file icon marker
-  const getIcon = () => {
-    if (isDir) {
-      return isExpanded ? "folder" : "folder";
-    }
-    const ext = node.name.split(".").pop()?.toLowerCase();
-    switch (ext) {
-      case "ts":
-      case "tsx":
-      case "js":
-      case "jsx":
-        return "⚛️";
-      case "json":
-        return "⚙️";
-      case "md":
-        return "file-text";
-      case "css":
-      case "html":
-        return "image";
-      default:
-        return "file-text";
-    }
+    ];
+    if (onRename) actions.push({ text: "Rename", onPress: () => onRename(node) });
+    if (onDelete) actions.push({ text: "Delete", style: "destructive", onPress: () => onDelete(node) });
+    Alert.alert(node.name, "What would you like to do with this file?", actions);
   };
 
   return (
@@ -83,15 +97,15 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
         onLongPress={handleLongPress}
         activeOpacity={0.7}
         className="flex-row items-center py-2.5 px-4 border-b border-borderHairline/10"
-        style={{ 
+        style={{
           paddingLeft: 16 + level * 16, // Indent nested folder levels
-          borderBottomColor: colors.borderHairline 
+          borderBottomColor: colors.borderHairline,
         }}
       >
-        <Text variant="body" className="mr-2.5 text-base">
-          <Icon name={getIcon()} size={15} color={node.isDir ? "#F59E0B" : colors.inkSecondary} />
-        </Text>
-        <Text variant="body" className="flex-1 text-right font-uiRegular text-sm">
+        <View className="mr-2.5">
+          <Icon name={iconFor(node, isExpanded)} size={15} color={isDir ? "#F59E0B" : colors.inkSecondary} />
+        </View>
+        <Text variant="body" className="flex-1 text-left font-uiRegular text-sm" numberOfLines={1}>
           {node.name}
         </Text>
       </TouchableOpacity>
@@ -104,8 +118,10 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
               key={child.path}
               node={child}
               projectId={projectId}
-              isExpanded={false} // controlled locally or resolved via hook
+              expandedFolders={expandedFolders}
               onToggle={onToggle}
+              onRename={onRename}
+              onDelete={onDelete}
               level={level + 1}
             />
           ))}
