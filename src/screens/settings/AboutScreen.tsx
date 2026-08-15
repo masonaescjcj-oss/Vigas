@@ -13,6 +13,10 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { SettingsRow } from "../../components/SettingsRow";
 import { useTheme } from "../../theme/ThemeProvider";
+import appConfig from "../../../app.json";
+
+/** Single source of truth for the version shown to users. */
+const APP_VERSION = appConfig.expo.version;
 import { type ProfileStackParamList } from "../../types/navigation";
 
 type NavigationProp = NativeStackNavigationProp<ProfileStackParamList, "About">;
@@ -34,12 +38,12 @@ export const AboutScreen = () => {
       {/* Main Info */}
       <View className="items-center">
         <Text variant="h1" className="font-uiSemiBold text-5xl tracking-tighter mb-2">
-          issac
+          retro code
         </Text>
-        <Text variant="caption" className="opacity-80">Version 1.0.0 (build 240)</Text>
+        <Text variant="caption" className="opacity-80">Version {APP_VERSION}</Text>
         
         <Text variant="body" className="text-center mt-6 px-8 leading-6 opacity-95">
-          Issac is the first independent smart coding assistant on mobile operating systems that manages software development processes in cloud Sandbox environments.
+          Retro Code is a mobile-first AI coding agent: describe what you want, and it plans, writes and runs the code in an isolated cloud sandbox — then shows you the result on your device.
         </Text>
       </View>
 
@@ -59,7 +63,7 @@ export const AboutScreen = () => {
 
         {/* Copyright */}
         <Text variant="caption" className="text-center mt-8 opacity-50">
-          © 2026 Issac Tech. All rights reserved.
+          © 2026 Retro Code. All rights reserved.
         </Text>
       </View>
 
