@@ -42,7 +42,7 @@ import { Icon as VectorIcon } from "../../components/Icon";
 
 /**
  * AI Models Directory
- * BACKEND INTEGRATION: Replace with `GET /api/models` to fetch dynamic model capability metadata.
+ * Ids must match the server's ALLOWED_MODELS allow-list; the server rejects anything else.
  */
 /**
  * Selectable models. These ids are sent to agent-run, which only honours ids on
@@ -105,12 +105,6 @@ const PROJECT_TEMPLATE_CHOICES = [
 ];
 
 
-/**
- * Pinned & Recent Agent Sessions History
- * BACKEND INTEGRATION: Fetch from `GET /api/sessions/history`
- */
-
-
 // ============================================================================
 // 2. MAIN SCREEN COMPONENT
 // ============================================================================
@@ -126,12 +120,9 @@ export const AgentChatScreen = () => {
   const bgCanvas = isLight ? "#FFFFFF" : "#000000";      // Pure 100% Crisp White (#FFFFFF)
   const bgCard = isLight ? "#FFFFFF" : "#141414";        // Pure White card (#FFFFFF)
   const bgPill = isLight ? "#F1F5F9" : "#242424";        // Clean soft white/gray pill (#F1F5F9)
-  const bgBanner = isLight ? "#F8FAFC" : "#1C1C1E";      // Pure light banner (#F8FAFC)
   const textPrimary = isLight ? "#0F172A" : "#FFFFFF";   // Dark Slate Charcoal text (#0F172A)
   const textSecondary = isLight ? "#475569" : "#A1A1AA"; // Muted Slate text (#475569)
   const textMuted = isLight ? "#94A3B8" : "#71717A";     // Placeholder text (#94A3B8)
-  const brandPrimary = isLight ? "#6D42C7" : "#C084FC";  // Purple accent (#6D42C7)
-  const accentSky = "#38BDF8";                           // Sky Blue accent
 
   // --------------------------------------------------------------------------
   // STATE MANAGEMENT
@@ -160,6 +151,9 @@ export const AgentChatScreen = () => {
   const runStartedAtRef = useRef<string | null>(null);
   const { projects, createProject, deleteProject } = useProjects();
   const { profile, user, signOut } = useAuthStore();
+  // Guests have no profile row and no email, so they are named as what
+  // they are rather than given someone else's placeholder name.
+  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Guest";
 
   // On-device live preview state (Phase 2 killer feature)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -230,17 +224,13 @@ export const AgentChatScreen = () => {
   // Active Selected Project State (Empty by default, populated when user selects a project)
   const [activeProjectName, setActiveProjectName] = useState<string>("");
   
-  // Settings Screen View Switcher: 'main' | 'profile_edit' | 'capabilities' | 'permissions' | 'usage'
-  const [profileSubScreen, setProfileSubScreen] = useState<"main" | "profile_edit" | "usage">("main");
+  // Settings sheet view: the menu, or the usage panel.
+  const [profileSubScreen, setProfileSubScreen] = useState<"main" | "usage">("main");
   
   // User Profile Settings Form States
-  const [fullNameInput, setFullNameInput] = useState("Retro Code User");
-  const [callNameInput, setCallNameInput] = useState("Retro Code User");
-  const [aiPreferenceText, setAiPreferenceText] = useState("Ask clarifying questions before giving detailed answers");
 
   // Projects Form Search State
   const [newProjectName, setNewProjectName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Active Model Helper Object
   const activeModelObj = AI_MODELS_DATA.find(m => m.id === selectedModelId) || AI_MODELS_DATA[0];
@@ -1454,15 +1444,6 @@ export const AgentChatScreen = () => {
                 </View>
               )}
 
-              {/* Action Button (Mic / Audio) */}
-              <TouchableOpacity
-                style={{ backgroundColor: isLight ? "#FFFFFF" : "#242424", borderColor: isLight ? "#E2E8F0" : "transparent" }}
-                className="w-9 h-9 rounded-full items-center justify-center mr-2 border shadow-sm active:opacity-80"
-                activeOpacity={0.8}
-              >
-                <VectorIcon name="mic" size={15} color={isLight ? "#0F172A" : "#D4D4D8"} />
-              </TouchableOpacity>
-
               {/* Send Button (Dark circle) */}
               <TouchableOpacity
                 onPress={handleSend}
@@ -1561,7 +1542,7 @@ export const AgentChatScreen = () => {
                 <VectorIcon name="user" size={14} color="#C084FC" />
               </View>
               <Text style={{ color: textPrimary }} className="text-sm font-bold tracking-wide mr-1.5" numberOfLines={1}>
-                {fullNameInput || "Retro Code User"}
+                {displayName}
               </Text>
               <VectorIcon name="chevron-right" size={10} color={isLight ? "#64748B" : "#71717A"} />
             </TouchableOpacity>
@@ -1574,13 +1555,6 @@ export const AgentChatScreen = () => {
                 className="w-9 h-9 rounded-full items-center justify-center mr-2 border border-slate-200/40 active:opacity-80"
               >
                 <VectorIcon name={isLight ? "moon" : "sun"} size={15} color={isLight ? "#6E6D68" : "#FCD34D"} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={{ backgroundColor: isLight ? "#FFFFFF" : "#111111" }}
-                className="w-9 h-9 rounded-full items-center justify-center mr-2 border border-slate-200/40"
-              >
-                <VectorIcon name="cloud" size={15} color={isLight ? "#64748B" : "#A1A1AA"} />
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -1767,6 +1741,20 @@ export const AgentChatScreen = () => {
 
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
               <TouchableOpacity
+                onPress={() => {
+                  setShowProjectsModal(false);
+                  goTo("GlobalSearch");
+                }}
+                style={{ backgroundColor: isLight ? "#F7F4EF" : "#1A1A1A", borderColor: isLight ? "#EAE6DF" : "transparent" }}
+                className="mb-3 p-3 rounded-2xl flex-row items-center border active:opacity-80"
+              >
+                <VectorIcon name="search" size={15} color={textSecondary} style={{ marginRight: 10 }} />
+                <Text style={{ color: textSecondary }} className="text-xs text-left flex-1">
+                  Search your projects and chats
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 onPress={() => setShowNewProjectModal(true)}
                 style={{ backgroundColor: isLight ? "#FEF3C7" : "rgba(69, 26, 3, 0.3)" }}
                 className="mb-4 p-4 rounded-2xl flex-row items-center justify-between active:opacity-80"
@@ -1829,7 +1817,7 @@ export const AgentChatScreen = () => {
                         { label: "Details", target: "ProjectDetail" },
                         { label: "Files", target: "FileTree" },
                         { label: "History", target: "SessionHistory" },
-                        { label: "Checkpoints", target: "CheckpointList" },
+                        { label: "Restore points", target: "CheckpointList" },
                         { label: "Settings", target: "ProjectSettings" },
                       ] as const).map((entry) => (
                         <TouchableOpacity
@@ -2089,9 +2077,7 @@ export const AgentChatScreen = () => {
                   <Text style={{ color: textSecondary }} className="text-sm font-semibold">Close</Text>
                 </TouchableOpacity>
                 <Text style={{ color: textPrimary }} className="text-base font-bold">Settings</Text>
-                <TouchableOpacity className="p-1">
-                  <VectorIcon name="info" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} />
-                </TouchableOpacity>
+                <View className="w-9" />
               </View>
 
               <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
@@ -2163,17 +2149,6 @@ export const AgentChatScreen = () => {
 
                 <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
                   <TouchableOpacity
-                    onPress={() => setProfileSubScreen("profile_edit")}
-                    className="flex-row items-center justify-between p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center">
-                      <VectorIcon name="user" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">Profile</Text>
-                    </View>
-                    <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
                     onPress={() => setProfileSubScreen("usage")}
                     className="flex-row items-center justify-between p-4 active:opacity-80"
                   >
@@ -2185,8 +2160,6 @@ export const AgentChatScreen = () => {
                   </TouchableOpacity>
                 </View>
 
-                <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
-                </View>
 
                 {/* Theme & Preferences */}
                 <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-6 border shadow-sm">

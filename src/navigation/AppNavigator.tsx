@@ -31,8 +31,6 @@ import { EmailVerificationPendingScreen } from "../screens/auth/EmailVerificatio
 
 // Main AI Agent Screen & Projects Screens
 import { AgentChatScreen } from "../screens/chat/AgentChatScreen";
-import { ProjectListScreen } from "../screens/projects/ProjectListScreen";
-import { NewProjectScreen } from "../screens/projects/NewProjectScreen";
 import { ProjectDetailScreen } from "../screens/projects/ProjectDetailScreen";
 import { ProjectSettingsScreen } from "../screens/projects/ProjectSettingsScreen";
 import { SessionHistoryScreen } from "../screens/chat/SessionHistoryScreen";
@@ -108,8 +106,6 @@ const ProjectNavigator = () => {
       }}
     >
       <ProjectStack.Screen name="AgentChat" component={AgentChatScreen} />
-      <ProjectStack.Screen name="ProjectsList" component={ProjectListScreen} />
-      <ProjectStack.Screen name="NewProject" component={NewProjectScreen} />
       <ProjectStack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
       <ProjectStack.Screen name="ProjectSettings" component={ProjectSettingsScreen} />
       <ProjectStack.Screen name="SessionHistory" component={SessionHistoryScreen} />

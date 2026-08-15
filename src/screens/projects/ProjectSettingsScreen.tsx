@@ -3,8 +3,7 @@
  * ---------------------------------------------------------------------------
  * Project Settings Screen:
  *   - Edit project metadata (name, description).
- *   - Select active LLM (Claude 3.5 Sonnet, GPT-4o, DeepSeek-Coder).
- *   - Archive project or Delete project (with name confirmation verification).
+ *   - Delete project (with name confirmation verification).
  * ---------------------------------------------------------------------------
  */
 
@@ -31,16 +30,9 @@ export const ProjectSettingsScreen = () => {
 
   const [name, setName] = useState(project?.name || "");
   const [desc, setDesc] = useState(project?.description || "");
-  const [model, setModel] = useState("claude");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  const models = [
-    { key: "claude", name: "Claude 3.5 Sonnet (Recommended)", desc: "Best model for architecture and coding" },
-    { key: "gpt-4o", name: "GPT-4o", desc: "Fast and accurate logic model" },
-    { key: "deepseek", name: "DeepSeek Coder V2", desc: "Optimized open-source code model" },
-  ];
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -61,10 +53,6 @@ export const ProjectSettingsScreen = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleArchive = () => {
-    notify("Archive Project", "Project archived and will be hidden from the project list.");
   };
 
   const handleDelete = async () => {
@@ -129,41 +117,6 @@ export const ProjectSettingsScreen = () => {
         {/* Divider */}
         <View className="h-[1px] bg-borderHairline my-6" style={{ backgroundColor: colors.borderHairline }} />
 
-        {/* Model Selection */}
-        <View className="mb-6">
-          <Text variant="label" className="text-left mb-3">Selected AI Model</Text>
-          {models.map((m) => {
-            const isSelected = model === m.key;
-            return (
-              <TouchableOpacity
-                key={m.key}
-                onPress={() => setModel(m.key)}
-                className="flex-row items-center justify-between p-4 bg-surfaceRaised rounded-card border mb-3"
-                style={{ 
-                  backgroundColor: colors.surfaceRaised, 
-                  borderColor: isSelected ? colors.brandPrimary : colors.borderHairline,
-                  borderWidth: isSelected ? 2 : 1
-                }}
-                activeOpacity={0.8}
-              >
-                <View 
-                  className="w-4 h-4 rounded-full border items-center justify-center"
-                  style={{ borderColor: isSelected ? colors.brandPrimary : colors.inkSecondary }}
-                >
-                  {isSelected && (
-                    <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.brandPrimary }} />
-                  )}
-                </View>
-
-                <View className="flex-1 items-start pl-4">
-                  <Text variant="body" className="font-uiMedium text-left">{m.name}</Text>
-                  <Text variant="caption" className="opacity-70 mt-0.5 text-left">{m.desc}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
         {/* Divider */}
         <View className="h-[1px] bg-borderHairline my-6" style={{ backgroundColor: colors.borderHairline }} />
 
@@ -176,14 +129,6 @@ export const ProjectSettingsScreen = () => {
             Danger Zone
           </Text>
           
-          <Button
-            label="Archive Project"
-            variant="secondary"
-            onPress={handleArchive}
-            className="w-full mb-6 border-red-500/20"
-            style={{ borderColor: `${colors.failed}30` }}
-          />
-
           <Text variant="caption" className="text-left mb-2 opacity-90">
             To delete completely, type the exact project name ({project?.name}):
           </Text>

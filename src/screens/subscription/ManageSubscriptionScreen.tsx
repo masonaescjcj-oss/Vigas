@@ -2,7 +2,9 @@
  * frontend/src/screens/subscription/ManageSubscriptionScreen.tsx
  * ---------------------------------------------------------------------------
  * Screen to review, upgrade, or cancel active billing accounts.
- * Connects to RevenueCat subscription states and lists invoices.
+ * Shows the tier recorded on the profile. Receipts and renewal dates live
+ * with Apple/Google/RevenueCat — there is no invoice endpoint here, so none
+ * are listed.
  * ---------------------------------------------------------------------------
  */
 
@@ -73,7 +75,8 @@ export const ManageSubscriptionScreen = () => {
           {isPro ? (
             <React.Fragment>
               <Text variant="caption" className="text-left opacity-80 mt-1">
-                Next renewal: Aug 20, 2026 • Payment method: Apple Pay
+                Your renewal date and payment method are held by the store you
+                subscribed through — check them there.
               </Text>
               <Button
                 label="Cancel Subscription"
@@ -86,7 +89,7 @@ export const ManageSubscriptionScreen = () => {
           ) : (
             <React.Fragment>
               <Text variant="caption" className="text-left opacity-80 mt-1">
-                Limited access to Claude 3.5 models and a usage cap of 100,000 tokens.
+                A daily token allowance, with the standard models.
               </Text>
               <Button
                 label="Upgrade to Pro"

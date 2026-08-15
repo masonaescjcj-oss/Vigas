@@ -154,25 +154,6 @@ export const WelcomeScreen = () => {
           <Text style={{ color: textPrimary }} className="text-base font-semibold">Create New Account</Text>
         </TouchableOpacity>
 
-        {/* Social Options */}
-        <View className="flex-row space-x-3 mt-1 mb-2">
-          <TouchableOpacity
-            onPress={() => Alert.alert("Apple Authentication", "Apple Login Triggered")}
-            style={{ backgroundColor: bgButton, borderColor: isLight ? "#E2E8F0" : "transparent" }}
-            className="flex-row items-center justify-center border rounded-2xl py-3.5 px-4 flex-1 mr-2 active:opacity-80 shadow-sm"
-          >
-            <Text style={{ color: textPrimary }} className="text-sm font-medium"> Apple</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => Alert.alert("Google Authentication", "Google Login Triggered")}
-            style={{ backgroundColor: bgButton, borderColor: isLight ? "#E2E8F0" : "transparent" }}
-            className="flex-row items-center justify-center border rounded-2xl py-3.5 px-4 flex-1 ml-2 active:opacity-80 shadow-sm"
-          >
-            <Text style={{ color: textPrimary }} className="text-sm font-medium">G Google</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Guest Mode Option */}
         <TouchableOpacity 
           onPress={handleGuestMode}

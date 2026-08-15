@@ -5,19 +5,18 @@
  *   - Introduces value props (unlimited tokens, advanced model access).
  *   - Monthly/Yearly selection with highlighted savings.
  *   - Default pre-selected Yearly card (industry best practice).
- *   - Exit Offer: triggers a 20% discount offer overlay modal when closing.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, TouchableOpacity, ScrollView, Modal, Alert, SafeAreaView } from "react-native";
+import { View, TouchableOpacity, ScrollView, SafeAreaView } from "react-native";
 import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { PlanCard } from "../../components/PlanCard";
 import { useTheme } from "../../theme/ThemeProvider";
-import { useSubscription, type SubscriptionPackage } from "../../hooks/useSubscription";
+import { useSubscription } from "../../hooks/useSubscription";
 
 export const PaywallScreen = () => {
   const { colors } = useTheme();
@@ -25,36 +24,15 @@ export const PaywallScreen = () => {
   const { offerings, purchasePackage, isLoading } = useSubscription();
 
   const [selectedPkgId, setSelectedPkgId] = useState("pkg_yearly"); // default selected
-  const [showExitOffer, setShowExitOffer] = useState(false);
-  const [hasClosedOnce, setHasClosedOnce] = useState(false);
-
-  const handleClose = () => {
-    if (!hasClosedOnce) {
-      // Trigger Exit Offer before letting them dismiss!
-      setShowExitOffer(true);
-      setHasClosedOnce(true);
-    } else {
-      navigation.goBack();
-    }
-  };
+  // Close means close. This used to swallow the first dismissal to show a
+  // discount that existed in no store — a fabricated price, and a screen you
+  // could not leave on the first try.
+  const handleClose = () => navigation.goBack();
 
   const handlePurchase = async () => {
     const pkg = offerings.find((o) => o.id === selectedPkgId);
     if (!pkg) return;
     await purchasePackage(pkg);
-    navigation.goBack();
-  };
-
-  const handleAcceptExitOffer = async () => {
-    setShowExitOffer(false);
-    // Trigger discount purchase
-    const discountPkg: SubscriptionPackage = {
-      id: "pkg_yearly_discount",
-      title: "Pro Yearly (20% Off Discount)",
-      priceString: "$119.99",
-      period: "yearly"
-    };
-    await purchasePackage(discountPkg);
     navigation.goBack();
   };
 
@@ -131,45 +109,6 @@ export const PaywallScreen = () => {
 
       </ScrollView>
 
-      {/* Exit Offer Modal overlay */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showExitOffer}
-        onRequestClose={() => setShowExitOffer(false)}
-      >
-        <View className="flex-1 justify-end bg-black/60">
-          <View 
-            className="p-6 rounded-t-card border-t border-borderHairline"
-            style={{ backgroundColor: colors.surfaceRaised, borderTopColor: colors.borderHairline }}
-          >
-            <Icon name="zap" size={44} color="#F59E0B" style={{ marginBottom: 12, alignSelf: "center" }} />
-            <Text variant="h2" className="font-uiSemiBold text-center text-brandPrimary" style={{ color: colors.brandPrimary }}>
-              Special Offer: 20% Off!
-            </Text>
-            <Text variant="body" className="text-center mt-2 px-6 leading-5 opacity-90">
-              Would you like to get the Pro annual subscription with a special 20% discount for only $119.99 instead of $149.99?
-            </Text>
-
-            <View className="space-y-3 mt-6">
-              <Button
-                label="Yes, apply discount"
-                onPress={handleAcceptExitOffer}
-                className="w-full py-3.5"
-              />
-              <Button
-                label="No, close screen"
-                variant="secondary"
-                onPress={() => {
-                  setShowExitOffer(false);
-                  navigation.goBack();
-                }}
-                className="w-full"
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
 
     </SafeAreaView>
   );

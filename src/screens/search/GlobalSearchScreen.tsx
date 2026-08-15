@@ -3,8 +3,10 @@
  * ---------------------------------------------------------------------------
  * Global search workspace screen:
  *   - Auto-focuses query input.
- *   - Lists matching results filtered by category: Projects, Chats, or Files.
- *   - Displays recent search logs.
+ *   - Matches projects locally and chats server-side (by title, under RLS).
+ *     File contents are not searched: that needs a full-text index, and
+ *     downloading every project to grep it on the phone is not that.
+ *   - Recent searches persist on the device.
  *   - EmptyState preset hook if nothing found.
  * ---------------------------------------------------------------------------
  */
@@ -16,8 +18,13 @@ import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { EmptyState } from "../../components/EmptyState";
 import { useTheme } from "../../theme/ThemeProvider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useProjects } from "../../hooks/useProjects";
+import { agentService } from "../../services/agentService";
+import { relativeTime } from "../../services/formatting";
 import { type ProjectNavigationProp } from "../../navigation/types";
+
+const RECENTS_KEY = "retrocode.recentSearches";
 
 interface SearchResult {
   id: string;
@@ -34,10 +41,19 @@ export const GlobalSearchScreen = () => {
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [recentSearches, setRecentSearches] = useState<string[]>([
-    "Payment Service",
-    "Sandbox Shell Test",
-  ]);
+  // Seeded with two invented phrases before; recents are the user's own now,
+  // and survive a restart.
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  useEffect(() => {
+    void AsyncStorage.getItem(RECENTS_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setRecentSearches(parsed.filter((q) => typeof q === "string"));
+      } catch { /* a corrupt entry is not worth surfacing */ }
+    });
+  }, []);
 
   // Handle query changes and search matching items
   useEffect(() => {
@@ -62,16 +78,39 @@ export const GlobalSearchScreen = () => {
       }
     });
 
-    // Chat and file search need a server-side full-text endpoint, which does not
-    // exist yet — inventing results here would be worse than showing none.
-
     setResults(matches);
   }, [query, projects]);
 
+  // Chats are searched server-side by title, scoped to the caller by RLS.
+  useEffect(() => {
+    const term = query.trim();
+    if (!term) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const sessions = await agentService.searchSessionsByTitle(term);
+        if (cancelled) return;
+        setResults((prev) => [
+          ...prev.filter((r) => r.category !== "chats"),
+          ...sessions.map((s) => ({
+            id: `chat_${s.id}`,
+            title: s.title || "Untitled chat",
+            subtitle: `Chat · ${relativeTime(s.updated_at)}`,
+            category: "chats" as const,
+            targetId: s.project_id,
+          })),
+        ]);
+      } catch { /* the project matches above still stand */ }
+    }, 250); // debounce: this runs on every keystroke
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query]);
+
   const handleSelectResult = (res: SearchResult) => {
-    // Add to recents
-    if (!recentSearches.includes(query) && query.trim()) {
-      setRecentSearches([query, ...recentSearches.slice(0, 4)]);
+    const term = query.trim();
+    if (term && !recentSearches.includes(term)) {
+      const next = [term, ...recentSearches].slice(0, 5);
+      setRecentSearches(next);
+      void AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(next));
     }
 
     if (res.category === "projects" || res.category === "chats") {
@@ -103,7 +142,7 @@ export const GlobalSearchScreen = () => {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search projects, chats, and files..."
+            placeholder="Search your projects and chats..."
             placeholderTextColor={colors.inkSecondary}
             autoFocus
             className="flex-grow font-uiRegular text-sm text-left pl-2"
@@ -116,7 +155,9 @@ export const GlobalSearchScreen = () => {
       {!query.trim() ? (
         // Recent searches list
         <View className="p-6">
-          <Text variant="label" className="text-left mb-4">Recent Searches</Text>
+          <Text variant="label" className="text-left mb-4">
+            {recentSearches.length ? "Recent searches" : "Search your projects and chats"}
+          </Text>
           {recentSearches.map((q, idx) => (
             <TouchableOpacity
               key={idx}
@@ -133,7 +174,7 @@ export const GlobalSearchScreen = () => {
         // EmptyState hook
         <EmptyState
           title="No Results Found"
-          description={`No results found for "${query}" in your projects or files. Try searching for something else.`}
+          description={`Nothing in your projects or chats matches "${query}".`}
           emoji="search"
         />
       ) : (

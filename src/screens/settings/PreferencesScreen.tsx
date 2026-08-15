@@ -1,8 +1,7 @@
 /**
  * frontend/src/screens/settings/PreferencesScreen.tsx
  * ---------------------------------------------------------------------------
- * Screen to edit general preferences: theme modes, languages, token savers,
- * default LLM engine settings, and haptic vibration triggers.
+ * Screen to edit general preferences: theme mode and the default model.
  * ---------------------------------------------------------------------------
  */
 

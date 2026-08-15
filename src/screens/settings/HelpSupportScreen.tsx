@@ -3,8 +3,7 @@
  * ---------------------------------------------------------------------------
  * Help & Support Screen:
  *   - FAQ Accordion items.
- *   - Support ticket submission simulated form.
- *   - Direct links to logs/documentation.
+ *   - Support request handed off to the device's mail client.
  * ---------------------------------------------------------------------------
  */
 

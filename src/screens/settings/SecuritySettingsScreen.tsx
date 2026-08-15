@@ -2,9 +2,10 @@
  * frontend/src/screens/settings/SecuritySettingsScreen.tsx
  * ---------------------------------------------------------------------------
  * Security Settings Screen:
- *   - Biometric login (Face ID/Fingerprint) toggle.
- *   - Active sessions list (Connected devices) with individual disconnects.
- *   - Two-Factor authentication toggle.
+ *   - Sign out everywhere.
+ *   - Explains why a connected-devices list is not shown: listing or revoking
+ *     other sessions needs Supabase's admin session APIs, which are
+ *     service-role only. Biometrics and 2FA are not implemented.
  * ---------------------------------------------------------------------------
  */
 

@@ -22,8 +22,8 @@ export type AuthStackParamList = {
 
 // 2. Project Stack Param List
 export type ProjectStackParamList = {
-  ProjectsList: undefined;
-  NewProject: undefined;
+  // The projects list and the new-project dialog live inside the chat screen's
+  // sheets; the standalone screens were duplicates nothing navigated to.
   ProjectDetail: { projectId: string };
   ProjectSettings: { projectId: string };
   AgentChat: { projectId: string; sessionId?: string };

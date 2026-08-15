@@ -66,8 +66,12 @@ export const TokenUsageScreen = () => {
     void fetchUsage();
   }, []);
 
-  const usagePercent = Math.min((tokensUsed / tokensLimit) * 100, 100);
-  const isCloseToLimit = usagePercent >= 75;
+  // A missing or zero plan limit is normal (no metering row yet, or an
+  // unmetered plan). Dividing by it produced NaN, and `width: "NaN%"` renders
+  // as a full-width bar — the worst possible lie for a usage meter.
+  const hasLimit = tokensLimit > 0;
+  const usagePercent = hasLimit ? Math.min((tokensUsed / tokensLimit) * 100, 100) : 0;
+  const isCloseToLimit = hasLimit && usagePercent >= 75;
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
@@ -93,20 +97,28 @@ export const TokenUsageScreen = () => {
           ) : (
             <View className="mt-3">
               <Text variant="h2" className="font-uiSemiBold text-left">
-                {tokensUsed.toLocaleString()} / {tokensLimit.toLocaleString()} tokens
+                {hasLimit
+                  ? `${tokensUsed.toLocaleString()} / ${tokensLimit.toLocaleString()} tokens`
+                  : `${tokensUsed.toLocaleString()} tokens`}
               </Text>
-              
-              {/* Progress bar container */}
-              <View className="h-2.5 w-full bg-surfaceCode rounded-full mt-4 overflow-hidden" style={{ backgroundColor: colors.surfaceCode }}>
-                <View 
-                   className="h-full bg-brandPrimary rounded-full"
-                   style={{ 
-                     backgroundColor: isCloseToLimit ? colors.failed : colors.brandPrimary,
-                     width: `${usagePercent}%` 
-                   }}
-                />
-              </View>
-              
+
+              {/* Progress bar container — only meaningful against a limit. */}
+              {hasLimit ? (
+                <View className="h-2.5 w-full bg-surfaceCode rounded-full mt-4 overflow-hidden" style={{ backgroundColor: colors.surfaceCode }}>
+                  <View
+                     className="h-full bg-brandPrimary rounded-full"
+                     style={{
+                       backgroundColor: isCloseToLimit ? colors.failed : colors.brandPrimary,
+                       width: `${usagePercent}%`
+                     }}
+                  />
+                </View>
+              ) : (
+                <Text variant="caption" className="opacity-60 text-left mt-3">
+                  No token limit is set on this plan.
+                </Text>
+              )}
+
               {isCloseToLimit && (
                 <Text variant="caption" className="text-red-500 text-left mt-3 font-uiMedium" style={{ color: colors.failed }}>
                   ⚠️ You have used more than 75% of your token limit.

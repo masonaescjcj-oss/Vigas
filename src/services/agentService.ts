@@ -111,6 +111,24 @@ export const agentService = {
     });
   },
 
+  /**
+   * Chats whose title matches, newest first. Titles are the first prompt of a
+   * conversation, so this finds "the chat where I asked about X" without
+   * needing a full-text index over transcripts.
+   */
+  async searchSessionsByTitle(term: string, limit = 10): Promise<AgentSessionData[]> {
+    // % and _ are wildcards in LIKE; a user typing them means the characters.
+    const escaped = term.replace(/[%_\\]/g, (char) => `\\${char}`);
+    const { data, error } = await supabase
+      .from("agent_sessions")
+      .select("*")
+      .ilike("title", `%${escaped}%`)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as AgentSessionData[];
+  },
+
   /** Get details of a single agent session (including message transcript). */
   async getSession(sessionId: string): Promise<AgentSessionData> {
     if (IS_LOCAL_API) return localApiGet<AgentSessionData>(`/api/sessions/${sessionId}`);
