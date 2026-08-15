@@ -112,6 +112,8 @@ export const ForgotPasswordScreen = () => {
               placeholderTextColor="#71717A"
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
               className="w-full bg-[#141414] p-4 rounded-2xl text-white text-base text-left"
               style={{ color: "#FFFFFF", outlineStyle: "none", outlineWidth: 0 } as any}
             />

@@ -139,6 +139,8 @@ export const SignUpScreen = () => {
               placeholderTextColor={textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
               className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
               style={{ backgroundColor: bgInput, color: textPrimary }}
             />
@@ -155,6 +157,8 @@ export const SignUpScreen = () => {
               placeholder="••••••••"
               placeholderTextColor={textMuted}
               secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
               autoCapitalize="none"
               className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
               style={{ backgroundColor: bgInput, color: textPrimary }}
@@ -176,6 +180,8 @@ export const SignUpScreen = () => {
               placeholder="••••••••"
               placeholderTextColor={textMuted}
               secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
               autoCapitalize="none"
               className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
               style={{ backgroundColor: bgInput, color: textPrimary }}

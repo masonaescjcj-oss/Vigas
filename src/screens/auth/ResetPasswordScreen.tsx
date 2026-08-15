@@ -103,6 +103,8 @@ export const ResetPasswordScreen = () => {
             placeholder="••••••••"
             placeholderTextColor="#71717A"
             secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
             autoCapitalize="none"
             className="w-full bg-[#141414] p-4 rounded-2xl text-white text-base text-left"
             style={{ color: "#FFFFFF", outlineStyle: "none", outlineWidth: 0 } as any}
@@ -117,6 +119,8 @@ export const ResetPasswordScreen = () => {
             placeholder="••••••••"
             placeholderTextColor="#71717A"
             secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
             autoCapitalize="none"
             className="w-full bg-[#141414] p-4 rounded-2xl text-white text-base text-left"
             style={{ color: "#FFFFFF", outlineStyle: "none", outlineWidth: 0 } as any}

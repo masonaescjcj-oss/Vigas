@@ -89,6 +89,8 @@ export const LoginScreen = () => {
               placeholderTextColor={textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
               className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
               style={{ backgroundColor: bgInput, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
             />
@@ -109,6 +111,8 @@ export const LoginScreen = () => {
               placeholder="••••••••"
               placeholderTextColor={textMuted}
               secureTextEntry
+              autoComplete="current-password"
+              textContentType="password"
               autoCapitalize="none"
               className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
               style={{ backgroundColor: bgInput, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
