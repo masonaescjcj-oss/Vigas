@@ -89,7 +89,8 @@
 
 ## فاز ۴ — پوستهٔ نیتیو و آمادگی استور (هفتهٔ ۵ تا ۷)
 
-- [ ] **EAS Build:** پروفایل‌های build اندروید و iOS. نکتهٔ مهم: **برای build iOS به مک نیاز نداری** — EAS در ابر می‌سازد و با EAS Submit مستقیم به TestFlight می‌فرستد.
+- [x] **پیکربندی انتشار (۱۵ اوت):** `app.json` (نام، اسکیم `issac://`، bundle id `app.retrocode.pro`، آیکون/اسپلش، مسدودسازی مجوزهای حساس) + `eas.json` (پروفایل‌های development/preview/production) + آیکون و اسپلش واقعی در `assets/`. ✅
+- [ ] **EAS Build:** اجرای `eas login` / `eas init` و ساخت. نکتهٔ مهم: **برای build iOS به مک نیاز نداری** — EAS در ابر می‌سازد و با EAS Submit مستقیم به TestFlight می‌فرستد.
 - [ ] **حساب‌های استور:** Google Play Console (۲۵ دلار یک‌بار)، Apple Developer (۹۹ دلار/سال). اگر در کشورت قابل ثبت نیست، ثبت از طریق شخص حقوقی/شریک در کشور پشتیبانی‌شده لازم می‌شود — این را زودتر حل کن چون تأیید اپل چند روز طول می‌کشد.
 - [ ] **RevenueCat واقعی:** `useSubscription.ts` الان کاملاً mock است → SDK واقعی + تعریف productها در هر دو استور + اتصال به `revenuecat-webhook` موجود.
 - [ ] **پوش نوتیفیکیشن:** expo-notifications؛ «job تمام شد → پوش» (این قلب UX موبایلی است).
