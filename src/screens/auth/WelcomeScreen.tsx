@@ -63,7 +63,7 @@ export const WelcomeScreen = () => {
   return (
     <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1 justify-between px-6 py-8">
       
-      {/* Top Brand Header & Skills.sh Hero Showcase */}
+      {/* Top Brand Header */}
       <View className="items-center mt-4">
         
         {/* Sleek Brand Title (Matching Watermark Style) */}

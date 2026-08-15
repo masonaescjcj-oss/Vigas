@@ -34,9 +34,10 @@ export const HelpSupportScreen = () => {
   const [sending, setSending] = useState(false);
 
   const faqs: FaqItem[] = [
-    { q: "How does the Issac agent write code?", a: "Issac analyzes project files by starting a shell in secure E2B containers, sends build commands, and fixes errors." },
-    { q: "How can I cancel my subscription?", a: "Canceling subscriptions can be done via Google Play or App Store settings. There is also a direct link in the 'Manage Subscription' section." },
-    { q: "What is the difference between free and pro plans?", a: "The Pro plan has much higher token limits, more powerful Sandbox processors, and full access to Claude 3.5 and GPT-4o models." },
+    { q: "How does the agent write code?", a: "It reads your project's files, plans a change, writes and edits files, and runs commands in an isolated sandbox — then tells you what it changed. A restore point is saved before every run that can touch your files." },
+    { q: "How can I cancel my subscription?", a: "From your Google Play or App Store subscription settings. Manage Subscription in the app shows you where to look, but the store handles the cancellation itself." },
+    { q: "What is the difference between the free and pro plans?", a: "Free has a daily token allowance. Pro removes that cap and allows longer agent runs. Both use the same models." },
+    { q: "Can I undo what the agent did?", a: "Yes. A restore point is saved before every run that can change files. Open Restore points from the + menu, or tap 'Undo this change' under the message. Rolling back saves a restore point first, so it can be undone too." },
   ];
 
   const handleSendTicket = async () => {

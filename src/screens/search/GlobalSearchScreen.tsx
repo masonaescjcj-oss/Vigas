@@ -30,7 +30,7 @@ interface SearchResult {
   id: string;
   title: string;
   subtitle: string;
-  category: "projects" | "chats" | "files";
+  category: "projects" | "chats";
   targetId: string;
 }
 
@@ -113,11 +113,8 @@ export const GlobalSearchScreen = () => {
       void AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(next));
     }
 
-    if (res.category === "projects" || res.category === "chats") {
-      navigation.navigate("ProjectDetail", { projectId: res.targetId });
-    } else {
-      navigation.navigate("ProjectDetail", { projectId: res.targetId });
-    }
+    // Both kinds resolve to a project; a chat result carries its project id.
+    navigation.navigate("ProjectDetail", { projectId: res.targetId });
   };
 
   const handleSelectRecent = (q: string) => {
@@ -184,7 +181,7 @@ export const GlobalSearchScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16 }}
           renderItem={({ item }) => {
-            const categoryIcon = item.category === "projects" ? "folder" : item.category === "chats" ? "inbox" : "file-text";
+            const categoryIcon = item.category === "projects" ? "folder" : "inbox";
             return (
               <TouchableOpacity
                 onPress={() => handleSelectResult(item)}

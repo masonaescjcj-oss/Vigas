@@ -9,7 +9,7 @@
  */
 
 import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, Alert, SafeAreaView } from "react-native";
+import { View, ScrollView, TouchableOpacity, Alert, Platform, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../types/navigation";
@@ -40,9 +40,14 @@ export const ManageSubscriptionScreen = () => {
       "According to Apple and Google policies, to cancel your subscription, you must do so from your App Store or Google Play account settings.",
       [
         { text: "Got it" },
-        { 
-          text: "View Store Guide", 
-          onPress: () => Alert.alert("Guide", "Go to phone settings -> Apple ID -> Subscriptions -> Issac -> Cancel.") 
+        {
+          text: "How",
+          onPress: () => Alert.alert(
+            "Where to cancel",
+            Platform.OS === "ios"
+              ? "Settings → your name → Subscriptions → Retro Code → Cancel."
+              : "Play Store → profile → Payments and subscriptions → Subscriptions → Retro Code → Cancel.",
+          ),
         }
       ]
     );

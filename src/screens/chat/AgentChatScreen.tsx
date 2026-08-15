@@ -21,10 +21,17 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useThemeStore } from "../../theme/store";
+import { type ThemeMode } from "../../theme/theme";
 import { type ProjectNavigationProp } from "../../navigation/types";
 import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData, type AgentSessionData } from "../../services/agentService";
-import { getProjectCheckpoints, relativeTime, restoreCheckpoint, type CheckpointRow } from "../../services/checkpointService";
+import {
+  createCheckpoint,
+  getProjectCheckpoints,
+  relativeTime,
+  restoreCheckpoint,
+  type CheckpointRow,
+} from "../../services/checkpointService";
 import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "../../services/supabase";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -105,6 +112,18 @@ const PROJECT_TEMPLATE_CHOICES = [
 ];
 
 
+/** All three theme modes are reachable from the one control that offers them. */
+const THEME_MODE_LABEL: Record<ThemeMode, string> = {
+  light: "Light",
+  dark: "Dark",
+  darkest: "Darkest",
+};
+const NEXT_THEME_MODE: Record<ThemeMode, ThemeMode> = {
+  light: "dark",
+  dark: "darkest",
+  darkest: "light",
+};
+
 // ============================================================================
 // 2. MAIN SCREEN COMPONENT
 // ============================================================================
@@ -177,6 +196,7 @@ export const AgentChatScreen = () => {
   const [checkpoints, setCheckpoints] = useState<CheckpointRow[]>([]);
   const [checkpointsLoading, setCheckpointsLoading] = useState(false);
   const [restoringCheckpointId, setRestoringCheckpointId] = useState<string | null>(null);
+  const [savingCheckpoint, setSavingCheckpoint] = useState(false);
 
   // Real token usage (usage-check → usage_metering)
   const [usage, setUsage] = useState<UsageSummary | null>(null);
@@ -481,6 +501,47 @@ export const AgentChatScreen = () => {
       ]);
     }
   };
+
+  /**
+   * Save a restore point on demand — the "before I try this" button. Runs are
+   * snapshotted automatically, so this is for the moments in between (a manual
+   * edit in the file viewer, or just wanting a marker).
+   */
+  const handleSaveRestorePoint = async () => {
+    if (savingCheckpoint) return;
+    setSavingCheckpoint(true);
+    try {
+      const projectId = await ensureProjectId();
+      const result = await createCheckpoint(projectId, activeSessionId);
+      if (!result.checkpoint) {
+        notify("Nothing to save", result.detail ?? "This project has no files yet.");
+      } else {
+        await loadCheckpoints(projectId);
+      }
+    } catch (e) {
+      notify("Could not save a restore point", e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingCheckpoint(false);
+    }
+  };
+
+  const saveRestorePointButton = (
+    <TouchableOpacity
+      onPress={handleSaveRestorePoint}
+      disabled={savingCheckpoint || isExecuting}
+      className="flex-row items-center justify-center py-2.5 mb-4 rounded-xl bg-[#1A1A1A] border border-zinc-800"
+      activeOpacity={0.8}
+    >
+      {savingCheckpoint ? (
+        <ActivityIndicator size="small" color="#C084FC" />
+      ) : (
+        <>
+          <VectorIcon name="plus" size={13} color="#C084FC" style={{ marginRight: 6 }} />
+          <Text className="text-purple-300 text-xs font-semibold">Save a restore point now</Text>
+        </>
+      )}
+    </TouchableOpacity>
+  );
 
   /**
    * Roll the project's files back to a snapshot.
@@ -1492,24 +1553,34 @@ export const AgentChatScreen = () => {
                 <VectorIcon name="x" size={14} color={isLight ? "#1E1D1A" : "#D4D4D8"} />
               </TouchableOpacity>
               
-              <Text style={{ color: textPrimary }} className="text-base font-bold">Add to chat</Text>
+              <Text style={{ color: textPrimary }} className="text-base font-bold">Project</Text>
               <View className="w-9" />
             </View>
 
+            {/* Three ways into the project from the composer. Restore points
+                used to have no entry point at all — the sheet existed but
+                nothing opened it. */}
             <View className="flex-row justify-between mb-6">
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowAddToChatModal(false);
-                  setShowFileModal(true);
-                }}
-                style={{ backgroundColor: isLight ? "#F7F4EF" : "#1E1E1E" }}
-                className="w-[31%] py-5 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5"
-              >
-                <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
-                  <VectorIcon name="file-text" size={20} color={isLight ? "#1E1D1A" : "#E4E4E7"} />
-                </View>
-                <Text style={{ color: textPrimary }} className="text-xs font-semibold">Files</Text>
-              </TouchableOpacity>
+              {([
+                { key: "files", label: "Files", icon: "file-text", run: () => setShowFileModal(true) },
+                { key: "preview", label: "Preview", icon: "eye", run: () => setShowPreviewModal(true) },
+                { key: "restore", label: "Restore points", icon: "rotate-ccw", run: () => setShowCheckpointsModal(true) },
+              ] as const).map((action) => (
+                <TouchableOpacity
+                  key={action.key}
+                  onPress={() => {
+                    setShowAddToChatModal(false);
+                    action.run();
+                  }}
+                  style={{ backgroundColor: isLight ? "#F7F4EF" : "#1E1E1E" }}
+                  className="w-[31%] py-5 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5"
+                >
+                  <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
+                    <VectorIcon name={action.icon} size={20} color={isLight ? "#1E1D1A" : "#E4E4E7"} />
+                  </View>
+                  <Text style={{ color: textPrimary }} className="text-xs font-semibold text-center">{action.label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
           </View>
@@ -2004,17 +2075,19 @@ export const AgentChatScreen = () => {
                 <View className="py-10 items-center px-6">
                   <VectorIcon name="rotate-ccw" size={26} color="#52525B" style={{ marginBottom: 10 }} />
                   <Text className="text-zinc-300 text-sm font-bold mb-2">No restore points yet</Text>
-                  <Text className="text-zinc-500 text-xs text-center leading-5">
+                  <Text className="text-zinc-500 text-xs text-center leading-5 mb-4">
                     One is saved automatically before every run that can change your files.
                     Ask the agent to build something and it will show up here.
                   </Text>
+                  <View className="w-full px-6">{saveRestorePointButton}</View>
                 </View>
               ) : (
                 <>
-                  <Text className="text-zinc-500 text-xs text-left leading-5 mb-4 px-1">
+                  <Text className="text-zinc-500 text-xs text-left leading-5 mb-3 px-1">
                     Each one is how the project looked before that run. Rolling back saves a
                     restore point first, so it can be undone.
                   </Text>
+                  {saveRestorePointButton}
                   {checkpoints.map((cp) => (
                     <View key={cp.id} className="mb-3 p-4 rounded-2xl bg-[#1A1A1A]">
                       <View className="flex-row items-center mb-1">
@@ -2159,7 +2232,7 @@ export const AgentChatScreen = () => {
                 {/* Theme & Preferences */}
                 <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-6 border shadow-sm">
                   <TouchableOpacity 
-                    onPress={() => setMode(isLight ? "darkest" : "light")}
+                    onPress={() => setMode(NEXT_THEME_MODE[mode])}
                     className="flex-row items-center justify-between p-4 active:opacity-80"
                   >
                     <View className="flex-row items-center">
@@ -2167,7 +2240,7 @@ export const AgentChatScreen = () => {
                       <View>
                         <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">Color mode</Text>
                         <Text style={{ color: isLight ? "#D97757" : "#A1A1AA" }} className="text-xs text-left font-medium">
-                          {isLight ? "Claude Light (Paper Beige)" : "System Darkest"}
+                          {THEME_MODE_LABEL[mode]}
                         </Text>
                       </View>
                     </View>

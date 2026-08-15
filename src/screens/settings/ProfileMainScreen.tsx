@@ -26,14 +26,6 @@ export const ProfileMainScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { profile, signOut } = useAuthStore();
 
-  const handleAvatarChange = () => {
-    Alert.alert(
-      "Change Avatar",
-      "Selecting image from gallery or camera is simulated in dev environment.",
-      [{ text: "Camera" }, { text: "Gallery" }, { text: "Cancel", style: "cancel" }]
-    );
-  };
-
   const handleSignOut = () => {
     Alert.alert(
       "Sign Out",
@@ -51,23 +43,18 @@ export const ProfileMainScreen = () => {
         
         {/* User Card with Avatar */}
         <View className="items-center py-8 border-b border-borderHairline/20" style={{ borderBottomColor: colors.borderHairline }}>
-          <TouchableOpacity 
-            onPress={handleAvatarChange}
+          <View
             className="w-20 h-20 rounded-full items-center justify-center bg-surfaceRaised border border-borderHairline mb-4"
             style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
           >
             <Icon name="user" size={30} color="#C084FC" />
-            {/* Tiny camera overlay badge */}
-            <View className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-brandPrimary items-center justify-center" style={{ backgroundColor: colors.brandPrimary }}>
-              <Icon name="camera" size={10} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
+          </View>
 
           <Text variant="h2" className="font-uiSemiBold text-center">
-            {profile?.display_name || "Issac User"}
+            {profile?.display_name || "Your account"}
           </Text>
           <Text variant="caption" className="opacity-80 text-center mt-1">
-            {profile?.email || "email@issac.dev"}
+            {profile?.email || "Signed in as a guest"}
           </Text>
 
           {/* Subscription status badge */}

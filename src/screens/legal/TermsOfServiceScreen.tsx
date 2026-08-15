@@ -33,11 +33,11 @@ export const TermsOfServiceScreen = () => {
 
       {/* Document scroll */}
       <ScrollView contentContainerStyle={{ padding: 24 }} className="space-y-4">
-        <Text variant="h2" className="font-uiSemiBold text-left">Issac Terms of Service</Text>
-        <Text variant="caption" className="text-left opacity-60">Last Updated: July 2026</Text>
+        <Text variant="h2" className="font-uiSemiBold text-left">Retro Code Terms of Service</Text>
+        <Text variant="caption" className="text-left opacity-60">The current version is published with the app listing.</Text>
 
         <Text variant="body" className="text-left leading-6 mt-4">
-          By registering and using the Issac coding assistant services, you agree to all the provisions of the rules below.
+          By registering and using the Retro Code coding assistant services, you agree to all the provisions of the rules below.
         </Text>
 
         <Text variant="h3" className="font-uiSemiBold text-left mt-6">1. Account Rules</Text>
@@ -54,7 +54,7 @@ export const TermsOfServiceScreen = () => {
 
         <Text variant="h3" className="font-uiSemiBold text-left mt-6">3. Disclaimer</Text>
         <Text variant="body" className="text-left leading-6 mt-2">
-          - Issac makes every effort to write flawless code, but the final responsibility for testing and deploying codes in staging or production environments lies with the project developer.
+          - Retro Code makes every effort to write flawless code, but the final responsibility for testing and deploying codes in staging or production environments lies with the project developer.
         </Text>
       </ScrollView>
 

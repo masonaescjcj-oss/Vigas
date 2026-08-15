@@ -150,7 +150,7 @@ export const TokenUsageScreen = () => {
               Increase Token Limit
             </Text>
             <Text variant="caption" className="text-left mt-1.5 opacity-90 leading-5">
-              By upgrading to Pro, increase your monthly token limit to 2 million and double your build speed.
+              Pro removes the daily token cap, so a long build does not stop halfway.
             </Text>
             <Button
               label="View Packages"

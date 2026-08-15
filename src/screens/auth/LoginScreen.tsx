@@ -74,7 +74,7 @@ export const LoginScreen = () => {
           </Text>
           
           <Text style={{ color: textSecondary }} className="text-sm text-left leading-6">
-            Sign in to manage your AI agent projects, models, and Skills.sh modules.
+            Sign in to get back to your projects and chats.
           </Text>
         </View>
 

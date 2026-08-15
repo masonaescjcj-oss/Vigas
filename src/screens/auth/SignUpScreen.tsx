@@ -124,7 +124,7 @@ export const SignUpScreen = () => {
           </Text>
           
           <Text style={{ color: textSecondary }} className="text-sm text-left leading-6">
-            Join Retro Code to build AI mobile & web apps with Skills.sh ecosystem modules.
+            Join Retro Code and build apps by describing them, from your phone.
           </Text>
         </View>
 

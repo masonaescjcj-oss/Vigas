@@ -33,23 +33,23 @@ export const PrivacyPolicyScreen = () => {
 
       {/* Document scroll */}
       <ScrollView contentContainerStyle={{ padding: 24 }} className="space-y-4">
-        <Text variant="h2" className="font-uiSemiBold text-left">Issac Privacy Policy</Text>
-        <Text variant="caption" className="text-left opacity-60">Last Updated: July 2026</Text>
+        <Text variant="h2" className="font-uiSemiBold text-left">Retro Code Privacy Policy</Text>
+        <Text variant="caption" className="text-left opacity-60">The current version is published with the app listing.</Text>
 
         <Text variant="body" className="text-left leading-6 mt-4">
-          At Issac, we are committed to protecting your private information and project source codes. This document explains what information we collect and how we use it.
+          At Retro Code, we are committed to protecting your private information and project source codes. This document explains what information we collect and how we use it.
         </Text>
 
         <Text variant="h3" className="font-uiSemiBold text-left mt-6">1. Information Collected</Text>
         <Text variant="body" className="text-left leading-6 mt-2">
           - **Account Information**: Your email and registration details are stored securely.
-          - **Source Codes**: Your project codes are sent to temporary E2B containers only for analysis and assistant functionality, and are deleted upon session exit.
+          - **Source Codes**: Your project code is sent to a temporary isolated sandbox only for the duration of an agent run, and the sandbox is destroyed when the run ends.
         </Text>
 
         <Text variant="h3" className="font-uiSemiBold text-left mt-6">2. Source Code Security</Text>
         <Text variant="body" className="text-left leading-6 mt-2">
           - All connections are encrypted using SSL certificates.
-          - Modifying source codes are stored in isolated E2B containers and no third party will have access to them.
+          - Code the agent changes is stored in your own project space, and the sandbox it runs in is isolated per session.
         </Text>
 
         <Text variant="h3" className="font-uiSemiBold text-left mt-6">3. Right to Delete Information</Text>

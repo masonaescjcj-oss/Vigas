@@ -17,6 +17,7 @@ import { Button } from "../../components/Button";
 import { PlanCard } from "../../components/PlanCard";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useSubscription } from "../../hooks/useSubscription";
+import { notify } from "../../services/notify";
 
 export const PaywallScreen = () => {
   const { colors } = useTheme();
@@ -31,7 +32,15 @@ export const PaywallScreen = () => {
 
   const handlePurchase = async () => {
     const pkg = offerings.find((o) => o.id === selectedPkgId);
-    if (!pkg) return;
+    // With no store connection there are no offerings, so this used to return
+    // silently and the button did nothing. Say what is happening instead.
+    if (!pkg) {
+      notify(
+        "Purchases not available yet",
+        "This build has no store connection, so there is nothing to buy. Nothing was charged.",
+      );
+      return;
+    }
     await purchasePackage(pkg);
     navigation.goBack();
   };
@@ -61,26 +70,25 @@ export const PaywallScreen = () => {
 
         {/* Value features checklists */}
         <View className="bg-surfaceRaised p-5 rounded-card border border-borderHairline mb-6 space-y-3" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-          <View className="flex-row justify-start items-center">
-            <Text className="text-base text-green-500 mr-3">✓</Text>
-            <Text variant="body" className="font-uiMedium text-left">Unlimited tokens per month</Text>
-          </View>
-          <View className="flex-row justify-start items-center mt-2">
-            <Text className="text-base text-green-500 mr-3">✓</Text>
-            <Text variant="body" className="font-uiMedium text-left">Access to Claude 3.5 & GPT-4o</Text>
-          </View>
-          <View className="flex-row justify-start items-center mt-2">
-            <Text className="text-base text-green-500 mr-3">✓</Text>
-            <Text variant="body" className="font-uiMedium text-left">Faster Sandboxes with dedicated RAM</Text>
-          </View>
-          <View className="flex-row justify-start items-center mt-2">
-            <Text className="text-base text-green-500 mr-3">✓</Text>
-            <Text variant="body" className="font-uiMedium text-left">Unlimited project checkpoint history</Text>
-          </View>
+          {[
+            "No daily token cap",
+            "Every model in the picker, including the reasoning models",
+            "Longer agent runs before they are cut short",
+          ].map((feature) => (
+            <View key={feature} className="flex-row justify-start items-center mt-2">
+              <Text className="text-base text-green-500 mr-3">✓</Text>
+              <Text variant="body" className="font-uiMedium text-left flex-1">{feature}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Plan Cards list */}
         <View className="mb-6">
+          {offerings.length === 0 && (
+            <Text variant="caption" className="text-center opacity-60 leading-5 py-4">
+              Plans appear here once the app is connected to the App Store and Google Play.
+            </Text>
+          )}
           {offerings.map((pkg) => (
             <PlanCard
               key={pkg.id}
@@ -104,7 +112,7 @@ export const PaywallScreen = () => {
 
         {/* Micro-copy disclaimer */}
         <Text variant="caption" className="text-center mt-4 opacity-60 leading-5">
-          No commitment • Cancel anytime from store settings • Secure payment via RevenueCat
+          No commitment • Cancel anytime from your store's subscription settings
         </Text>
 
       </ScrollView>
