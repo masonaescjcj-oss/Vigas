@@ -41,8 +41,14 @@ export const PaywallScreen = () => {
       );
       return;
     }
-    await purchasePackage(pkg);
-    navigation.goBack();
+    try {
+      await purchasePackage(pkg);
+      navigation.goBack();
+    } catch (e) {
+      // A real purchase SDK rejects on cancel and on failure; leaving the user
+      // on the paywall with an explanation beats an unhandled rejection.
+      notify("Purchase did not complete", e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (

@@ -18,22 +18,10 @@ import { SettingsRow } from "../../components/SettingsRow";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
 
-interface DeviceSession {
-  id: string;
-  name: string;
-  location: string;
-  lastActive: string;
-}
-
 export const SecuritySettingsScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
   const { signOut } = useAuthStore();
-
-  // Listing other devices requires Supabase admin session APIs (service-role);
-  // the client can only see its own session, so this list stays empty instead of
-  // inventing devices and locations.
-  const [sessions, setSessions] = useState<DeviceSession[]>([]);
 
   const handleSignOutEverywhere = async () => {
     try {

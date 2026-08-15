@@ -2,7 +2,7 @@
  * frontend/src/screens/settings/AccountSettingsScreen.tsx
  * ---------------------------------------------------------------------------
  * Account Settings Screen:
- *   - Edit display name, change email.
+ *   - Edit display name, change password, delete the account.
  *   - Update account password.
  *   - Delete Account verification flow (two-step).
  * ---------------------------------------------------------------------------
@@ -25,10 +25,8 @@ export const AccountSettingsScreen = () => {
   const { profile, loadProfile, signOut } = useAuthStore();
 
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
-  const [email, setEmail] = useState(profile?.email || "");
   
   // Password fields
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -70,7 +68,6 @@ export const AccountSettingsScreen = () => {
       notify("Password Updated", "Your password has been changed successfully.");
       setNewPassword("");
       setConfirmPassword("");
-      setCurrentPassword("");
     } catch (e: any) {
       notify("Error", e.message);
     } finally {
