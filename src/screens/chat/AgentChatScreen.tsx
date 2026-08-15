@@ -37,6 +37,7 @@ import { supabase } from "../../services/supabase";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
+import { isUuid } from "../../services/formatting";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
@@ -224,7 +225,14 @@ export const AgentChatScreen = () => {
    * params were ignored, so Resume silently opened an empty new chat.
    */
   useEffect(() => {
-    const params = (route.params ?? {}) as { projectId?: string; sessionId?: string };
+    const raw = (route.params ?? {}) as { projectId?: string; sessionId?: string };
+    // Only adopt real ids. A navigator once passed a "global-default"
+    // placeholder as initialParams, and adopting it sent that string to
+    // agent-run as a project id — rejected, with the run never starting.
+    const params = {
+      projectId: isUuid(raw.projectId) ? raw.projectId : undefined,
+      sessionId: isUuid(raw.sessionId) ? raw.sessionId : undefined,
+    };
     if (!params.projectId && !params.sessionId) return;
 
     if (params.projectId) {

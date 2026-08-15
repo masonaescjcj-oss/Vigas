@@ -51,3 +51,14 @@ export function relativeTime(iso: string): string {
   if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
   return new Date(iso).toLocaleDateString();
 }
+
+/**
+ * Route params and stored ids are strings from outside this screen's control,
+ * and every id the backend accepts is a uuid. Checking beats discovering it as
+ * a validation error three network hops later.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID.test(value);
+}

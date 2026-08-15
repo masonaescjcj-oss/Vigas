@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { relativeTime, toFileEntries } from "../formatting";
+import { isUuid, relativeTime, toFileEntries } from "../formatting";
 
 describe("toFileEntries", () => {
   it("derives name, depth and extension from the path", () => {
@@ -74,5 +74,30 @@ describe("relativeTime", () => {
 
   it("never reports a negative age for a future timestamp", () => {
     expect(relativeTime(new Date(Date.now() + 60_000).toISOString())).toBe("just now");
+  });
+});
+
+/**
+ * A non-uuid reaching agent-run is not a cosmetic problem: the run is rejected
+ * and the chat shows a validation error instead of starting. This is the guard
+ * added after a navigator's "global-default" placeholder did exactly that.
+ */
+describe("isUuid", () => {
+  it("accepts a real uuid in either case", () => {
+    expect(isUuid("acd3ef5a-1b53-4399-809d-2c1bc2669aa9")).toBe(true);
+    expect(isUuid("ACD3EF5A-1B53-4399-809D-2C1BC2669AA9")).toBe(true);
+  });
+
+  it("rejects the placeholder that actually caused this", () => {
+    expect(isUuid("global-default")).toBe(false);
+  });
+
+  it("rejects near-misses and non-strings", () => {
+    expect(isUuid("acd3ef5a1b534399809d2c1bc2669aa9")).toBe(false); // no dashes
+    expect(isUuid("acd3ef5a-1b53-4399-809d-2c1bc2669aa")).toBe(false); // one short
+    expect(isUuid("")).toBe(false);
+    expect(isUuid(undefined)).toBe(false);
+    expect(isUuid(null)).toBe(false);
+    expect(isUuid(123)).toBe(false);
   });
 });

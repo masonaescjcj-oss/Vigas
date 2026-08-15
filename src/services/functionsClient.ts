@@ -38,6 +38,32 @@ export class FunctionsError extends Error {
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
+/**
+ * A validation failure carries the offending fields in `details`, but the
+ * message alone is the generic "Request validation failed." — which sends you
+ * bisecting the request body by hand. This folds the field names into the
+ * message the UI shows.
+ *
+ * It matters most when the app is newer than the deployed functions: the
+ * schemas are strict, so a field the server has never heard of is rejected
+ * wholesale, and "unrecognized key 'model'" is the entire diagnosis.
+ */
+function describeDetails(details: unknown): string | null {
+  if (!Array.isArray(details) || details.length === 0) return null;
+  const parts = details
+    .map((issue) => {
+      if (!issue || typeof issue !== "object") return null;
+      const { path, message } = issue as { path?: unknown; message?: unknown };
+      const where = typeof path === "string" && path ? path : null;
+      const what = typeof message === "string" ? message : null;
+      if (where && what) return `${where}: ${what}`;
+      return what ?? where;
+    })
+    .filter((part): part is string => !!part);
+  // Three is enough to identify the problem without turning into a wall.
+  return parts.length ? parts.slice(0, 3).join("; ") : null;
+}
+
 export async function invokeFunction<T>(
   name: string,
   options: { method?: HttpMethod; body?: unknown } = {},
@@ -73,7 +99,12 @@ export async function invokeFunction<T>(
       nested?.message ??
       (typeof data?.error === "string" ? data.error : undefined) ??
       (raw || res.statusText || `HTTP ${res.status}`);
-    throw new FunctionsError(res.status, data?.code ?? nested?.code, String(message));
+    const detail = describeDetails(data?.details ?? nested?.details);
+    throw new FunctionsError(
+      res.status,
+      data?.code ?? nested?.code,
+      detail ? `${message} (${detail})` : String(message),
+    );
   }
   return data as T;
 }

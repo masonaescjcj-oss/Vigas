@@ -148,11 +148,10 @@ const MainTabNavigator = () => {
         tabBarStyle: { display: "none" }, // Completely hides & removes bottom tab bar!
       }}
     >
-      <Tab.Screen
-        name="AgentTab"
-        component={AgentChatScreen}
-        initialParams={{ projectId: "global-default" }}
-      />
+      {/* No initialParams: the chat screen picks or creates a real project on
+          the first prompt. It used to be handed a "global-default" sentinel
+          left over from the mock era, which is not a project id at all. */}
+      <Tab.Screen name="AgentTab" component={AgentChatScreen} />
       <Tab.Screen
         name="ProjectsTab"
         component={ProjectNavigator}
