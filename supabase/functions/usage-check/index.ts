@@ -25,4 +25,6 @@ export async function handler(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(withSentryHandler("usage-check", handler));
+if (import.meta.main) {
+  Deno.serve(withSentryHandler("usage-check", handler));
+}

@@ -33,4 +33,6 @@ export async function handler(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(withSentryHandler("revenuecat-webhook", handler));
+if (import.meta.main) {
+  Deno.serve(withSentryHandler("revenuecat-webhook", handler));
+}

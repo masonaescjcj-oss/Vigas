@@ -1,6 +1,7 @@
 import { handler as agentRunHandler } from "./supabase/functions/agent-run/index.ts";
 import { handler as agentResumeHandler } from "./supabase/functions/agent-resume/index.ts";
 import { handler as agentForkHandler } from "./supabase/functions/agent-fork/index.ts";
+import { handler as agentAskHandler } from "./supabase/functions/agent-ask/index.ts";
 import { handler as projectsCreateHandler } from "./supabase/functions/projects-create/index.ts";
 import { handler as projectsDeleteHandler } from "./supabase/functions/projects-delete/index.ts";
 import { handler as projectsListHandler } from "./supabase/functions/projects-list/index.ts";
@@ -10,7 +11,9 @@ import { handler as userDeleteHandler } from "./supabase/functions/user-delete/i
 import { handler as usageCheckHandler } from "./supabase/functions/usage-check/index.ts";
 import { corsHeaders } from "./supabase/functions/shared/http.ts";
 
-const PORT = 54321;
+// Overridable so a second instance can run alongside the one the dev stack
+// started (the check scripts point at it without disturbing that server).
+const PORT = Number(Deno.env.get("LOCAL_API_PORT") ?? 54321);
 
 console.log(`🚀 Local API Server starting on http://localhost:${PORT}`);
 console.log(`Make sure to have SUPABASE_ACCESS_TOKEN and other environment variables set.`);
@@ -33,6 +36,8 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await agentRunHandler(req);
     } else if (path === "/functions/v1/agent-resume") {
       res = await agentResumeHandler(req);
+    } else if (path === "/functions/v1/agent-ask") {
+      res = await agentAskHandler(req);
     } else if (path === "/functions/v1/agent-fork") {
       res = await agentForkHandler(req);
     } else if (path === "/functions/v1/projects-create") {

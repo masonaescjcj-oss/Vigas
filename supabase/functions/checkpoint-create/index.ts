@@ -44,4 +44,6 @@ export async function handler(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(withSentryHandler("checkpoint-create", handler));
+if (import.meta.main) {
+  Deno.serve(withSentryHandler("checkpoint-create", handler));
+}

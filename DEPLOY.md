@@ -38,7 +38,7 @@ npx supabase@latest secrets set OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://ap
 ## ۳. Deploy فانکشن‌ها
 
 ```bash
-npx supabase@latest functions deploy agent-run agent-resume agent-fork projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
+npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
 ```
 
 ```bash

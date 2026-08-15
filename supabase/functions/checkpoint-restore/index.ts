@@ -35,4 +35,6 @@ export async function handler(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(withSentryHandler("checkpoint-restore", handler));
+if (import.meta.main) {
+  Deno.serve(withSentryHandler("checkpoint-restore", handler));
+}

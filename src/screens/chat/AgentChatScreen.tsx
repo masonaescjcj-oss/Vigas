@@ -424,18 +424,40 @@ export const AgentChatScreen = () => {
     setShowMentionsPopup(false);
     setShowSlashPopup(false);
 
+    // Incognito answers come straight back in the response — no session, no
+    // transcript, no job queue — so the conversation exists only in this state.
     if (isIncognito) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg_agent_${Date.now()}`,
-          role: "assistant",
-          content:
-            "Incognito mode is not connected to the agent backend yet — turn it off to run the agent.",
-          createdAt: Date.now(),
-          isIncognito,
-        },
-      ]);
+      setIsExecuting(true);
+      try {
+        const history = messages
+          .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
+          .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }));
+        const answer = await agentService.askIncognito(userPromptText, history, selectedModelId);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg_agent_${Date.now()}`,
+            role: "assistant",
+            content: answer.text || "(no answer)",
+            createdAt: Date.now(),
+            isIncognito,
+          },
+        ]);
+      } catch (e) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg_err_${Date.now()}`,
+            role: "assistant",
+            content: `⚠️ Incognito reply failed: ${e instanceof Error ? e.message : String(e)}`,
+            createdAt: Date.now(),
+            isIncognito,
+          },
+        ]);
+      } finally {
+        setIsExecuting(false);
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }
       return;
     }
 
@@ -449,6 +471,9 @@ export const AgentChatScreen = () => {
         title: userPromptText.slice(0, 48),
         sessionId: activeSessionId ?? undefined,
         model: selectedModelId,
+        // Chat mode answers questions about the project without being able to
+        // change it; Build mode is the full agent.
+        profile: activeMode === "chat" ? "readonly" : "standard",
       });
       setActiveSessionId(res.session_id);
     } catch (e) {
@@ -641,7 +666,9 @@ export const AgentChatScreen = () => {
   }, [activeSessionId, isExecuting]);
 
   /**
-   * Toggle Incognito State (Clears active thread memory for privacy)
+   * Toggle Incognito State. An incognito chat has no stored session, so the
+   * active one is dropped as well — otherwise the task poller would keep
+   * attributing the previous conversation's steps to this one.
    */
   const handleToggleIncognito = () => {
     const nextIncognitoState = !isIncognito;
@@ -649,6 +676,25 @@ export const AgentChatScreen = () => {
     if (nextIncognitoState) {
       setMessages([]);
       setThreadTitle("");
+      setActiveSessionId(null);
+      runStartedAtRef.current = null;
+    }
+  };
+
+  /**
+   * Chat vs Build is a real difference in what the agent may do: Build runs
+   * with the standard profile and can write files, Chat runs read-only. The
+   * backend fixes a session's profile at creation, so switching modes starts a
+   * new conversation rather than silently keeping the old permissions.
+   */
+  const handleSelectMode = (mode: "chat" | "build") => {
+    if (mode === activeMode || isExecuting) return;
+    setActiveMode(mode);
+    if (activeSessionId) {
+      setActiveSessionId(null);
+      setMessages([]);
+      setThreadTitle("");
+      runStartedAtRef.current = null;
     }
   };
 
@@ -873,7 +919,7 @@ export const AgentChatScreen = () => {
           ) : (
             <View style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414", borderColor: isLight ? "#E2E8F0" : "transparent" }} className="flex-row items-center p-1 rounded-full border shadow-sm">
               <TouchableOpacity
-                onPress={() => setActiveMode("chat")}
+                onPress={() => handleSelectMode("chat")}
                 style={{ backgroundColor: activeMode === "chat" ? (isLight ? "#F1F5F9" : "#242424") : "transparent" }}
                 className="flex-row items-center px-4 py-1.5 rounded-full"
                 activeOpacity={0.8}
@@ -885,7 +931,7 @@ export const AgentChatScreen = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setActiveMode("build")}
+                onPress={() => handleSelectMode("build")}
                 style={{ backgroundColor: activeMode === "build" ? (isLight ? "#F1F5F9" : "#242424") : "transparent" }}
                 className="flex-row items-center px-4 py-1.5 rounded-full"
                 activeOpacity={0.8}
@@ -972,14 +1018,17 @@ export const AgentChatScreen = () => {
               </View>
 
               <Text style={{ color: textPrimary }} className="text-base font-semibold text-center mb-2 leading-6">
-                Incognito chats aren't saved or used to train models.
+                This chat is not saved anywhere.
               </Text>
 
-              <TouchableOpacity activeOpacity={0.7}>
-                <Text style={{ color: textSecondary }} className="text-xs text-center underline">
-                  Learn more <Text style={{ color: textSecondary }} className="text-xs">about how your data is used.</Text>
-                </Text>
-              </TouchableOpacity>
+              <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 max-w-[300px]">
+                No session, no history, no record of what you asked — the answer comes
+                straight back and lives only on this screen. Closing the chat loses it.
+              </Text>
+              <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 max-w-[300px] mt-3">
+                In exchange there are no tools: the agent can't read or change your
+                project files here. Turn incognito off to build.
+              </Text>
             </View>
           ) : activeProjectName ? (
             /* PROJECT CONVERSATIONS LIST CANVAS (MATCHING USER SCREENSHOT) */

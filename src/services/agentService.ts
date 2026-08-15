@@ -55,7 +55,13 @@ export const agentService = {
   async startAgentRun(
     projectId: string,
     prompt: string,
-    options: { title?: string; sessionId?: string; model?: string } = {},
+    options: {
+      title?: string;
+      sessionId?: string;
+      model?: string;
+      /** "readonly" gives the agent tools that cannot modify the project. */
+      profile?: "standard" | "readonly";
+    } = {},
   ): Promise<AgentRunAccepted> {
     return invokeFunction<AgentRunAccepted>("agent-run", {
       body: {
@@ -63,6 +69,7 @@ export const agentService = {
         prompt,
         title: options.title,
         sessionId: options.sessionId,
+        ...(options.profile ? { profile: options.profile } : {}),
         // "auto" means "server decides" — don't send it.
         ...(options.model && options.model !== "auto" ? { model: options.model } : {}),
       },
@@ -75,6 +82,26 @@ export const agentService = {
     prompt: string,
   ): Promise<{ accepted: boolean; job_id: string }> {
     return invokeFunction("agent-resume", { body: { sessionId, prompt } });
+  },
+
+  /**
+   * Incognito turn: answers and stores nothing — no session, no transcript, no
+   * task rows. There is no server-side history, so the caller sends the
+   * conversation with each turn and the reply lives only in local state.
+   */
+  async askIncognito(
+    prompt: string,
+    history: Array<{ role: "user" | "assistant"; content: string }>,
+    model?: string,
+  ): Promise<{ text: string; stored: boolean }> {
+    return invokeFunction("agent-ask", {
+      body: {
+        prompt,
+        // The endpoint caps this; trimming here keeps the request small too.
+        history: history.slice(-20),
+        ...(model && model !== "auto" ? { model } : {}),
+      },
+    });
   },
 
   /** Fork a session from a specific message index. */

@@ -52,6 +52,20 @@ export const AgentResumeSchema = z.object({
   prompt: trimmed(50_000),
 }).strict();
 
+/**
+ * Incognito chat. Nothing is stored server-side, so the client has to send the
+ * conversation back with every turn — capped well below the run limit, since
+ * an unbounded history would be a free way to push tokens through the model.
+ */
+export const AgentAskSchema = z.object({
+  prompt: trimmed(20_000),
+  history: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: trimmed(20_000),
+  })).max(20).default([]),
+  model: z.string().trim().min(1).max(80).optional(),
+}).strict();
+
 export const AgentForkSchema = z.object({
   sessionId: uuid,
   atMessageIndex: z.number().int().min(0).max(1_000_000),
