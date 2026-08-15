@@ -15,6 +15,7 @@
 
 import React from "react";
 import { View, SafeAreaView, TouchableOpacity, Alert, Platform } from "react-native";
+import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -106,40 +107,29 @@ export const WelcomeScreen = () => {
           AI AGENT CODING & BUILDER SPACE
         </Text>
 
-        {/* Upgraded Skills.sh Ecosystem Glassmorphism Feature Card */}
+        {/* What the app actually does */}
         <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#E2E8F0" : "rgba(168, 85, 247, 0.2)" }} className="border p-5 rounded-3xl w-full shadow-xl relative overflow-hidden">
-          <View className="flex-row items-center justify-between mb-4">
-            <View className="flex-row items-center flex-1 mr-2">
-              <View className="w-10 h-10 rounded-2xl bg-purple-950/40 items-center justify-center mr-3 border border-purple-500/30">
-                <Text className="text-xl">🧩</Text>
-              </View>
-              <View className="flex-1">
-                <Text style={{ color: textPrimary }} className="text-base font-bold text-left">Skills.sh Ecosystem</Text>
-                <Text className="text-purple-500 text-xs text-left">1,000+ Open Source Agent Skills</Text>
-              </View>
+          <View className="flex-row items-center mb-4">
+            <View className="w-10 h-10 rounded-2xl bg-purple-950/40 items-center justify-center mr-3 border border-purple-500/30">
+              <Icon name="sparkles" size={20} color="#C084FC" />
             </View>
-
-            <View className="bg-purple-950/80 border border-purple-500/30 px-3 py-1 rounded-full">
-              <Text className="text-purple-200 text-[10px] font-mono font-bold uppercase tracking-wide">Featured #1</Text>
+            <View className="flex-1">
+              <Text style={{ color: textPrimary }} className="text-base font-bold text-left">Build from your phone</Text>
+              <Text className="text-purple-500 text-xs text-left">Describe it, the agent writes it</Text>
             </View>
           </View>
 
-          {/* Feature Badges Grid */}
           <View className="space-y-2 pt-1">
-            <View style={{ backgroundColor: bgItem }} className="flex-row items-center px-3 py-2 rounded-xl">
-              <Text className="text-purple-500 text-xs mr-2.5">✦</Text>
-              <Text style={{ color: textPrimary }} className="text-xs text-left font-medium">UI Design Rules & Vector Icon Mastery</Text>
-            </View>
-
-            <View style={{ backgroundColor: bgItem }} className="flex-row items-center px-3 py-2 rounded-xl">
-              <Text className="text-sky-500 text-xs mr-2.5">✦</Text>
-              <Text style={{ color: textPrimary }} className="text-xs text-left font-medium">React Native & Expo Performance Tuning</Text>
-            </View>
-
-            <View style={{ backgroundColor: bgItem }} className="flex-row items-center px-3 py-2 rounded-xl">
-              <Text className="text-emerald-500 text-xs mr-2.5">✦</Text>
-              <Text style={{ color: textPrimary }} className="text-xs text-left font-medium">Automated Jest & Playwright Test Generators</Text>
-            </View>
+            {[
+              { icon: "layers", color: "#C084FC", label: "Start from a template, or from scratch" },
+              { icon: "eye", color: "#38BDF8", label: "Live preview on your device" },
+              { icon: "folder", color: "#10B981", label: "Your files, saved and versioned" },
+            ].map((row) => (
+              <View key={row.label} style={{ backgroundColor: bgItem }} className="flex-row items-center px-3 py-2 rounded-xl mb-2">
+                <Icon name={row.icon} size={14} color={row.color} style={{ marginRight: 10 }} />
+                <Text style={{ color: textPrimary }} className="text-xs text-left font-medium flex-1">{row.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
       </View>

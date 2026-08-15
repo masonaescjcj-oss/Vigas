@@ -8,6 +8,7 @@
 
 import React, { useState } from "react";
 import { View, SafeAreaView, TouchableOpacity } from "react-native";
+import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
@@ -39,28 +40,28 @@ export const OnboardingScreen = () => {
 
   const slides: Slide[] = [
     {
-      title: "Autonomous AI Agent IDE",
-      subtitle: "Full-Stack Code Generation & Execution",
-      desc: "Retro Code plans, writes, tests, and debugs React, React Native, and Deno backend applications inside isolated cloud containers.",
-      badge: "RETRO CODE ENGINE",
+      title: "Build apps by describing them",
+      subtitle: "The agent writes the code",
+      desc: "Say what you want. Retro Code plans it, writes the files, runs the commands, and tells you what it changed — all from your phone.",
+      badge: "AI AGENT",
       badgeColor: "#C084FC",
-      heroEmblems: ["⚙️", "💻", "⚡"],
+      heroEmblems: ["sparkles", "code", "zap"],
     },
     {
-      title: "Skills.sh Open Ecosystem",
-      subtitle: "1,000+ Procedural Agent Skill Modules",
-      desc: "Access UI design rules, vector icon mastery, state management, and automated Playwright & Jest test generators with zero configuration.",
-      badge: "FEATURED ECOSYSTEM",
+      title: "Start from a template",
+      subtitle: "Landing page, todo, gallery, blog, quiz",
+      desc: "Pick a starter and the agent edits it instead of writing everything from scratch — faster, cheaper, and far more predictable.",
+      badge: "TEMPLATES",
       badgeColor: "#38BDF8",
-      heroEmblems: ["🧩", "🎨", "🚀"],
+      heroEmblems: ["layers", "folder", "edit"],
     },
     {
-      title: "Checkpoints & Rollbacks",
-      subtitle: "Atomic Version Timeline & Live Preview",
-      desc: "Every code change creates an automatic Git checkpoint hash. Preview live web & mobile artifacts and restore code with one click.",
-      badge: "SAFE & ISOLATED",
+      title: "See it running instantly",
+      subtitle: "Live preview on your device",
+      desc: "Your app is bundled and rendered right here — no server, no waiting. Change something and look again.",
+      badge: "LIVE PREVIEW",
       badgeColor: "#10B981",
-      heroEmblems: ["↺", "🛡️", "👁️"],
+      heroEmblems: ["eye", "mobile", "check"],
     },
   ];
 
@@ -103,7 +104,7 @@ export const OnboardingScreen = () => {
           <View className="flex-row space-x-4 mb-4">
             {slide.heroEmblems.map((emblem, eIdx) => (
               <View key={eIdx} style={{ backgroundColor: bgItem }} className="w-14 h-14 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/30">
-                <Text className="text-2xl">{emblem}</Text>
+                <Icon name={emblem} size={24} color={slide.badgeColor} />
               </View>
             ))}
           </View>

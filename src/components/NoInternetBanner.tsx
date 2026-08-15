@@ -47,7 +47,7 @@ export const NoInternetBanner = () => {
         className="text-white text-xs font-bold font-mono tracking-wide"
         style={{ color: "#FFFFFF" }}
       >
-        No Internet Connection 🔌
+        No internet connection
       </Text>
     </Animated.View>
   );

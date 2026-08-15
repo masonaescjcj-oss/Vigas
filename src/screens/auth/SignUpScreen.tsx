@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -108,13 +109,13 @@ export const SignUpScreen = () => {
         <View className="mb-6">
           <View className="flex-row items-center space-x-3 mb-4">
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Text className="text-2xl">👻</Text>
+              <Icon name="ghost" size={22} color="#C084FC" />
             </View>
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Text className="text-2xl">🧩</Text>
+              <Icon name="puzzle" size={22} color="#38BDF8" />
             </View>
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md border border-slate-200/50">
-              <Text className="text-2xl">🚀</Text>
+              <Icon name="zap" size={22} color="#F59E0B" />
             </View>
           </View>
 

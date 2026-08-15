@@ -31,6 +31,7 @@ import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../ser
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
+import { Icon as VectorIcon } from "../../components/Icon";
 
 /** On web, render the preview document in a sandboxed iframe. Native gets the
  * WebView-based preview with the store build (Phase 4). */
@@ -43,83 +44,6 @@ const WebPreviewFrame = ({ html }: { html: string }) => {
     sandbox: "allow-scripts allow-modals",
     style: { flex: 1, width: "100%", height: "100%", border: "0", borderRadius: 16, backgroundColor: "#0f1115" },
   });
-};
-
-// ============================================================================
-// ROCK-SOLID CRASH-PROOF VECTOR ICON SYSTEM (SVG / HD VECTOR GLYPHS)
-// Works 100% flawlessly on Expo Web, Android APK, and iOS without font loading errors
-// ============================================================================
-
-const VectorIcon = ({ name, size = 16, color = "#A1A1AA", style }: { name: string; size?: number; color?: string; style?: any }) => {
-  const iconMap: Record<string, string> = {
-    user: "👤",
-    search: "🔍",
-    code: "⚙️",
-    ghost: "👻",
-    plus: "+",
-    "arrow-up": "↑",
-    "arrow-right": "➔",
-    "arrow-left": "←",
-    camera: "📷",
-    image: "🖼️",
-    "file-text": "📄",
-    globe: "🌐",
-    puzzle: "🧩",
-    folder: "📁",
-    trash: "🗑️",
-    eye: "👁️",
-    "rotate-ccw": "↺",
-    terminal: ">_",
-    tool: "🔧",
-    zap: "⚡",
-    sparkles: "✨",
-    cpu: "💻",
-    layers: "📚",
-    check: "✓",
-    x: "✕",
-    "chevron-down": "˅",
-    "chevron-right": "➔",
-    cloud: "☁️",
-    edit: "📝",
-    info: "ⓘ",
-    settings: "⚙️",
-    shield: "🛡️",
-    card: "💳",
-    moon: "🌙",
-    type: "Aa",
-    mobile: "📱",
-    pin: "📍",
-    calendar: "📅",
-    chart: "📈",
-    video: "🎬",
-    mic: "🎙️",
-    box: "📦",
-    drive: "📐",
-    mail: "✉️",
-    briefcase: "💼",
-    inbox: "📥",
-    github: "🐙",
-  };
-
-  const symbol = iconMap[name] || "•";
-
-  return (
-    <Text 
-      style={[
-        { 
-          fontSize: size, 
-          color: color, 
-          lineHeight: size + 2, 
-          textAlign: "center", 
-          fontWeight: "600",
-          fontFamily: "monospace"
-        }, 
-        style
-      ]}
-    >
-      {symbol}
-    </Text>
-  );
 };
 
 // ============================================================================
