@@ -11,6 +11,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, TextInput, ScrollView, TouchableOpacity, FlatList, SafeAreaView } from "react-native";
+import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { EmptyState } from "../../components/EmptyState";
@@ -98,7 +99,7 @@ export const GlobalSearchScreen = () => {
         
         {/* Input box */}
         <View className="flex-1 bg-surfaceRaised px-3 py-1.5 rounded-pill border border-borderHairline flex-row items-center justify-between" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-          <Text className="text-sm opacity-60">🔍</Text>
+          <Icon name="search" size={15} color={colors.inkSecondary} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -133,7 +134,7 @@ export const GlobalSearchScreen = () => {
         <EmptyState
           title="No Results Found"
           description={`No results found for "${query}" in your projects or files. Try searching for something else.`}
-          emoji="🔍"
+          emoji="search"
         />
       ) : (
         // Results list grouped
@@ -142,7 +143,7 @@ export const GlobalSearchScreen = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16 }}
           renderItem={({ item }) => {
-            const categoryEmoji = item.category === "projects" ? "📁" : item.category === "chats" ? "💬" : "📄";
+            const categoryIcon = item.category === "projects" ? "folder" : item.category === "chats" ? "inbox" : "file-text";
             return (
               <TouchableOpacity
                 onPress={() => handleSelectResult(item)}
@@ -160,7 +161,7 @@ export const GlobalSearchScreen = () => {
                 </View>
 
                 <Text variant="caption" className="opacity-60 text-[10px] uppercase font-uiMedium">
-                  {item.category} {categoryEmoji}
+                  {item.category} 
                 </Text>
               </TouchableOpacity>
             );

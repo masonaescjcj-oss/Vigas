@@ -53,7 +53,7 @@ h1{font-size:20px} code{background:#181b22;padding:2px 8px;border-radius:6px}
 ul{list-style:none;padding:0} li{margin:8px 0} .muted{color:#9ca3af}
 pre{background:#181b22;border-radius:12px;padding:16px;white-space:pre-wrap;margin-top:24px}
 </style></head><body>
-<h1>📁 Project files</h1>
+<h1>Project files</h1>
 <p class="muted">This project has no <code>index.html</code> yet. Ask the agent to create a web page and it will show up here.</p>
 <ul>${list}</ul>
 ${readme ? `<pre>${escapeHtml(readme)}</pre>` : ""}

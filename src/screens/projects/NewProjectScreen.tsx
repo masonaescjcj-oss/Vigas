@@ -36,12 +36,12 @@ export const NewProjectScreen = () => {
   // Must mirror supabase/functions/shared/templates.ts — anything else is
   // rejected by projects-create with UNKNOWN_TEMPLATE.
   const templates: Template[] = [
-    { key: "landing", name: "Landing Page", desc: "Hero, features and a call to action", emoji: "🚀" },
-    { key: "todo", name: "Todo App", desc: "Task list saved in the browser", emoji: "✅" },
-    { key: "gallery", name: "Photo Gallery", desc: "Responsive grid with a lightbox", emoji: "🖼️" },
-    { key: "blog", name: "Blog", desc: "Post list and reading view", emoji: "📝" },
-    { key: "quiz", name: "Quiz App", desc: "Multiple-choice quiz with scoring", emoji: "🧠" },
-    { key: "blank", name: "Blank Project", desc: "Empty workspace — the agent starts from scratch", emoji: "📁" },
+    { key: "landing", name: "Landing Page", desc: "Hero, features and a call to action", emoji: "zap" },
+    { key: "todo", name: "Todo App", desc: "Task list saved in the browser", emoji: "check" },
+    { key: "gallery", name: "Photo Gallery", desc: "Responsive grid with a lightbox", emoji: "image" },
+    { key: "blog", name: "Blog", desc: "Post list and reading view", emoji: "file-text" },
+    { key: "quiz", name: "Quiz App", desc: "Multiple-choice quiz with scoring", emoji: "sparkles" },
+    { key: "blank", name: "Blank Project", desc: "Empty workspace — the agent starts from scratch", emoji: "folder" },
   ];
 
   const handleCreate = async () => {

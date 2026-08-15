@@ -138,7 +138,7 @@ export const FileViewerScreen = () => {
         <View className="flex-row space-x-2">
           {isEditing ? (
             <TouchableOpacity onPress={handleSave} className="p-2 bg-brandPrimary/10 border border-brandPrimary/20 rounded-pill mr-2" style={{ backgroundColor: `${colors.brandPrimary}15`, borderColor: `${colors.brandPrimary}30` }}>
-              {saving ? <ActivityIndicator size="small" color={colors.brandPrimary} /> : <Text variant="caption" className="font-uiMedium text-[10px] text-brandPrimary" style={{ color: colors.brandPrimary }}>Save 💾</Text>}
+              {saving ? <ActivityIndicator size="small" color={colors.brandPrimary} /> : <Text variant="caption" className="font-uiMedium text-[10px] text-brandPrimary" style={{ color: colors.brandPrimary }}>Save</Text>}
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => setIsEditing(true)} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill mr-2" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
@@ -147,7 +147,7 @@ export const FileViewerScreen = () => {
           )}
 
           <TouchableOpacity onPress={() => setShowDiff(!showDiff)} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill ml-2" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-            <Text variant="caption" className="font-uiMedium text-[10px]">{showDiff ? "Viewer 📄" : "Diff 🔄"}</Text>
+            <Text variant="caption" className="font-uiMedium text-[10px]">{showDiff ? "Viewer" : "Diff"}</Text>
           </TouchableOpacity>
         </View>
 

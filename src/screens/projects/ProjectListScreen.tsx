@@ -7,6 +7,7 @@
 
 import React, { useState } from "react";
 import { View, FlatList, TouchableOpacity, Modal, TextInput, SafeAreaView, Alert } from "react-native";
+import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
@@ -108,7 +109,7 @@ export const ProjectListScreen = () => {
                 className="p-2 rounded-full"
                 style={{ backgroundColor: `${colors.failed}15` }}
               >
-                <Text variant="caption" style={{ color: colors.failed }}>🗑️</Text>
+                <Icon name="trash" size={14} color={colors.failed} />
               </TouchableOpacity>
             </TouchableOpacity>
           )}

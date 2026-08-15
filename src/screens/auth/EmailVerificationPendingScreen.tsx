@@ -18,6 +18,7 @@
 
 import React, { useState, useEffect } from "react";
 import { View, SafeAreaView, TouchableOpacity, Alert } from "react-native";
+import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -76,7 +77,7 @@ export const EmailVerificationPendingScreen = () => {
       <View className="items-center mb-8">
         {/* Verification Emblem */}
         <View className="w-20 h-20 rounded-3xl bg-[#141414] items-center justify-center mb-6 shadow-2xl">
-          <Text className="text-4xl">📧</Text>
+          <Icon name="mail" size={36} color="#C084FC" />
         </View>
 
         <Text className="text-white text-3xl font-extrabold text-center mb-2 font-sans">

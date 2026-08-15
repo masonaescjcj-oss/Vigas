@@ -34,7 +34,7 @@ export const FileTreeScreen = () => {
         style={{ borderBottomColor: colors.borderHairline, backgroundColor: colors.canvasBase }}
       >
         <TouchableOpacity onPress={refresh} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-          <Text variant="caption" className="font-uiMedium text-[10px]">Refresh 🔄</Text>
+          <Text variant="caption" className="font-uiMedium text-[10px]">Refresh</Text>
         </TouchableOpacity>
         
         <Text variant="h3" className="font-uiSemiBold">File Explorer</Text>

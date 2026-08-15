@@ -9,6 +9,7 @@
 
 import React from "react";
 import { View, TouchableOpacity, Switch } from "react-native";
+import { Icon } from "../components/Icon";
 import { Text } from "./Typography";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -63,7 +64,7 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
           {label}
         </Text>
         {icon && (
-          <Text className="text-lg">{icon}</Text>
+          <Icon name={icon} size={17} color={colors.inkSecondary} />
         )}
       </View>
     </View>

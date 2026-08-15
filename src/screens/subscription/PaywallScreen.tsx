@@ -11,6 +11,7 @@
 
 import React, { useState } from "react";
 import { View, TouchableOpacity, ScrollView, Modal, Alert, SafeAreaView } from "react-native";
+import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -71,7 +72,7 @@ export const PaywallScreen = () => {
 
         {/* Visual Header */}
         <View className="items-center mb-8">
-          <Text className="text-6xl mb-4">💎</Text>
+          <Icon name="sparkles" size={52} color="#C084FC" style={{ marginBottom: 16 }} />
           <Text variant="h2" className="font-uiSemiBold text-center">
             Access all Pro features
           </Text>
@@ -142,7 +143,7 @@ export const PaywallScreen = () => {
             className="p-6 rounded-t-card border-t border-borderHairline"
             style={{ backgroundColor: colors.surfaceRaised, borderTopColor: colors.borderHairline }}
           >
-            <Text className="text-5xl text-center mb-3">🎁</Text>
+            <Icon name="zap" size={44} color="#F59E0B" style={{ marginBottom: 12, alignSelf: "center" }} />
             <Text variant="h2" className="font-uiSemiBold text-center text-brandPrimary" style={{ color: colors.brandPrimary }}>
               Special Offer: 20% Off!
             </Text>

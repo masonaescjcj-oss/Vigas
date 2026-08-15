@@ -164,7 +164,7 @@ export const ProjectDetailScreen = () => {
           <View className="flex-1">
             <View className="flex-row justify-between px-6 py-2 bg-surfaceRaised border-b border-borderHairline/20" style={{ backgroundColor: colors.surfaceRaised, borderBottomColor: colors.borderHairline }}>
               <TouchableOpacity onPress={refreshFiles} className="py-1 px-3 bg-canvasBase rounded border border-borderHairline" style={{ backgroundColor: colors.canvasBase, borderColor: colors.borderHairline }}>
-                <Text variant="caption" className="text-[10px]">Refresh 🔄</Text>
+                <Text variant="caption" className="text-[10px]">Refresh</Text>
               </TouchableOpacity>
               <Text variant="caption" className="font-uiMedium text-[10px] self-center">Sandbox Files</Text>
             </View>

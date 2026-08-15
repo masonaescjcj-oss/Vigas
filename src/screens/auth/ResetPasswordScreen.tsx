@@ -19,6 +19,7 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, SafeAreaView, TouchableOpacity } from "react-native";
+import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -79,7 +80,7 @@ export const ResetPasswordScreen = () => {
       {/* Brand Header */}
       <View className="mb-8">
         <View className="flex-row items-center mb-3">
-          <Text className="text-2xl mr-2">👻</Text>
+          <Icon name="ghost" size={22} color="#C084FC" style={{ marginRight: 8 }} />
           <Text className="text-white text-xl font-bold tracking-wider font-mono">RETRO CODE</Text>
         </View>
 

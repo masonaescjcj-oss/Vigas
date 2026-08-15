@@ -9,6 +9,7 @@
 
 import React from "react";
 import { View } from "react-native";
+import { Icon } from "../components/Icon";
 import { Text } from "./Typography";
 import { Button } from "./Button";
 import { useTheme } from "../theme/ThemeProvider";
@@ -24,7 +25,7 @@ interface EmptyStateProps {
 export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
-  emoji = "📂",
+  emoji = "folder",
   buttonLabel,
   onButtonPress,
 }) => {
@@ -33,7 +34,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <View className="flex-1 items-center justify-center p-8">
       {/* Icon */}
-      <Text className="text-6xl mb-4">{emoji}</Text>
+      <Icon name={emoji} size={48} color={colors.inkSecondary} style={{ marginBottom: 16, opacity: 0.7 }} />
 
       {/* Message */}
       <Text variant="h3" className="font-uiMedium text-center">

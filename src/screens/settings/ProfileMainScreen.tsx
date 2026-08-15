@@ -10,6 +10,7 @@
 
 import React from "react";
 import { View, ScrollView, TouchableOpacity, Alert, SafeAreaView } from "react-native";
+import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
@@ -55,10 +56,10 @@ export const ProfileMainScreen = () => {
             className="w-20 h-20 rounded-full items-center justify-center bg-surfaceRaised border border-borderHairline mb-4"
             style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
           >
-            <Text className="text-3xl">👤</Text>
+            <Icon name="user" size={30} color="#C084FC" />
             {/* Tiny camera overlay badge */}
             <View className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-brandPrimary items-center justify-center" style={{ backgroundColor: colors.brandPrimary }}>
-              <Text className="text-white text-[10px]">📷</Text>
+              <Icon name="camera" size={10} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
 
@@ -78,7 +79,7 @@ export const ProfileMainScreen = () => {
             <Text variant="caption" className="font-uiMedium mr-1.5" style={{ color: colors.brandPrimary }}>
               Current Plan: {profile?.subscription_tier?.toUpperCase() || "FREE"}
             </Text>
-            <Text variant="caption" style={{ color: colors.brandPrimary }}>➔</Text>
+            <Icon name="chevron-right" size={12} color={colors.brandPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -86,27 +87,27 @@ export const ProfileMainScreen = () => {
         <View className="mt-4">
           <SettingsRow
             label="Account Settings"
-            icon="👤"
+            icon="user"
             onPress={() => navigation.navigate("AccountSettings")}
           />
           <SettingsRow
             label="Preferences"
-            icon="🎨"
+            icon="settings"
             onPress={() => navigation.navigate("Preferences")}
           />
           <SettingsRow
             label="Security"
-            icon="🔒"
+            icon="lock"
             onPress={() => navigation.navigate("SecuritySettings")}
           />
           <SettingsRow
             label="Help & Support"
-            icon="❓"
+            icon="info"
             onPress={() => navigation.navigate("HelpSupport")}
           />
           <SettingsRow
             label="About"
-            icon="ℹ️"
+            icon="info"
             onPress={() => navigation.navigate("About")}
           />
         </View>

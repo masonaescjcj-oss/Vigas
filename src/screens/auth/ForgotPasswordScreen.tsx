@@ -19,6 +19,7 @@
 
 import React, { useState } from "react";
 import { View, TextInput, Alert, SafeAreaView, TouchableOpacity } from "react-native";
+import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
@@ -66,7 +67,7 @@ export const ForgotPasswordScreen = () => {
       {/* Brand Header */}
       <View className="mb-8">
         <View className="flex-row items-center mb-3">
-          <Text className="text-2xl mr-2">👻</Text>
+          <Icon name="ghost" size={22} color="#C084FC" style={{ marginRight: 8 }} />
           <Text className="text-white text-xl font-bold tracking-wider font-mono">RETRO CODE</Text>
         </View>
         
@@ -82,7 +83,7 @@ export const ForgotPasswordScreen = () => {
       {sent ? (
         /* Confirmation Success Card */
         <View className="bg-[#141414] p-6 rounded-3xl items-center shadow-2xl">
-          <Text className="text-5xl mb-4">📬</Text>
+          <Icon name="mail" size={44} color="#34D399" style={{ marginBottom: 16 }} />
 
           <Text className="text-white text-lg font-bold text-center mb-2">
             Reset Link Sent Successfully

@@ -8,6 +8,7 @@
 
 import React from "react";
 import { View, TouchableOpacity, Alert } from "react-native";
+import { Icon } from "../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "./Typography";
 import { useTheme } from "../theme/ThemeProvider";
@@ -54,7 +55,7 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
   // Get file icon marker
   const getIcon = () => {
     if (isDir) {
-      return isExpanded ? "📂" : "📁";
+      return isExpanded ? "folder" : "folder";
     }
     const ext = node.name.split(".").pop()?.toLowerCase();
     switch (ext) {
@@ -66,12 +67,12 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
       case "json":
         return "⚙️";
       case "md":
-        return "📝";
+        return "file-text";
       case "css":
       case "html":
-        return "🎨";
+        return "image";
       default:
-        return "📄";
+        return "file-text";
     }
   };
 
@@ -88,7 +89,7 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
         }}
       >
         <Text variant="body" className="mr-2.5 text-base">
-          {getIcon()}
+          <Icon name={getIcon()} size={15} color={node.isDir ? "#F59E0B" : colors.inkSecondary} />
         </Text>
         <Text variant="body" className="flex-1 text-right font-uiRegular text-sm">
           {node.name}

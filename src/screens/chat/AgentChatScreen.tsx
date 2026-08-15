@@ -17,7 +17,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Platform, ActivityIndicator, Alert } from "react-native";
 import { notify } from "../../services/notify";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useThemeStore } from "../../theme/store";
@@ -108,12 +108,12 @@ const SLASH_COMMANDS = [
 
 /** Starter templates — must mirror supabase/functions/shared/templates.ts */
 const PROJECT_TEMPLATE_CHOICES = [
-  { id: "landing", label: "🚀 Landing" },
-  { id: "todo", label: "✅ Todo" },
-  { id: "gallery", label: "🖼️ Gallery" },
-  { id: "blog", label: "📝 Blog" },
-  { id: "quiz", label: "🧠 Quiz" },
-  { id: "blank", label: "⬜ Blank" },
+  { id: "landing", label: "Landing", icon: "zap" },
+  { id: "todo", label: "Todo", icon: "check" },
+  { id: "gallery", label: "Gallery", icon: "image" },
+  { id: "blog", label: "Blog", icon: "file-text" },
+  { id: "quiz", label: "Quiz", icon: "sparkles" },
+  { id: "blank", label: "Blank", icon: "folder" },
 ];
 
 
@@ -131,6 +131,7 @@ export const AgentChatScreen = () => {
   const { colors } = useTheme();
   const { mode, setMode } = useThemeStore();
   const navigation = useNavigation<ProjectNavigationProp>();
+  const route = useRoute();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isLight = mode === "light";
@@ -212,6 +213,29 @@ export const AgentChatScreen = () => {
   // Auto-complete Popups (@ Mentions & / Commands)
   const [showMentionsPopup, setShowMentionsPopup] = useState(false);
   const [showSlashPopup, setShowSlashPopup] = useState(false);
+
+  /**
+   * Opened with a project/session (e.g. "Resume" from chat history, or a deep
+   * link): adopt them and restore the conversation. Previously these route
+   * params were ignored, so Resume silently opened an empty new chat.
+   */
+  useEffect(() => {
+    const params = (route.params ?? {}) as { projectId?: string; sessionId?: string };
+    if (!params.projectId && !params.sessionId) return;
+
+    if (params.projectId) {
+      setActiveProjectId(params.projectId);
+      const match = projects.find((p) => p.id === params.projectId);
+      if (match) setActiveProjectName(match.name);
+    }
+    if (params.sessionId && params.sessionId !== activeSessionId) {
+      const project = params.projectId
+        ? { id: params.projectId, name: projects.find((p) => p.id === params.projectId)?.name ?? "" }
+        : { id: activeProjectId ?? "", name: activeProjectName };
+      void handleLoadSession({ id: params.sessionId }, project);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params, projects.length]);
   
   // Active Selected Project State (Empty by default, populated when user selects a project)
   const [activeProjectName, setActiveProjectName] = useState<string>("");
@@ -822,7 +846,7 @@ export const AgentChatScreen = () => {
             </View>
           )}
 
-          {/* Top-Right Incognito Toggle Button (👻 Ghost Icon) */}
+          {/* Top-right incognito toggle */}
           <TouchableOpacity 
             onPress={handleToggleIncognito}
             style={{ backgroundColor: isIncognito ? (isLight ? "#F3E8FF" : "rgba(59, 7, 100, 0.9)") : (isLight ? "#FFFFFF" : "#141414"), borderColor: isLight ? "#E2E8F0" : "transparent" }}
@@ -1364,13 +1388,13 @@ export const AgentChatScreen = () => {
             </TouchableOpacity>
 
             <View className="flex-row items-center">
-              {/* Theme Toggle Button (Light ☀️ / Dark 🌙) */}
+              {/* Theme toggle */}
               <TouchableOpacity 
                 onPress={() => setMode(isLight ? "darkest" : "light")}
                 style={{ backgroundColor: isLight ? "#FFFFFF" : "#111111" }}
                 className="w-9 h-9 rounded-full items-center justify-center mr-2 border border-slate-200/40 active:opacity-80"
               >
-                <Text className="text-sm">{isLight ? "🌙" : "☀️"}</Text>
+                <VectorIcon name={isLight ? "moon" : "sun"} size={15} color={isLight ? "#6E6D68" : "#FCD34D"} />
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -2182,7 +2206,7 @@ export const AgentChatScreen = () => {
         <View className="flex-1 justify-end bg-black/80">
           <View className="h-3/4 bg-[#0F0F0F] p-4 rounded-t-[28px]">
             <View className="flex-row justify-between items-center mb-4 pb-3">
-              <Text className="text-zinc-200 text-sm font-bold">📑 Project Files & History</Text>
+              <Text className="text-zinc-200 text-sm font-bold">Project Files</Text>
               <TouchableOpacity onPress={() => setShowFileModal(false)} className="p-1">
                 <VectorIcon name="x" size={14} color="#A1A1AA" />
               </TouchableOpacity>
