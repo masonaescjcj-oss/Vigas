@@ -43,6 +43,8 @@ export const AgentRunSchema = z.object({
   sessionId: uuid.optional(),
   title: z.string().trim().min(1).max(200).optional(),
   profile: z.enum(["standard", "readonly"]).default("standard"),
+  /** Provider model id. Must be allow-listed server-side; omit for the default. */
+  model: z.string().trim().min(1).max(80).optional(),
 }).strict();
 
 export const AgentResumeSchema = z.object({

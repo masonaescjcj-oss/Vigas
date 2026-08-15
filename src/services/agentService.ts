@@ -55,7 +55,7 @@ export const agentService = {
   async startAgentRun(
     projectId: string,
     prompt: string,
-    options: { title?: string; sessionId?: string } = {},
+    options: { title?: string; sessionId?: string; model?: string } = {},
   ): Promise<AgentRunAccepted> {
     return invokeFunction<AgentRunAccepted>("agent-run", {
       body: {
@@ -63,6 +63,8 @@ export const agentService = {
         prompt,
         title: options.title,
         sessionId: options.sessionId,
+        // "auto" means "server decides" — don't send it.
+        ...(options.model && options.model !== "auto" ? { model: options.model } : {}),
       },
     });
   },

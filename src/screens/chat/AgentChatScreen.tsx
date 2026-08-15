@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Switch, Platform, ActivityIndicator, Alert } from "react-native";
+import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Platform, ActivityIndicator, Alert } from "react-native";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
@@ -131,17 +131,54 @@ const VectorIcon = ({ name, size = 16, color = "#A1A1AA", style }: { name: strin
  * BACKEND INTEGRATION: Replace with `GET /api/models` to fetch dynamic model capability metadata.
  */
 /**
- * Real model lineup. NOTE: model selection is not yet forwarded to the backend
- * (the worker's model comes from server env: OPENAI_MODEL / ANTHROPIC_MODEL);
- * plumbing the per-request model choice is a Phase 3 roadmap item.
+ * Selectable models. These ids are sent to agent-run, which only honours ids on
+ * its own allow-list (ALLOWED_MODELS) — anything else falls back to the server
+ * default, so the picker can never point the agent at an arbitrary model.
  */
 const AI_MODELS_DATA = [
-  { id: "auto", name: "Auto", icon: "zap", color: "#F59E0B", category: "Best", description: "Automatically selects the best model for your prompt", supportsThinking: true },
-  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "zap", color: "#22C55E", badge: "default", category: "Best", description: "Fast general coding model (current default)" },
-  { id: "deepseek-chat", name: "DeepSeek V3", icon: "code", color: "#38BDF8", category: "Best", description: "Fast, economical coding model" },
-  { id: "deepseek-reasoner", name: "DeepSeek R1", icon: "sparkles", color: "#6366F1", category: "Best", description: "Deep reasoning for complex tasks", supportsThinking: true },
-  { id: "claude-sonnet-5", name: "Claude Sonnet 5", icon: "cpu", color: "#F97316", badge: "pro", category: "Best", description: "Anthropic's premium coding model", supportsThinking: true },
+  { id: "auto", name: "Auto", icon: "zap", color: "#F59E0B", category: "Best", description: "Let the server pick the default model" },
+  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "zap", color: "#22C55E", badge: "default", category: "Best", description: "Fast general coding model" },
+  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "code", color: "#38BDF8", category: "Best", description: "Fast and economical" },
+  { id: "deepseek-reasoner", name: "DeepSeek Reasoner", icon: "sparkles", color: "#6366F1", category: "Best", description: "Deeper reasoning for complex tasks" },
 ];
+
+/**
+ * "/" shortcuts. These are prompt expansions, not backend commands — each one
+ * writes a complete instruction into the composer so the agent receives real
+ * intent instead of a bare token it would not understand.
+ */
+const SLASH_COMMANDS = [
+  {
+    cmd: "/plan",
+    icon: "sparkles",
+    label: "Plan before changing anything",
+    expands: "Before editing anything, inspect the project and give me a short step-by-step plan. Wait for my approval.",
+  },
+  {
+    cmd: "/refactor",
+    icon: "zap",
+    label: "Clean up code without changing behaviour",
+    expands: "Refactor the following for clarity without changing behaviour, then summarise what you changed:",
+  },
+  {
+    cmd: "/test",
+    icon: "check",
+    label: "Add tests",
+    expands: "Write tests covering the main cases and edge cases for:",
+  },
+  {
+    cmd: "/fix",
+    icon: "code",
+    label: "Diagnose and fix an error",
+    expands: "Find the cause of this problem, fix it, and explain the root cause:",
+  },
+  {
+    cmd: "/explain",
+    icon: "info",
+    label: "Explain how something works",
+    expands: "Read the relevant files and explain, in plain language, how this works:",
+  },
+] as const;
 
 /** Starter templates — must mirror supabase/functions/shared/templates.ts */
 const PROJECT_TEMPLATE_CHOICES = [
@@ -193,7 +230,6 @@ export const AgentChatScreen = () => {
   
   // Selected Model & Thinking Reasoning Toggle State
   const [selectedModelId, setSelectedModelId] = useState<string>("auto");
-  const [isThinkingEnabled, setIsThinkingEnabled] = useState(true);
   
   // Chat Stream Messages & Execution State
   const [inputText, setInputText] = useState("");
@@ -254,21 +290,12 @@ export const AgentChatScreen = () => {
   const [activeProjectName, setActiveProjectName] = useState<string>("");
   
   // Settings Screen View Switcher: 'main' | 'profile_edit' | 'capabilities' | 'permissions' | 'usage'
-  const [profileSubScreen, setProfileSubScreen] = useState<"main" | "profile_edit" | "capabilities" | "permissions" | "usage">("main");
+  const [profileSubScreen, setProfileSubScreen] = useState<"main" | "profile_edit" | "usage">("main");
   
   // User Profile Settings Form States
   const [fullNameInput, setFullNameInput] = useState("Retro Code User");
   const [callNameInput, setCallNameInput] = useState("Retro Code User");
   const [aiPreferenceText, setAiPreferenceText] = useState("Ask clarifying questions before giving detailed answers");
-  
-  // Capabilities & System Toggles
-  const [capWebSearch, setCapWebSearch] = useState(true);
-  const [capArtifacts, setCapArtifacts] = useState(true);
-  const [capCodeExecution, setCapCodeExecution] = useState(true);
-  const [capSwitchModels, setCapSwitchModels] = useState(true);
-  const [capMemory, setCapMemory] = useState(false);
-  const [selectedToolAccess, setSelectedToolAccess] = useState<"auto" | "ondemand" | "always">("auto");
-  const [hapticFeedback, setHapticFeedback] = useState(true);
 
   // Projects Form Search State
   const [newProjectName, setNewProjectName] = useState("");
@@ -289,28 +316,26 @@ export const AgentChatScreen = () => {
     if (text.endsWith("@")) {
       setShowMentionsPopup(true);
       setShowSlashPopup(false);
+      void loadFileEntries(); // populate the picker with this project's real files
     } else if (text.endsWith("/")) {
       setShowSlashPopup(true);
       setShowMentionsPopup(false);
-    } else if (!text.includes("@") && !text.includes("/")) {
+    } else {
       setShowMentionsPopup(false);
       setShowSlashPopup(false);
     }
   };
 
-  /**
-   * Handle Selecting @ Mention Tag
-   */
-  const handleSelectMention = (tag: string) => {
-    setInputText(prev => prev + tag + " ");
+  /** Attach a real file path: replaces the trailing "@" with `path`. */
+  const handleSelectMention = (filePath: string) => {
+    setInputText((prev) => `${prev.replace(/@$/, "")}${filePath} `);
     setShowMentionsPopup(false);
   };
 
-  /**
-   * Handle Selecting / Slash Command
-   */
+  /** Expand a shortcut into the full instruction it stands for. */
   const handleSelectSlashCommand = (cmd: string) => {
-    setInputText(cmd + " ");
+    const command = SLASH_COMMANDS.find((entry) => entry.cmd === cmd);
+    setInputText((prev) => `${prev.replace(/\/$/, "")}${command?.expands ?? cmd} `);
     setShowSlashPopup(false);
   };
 
@@ -416,27 +441,23 @@ export const AgentChatScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCheckpointsModal]);
 
-  /** Load the real file list whenever the file-tree sheet opens. */
-  useEffect(() => {
-    if (!showFileModal) return;
-    let cancelled = false;
+  /** Fetch the project's real file list (file-tree sheet and the "@" picker). */
+  const loadFileEntries = async () => {
     setFilesLoading(true);
     setFilesError(null);
-    (async () => {
-      try {
-        const projectId = await ensureProjectId();
-        const files = await getProjectFiles(projectId);
-        if (!cancelled) setFileEntries(toFileEntries(files));
-      } catch (e) {
-        if (!cancelled) {
-          setFileEntries([]);
-          setFilesError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!cancelled) setFilesLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+    try {
+      const projectId = await ensureProjectId();
+      setFileEntries(toFileEntries(await getProjectFiles(projectId)));
+    } catch (e) {
+      setFileEntries([]);
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showFileModal) void loadFileEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showFileModal]);
 
@@ -487,6 +508,7 @@ export const AgentChatScreen = () => {
       const res = await agentService.startAgentRun(projectId, userPromptText, {
         title: userPromptText.slice(0, 48),
         sessionId: activeSessionId ?? undefined,
+        model: selectedModelId,
       });
       setActiveSessionId(res.session_id);
     } catch (e) {
@@ -1160,40 +1182,42 @@ export const AgentChatScreen = () => {
           className="absolute bottom-4 left-3 right-3 p-3 rounded-3xl border shadow-2xl"
         >
 
-          {/* FLOATING '@ MENTIONS' POPUP SELECTOR CARD */}
+          {/* '@' FILE PICKER — real files from the active project */}
           {showMentionsPopup && (
-            <View style={{ backgroundColor: isLight ? "#F2EFEA" : "#1C1C1E" }} className="mb-2 p-2 rounded-2xl shadow-2xl">
-              <Text className="text-purple-500 text-[11px] font-mono px-2 py-1">@ Context Mentions</Text>
-              {[
-                { tag: "@file", label: "File (Attach specific code file)", icon: "file-text" },
-                { tag: "@folder", label: "Folder (Attach workspace directory)", icon: "folder" },
-                { tag: "@terminal", label: "Terminal (Attach command output logs)", icon: "terminal" },
-                { tag: "@web", label: "Web (Attach live search result)", icon: "globe" }
-              ].map(item => (
-                <TouchableOpacity
-                  key={item.tag}
-                  onPress={() => handleSelectMention(item.tag)}
-                  style={{ backgroundColor: isLight ? "#FFFFFF" : "transparent" }}
-                  className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
-                >
-                  <VectorIcon name={item.icon} size={14} color="#C084FC" style={{ marginRight: 8 }} />
-                  <Text className="text-purple-600 text-xs font-mono font-bold mr-2">{item.tag}</Text>
-                  <Text style={{ color: textSecondary }} className="text-xs flex-1 text-left">{item.label}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={{ backgroundColor: isLight ? "#F2EFEA" : "#1C1C1E" }} className="mb-2 p-2 rounded-2xl shadow-2xl max-h-56">
+              <Text className="text-purple-500 text-[11px] font-mono px-2 py-1">
+                @ Attach a project file
+              </Text>
+              <ScrollView>
+                {fileEntries.length === 0 ? (
+                  <Text style={{ color: textSecondary }} className="text-xs px-2 py-3 text-left">
+                    {filesLoading ? "Loading files…" : "No files in this project yet."}
+                  </Text>
+                ) : (
+                  fileEntries.map((entry) => (
+                    <TouchableOpacity
+                      key={entry.path}
+                      onPress={() => handleSelectMention(entry.path)}
+                      style={{ backgroundColor: isLight ? "#FFFFFF" : "transparent" }}
+                      className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
+                    >
+                      <VectorIcon name="file-text" size={14} color="#C084FC" style={{ marginRight: 8 }} />
+                      <Text numberOfLines={1} className="text-purple-600 text-xs font-mono font-bold flex-1 text-left">
+                        {entry.path}
+                      </Text>
+                      <Text style={{ color: textSecondary }} className="text-[10px] ml-2">{entry.sizeLabel}</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
             </View>
           )}
 
-          {/* FLOATING '/ SLASH COMMANDS' POPUP SELECTOR CARD */}
+          {/* '/' PROMPT SHORTCUTS — each expands into a full instruction */}
           {showSlashPopup && (
             <View style={{ backgroundColor: isLight ? "#F2EFEA" : "#1C1C1E" }} className="mb-2 p-2 rounded-2xl shadow-2xl">
-              <Text className="text-sky-500 text-[11px] font-mono px-2 py-1">/ Agent Commands</Text>
-              {[
-                { cmd: "/plan", label: "Create step-by-step implementation plan", icon: "sparkles" },
-                { cmd: "/refactor", label: "Refactor & clean up code structure", icon: "zap" },
-                { cmd: "/test", label: "Generate automated unit tests", icon: "check" },
-                { cmd: "/debug", label: "Investigate and fix error stack traces", icon: "code" }
-              ].map(item => (
+              <Text className="text-sky-500 text-[11px] font-mono px-2 py-1">/ Prompt shortcuts</Text>
+              {SLASH_COMMANDS.map((item) => (
                 <TouchableOpacity
                   key={item.cmd}
                   onPress={() => handleSelectSlashCommand(item.cmd)}
@@ -1243,7 +1267,7 @@ export const AgentChatScreen = () => {
               >
                 <VectorIcon name={activeModelObj.icon} size={12} color={activeModelObj.color} style={{ marginRight: 6 }} />
                 <Text style={{ color: textPrimary }} className="text-xs font-semibold mr-1.5">
-                  {selectedModelId === "auto" ? "Auto" : isThinkingEnabled ? "Thinking" : activeModelObj.name}
+                  {activeModelObj.name}
                 </Text>
                 <VectorIcon name="chevron-down" size={10} color={isLight ? "#64748B" : "#71717A"} />
               </TouchableOpacity>
@@ -1326,20 +1350,6 @@ export const AgentChatScreen = () => {
             </View>
 
             <View className="flex-row justify-between mb-6">
-              <TouchableOpacity style={{ backgroundColor: isLight ? "#F7F4EF" : "#1E1E1E" }} className="w-[31%] py-5 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5">
-                <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
-                  <VectorIcon name="camera" size={20} color={isLight ? "#1E1D1A" : "#E4E4E7"} />
-                </View>
-                <Text style={{ color: textPrimary }} className="text-xs font-semibold">Camera</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={{ backgroundColor: isLight ? "#F7F4EF" : "#1E1E1E" }} className="w-[31%] py-5 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5">
-                <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
-                  <VectorIcon name="image" size={20} color={isLight ? "#1E1D1A" : "#E4E4E7"} />
-                </View>
-                <Text style={{ color: textPrimary }} className="text-xs font-semibold">Photos</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity 
                 onPress={() => {
                   setShowAddToChatModal(false);
@@ -1353,24 +1363,6 @@ export const AgentChatScreen = () => {
                 </View>
                 <Text style={{ color: textPrimary }} className="text-xs font-semibold">Files</Text>
               </TouchableOpacity>
-            </View>
-
-            <View style={{ backgroundColor: isLight ? "#F7F4EF" : "#1C1C1C" }} className="rounded-2xl overflow-hidden mb-2 border border-black/5">
-              <View className="flex-row items-center justify-between p-4">
-                <View className="flex-row items-center">
-                  <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-9 h-9 rounded-full items-center justify-center mr-3">
-                    <VectorIcon name="globe" size={16} color="#38BDF8" />
-                  </View>
-                  <Text style={{ color: textPrimary }} className="text-sm font-semibold">Web search</Text>
-                </View>
-                <Switch
-                  value={capWebSearch}
-                  onValueChange={setCapWebSearch}
-                  trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                  thumbColor={capWebSearch ? "#FFFFFF" : "#A1A1AA"}
-                />
-              </View>
-
             </View>
 
           </View>
@@ -1949,30 +1941,6 @@ export const AgentChatScreen = () => {
                 </View>
 
                 <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
-                  <TouchableOpacity
-                    onPress={() => setProfileSubScreen("capabilities")}
-                    className="flex-row items-center justify-between p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center">
-                      <VectorIcon name="settings" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
-                      <View>
-                        <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">Capabilities</Text>
-                        <Text style={{ color: textSecondary }} className="text-xs text-left">{[capWebSearch, capArtifacts, capCodeExecution, capSwitchModels, capMemory].filter(Boolean).length} enabled</Text>
-                      </View>
-                    </View>
-                    <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setProfileSubScreen("permissions")}
-                    className="flex-row items-center justify-between p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center">
-                      <VectorIcon name="shield" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">Permissions</Text>
-                    </View>
-                    <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
-                  </TouchableOpacity>
                 </View>
 
                 {/* Theme & Preferences */}
@@ -1993,29 +1961,6 @@ export const AgentChatScreen = () => {
                     <Text className="text-xs font-bold text-purple-500">Tap to Switch ➔</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity className="flex-row items-center justify-between p-4">
-                    <View className="flex-row items-center">
-                      <VectorIcon name="type" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
-                      <View>
-                        <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">Font style</Text>
-                        <Text style={{ color: textSecondary }} className="text-xs text-left">Default</Text>
-                      </View>
-                    </View>
-                    <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
-                  </TouchableOpacity>
-
-                  <View className="flex-row items-center justify-between p-4">
-                    <View className="flex-row items-center">
-                      <VectorIcon name="mobile" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">Haptic feedback</Text>
-                    </View>
-                    <Switch
-                      value={hapticFeedback}
-                      onValueChange={setHapticFeedback}
-                      trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                      thumbColor={hapticFeedback ? "#FFFFFF" : "#A1A1AA"}
-                    />
-                  </View>
                 </View>
 
                 <TouchableOpacity
@@ -2030,254 +1975,6 @@ export const AgentChatScreen = () => {
           )}
 
           {/* SUB-SCREEN 2: PROFILE EDIT */}
-          {profileSubScreen === "profile_edit" && (
-            <View className="flex-1 bg-[#09090B]">
-              <View className="flex-row items-center px-4 py-4">
-                <TouchableOpacity 
-                  onPress={() => setProfileSubScreen("main")} 
-                  className="w-10 h-10 rounded-full bg-[#181818] items-center justify-center mr-3"
-                >
-                  <VectorIcon name="arrow-left" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text className="text-white text-lg font-bold">Profile</Text>
-              </View>
-
-              <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-                <Text className="text-zinc-300 text-xs font-semibold text-left mb-2">Full name</Text>
-                <TextInput
-                  value={fullNameInput}
-                  onChangeText={setFullNameInput}
-                  className="bg-[#141417] p-3.5 rounded-2xl text-white text-sm mb-4 text-left"
-                  style={{ color: "#FFFFFF" }}
-                />
-
-                <Text className="text-zinc-300 text-xs font-semibold text-left mb-2">What should we call you?</Text>
-                <TextInput
-                  value={callNameInput}
-                  onChangeText={setCallNameInput}
-                  className="bg-[#141417] p-3.5 rounded-2xl text-white text-sm mb-5 text-left"
-                  style={{ color: "#FFFFFF" }}
-                />
-
-                <TouchableOpacity className="bg-zinc-700 py-3.5 rounded-2xl items-center mb-8 active:bg-zinc-600">
-                  <Text className="text-white text-xs font-bold">Update Profile</Text>
-                </TouchableOpacity>
-
-                <Text className="text-white text-sm font-bold text-left mb-1">
-                  What personal preferences should Retro Code consider in responses?
-                </Text>
-                <Text className="text-zinc-400 text-xs text-left mb-3">
-                  Your preferences will apply to all conversations.
-                </Text>
-
-                <TextInput
-                  value={aiPreferenceText}
-                  onChangeText={setAiPreferenceText}
-                  multiline
-                  numberOfLines={4}
-                  className="bg-[#141417] p-4 rounded-2xl text-zinc-200 text-xs mb-5 text-left h-28"
-                  style={{ color: "#E4E4E7" }}
-                />
-
-                <TouchableOpacity className="bg-zinc-700 py-3.5 rounded-2xl items-center mb-8 active:bg-zinc-600">
-                  <Text className="text-white text-xs font-bold">Save Preferences</Text>
-                </TouchableOpacity>
-
-                <Text className="text-zinc-400 text-xs font-semibold text-left mb-3">Account Actions</Text>
-                <TouchableOpacity className="flex-row items-center py-3">
-                  <VectorIcon name="trash" size={16} color="#EF4444" style={{ marginRight: 10 }} />
-                  <Text className="text-red-500 text-sm font-semibold">Delete Account</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          )}
-
-          {/* SUB-SCREEN 3: CAPABILITIES */}
-          {profileSubScreen === "capabilities" && (
-            <View className="flex-1 bg-[#09090B]">
-              <View className="flex-row items-center px-4 py-4">
-                <TouchableOpacity 
-                  onPress={() => setProfileSubScreen("main")} 
-                  className="w-10 h-10 rounded-full bg-[#181818] items-center justify-center mr-3"
-                >
-                  <VectorIcon name="arrow-left" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text className="text-white text-lg font-bold">Capabilities</Text>
-              </View>
-
-              <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-                <View className="bg-[#141417] rounded-2xl overflow-hidden mb-6">
-                  <View className="p-4 flex-row items-center justify-between">
-                    <View className="flex-row items-start flex-1 mr-3">
-                      <VectorIcon name="globe" size={18} color="#A1A1AA" style={{ marginRight: 12, marginTop: 2 }} />
-                      <View className="flex-1">
-                        <Text className="text-white text-sm font-bold text-left mb-1">Web search</Text>
-                        <Text className="text-zinc-400 text-xs text-left leading-4">
-                          Retro Code will automatically search the web when it determines it needs current information
-                        </Text>
-                      </View>
-                    </View>
-                    <Switch
-                      value={capWebSearch}
-                      onValueChange={setCapWebSearch}
-                      trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                      thumbColor={capWebSearch ? "#FFFFFF" : "#A1A1AA"}
-                    />
-                  </View>
-
-                  <View className="p-4 flex-row items-center justify-between">
-                    <View className="flex-row items-start flex-1 mr-3">
-                      <VectorIcon name="box" size={18} color="#A1A1AA" style={{ marginRight: 12, marginTop: 2 }} />
-                      <View className="flex-1">
-                        <Text className="text-white text-sm font-bold text-left mb-1">Artifacts</Text>
-                        <Text className="text-zinc-400 text-xs text-left leading-4">Required by code execution</Text>
-                      </View>
-                    </View>
-                    <Switch
-                      value={capArtifacts}
-                      onValueChange={setCapArtifacts}
-                      trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                      thumbColor={capArtifacts ? "#FFFFFF" : "#A1A1AA"}
-                    />
-                  </View>
-
-                  <View className="p-4 flex-row items-center justify-between">
-                    <View className="flex-row items-start flex-1 mr-3">
-                      <VectorIcon name="code" size={18} color="#A1A1AA" style={{ marginRight: 12, marginTop: 2 }} />
-                      <View className="flex-1">
-                        <Text className="text-white text-sm font-bold text-left mb-1">Code execution and file creation</Text>
-                        <Text className="text-zinc-400 text-xs text-left leading-4">
-                          Allow Retro Code to execute code and create and edit docs, spreadsheets, presentations, PDFs, and data reports.
-                        </Text>
-                      </View>
-                    </View>
-                    <Switch
-                      value={capCodeExecution}
-                      onValueChange={setCapCodeExecution}
-                      trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                      thumbColor={capCodeExecution ? "#FFFFFF" : "#A1A1AA"}
-                    />
-                  </View>
-
-                  <View className="p-4 flex-row items-center justify-between">
-                    <View className="flex-row items-start flex-1 mr-3">
-                      <VectorIcon name="rotate-ccw" size={18} color="#A1A1AA" style={{ marginRight: 12, marginTop: 2 }} />
-                      <View className="flex-1">
-                        <Text className="text-white text-sm font-bold text-left mb-1">Switch models when a message is flagged</Text>
-                        <Text className="text-zinc-400 text-xs text-left leading-4">
-                          When safety measures flag a message, automatically switch to a different model to keep chatting. When off, your chat will pause instead.
-                        </Text>
-                      </View>
-                    </View>
-                    <Switch
-                      value={capSwitchModels}
-                      onValueChange={setCapSwitchModels}
-                      trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                      thumbColor={capSwitchModels ? "#FFFFFF" : "#A1A1AA"}
-                    />
-                  </View>
-                </View>
-
-                <Text className="text-zinc-400 text-xs font-semibold text-left mb-2">Memory</Text>
-                <View className="bg-[#141417] p-4 rounded-2xl flex-row items-center justify-between mb-6">
-                  <Text className="text-white text-sm font-bold">Memory</Text>
-                  <Switch
-                    value={capMemory}
-                    onValueChange={setCapMemory}
-                    trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                    thumbColor={capMemory ? "#FFFFFF" : "#A1A1AA"}
-                  />
-                </View>
-
-                <Text className="text-zinc-400 text-xs font-semibold text-left mb-2">Tool access</Text>
-                <View className="bg-[#141417] rounded-2xl overflow-hidden mb-6">
-                  <TouchableOpacity
-                    onPress={() => setSelectedToolAccess("auto")}
-                    className="p-4 flex-row justify-between items-center active:bg-[#1E1E22]"
-                  >
-                    <View>
-                      <Text className="text-sky-400 text-sm font-bold text-left mb-0.5">Auto</Text>
-                      <Text className="text-zinc-400 text-xs text-left">Retro Code chooses for you</Text>
-                    </View>
-                    {selectedToolAccess === "auto" && <VectorIcon name="check" size={16} color="#38BDF8" />}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setSelectedToolAccess("ondemand")}
-                    className="p-4 flex-row justify-between items-center active:bg-[#1E1E22]"
-                  >
-                    <View>
-                      <Text className="text-white text-sm font-bold text-left mb-0.5">On demand</Text>
-                      <Text className="text-zinc-400 text-xs text-left">Load when needed. More messages, lower accuracy</Text>
-                    </View>
-                    {selectedToolAccess === "ondemand" && <VectorIcon name="check" size={16} color="#38BDF8" />}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setSelectedToolAccess("always")}
-                    className="p-4 flex-row justify-between items-center active:bg-[#1E1E22]"
-                  >
-                    <View>
-                      <Text className="text-white text-sm font-bold text-left mb-0.5">Always available</Text>
-                      <Text className="text-zinc-400 text-xs text-left">Ready from start. Fewer messages, better accuracy</Text>
-                    </View>
-                    {selectedToolAccess === "always" && <VectorIcon name="check" size={16} color="#38BDF8" />}
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </View>
-          )}
-
-          {/* SUB-SCREEN 4: PERMISSIONS */}
-          {profileSubScreen === "permissions" && (
-            <View className="flex-1 bg-[#09090B]">
-              <View className="flex-row items-center px-4 py-4">
-                <TouchableOpacity 
-                  onPress={() => setProfileSubScreen("main")} 
-                  className="w-10 h-10 rounded-full bg-[#181818] items-center justify-center mr-3"
-                >
-                  <VectorIcon name="arrow-left" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text className="text-white text-lg font-bold">Permissions</Text>
-              </View>
-
-              <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false}>
-                <View className="bg-[#141417] rounded-2xl overflow-hidden mb-6">
-                  <View className="p-4 flex-row items-center justify-between">
-                    <View className="flex-row items-start flex-1 mr-3">
-                      <VectorIcon name="pin" size={18} color="#A1A1AA" style={{ marginRight: 12, marginTop: 2 }} />
-                      <View className="flex-1">
-                        <Text className="text-white text-sm font-bold text-left mb-1">Location</Text>
-                        <Text className="text-zinc-400 text-xs text-left leading-4">
-                          To allow access to your location, turn on the permission in your system settings.
-                        </Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity className="flex-row items-center">
-                      <Text className="text-zinc-400 text-xs mr-1">Settings</Text>
-                      <VectorIcon name="arrow-right" size={10} color="#71717A" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View className="p-4 flex-row items-center justify-between">
-                    <View className="flex-row items-start flex-1 mr-3">
-                      <VectorIcon name="calendar" size={18} color="#A1A1AA" style={{ marginRight: 12, marginTop: 2 }} />
-                      <View className="flex-1">
-                        <Text className="text-white text-sm font-bold text-left mb-1">Calendar</Text>
-                        <Text className="text-zinc-400 text-xs text-left leading-4">
-                          To allow access to your calendar, turn on the permission in your system settings.
-                        </Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity className="flex-row items-center">
-                      <Text className="text-zinc-400 text-xs mr-1">Settings</Text>
-                      <VectorIcon name="arrow-right" size={10} color="#71717A" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </ScrollView>
-            </View>
-          )}
 
           {/* SUB-SCREEN 5: USAGE AND CREDITS */}
           {profileSubScreen === "usage" && (
@@ -2444,18 +2141,6 @@ export const AgentChatScreen = () => {
                     <Text style={{ color: textSecondary }} className="text-xs mt-1 pl-6 opacity-90 text-left">
                       {model.description}
                     </Text>
-
-                    {isSelected && (
-                      <View className="mt-3 pt-2.5 flex-row items-center justify-between pl-6 border-t border-slate-200/40">
-                        <Text style={{ color: textPrimary }} className="text-xs font-semibold">Thinking Mode</Text>
-                        <Switch
-                          value={isThinkingEnabled}
-                          onValueChange={setIsThinkingEnabled}
-                          trackColor={{ false: "#3F3F46", true: "#38BDF8" }}
-                          thumbColor={isThinkingEnabled ? "#FFFFFF" : "#A1A1AA"}
-                        />
-                      </View>
-                    )}
                   </TouchableOpacity>
                 );
               })}

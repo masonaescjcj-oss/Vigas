@@ -4,7 +4,7 @@ import { AppError, assertMethod, errorResponse, parseJson } from "../shared/erro
 import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
-import { assertProjectOwner, ensureSession } from "../shared/agentRuntime.ts";
+import { assertProjectOwner, ensureSession, resolveRequestedModel } from "../shared/agentRuntime.ts";
 import { checkUsage } from "../shared/usage.ts";
 
 export async function handler(req: Request): Promise<Response> {
@@ -41,7 +41,16 @@ export async function handler(req: Request): Promise<Response> {
       user_id: user.id,
       project_id: input.projectId,
       session_id: sessionId,
-      payload: { mode: "run", prompt: input.prompt, profile, title: input.title ?? null, sandbox_path: project.sandbox_path },
+      payload: {
+        mode: "run",
+        prompt: input.prompt,
+        profile,
+        title: input.title ?? null,
+        sandbox_path: project.sandbox_path,
+        // Unknown/"auto" model ids resolve to undefined so the worker uses the
+        // server default instead of trusting client input.
+        model: resolveRequestedModel(input.model) ?? null,
+      },
     }).select("id,status,created_at").single();
     if (error?.code === "23505" || error?.code === "23P01" || /duplicate key|unique/i.test(error?.message ?? "")) {
       throw new AppError(409, "AGENT_BUSY", "This chat already has a run in progress — wait for it to finish.");

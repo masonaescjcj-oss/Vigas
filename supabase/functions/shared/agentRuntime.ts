@@ -152,9 +152,9 @@ export class AnthropicChatModel implements ChatModel {
   private readonly apiKey: string;
   private readonly model: string;
   private readonly maxTokens: number;
-  constructor() {
+  constructor(modelOverride?: string) {
     this.apiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
-    this.model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5";
+    this.model = modelOverride ?? Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-5";
     this.maxTokens = Number(Deno.env.get("ANTHROPIC_MAX_TOKENS") ?? 8_192);
     if (!this.apiKey) throw new AppError(500, "SERVER_MISCONFIGURED", "ANTHROPIC_API_KEY is not configured.");
     if (!Number.isInteger(this.maxTokens) || this.maxTokens < 256 || this.maxTokens > 64_000) throw new AppError(500, "SERVER_MISCONFIGURED", "ANTHROPIC_MAX_TOKENS must be between 256 and 64000.");
@@ -173,14 +173,31 @@ export class AnthropicChatModel implements ChatModel {
   }
 }
 
+/**
+ * Models a client may request per run. Anything else falls back to the server
+ * default — a client must never be able to point the agent at an arbitrary
+ * model string (cost and availability are server concerns).
+ */
+export const ALLOWED_MODELS: readonly string[] = (
+  Deno.env.get("ALLOWED_MODELS") ?? "gpt-5.6-luna,deepseek-v4-flash,deepseek-chat,deepseek-reasoner"
+)
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
+export function resolveRequestedModel(requested?: string | null): string | undefined {
+  if (!requested || requested === "auto") return undefined;
+  return ALLOWED_MODELS.includes(requested) ? requested : undefined;
+}
+
 export class OpenAIChatModel implements ChatModel {
   private readonly apiKey: string;
   private readonly model: string;
   private readonly baseUrl: string;
 
-  constructor() {
+  constructor(modelOverride?: string) {
     this.apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("AI_API_KEY") || "";
-    this.model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o";
+    this.model = modelOverride ?? Deno.env.get("OPENAI_MODEL") ?? "gpt-4o";
     this.baseUrl = Deno.env.get("OPENAI_BASE_URL") ?? "https://api.openai.com/v1";
     if (!this.apiKey) throw new AppError(500, "SERVER_MISCONFIGURED", "OPENAI_API_KEY is not configured.");
   }
@@ -300,6 +317,8 @@ export interface RuntimeFactoryOptions {
   onMessage?: (message: ChatMessage) => void;
   sessionId?: string;
   sandboxManager?: SandboxManager;
+  /** Allow-listed model id for this run; falls back to the server default. */
+  model?: string;
 }
 
 /** Builds the sandbox manager with the same provider selection the runtime uses
@@ -319,8 +338,8 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
     workspace,
     store: new EdgeSessionStore(options.client, options.user.id, options.projectId),
     model: Deno.env.get("OPENAI_API_KEY") || Deno.env.get("AI_API_KEY") || !Deno.env.get("ANTHROPIC_API_KEY")
-      ? new OpenAIChatModel()
-      : new AnthropicChatModel(),
+      ? new OpenAIChatModel(options.model)
+      : new AnthropicChatModel(options.model),
     profile: options.profile ?? "standard",
     // The workspace lives in Storage, not on this host's filesystem, so
     // resolving sandbox paths against the real FS would falsely deny valid
