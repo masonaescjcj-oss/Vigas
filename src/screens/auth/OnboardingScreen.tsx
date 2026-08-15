@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useThemeStore } from "../../theme/store";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Onboarding">;
 
@@ -65,17 +66,22 @@ export const OnboardingScreen = () => {
     },
   ];
 
+  const { setHasSeenOnboarding } = useSettingsStore();
+
+  const finish = () => {
+    setHasSeenOnboarding(true);
+    navigation.replace("Welcome");
+  };
+
   const handleNext = () => {
     if (activeSlide < slides.length - 1) {
       setActiveSlide(activeSlide + 1);
     } else {
-      navigation.replace("Welcome");
+      finish();
     }
   };
 
-  const handleSkip = () => {
-    navigation.replace("Welcome");
-  };
+  const handleSkip = finish;
 
   const slide = slides[activeSlide];
 

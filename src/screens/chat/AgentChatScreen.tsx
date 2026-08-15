@@ -26,6 +26,7 @@ import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData, type AgentSessionData } from "../../services/agentService";
 import { getProjectCheckpoints, relativeTime, type CheckpointRow } from "../../services/checkpointService";
 import { useAuthStore } from "../../stores/authStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { buildPreviewHtml } from "../../services/previewBuilder";
@@ -153,7 +154,8 @@ export const AgentChatScreen = () => {
   const [isIncognito, setIsIncognito] = useState(false);
   
   // Selected Model & Thinking Reasoning Toggle State
-  const [selectedModelId, setSelectedModelId] = useState<string>("auto");
+  const defaultModel = useSettingsStore((s) => s.defaultModel);
+  const [selectedModelId, setSelectedModelId] = useState<string>(defaultModel);
   
   // Chat Stream Messages & Execution State
   const [inputText, setInputText] = useState("");

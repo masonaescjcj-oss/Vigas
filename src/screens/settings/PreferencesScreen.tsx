@@ -12,34 +12,21 @@ import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { SettingsRow } from "../../components/SettingsRow";
 import { useTheme } from "../../theme/ThemeProvider";
-import { useSettingsStore } from "../../stores/settingsStore";
+import { useSettingsStore, type ModelPreference } from "../../stores/settingsStore";
 
 export const PreferencesScreen = () => {
   const { colors, mode, setMode } = useTheme();
   const navigation = useNavigation();
 
-  // Settings Store values
-  const {
-    language,
-    defaultModel,
-    tokenSaver,
-    hapticEnabled,
-    soundEnabled,
-    setLanguage,
-    setDefaultModel,
-    setTokenSaver,
-    setHapticEnabled,
-    setSoundEnabled,
-  } = useSettingsStore();
+  const { defaultModel, setDefaultModel } = useSettingsStore();
 
-  const handleLanguageChange = () => {
-    setLanguage(language === "fa" ? "en" : "fa");
-  };
-
-  const handleModelChange = () => {
-    const nextModel = defaultModel === "claude" ? "gpt-4o" : defaultModel === "gpt-4o" ? "deepseek" : "claude";
-    setDefaultModel(nextModel);
-  };
+  // Must stay in sync with the agent-run allow-list (ALLOWED_MODELS).
+  const modelOptions: Array<{ key: ModelPreference; label: string }> = [
+    { key: "auto", label: "Auto (server default)" },
+    { key: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
+    { key: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
+    { key: "deepseek-reasoner", label: "DeepSeek Reasoner" },
+  ];
 
   const themeOptions: Array<{ key: typeof mode; label: string }> = [
     { key: "light", label: "Light Mode (Perplexity Beige)" },
@@ -90,42 +77,35 @@ export const PreferencesScreen = () => {
           })}
         </View>
 
-        {/* Preferences rows */}
-        <View className="mt-2">
-          <Text variant="label" className="px-6 mb-2 text-left">General Settings</Text>
-          
-          <SettingsRow
-            label="Application Language"
-            value={language === "fa" ? "فارسی" : "English"}
-            onPress={handleLanguageChange}
-          />
-          
-          <SettingsRow
-            label="Default AI Model"
-            value={defaultModel === "claude" ? "Claude 3.5" : defaultModel === "gpt-4o" ? "GPT-4o" : "DeepSeek Coder"}
-            onPress={handleModelChange}
-          />
-
-          <SettingsRow
-            label="Token Saver Mode (Limit responses)"
-            hasSwitch
-            switchValue={tokenSaver}
-            onSwitchChange={setTokenSaver}
-          />
-
-          <SettingsRow
-            label="Haptic Feedback"
-            hasSwitch
-            switchValue={hapticEnabled}
-            onSwitchChange={setHapticEnabled}
-          />
-
-          <SettingsRow
-            label="In-App Notification Sound"
-            hasSwitch
-            switchValue={soundEnabled}
-            onSwitchChange={setSoundEnabled}
-          />
+        {/* Default model — remembered across launches and pre-selected in chat */}
+        <View className="px-6 pb-6">
+          <Text variant="label" className="text-left mb-4">Default AI Model</Text>
+          {modelOptions.map((opt) => {
+            const isSelected = defaultModel === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => setDefaultModel(opt.key)}
+                className="flex-row items-center justify-between p-4 rounded-card border mb-3"
+                style={{
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: isSelected ? colors.brandPrimary : colors.borderHairline,
+                  borderWidth: isSelected ? 2 : 1,
+                }}
+                activeOpacity={0.8}
+              >
+                <View
+                  className="w-4 h-4 rounded-full border items-center justify-center"
+                  style={{ borderColor: isSelected ? colors.brandPrimary : colors.inkSecondary }}
+                >
+                  {isSelected && (
+                    <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.brandPrimary }} />
+                  )}
+                </View>
+                <Text variant="body" className="font-uiMedium text-left">{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
       </ScrollView>

@@ -20,6 +20,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { useAuthStore } from "../../stores/authStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { type AuthStackParamList } from "../../navigation/types";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Splash">;
@@ -27,18 +28,21 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Splash">;
 export const SplashScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user, initialized } = useAuthStore();
+  const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
 
   useEffect(() => {
     if (!initialized) return;
 
     const timer = setTimeout(() => {
+      // Onboarding is a first-run experience: once it has been seen (or
+      // skipped) go straight to the sign-in screen on every later launch.
       if (!user) {
-        navigation.replace("Onboarding");
+        navigation.replace(hasSeenOnboarding ? "Welcome" : "Onboarding");
       }
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [initialized, user, navigation]);
+  }, [initialized, user, hasSeenOnboarding, navigation]);
 
   return (
     <View 
