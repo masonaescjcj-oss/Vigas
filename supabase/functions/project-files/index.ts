@@ -6,7 +6,9 @@ import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { PROJECT_FILES_BUCKET, downloadBlob, listStorageFiles } from "../shared/storage.ts";
 
-const TEXT_FILE = /\.(html?|css|js|mjs|json|txt|md|svg)$/i;
+/** Text sources the preview can render. JSX/TS belong here: without them a
+ * React project the agent wrote is invisible to the preview. */
+const TEXT_FILE = /\.(html?|css|jsx?|tsx?|mjs|cjs|json|txt|md|svg)$/i;
 const MAX_FILE_BYTES = 512_000;
 const MAX_TOTAL_BYTES = 3_000_000;
 

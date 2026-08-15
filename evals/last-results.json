@@ -1,20 +1,13 @@
 {
-  "passed": 2,
-  "total": 2,
-  "totalTokens": 9022,
+  "passed": 1,
+  "total": 1,
+  "totalTokens": 3393,
   "results": [
-    {
-      "id": "add-css-and-link",
-      "pass": true,
-      "ms": 14698,
-      "tokens": 5638,
-      "steps": 3
-    },
     {
       "id": "count-files",
       "pass": true,
-      "ms": 7455,
-      "tokens": 3384,
+      "ms": 10048,
+      "tokens": 3393,
       "steps": 2
     }
   ]

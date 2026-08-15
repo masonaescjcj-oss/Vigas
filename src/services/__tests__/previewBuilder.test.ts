@@ -50,11 +50,10 @@ describe("buildPreviewHtml", () => {
     expect(html).toContain(cdn);
   });
 
-  it("falls back to a file listing when there is no index.html", () => {
-    const html = buildPreviewHtml({ "notes.md": "# hello", "app.js": "x" });
+  it("falls back to a file listing when there is nothing runnable", () => {
+    const html = buildPreviewHtml({ "notes.md": "# hello", "styles.css": "body{}" });
     expect(html).toContain("Project files");
     expect(html).toContain("notes.md");
-    expect(html).toContain("app.js");
   });
 
   it("shows the readme in the fallback page", () => {
@@ -80,5 +79,77 @@ describe("buildPreviewHtml", () => {
     });
     expect(html).toContain("root");
     expect(html).not.toContain("public</p>");
+  });
+});
+
+describe("buildPreviewHtml — modular and JSX projects", () => {
+  it("bundles a JSX entry referenced from index.html", () => {
+    const html = buildPreviewHtml({
+      "index.html": `<div id="root"></div><script src="app.jsx"></script>`,
+      "app.jsx": `const el = <h1>Hi</h1>; document.body.append(String(el));`,
+    });
+    expect(html).toContain("createElement");
+    expect(html).not.toContain("<h1>Hi</h1>");
+  });
+
+  it("resolves a script tag that omits the file extension", () => {
+    const html = buildPreviewHtml({
+      "index.html": `<script src="app"></script>`,
+      "app.jsx": `const x = <p>ok</p>;`,
+    });
+    expect(html).toContain("createElement");
+  });
+
+  it("bundles multi-file ES modules referenced from index.html", () => {
+    const html = buildPreviewHtml({
+      "index.html": `<script src="main.js"></script>`,
+      "main.js": `import { hello } from "./lib.js"; hello();`,
+      "lib.js": `export function hello() { document.title = "done"; }`,
+    });
+    expect(html).toContain("function hello");
+    expect(html).toContain('"lib.js"');
+  });
+
+  it("leaves a plain non-module script inlined verbatim", () => {
+    const html = buildPreviewHtml({
+      "index.html": `<script src="app.js"></script>`,
+      "app.js": `document.title = "plain";`,
+    });
+    expect(html).toContain('document.title = "plain";');
+    expect(html).not.toContain("__require");
+  });
+
+  it("generates an app shell for a React project with no index.html", () => {
+    const html = buildPreviewHtml({
+      "src/App.jsx": `import React from "react";\nexport default function App(){ return <h1>App</h1>; }`,
+    });
+    expect(html).toContain('<div id="root">');
+    expect(html).toContain("createElement");
+  });
+
+  it("loads bare imports from the CDN and defers the bundle until they resolve", () => {
+    const html = buildPreviewHtml({
+      "index.jsx": `import React from "react"; console.log(React);`,
+    });
+    expect(html).toContain("esm.sh/react");
+    expect(html).toContain("preview-externals-ready");
+  });
+
+  it("keeps plain-HTML template projects completely offline", () => {
+    const html = buildPreviewHtml({
+      "index.html": `<link rel="stylesheet" href="styles.css"><script src="app.js"></script>`,
+      "styles.css": "body{margin:0}",
+      "app.js": "console.log(1)",
+    });
+    expect(html).not.toContain("esm.sh");
+    expect(html).not.toContain("http");
+  });
+
+  it("includes project css in the generated shell", () => {
+    const html = buildPreviewHtml({
+      "index.jsx": `document.title = "x";`,
+      "styles.css": "body{background:papayawhip}",
+    });
+    expect(html).toContain("papayawhip");
   });
 });

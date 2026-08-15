@@ -72,7 +72,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
         for (const fullPath of paths) {
           const rel = fullPath.slice(prefix.length + 1);
           if (!rel || rel === ".keep") continue;
-          if (!/\.(html?|css|js|mjs|json|txt|md|svg)$/i.test(rel)) continue;
+          // Must match project-files' TEXT_FILE — JSX/TS included, or React
+          // projects never reach the preview.
+          if (!/\.(html?|css|jsx?|tsx?|mjs|cjs|json|txt|md|svg)$/i.test(rel)) continue;
           const blob = await downloadBlob(service, PROJECT_FILES_BUCKET, fullPath);
           if (blob.size > 512_000) continue; // skip oversized files
           files[rel] = await blob.text();
