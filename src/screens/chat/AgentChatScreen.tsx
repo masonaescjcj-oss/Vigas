@@ -26,6 +26,7 @@ import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData, type AgentSessionData } from "../../services/agentService";
 import { getProjectCheckpoints, relativeTime, type CheckpointRow } from "../../services/checkpointService";
 import { useAuthStore } from "../../stores/authStore";
+import { supabase } from "../../services/supabase";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
@@ -536,10 +537,34 @@ export const AgentChatScreen = () => {
     };
 
     void tick();
-    const interval = setInterval(tick, 2500);
+
+    // Realtime pushes each agent_tasks write the instant the worker makes it,
+    // so steps appear immediately instead of up to a poll late. It can't be
+    // relied on blindly though (blocked sockets, proxies, dropped channels), so
+    // polling stays — fast until the channel confirms it is live, then slow.
+    const FAST_MS = 2500;
+    const SLOW_MS = 8000;
+    let interval = setInterval(tick, FAST_MS);
+
+    const channel = supabase
+      .channel(`agent_tasks:${activeSessionId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "agent_tasks", filter: `session_id=eq.${activeSessionId}` },
+        () => { void tick(); },
+      )
+      .subscribe((status) => {
+        if (cancelled) return;
+        // Only back off once events are actually flowing; on any error or drop
+        // go back to fast polling so the UI never stalls.
+        clearInterval(interval);
+        interval = setInterval(tick, status === "SUBSCRIBED" ? SLOW_MS : FAST_MS);
+      });
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      void supabase.removeChannel(channel);
     };
   }, [activeSessionId, isExecuting]);
 
