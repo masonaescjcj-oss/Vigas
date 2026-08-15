@@ -5,6 +5,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   css: { postcss: {} },
   test: {
-    include: ["src/core/agent/__tests__/**/*.test.ts"],
+    // Agent core + the pure frontend logic (preview building, message parsing,
+    // file/date formatting). UI components themselves aren't rendered here.
+    include: ["src/**/__tests__/**/*.test.ts"],
   },
 });

@@ -30,15 +30,4 @@ export async function getProjectCheckpoints(projectId: string): Promise<Checkpoi
   return (data ?? []) as CheckpointRow[];
 }
 
-/** "3 min ago" / "2 hr ago" / "5 days ago" from an ISO timestamp. */
-export function relativeTime(iso: string): string {
-  const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 1000));
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hr ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return new Date(iso).toLocaleDateString();
-}
+export { relativeTime } from "./formatting";
