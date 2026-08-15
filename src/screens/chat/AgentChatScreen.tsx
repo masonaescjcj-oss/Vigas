@@ -651,6 +651,23 @@ export const AgentChatScreen = () => {
    * 2. Clears active messages so the Project Conversations List View is rendered.
    * 3. User can pick an existing conversation card OR type in the bottom input to create a new thread.
    */
+  /**
+   * The chat screen lives in MainTabs → AgentTab, so the Profile stack and the
+   * root modals have to be addressed through their parents. Without these the
+   * 20-odd built screens were unreachable.
+   */
+  const goTo = (screen: string, params?: object) => {
+    setShowProfileModal(false);
+    setShowDrawerModal(false);
+    (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate(screen, params);
+  };
+
+  const goToProfile = (screen: string, params?: object) =>
+    goTo("ProfileTab", { screen, params });
+
+  const goToProject = (screen: string, params?: object) =>
+    goTo("ProjectsTab", { screen, params });
+
   /** Really sign out (this used to only close the settings sheet). */
   const handleSignOut = async () => {
     setShowProfileModal(false);
@@ -1648,9 +1665,29 @@ export const AgentChatScreen = () => {
                         {proj.description}
                       </Text>
                     ) : null}
-                    <Text style={{ color: textMuted }} className="text-[10px] text-left">
+                    <Text style={{ color: textMuted }} className="text-[10px] text-left mb-3">
                       Created {relativeTime(proj.created_at)}
                     </Text>
+
+                    {/* Entry points into the project screens */}
+                    <View className="flex-row flex-wrap">
+                      {([
+                        { label: "Details", target: "ProjectDetail" },
+                        { label: "Files", target: "FileTree" },
+                        { label: "History", target: "SessionHistory" },
+                        { label: "Checkpoints", target: "CheckpointList" },
+                        { label: "Settings", target: "ProjectSettings" },
+                      ] as const).map((entry) => (
+                        <TouchableOpacity
+                          key={entry.target}
+                          onPress={() => goToProject(entry.target, { projectId: proj.id })}
+                          style={{ backgroundColor: isLight ? "#EAE6DF" : "#262626" }}
+                          className="px-2.5 py-1 rounded-lg mr-2 mb-1"
+                        >
+                          <Text style={{ color: textSecondary }} className="text-[10px] font-semibold">{entry.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </TouchableOpacity>
                 ))
               )}
@@ -1900,7 +1937,9 @@ export const AgentChatScreen = () => {
                   </View>
 
                   <View style={{ backgroundColor: isLight ? "#1E1D1A" : "#FFFFFF" }} className="px-3.5 py-1.5 rounded-full items-center justify-center">
-                    <Text style={{ color: isLight ? "#FFFFFF" : "#000000", fontWeight: "700", fontSize: 12 }}>Free</Text>
+                    <Text style={{ color: isLight ? "#FFFFFF" : "#000000", fontWeight: "700", fontSize: 12 }}>
+                      {(profile?.subscription_tier ?? "free").toUpperCase()}
+                    </Text>
                   </View>
                 </View>
 
@@ -1910,10 +1949,41 @@ export const AgentChatScreen = () => {
                   <Text style={{ color: textSecondary }} className="text-xs text-left mb-4 leading-5">
                     Upgrade for more usage and capabilities.
                   </Text>
-                  
-                  <TouchableOpacity style={{ backgroundColor: isLight ? "#1E1D1A" : "#FFFFFF" }} className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center">
+
+                  <TouchableOpacity
+                    onPress={() => goTo("Paywall", {})}
+                    style={{ backgroundColor: isLight ? "#1E1D1A" : "#FFFFFF" }}
+                    className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center"
+                  >
                     <Text style={{ color: isLight ? "#FFFFFF" : "#000000", fontWeight: "700", fontSize: 13 }}>Upgrade</Text>
                   </TouchableOpacity>
+                </View>
+
+                {/* Account & app screens (these live in the Profile stack) */}
+                <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
+                  {([
+                    { label: "Account", icon: "user", target: "AccountSettings", root: false },
+                    { label: "Preferences", icon: "settings", target: "Preferences", root: false },
+                    { label: "Security", icon: "lock", target: "SecuritySettings", root: false },
+                    { label: "Subscription", icon: "zap", target: "ManageSubscription", root: true },
+                    { label: "Token usage", icon: "chart", target: "TokenUsage", root: true },
+                    { label: "Help & Support", icon: "info", target: "HelpSupport", root: false },
+                    { label: "About", icon: "info", target: "About", root: false },
+                    { label: "Privacy Policy", icon: "file-text", target: "PrivacyPolicy", root: false },
+                    { label: "Terms of Service", icon: "file-text", target: "TermsOfService", root: false },
+                  ] as const).map((row) => (
+                    <TouchableOpacity
+                      key={row.target}
+                      onPress={() => (row.root ? goTo(row.target) : goToProfile(row.target))}
+                      className="flex-row items-center justify-between p-4 active:opacity-80"
+                    >
+                      <View className="flex-row items-center">
+                        <VectorIcon name={row.icon} size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
+                        <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">{row.label}</Text>
+                      </View>
+                      <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
+                    </TouchableOpacity>
+                  ))}
                 </View>
 
                 <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
