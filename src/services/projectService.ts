@@ -37,7 +37,11 @@ export const projectService = {
     return (data.project ?? data) as Project;
   },
 
-  /** Update project details (RLS: owner only). */
+  /**
+   * Update project details. Straight to the table: unlike Storage, the projects
+   * table's RLS does let an owner read and write their own rows (verified), so
+   * the projects-update function is not on this path.
+   */
   async updateProject(id: string, updates: Partial<Project>): Promise<Project> {
     const { data, error } = await supabase
       .from("projects")

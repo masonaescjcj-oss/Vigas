@@ -16,7 +16,7 @@
 import React from "react";
 import { View, SafeAreaView, TouchableOpacity, Alert, Platform } from "react-native";
 import { Icon } from "../../components/Icon";
-import { notify } from "../../services/notify";
+import { confirmAction, notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
@@ -52,22 +52,12 @@ export const WelcomeScreen = () => {
     }
   };
 
-  const handleGuestMode = () => {
-    if (Platform.OS === "web") {
-      const webConfirm = (globalThis as { confirm?: (message: string) => boolean }).confirm;
-      if (!webConfirm || webConfirm("Continue as a guest? You can create an account later to keep your projects.")) {
-        void runGuestLogin();
-      }
-    } else {
-      Alert.alert(
-        "Guest Mode",
-        "Continue as a guest? You can create an account later to keep your projects.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Continue", onPress: runGuestLogin },
-        ],
-      );
-    }
+  const handleGuestMode = async () => {
+    const confirmed = await confirmAction(
+      "Guest Mode",
+      "Continue as a guest? You can create an account later to keep your projects.",
+    );
+    if (confirmed) await runGuestLogin();
   };
 
   return (

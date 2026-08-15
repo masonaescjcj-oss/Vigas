@@ -1,3 +1,13 @@
+/**
+ * supabase/functions/agent-resume/index.ts
+ * ---------------------------------------------------------------------------
+ * Continue a paused session. The app does not call this: agent-run already
+ * continues an existing session when handed its id, and reactivates a
+ * completed one, so routing the chat through a second path would mean keeping
+ * two of them in sync. Kept for API callers that want the stricter behaviour
+ * (this one refuses a completed session and tells you to fork instead).
+ * ---------------------------------------------------------------------------
+ */
 import { withSentryHandler } from "../../../src/infra/monitoring/sentryConfig.ts";
 import { AgentResumeSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";

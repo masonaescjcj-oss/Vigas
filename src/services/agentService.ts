@@ -2,7 +2,7 @@
  * frontend/src/services/agentService.ts
  * ---------------------------------------------------------------------------
  * Talks to the real agent backend:
- *   - actions (run / resume / fork) go through Edge Functions
+ *   - actions (run / ask / fork) go through Edge Functions
  *   - reads (sessions / tasks) go through Supabase tables under RLS, or the
  *     local dev gateway's /api/* endpoints when EXPO_PUBLIC_API_URL points at
  *     localhost (guest mode has no real JWT, so RLS reads would return nothing)
@@ -74,14 +74,6 @@ export const agentService = {
         ...(options.model && options.model !== "auto" ? { model: options.model } : {}),
       },
     });
-  },
-
-  /** Resume a paused session with a new prompt. */
-  async resumeAgentRun(
-    sessionId: string,
-    prompt: string,
-  ): Promise<{ accepted: boolean; job_id: string }> {
-    return invokeFunction("agent-resume", { body: { sessionId, prompt } });
   },
 
   /**

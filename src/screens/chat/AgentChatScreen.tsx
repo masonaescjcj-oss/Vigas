@@ -786,7 +786,7 @@ export const AgentChatScreen = () => {
   };
 
   /** Delete a project (and its files) from the projects sheet, with confirmation. */
-  const handleDeleteProjectFromSheet = (projectId: string, projectName: string) => {
+  const handleDeleteProjectFromSheet = async (projectId: string, projectName: string) => {
     const run = async () => {
       try {
         await deleteProject(projectId);
@@ -801,16 +801,11 @@ export const AgentChatScreen = () => {
         notify("Could not delete", e instanceof Error ? e.message : String(e));
       }
     };
-    const message = `Delete “${projectName}” and all of its files? This cannot be undone.`;
-    if (Platform.OS === "web") {
-      const webConfirm = (globalThis as { confirm?: (m: string) => boolean }).confirm;
-      if (!webConfirm || webConfirm(message)) void run();
-    } else {
-      Alert.alert("Delete project", message, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: run },
-      ]);
-    }
+    const confirmed = await confirmAction(
+      "Delete project",
+      `Delete “${projectName}” and all of its files? This cannot be undone.`,
+    );
+    if (confirmed) await run();
   };
 
   const handleOpenProjectFolder = (projectId: string, projectName: string) => {
