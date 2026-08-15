@@ -33,20 +33,8 @@ import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../ser
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
+import { PreviewSurface } from "../../components/PreviewSurface";
 import { Icon as VectorIcon } from "../../components/Icon";
-
-/** On web, render the preview document in a sandboxed iframe. Native gets the
- * WebView-based preview with the store build (Phase 4). */
-const WebPreviewFrame = ({ html }: { html: string }) => {
-  if (Platform.OS !== "web") return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { unstable_createElement } = require("react-native-web");
-  return unstable_createElement("iframe", {
-    srcDoc: html,
-    sandbox: "allow-scripts allow-modals",
-    style: { flex: 1, width: "100%", height: "100%", border: "0", borderRadius: 16, backgroundColor: "#0f1115" },
-  });
-};
 
 // ============================================================================
 // 1. DATA MODELS & INITIAL STATE SCHEMAS
@@ -1789,14 +1777,13 @@ export const AgentChatScreen = () => {
                   <Text className="text-white text-sm font-bold mb-2">Preview failed</Text>
                   <Text className="text-zinc-400 text-xs text-center leading-5">{previewError}</Text>
                 </View>
-              ) : previewHtml && Platform.OS === "web" ? (
-                <WebPreviewFrame html={previewHtml} />
+              ) : previewHtml ? (
+                <PreviewSurface html={previewHtml} />
               ) : (
                 <View className="flex-1 items-center justify-center px-6">
-                  <VectorIcon name="mobile" size={36} color="#10B981" style={{ marginBottom: 12 }} />
-                  <Text className="text-white text-sm font-bold mb-2">Native preview coming soon</Text>
+                  <VectorIcon name="eye" size={36} color="#52525B" style={{ marginBottom: 12 }} />
                   <Text className="text-zinc-400 text-xs text-center leading-5">
-                    The WebView-powered preview ships with the native build (Phase 4). Use the web app to preview for now.
+                    Nothing to preview yet — ask the agent to build something.
                   </Text>
                 </View>
               )}

@@ -89,14 +89,33 @@ function needsBundling(path: string, source: string): boolean {
   return /^\s*import\s|^\s*export\s/m.test(source);
 }
 
+/**
+ * Fetching react from a CDN takes a few seconds on a cold cache, and until the
+ * bundle runs the page is empty. Without this the preview just looks broken.
+ */
+function loadingSplash(externals: string[]): string {
+  const names = escapeHtml(externals.join(", "));
+  return `<div id="__preview-loading" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:#0f1115;color:#9ca3af;font:13px system-ui,sans-serif">
+<div style="width:22px;height:22px;border:2px solid #27272a;border-top-color:#8B5CF6;border-radius:50%;animation:__spin .8s linear infinite"></div>
+<div>Loading ${names}…</div>
+<style>@keyframes __spin{to{transform:rotate(360deg)}}</style>
+</div>`;
+}
+
 function renderBundle(bundle: ReturnType<typeof bundleModules>): string {
   if (!bundle.code) return `<script>console.error(${JSON.stringify(bundle.warnings.join("; "))})</script>`;
   const externals = externalsLoader(bundle.externals);
   const run = `<script>\n${bundle.code}\n</script>`;
-  // With externals we must wait for the dynamic imports to resolve first.
-  return externals
-    ? `${externals}\n<script>window.addEventListener("preview-externals-ready", function () {\n${bundle.code}\n});</script>`
-    : run;
+  if (!externals) return run;
+  // With externals we must wait for the dynamic imports to resolve first, and
+  // show something in the meantime.
+  return `${loadingSplash(bundle.externals)}
+${externals}
+<script>window.addEventListener("preview-externals-ready", function () {
+  var splash = document.getElementById("__preview-loading");
+  if (splash) splash.remove();
+${bundle.code}
+});</script>`;
 }
 
 /** Fallback page when the project has no index.html yet. */

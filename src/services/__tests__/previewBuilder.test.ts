@@ -153,3 +153,26 @@ describe("buildPreviewHtml — modular and JSX projects", () => {
     expect(html).toContain("papayawhip");
   });
 });
+
+/**
+ * A CDN fetch takes seconds on a cold cache; an empty page in the meantime
+ * reads as a broken preview.
+ */
+describe("loading state for CDN-backed previews", () => {
+  it("shows a splash while libraries load, and removes it before running", () => {
+    const html = buildPreviewHtml({
+      "index.jsx": 'import React from "react"; console.log(React);',
+    });
+    expect(html).toContain('id="__preview-loading"');
+    expect(html).toContain("Loading react…");
+    expect(html).toContain('document.getElementById("__preview-loading")');
+  });
+
+  it("does not add a splash to an offline project", () => {
+    const html = buildPreviewHtml({
+      "index.html": "<html><body><script src='app.js'></script></body></html>",
+      "app.js": "console.log('hi');",
+    });
+    expect(html).not.toContain("__preview-loading");
+  });
+});
