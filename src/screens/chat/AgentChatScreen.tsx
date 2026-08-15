@@ -150,6 +150,7 @@ export const AgentChatScreen = () => {
   // Chat Stream Messages & Execution State
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
+  const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
   const [threadTitle, setThreadTitle] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
 
@@ -465,6 +466,64 @@ export const AgentChatScreen = () => {
   };
 
   /**
+   * Branch the conversation at one of your own prompts. The original session is
+   * left untouched — agent-fork copies the transcript up to that message into a
+   * new session, so you can take the conversation a different way without
+   * losing what the agent already did.
+   */
+  const handleForkFrom = async (message: any) => {
+    if (!activeSessionId || forkingMessageId) return;
+    setForkingMessageId(message.id);
+    try {
+      const forked = await agentService.forkAgentSession(activeSessionId, message.transcriptIndex);
+      setActiveSessionId(forked.id);
+      setThreadTitle(forked.title ?? "Forked session");
+      runStartedAtRef.current = null;
+      // Show exactly what the fork contains: everything through this prompt.
+      setMessages((prev) => {
+        const cut = prev.findIndex((m) => m.id === message.id);
+        return cut === -1 ? prev : prev.slice(0, cut + 1);
+      });
+      notify("Branched", "This is a new session — the original is untouched.");
+    } catch (e) {
+      notify("Could not branch", e instanceof Error ? e.message : String(e));
+    } finally {
+      setForkingMessageId(null);
+    }
+  };
+
+  /**
+   * Messages typed in this session have no transcript position until the worker
+   * has written them, so forking is unavailable on them. Once a run finishes we
+   * read the stored transcript back and attach each user prompt's real index.
+   * Both lists are append-only and in the same order, so a sequential walk
+   * pairs them up; the content check keeps a mismatch from labelling the wrong
+   * message.
+   */
+  const backfillTranscriptIndices = async (sessionId: string) => {
+    let transcript: any[];
+    try {
+      const full = await agentService.getSession(sessionId);
+      transcript = Array.isArray(full.transcript) ? full.transcript : [];
+    } catch {
+      return; // Fork stays unavailable for this turn; nothing else is affected.
+    }
+    const stored = transcript
+      .map((m: any, transcriptIndex: number) => ({ m, transcriptIndex }))
+      .filter(({ m }: any) => m?.role === "user" && m?.content);
+
+    setMessages((prev) => {
+      let next = 0;
+      return prev.map((m) => {
+        if (m.role !== "user") return m;
+        const candidate = stored[next++];
+        if (!candidate || String(candidate.m.content) !== m.content) return m;
+        return { ...m, transcriptIndex: candidate.transcriptIndex };
+      });
+    });
+  };
+
+  /**
    * Poll agent_tasks while a job is executing. Each tool call renders as a
    * live "tool_run" step; the terminal "agent-run" row carries the final text
    * (or the error) and ends the run. Polling works in both local-guest mode
@@ -545,6 +604,7 @@ export const AgentChatScreen = () => {
         ]);
         setIsExecuting(false);
         scrollViewRef.current?.scrollToEnd({ animated: true });
+        void backfillTranscriptIndices(activeSessionId);
       }
     };
 
@@ -703,12 +763,16 @@ export const AgentChatScreen = () => {
       const full = await agentService.getSession(session.id);
       const transcript = Array.isArray(full.transcript) ? full.transcript : [];
       const restored = transcript
-        .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && m?.content)
-        .map((m: any, index: number) => ({
-          id: m.id ?? `restored_${session.id}_${index}`,
+        // transcriptIndex is the position in the *raw* transcript, which is what
+        // agent-fork slices on — it is not the index in this filtered list.
+        .map((m: any, transcriptIndex: number) => ({ m, transcriptIndex }))
+        .filter(({ m }: any) => (m?.role === "user" || m?.role === "assistant") && m?.content)
+        .map(({ m, transcriptIndex }: any) => ({
+          id: m.id ?? `restored_${session.id}_${transcriptIndex}`,
           role: m.role,
           content: String(m.content),
           createdAt: m.createdAt ?? Date.now(),
+          transcriptIndex,
         }));
       setMessages(
         restored.length
@@ -1036,13 +1100,36 @@ export const AgentChatScreen = () => {
               const isUser = msg.role === "user";
 
               if (isUser) {
+                // Only prompts the backend has stored can be branched — the
+                // fork endpoint slices on a transcript position we don't know
+                // for a message that is still in flight.
+                const canFork = typeof msg.transcriptIndex === "number" && !isExecuting;
                 return (
-                  <View key={msg.id} className="mb-6 flex-row justify-end">
+                  <View key={msg.id} className="mb-6 items-end">
                     <View style={{ backgroundColor: isLight ? "#F1F5F9" : "#231B32", borderColor: isLight ? "#E2E8F0" : "transparent" }} className="max-w-[92%] p-4 rounded-3xl border shadow-sm">
                       <Text style={{ color: textPrimary }} className="text-sm leading-6 text-left font-sans font-medium">
                         {msg.content}
                       </Text>
                     </View>
+                    {canFork && (
+                      <TouchableOpacity
+                        onPress={() => handleForkFrom(msg)}
+                        disabled={forkingMessageId !== null}
+                        className="flex-row items-center mt-1.5 mr-1 py-1 px-2"
+                        accessibilityLabel="Branch the conversation from this message"
+                      >
+                        {forkingMessageId === msg.id ? (
+                          <ActivityIndicator size="small" color={textSecondary} />
+                        ) : (
+                          <>
+                            <VectorIcon name="branch" size={11} color={textSecondary} style={{ marginRight: 5 }} />
+                            <Text style={{ color: textSecondary }} className="text-[11px] font-mono">
+                              branch from here
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 );
               }
