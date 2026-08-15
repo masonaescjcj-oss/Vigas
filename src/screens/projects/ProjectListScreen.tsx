@@ -52,7 +52,7 @@ export const ProjectListScreen = () => {
       {/* Top Header */}
       <View className="flex-row items-center justify-between px-6 py-4 border-b border-borderHairline" style={{ borderBottomColor: colors.borderHairline }}>
         <Text variant="h2" className="font-uiSemiBold">
-          پروژه‌ها
+          Projects
         </Text>
         <TouchableOpacity
           onPress={() => setModalVisible(true)}
@@ -66,12 +66,12 @@ export const ProjectListScreen = () => {
       {/* Projects List */}
       {projectsList.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Text variant="h3" className="text-center font-uiMedium">هنوز پروژه‌ای ندارید</Text>
+          <Text variant="h3" className="text-center font-uiMedium">No projects yet</Text>
           <Text variant="caption" className="text-center mt-2 opacity-70">
-            برای شروع کدنویسی با ایجنت هوشمند، اولین پروژه خود را بسازید.
+            Create your first project to start building with the agent.
           </Text>
           <Button 
-            label="ساخت اولین پروژه" 
+            label="Create your first project" 
             onPress={() => setModalVisible(true)} 
             className="mt-6 w-full"
           />
@@ -99,7 +99,7 @@ export const ProjectListScreen = () => {
                   </Text>
                 )}
                 <Text variant="caption" className="mt-2 text-left opacity-50 text-[10px]">
-                  آخرین بازدید: {new Date(item.last_opened_at).toLocaleDateString("fa-IR")}
+                  Last opened: {new Date(item.last_opened_at).toLocaleDateString()}
                 </Text>
               </View>
 
@@ -129,18 +129,18 @@ export const ProjectListScreen = () => {
             style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
           >
             <Text variant="h3" className="font-uiSemiBold mb-4 text-left">
-              ساخت پروژه جدید
+              New project
             </Text>
 
             <View className="space-y-4">
               <View>
                 <Text variant="caption" className="mb-1 font-uiMedium text-left">
-                  نام پروژه *
+                  Project name *
                 </Text>
                 <TextInput
                   value={newProjectName}
                   onChangeText={setNewProjectName}
-                  placeholder="مثال: اپلیکیشن فروشگاهی Next.js"
+                  placeholder="e.g. Landing page for my shop"
                   placeholderTextColor={colors.inkSecondary}
                   className="w-full bg-canvasBase p-3.5 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
                   style={{ backgroundColor: colors.canvasBase, borderColor: colors.borderHairline, color: colors.inkPrimary }}
@@ -149,12 +149,12 @@ export const ProjectListScreen = () => {
 
               <View className="mt-3">
                 <Text variant="caption" className="mb-1 font-uiMedium text-left">
-                  توضیحات کوتاه
+                  Short description
                 </Text>
                 <TextInput
                   value={newProjectDesc}
                   onChangeText={setNewProjectDesc}
-                  placeholder="پروژه فرانت‌اند همراه با اتصال به API"
+                  placeholder="What is this project for?"
                   placeholderTextColor={colors.inkSecondary}
                   className="w-full bg-canvasBase p-3.5 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
                   style={{ backgroundColor: colors.canvasBase, borderColor: colors.borderHairline, color: colors.inkPrimary }}
@@ -164,13 +164,13 @@ export const ProjectListScreen = () => {
 
             <View className="flex-row mt-6 space-x-3">
               <Button
-                label="انصراف"
+                label="Cancel"
                 variant="secondary"
                 onPress={() => setModalVisible(false)}
                 className="flex-1 mr-2"
               />
               <Button
-                label="ایجاد پروژه"
+                label="Create project"
                 onPress={handleCreateProject}
                 className="flex-1 ml-2"
               />

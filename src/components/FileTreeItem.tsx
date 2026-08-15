@@ -45,10 +45,10 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
   };
 
   const handleLongPress = () => {
-    Alert.alert("عملیات فایل", `مدیریت فایل/پوشه "${node.name}"`, [
-      { text: "انصراف", style: "cancel" },
-      { text: "تغییر نام (Rename)", onPress: () => Alert.alert("تغییر نام", "در نسخه دمو غیرفعال است.") },
-      { text: "حذف (Delete)", style: "destructive", onPress: () => Alert.alert("حذف", "در نسخه دمو غیرفعال است.") },
+    Alert.alert("File actions", `Manage "${node.name}"`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Rename", onPress: () => Alert.alert("Rename", "Renaming files is not available yet.") },
+      { text: "Delete", style: "destructive", onPress: () => Alert.alert("Delete", "Deleting files is not available yet.") },
     ]);
   };
 

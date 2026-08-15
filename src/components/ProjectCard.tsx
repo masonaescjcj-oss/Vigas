@@ -69,7 +69,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             </Text>
           )}
           <Text variant="caption" className="mt-2 text-right opacity-60 text-[10px]">
-            آخرین بازدید: {new Date(project.last_opened_at).toLocaleDateString("fa-IR")}
+            Last opened: {new Date(project.last_opened_at).toLocaleDateString()}
           </Text>
         </View>
         <Text variant="body" className="opacity-40">◀ swipe</Text>
@@ -83,7 +83,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         style={{ backgroundColor: colors.failed }}
       >
         <Text variant="caption" className="font-uiSemiBold text-canvasBase" style={{ color: colors.canvasBase }}>
-          حذف
+          Delete
         </Text>
       </TouchableOpacity>
     </ScrollView>

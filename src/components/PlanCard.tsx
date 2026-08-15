@@ -67,7 +67,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           {title}
         </Text>
         <Text variant="caption" className="opacity-75 mt-0.5">
-          {price} / {period === "monthly" ? "ماهانه" : "سالانه"}
+          {price} / {period === "monthly" ? "month" : "year"}
         </Text>
       </View>
     </TouchableOpacity>

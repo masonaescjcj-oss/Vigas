@@ -33,7 +33,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data, maxVal = 10000 }) 
       className="p-4 bg-surfaceRaised rounded-card border border-borderHairline items-center"
       style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
     >
-      <Text variant="label" className="mb-4 text-right self-end">نمودار مصرف روزانه (توکن)</Text>
+      <Text variant="label" className="mb-4 text-left self-start">Token usage</Text>
 
       {/* Chart Bars Wrapper */}
       <View className="h-40 w-full flex-row items-end justify-between px-2 pt-6">
