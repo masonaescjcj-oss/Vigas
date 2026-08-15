@@ -6,17 +6,17 @@
  * SEAMLESS BORDERLESS MODERN DESIGN SYSTEM (CLEAN SLEEK MINIMALISM)
  * ============================================================================
  * 
- * NOTE FOR BACKEND AI INTEGRATION:
- * This component is fully structured and annotated with explicit BACKEND INTEGRATION POINTS.
- * All state handlers, streaming message updates, connector toggles, project management,
- * and checkpoint rollbacks have clear placeholders pointing to your Deno/Express API endpoints.
- * 
+ * Everything here talks to the real backend: prompts go through agent-run (or
+ * agent-ask in incognito), progress is polled from agent_tasks, and files,
+ * checkpoints and sessions come from their own services. There are no
+ * placeholders left in this screen.
+ *
  * ============================================================================
  */
 
 import React, { useState, useRef, useEffect } from "react";
 import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Platform, ActivityIndicator, Alert } from "react-native";
-import { notify } from "../../services/notify";
+import { confirmAction, notify } from "../../services/notify";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -24,7 +24,7 @@ import { useThemeStore } from "../../theme/store";
 import { type ProjectNavigationProp } from "../../navigation/types";
 import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData, type AgentSessionData } from "../../services/agentService";
-import { getProjectCheckpoints, relativeTime, type CheckpointRow } from "../../services/checkpointService";
+import { getProjectCheckpoints, relativeTime, restoreCheckpoint, type CheckpointRow } from "../../services/checkpointService";
 import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "../../services/supabase";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -182,6 +182,7 @@ export const AgentChatScreen = () => {
   // Real checkpoints for the active project
   const [checkpoints, setCheckpoints] = useState<CheckpointRow[]>([]);
   const [checkpointsLoading, setCheckpointsLoading] = useState(false);
+  const [restoringCheckpointId, setRestoringCheckpointId] = useState<string | null>(null);
 
   // Real token usage (usage-check → usage_metering)
   const [usage, setUsage] = useState<UsageSummary | null>(null);
@@ -197,7 +198,7 @@ export const AgentChatScreen = () => {
   const [showFileModal, setShowFileModal] = useState(false);          // File Tree Sheet
   const [showProfileModal, setShowProfileModal] = useState(false);      // Master Profile Settings Modal
   const [showPreviewModal, setShowPreviewModal] = useState(false);      // Live Web App Sandbox Preview Modal
-  const [showCheckpointsModal, setShowCheckpointsModal] = useState(false); // Git Checkpoints Rollback Modal
+  const [showCheckpointsModal, setShowCheckpointsModal] = useState(false); // Restore-point history and rollback sheet
 
   // Auto-complete Popups (@ Mentions & / Commands)
   const [showMentionsPopup, setShowMentionsPopup] = useState(false);
@@ -361,23 +362,24 @@ export const AgentChatScreen = () => {
     return () => { cancelled = true; };
   }, [profileSubScreen]);
 
+  const loadCheckpoints = async (projectId: string) => {
+    setCheckpointsLoading(true);
+    try {
+      setCheckpoints(await getProjectCheckpoints(projectId));
+    } catch {
+      setCheckpoints([]);
+    } finally {
+      setCheckpointsLoading(false);
+    }
+  };
+
   /** Load real checkpoints when the checkpoints modal opens. */
   useEffect(() => {
     if (!showCheckpointsModal) return;
-    let cancelled = false;
-    setCheckpointsLoading(true);
-    (async () => {
-      try {
-        const projectId = await ensureProjectId();
-        const rows = await getProjectCheckpoints(projectId);
-        if (!cancelled) setCheckpoints(rows);
-      } catch {
-        if (!cancelled) setCheckpoints([]);
-      } finally {
-        if (!cancelled) setCheckpointsLoading(false);
-      }
+    void (async () => {
+      const projectId = await ensureProjectId();
+      await loadCheckpoints(projectId);
     })();
-    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCheckpointsModal]);
 
@@ -487,6 +489,47 @@ export const AgentChatScreen = () => {
           createdAt: Date.now(),
         },
       ]);
+    }
+  };
+
+  /**
+   * Roll the project's files back to a snapshot.
+   *
+   * This overwrites the working files, so it asks first. The backend snapshots
+   * the current state before swapping, which is why the confirmation can
+   * honestly say the rollback is itself undoable.
+   */
+  const handleRollback = async (checkpointId: string, description: string) => {
+    if (restoringCheckpointId) return;
+    const confirmed = await confirmAction(
+      "Roll back the project?",
+      `Every file goes back to how it was ${description}. A restore point is saved first, so you can undo this too.`,
+    );
+    if (!confirmed) return;
+
+    setRestoringCheckpointId(checkpointId);
+    try {
+      const result = await restoreCheckpoint(checkpointId);
+      setShowCheckpointsModal(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_restore_${Date.now()}`,
+          role: "assistant",
+          content: `Rolled the project back — ${result.files_restored} file(s) restored.`,
+          createdAt: Date.now(),
+          hasCodeEdit: true,
+          // Offer the reverse straight away.
+          checkpointId: result.safety_checkpoint_id ?? null,
+        },
+      ]);
+      // The file list and any open preview are now stale.
+      setFileEntries([]);
+      if (activeProjectId) void loadCheckpoints(activeProjectId);
+    } catch (e) {
+      notify("Rollback failed", e instanceof Error ? e.message : String(e));
+    } finally {
+      setRestoringCheckpointId(null);
     }
   };
 
@@ -625,6 +668,11 @@ export const AgentChatScreen = () => {
             content: finalText,
             createdAt: Date.now(),
             hasCodeEdit: runRow.status === "success" && touchedWorkspace,
+            // The worker snapshots before it runs and reports the id here, so
+            // this message can offer to undo exactly what it did.
+            checkpointId: touchedWorkspace
+              ? (runRow.tool_output?.checkpoint_id ?? null)
+              : null,
           },
         ]);
         setIsExecuting(false);
@@ -1257,17 +1305,24 @@ export const AgentChatScreen = () => {
                         <VectorIcon name="arrow-right" size={12} color={isLight ? "#16A34A" : "#34D399"} />
                       </TouchableOpacity>
 
-                      {/* Targeted Git Checkpoint Rollback Button (only when a real checkpoint exists) */}
-                      {msg.checkpointHash && (
+                      {/* Undo this turn — the worker snapshotted the project
+                          right before it ran, so this restores that exact state. */}
+                      {msg.checkpointId && (
                         <TouchableOpacity
-                          onPress={() => setShowCheckpointsModal(true)}
+                          onPress={() => handleRollback(msg.checkpointId, "before this change")}
+                          disabled={restoringCheckpointId !== null || isExecuting}
                           style={{ backgroundColor: isLight ? "#F1F5F9" : "#1C1C1C", borderColor: isLight ? "#E2E8F0" : "transparent" }}
                           className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 border shadow-sm"
                           activeOpacity={0.8}
                         >
-                          <VectorIcon name="rotate-ccw" size={13} color={isLight ? "#6D42C7" : "#C084FC"} style={{ marginRight: 6 }} />
-                          <Text style={{ color: textPrimary }} className="text-xs font-semibold mr-1">Checkpoint ({msg.checkpointHash})</Text>
-                          <Text style={{ color: isLight ? "#6D42C7" : "#C084FC" }} className="text-xs font-mono font-bold">Rollback</Text>
+                          {restoringCheckpointId === msg.checkpointId ? (
+                            <ActivityIndicator size="small" color={isLight ? "#6D42C7" : "#C084FC"} />
+                          ) : (
+                            <>
+                              <VectorIcon name="rotate-ccw" size={13} color={isLight ? "#6D42C7" : "#C084FC"} style={{ marginRight: 6 }} />
+                              <Text style={{ color: textPrimary }} className="text-xs font-semibold">Undo this change</Text>
+                            </>
+                          )}
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1946,7 +2001,7 @@ export const AgentChatScreen = () => {
             <View className="flex-row items-center justify-between mb-4 pb-3">
               <View className="flex-row items-center">
                 <VectorIcon name="rotate-ccw" size={18} color="#C084FC" style={{ marginRight: 8 }} />
-                <Text className="text-white text-xl font-bold">Git Checkpoints</Text>
+                <Text className="text-white text-xl font-bold">Restore points</Text>
               </View>
               <TouchableOpacity 
                 onPress={() => setShowCheckpointsModal(false)}
@@ -1965,27 +2020,49 @@ export const AgentChatScreen = () => {
               ) : checkpoints.length === 0 ? (
                 <View className="py-10 items-center px-6">
                   <VectorIcon name="rotate-ccw" size={26} color="#52525B" style={{ marginBottom: 10 }} />
-                  <Text className="text-zinc-300 text-sm font-bold mb-2">No checkpoints yet</Text>
+                  <Text className="text-zinc-300 text-sm font-bold mb-2">No restore points yet</Text>
                   <Text className="text-zinc-500 text-xs text-center leading-5">
-                    Snapshots are created server-side during agent runs. Restoring one is an
-                    admin-only operation today.
+                    One is saved automatically before every run that can change your files.
+                    Ask the agent to build something and it will show up here.
                   </Text>
                 </View>
               ) : (
-                checkpoints.map((cp) => (
-                  <View key={cp.id} className="mb-4 p-4 rounded-2xl bg-[#1A1A1A]">
-                    <View className="flex-row items-center mb-1">
-                      <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2" />
-                      <Text className="text-white text-sm font-bold text-left flex-1" numberOfLines={1}>
-                        {cp.label || "Checkpoint"}
-                      </Text>
+                <>
+                  <Text className="text-zinc-500 text-xs text-left leading-5 mb-4 px-1">
+                    Each one is how the project looked before that run. Rolling back saves a
+                    restore point first, so it can be undone.
+                  </Text>
+                  {checkpoints.map((cp) => (
+                    <View key={cp.id} className="mb-3 p-4 rounded-2xl bg-[#1A1A1A]">
+                      <View className="flex-row items-center mb-1">
+                        <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2" />
+                        <Text className="text-white text-sm font-bold text-left flex-1" numberOfLines={1}>
+                          {cp.session_title ? `Before: ${cp.session_title}` : "Restore point"}
+                        </Text>
+                      </View>
+                      <View className="flex-row items-center justify-between mt-1">
+                        <Text className="text-zinc-400 text-xs text-left font-mono">
+                          {relativeTime(cp.created_at)} · {cp.id.slice(0, 7)}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleRollback(cp.id, `on ${relativeTime(cp.created_at)}`)}
+                          disabled={restoringCheckpointId !== null || isExecuting}
+                          className="px-3 py-1.5 rounded-lg bg-[#242424] flex-row items-center"
+                          activeOpacity={0.8}
+                        >
+                          {restoringCheckpointId === cp.id ? (
+                            <ActivityIndicator size="small" color="#C084FC" />
+                          ) : (
+                            <>
+                              <VectorIcon name="rotate-ccw" size={12} color="#C084FC" style={{ marginRight: 5 }} />
+                              <Text className="text-purple-300 text-xs font-semibold">Restore</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <Text className="text-zinc-400 text-xs text-left font-mono">
-                      {relativeTime(cp.created_at)} · {cp.id.slice(0, 7)}
-                      {cp.file_count != null ? ` · ${cp.file_count} files` : ""}
-                    </Text>
-                  </View>
-                ))
+                  ))}
+                </>
               )}
             </ScrollView>
           </View>

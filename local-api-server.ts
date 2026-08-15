@@ -2,6 +2,8 @@ import { handler as agentRunHandler } from "./supabase/functions/agent-run/index
 import { handler as agentResumeHandler } from "./supabase/functions/agent-resume/index.ts";
 import { handler as agentForkHandler } from "./supabase/functions/agent-fork/index.ts";
 import { handler as agentAskHandler } from "./supabase/functions/agent-ask/index.ts";
+import { handler as checkpointCreateHandler } from "./supabase/functions/checkpoint-create/index.ts";
+import { handler as checkpointRestoreHandler } from "./supabase/functions/checkpoint-restore/index.ts";
 import { handler as projectsCreateHandler } from "./supabase/functions/projects-create/index.ts";
 import { handler as projectsDeleteHandler } from "./supabase/functions/projects-delete/index.ts";
 import { handler as projectsListHandler } from "./supabase/functions/projects-list/index.ts";
@@ -38,6 +40,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await agentResumeHandler(req);
     } else if (path === "/functions/v1/agent-ask") {
       res = await agentAskHandler(req);
+    } else if (path === "/functions/v1/checkpoint-create") {
+      res = await checkpointCreateHandler(req);
+    } else if (path === "/functions/v1/checkpoint-restore") {
+      res = await checkpointRestoreHandler(req);
     } else if (path === "/functions/v1/agent-fork") {
       res = await agentForkHandler(req);
     } else if (path === "/functions/v1/projects-create") {
@@ -61,6 +67,31 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     const singleSessionMatch = path.match(/^\/api\/sessions\/([^/]+)$/);
     const projectSessionsMatch = path.match(/^\/api\/project-sessions\/([^/]+)$/);
     const projectBundleMatch = path.match(/^\/api\/projects\/([^/]+)\/bundle$/);
+    const projectCheckpointsMatch = path.match(/^\/api\/projects\/([^/]+)\/checkpoints$/);
+
+    // Checkpoint history. Guests have no real JWT, so the RLS read the app uses
+    // in production returns nothing here — same shape, service client.
+    if (!res && projectCheckpointsMatch && req.method === "GET") {
+      const { createServiceClient } = await import("./supabase/functions/shared/supabase.ts");
+      const service = createServiceClient();
+      const { data, error } = await service.from("checkpoints")
+        .select("id,project_id,session_id,created_at,agent_sessions(title)")
+        .eq("project_id", projectCheckpointsMatch[1])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) {
+        res = new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
+      } else {
+        const rows = (data ?? []).map((row: any) => ({
+          id: row.id,
+          project_id: row.project_id,
+          session_id: row.session_id,
+          created_at: row.created_at,
+          session_title: row.agent_sessions?.title ?? null,
+        }));
+        res = new Response(JSON.stringify(rows), { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
+      }
+    }
 
     // Text-file bundle of a project's Storage prefix — feeds the on-device preview.
     if (!res && projectBundleMatch && req.method === "GET") {

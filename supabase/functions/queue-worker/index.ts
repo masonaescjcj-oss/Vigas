@@ -42,6 +42,33 @@ async function setTask(client: SupabaseClient, sessionId: string, status: "runni
   if (data?.id) await client.from("agent_tasks").update({ status, tool_output: output }).eq("id", data.id);
 }
 
+/**
+ * Take the pre-run snapshot. Returns what the UI should say about it: an id to
+ * roll back to, or the reason there isn't one. Never throws — a project that
+ * cannot be snapshotted still gets to run, it just cannot be rolled back.
+ */
+async function snapshotBeforeRun(
+  client: SupabaseClient,
+  job: QueueJob,
+): Promise<{ id: string | null; note: string | null }> {
+  const sandboxPath = String(job.payload.sandbox_path ?? "");
+  if (!sandboxPath) return { id: null, note: "no sandbox path on the job" };
+  try {
+    const { createCheckpoint } = await import("../shared/checkpoints.ts");
+    const result = await createCheckpoint(client, {
+      projectId: job.project_id,
+      sandboxPath,
+      sessionId: job.session_id,
+    });
+    return result.created
+      ? { id: result.checkpoint.id, note: null }
+      : { id: null, note: result.detail };
+  } catch (error) {
+    captureException(error, { function: "queue-worker", phase: "checkpoint" });
+    return { id: null, note: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 export async function processNextJob(client: SupabaseClient, workerId: string): Promise<{ processed: boolean; status?: string; jobId?: string }> {
   const job = await claim(client, workerId);
   if (!job) return { processed: false };
@@ -53,6 +80,16 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
     const { createEdgeAgentRuntime, createEdgeSandboxManager } = await import("../shared/agentRuntime.ts");
     const payload = job.payload;
     const mode = payload.mode === "resume" ? "resume" : "run";
+    const profile = payload.profile === "readonly" ? "readonly" : "standard";
+
+    // Snapshot before the agent can touch anything. A readonly run cannot
+    // change files, so it does not pay for one. A failure here must not block
+    // the run — the user asked for work, not for a backup — but it is reported
+    // so the UI never offers a rollback that does not exist.
+    const checkpoint = profile === "readonly"
+      ? { id: null as string | null, note: "readonly run — files cannot change" }
+      : await snapshotBeforeRun(client, job);
+
     const sandboxManager = createEdgeSandboxManager(client);
     try {
       const runtime = createEdgeAgentRuntime({
@@ -61,7 +98,7 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         projectId: job.project_id,
         sandboxPath: String(payload.sandbox_path ?? ""),
         sessionId: job.session_id,
-        profile: payload.profile === "readonly" ? "readonly" : "standard",
+        profile,
         sandboxManager,
         model: typeof payload.model === "string" ? payload.model : undefined,
       });
@@ -69,7 +106,14 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
       await recordUsage(client, job.user_id, result.usage.inputTokens + result.usage.outputTokens);
       const { error } = await client.rpc("complete_agent_job", { p_job_id: job.id, p_result: { final_text: result.finalText, usage: result.usage, mode } });
       if (error) throw error;
-      await setTask(client, job.session_id, "success", { final_text: result.finalText, usage: result.usage });
+      // checkpoint_id travels with the run's result so the chat can offer
+      // "roll back to before this message" on the exact turn it belongs to.
+      await setTask(client, job.session_id, "success", {
+        final_text: result.finalText,
+        usage: result.usage,
+        checkpoint_id: checkpoint.id,
+        checkpoint_note: checkpoint.note,
+      });
       return { processed: true, status: "completed", jobId: job.id };
     } finally {
       // Cost control: never leave a sandbox warm after the job — idle warm time

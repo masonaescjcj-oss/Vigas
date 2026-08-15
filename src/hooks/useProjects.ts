@@ -2,7 +2,7 @@
  * frontend/src/hooks/useProjects.ts
  * ---------------------------------------------------------------------------
  * Custom hook to handle projects data querying and mutation using TanStack Query.
- * Includes automatic fallback to MOCK_PROJECTS for rich UI/UX template preview.
+ * Reads and writes the real projects backend; there is no mock fallback.
  * ---------------------------------------------------------------------------
  */
 

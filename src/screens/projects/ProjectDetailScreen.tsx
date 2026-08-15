@@ -4,13 +4,13 @@
  * Main Project workspace coordinating the three sub-views:
  *   - Chat tab: Send prompts and stream agent tasks.
  *   - Files tab: Interactive sandbox directory file tree explorer.
- *   - History/Checkpoints tab: Inspect commits and request rollbacks.
+ *   - History tab: Restore points, and rolling the project back to one.
  * ---------------------------------------------------------------------------
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, ScrollView, TouchableOpacity, FlatList, ActivityIndicator, SafeAreaView, Alert } from "react-native";
-import { notify } from "../../services/notify";
+import { confirmAction, notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
@@ -18,16 +18,15 @@ import { FileTreeItem } from "../../components/FileTreeItem";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useProjects } from "../../hooks/useProjects";
 import { useFileTree } from "../../hooks/useFileTree";
-import { supabase } from "../../services/supabase";
+import {
+  getProjectCheckpoints,
+  relativeTime,
+  restoreCheckpoint,
+  type CheckpointRow,
+} from "../../services/checkpointService";
 import { type ProjectStackParamList, type ProjectNavigationProp } from "../../navigation/types";
 
 type RouteProps = RouteProp<ProjectStackParamList, "ProjectDetail">;
-
-interface Checkpoint {
-  id: string;
-  description: string;
-  created_at: string;
-}
 
 export const ProjectDetailScreen = () => {
   const { colors } = useTheme();
@@ -44,46 +43,54 @@ export const ProjectDetailScreen = () => {
   const { tree, isLoading: loadingFiles, refresh: refreshFiles, toggleFolder, expandedFolders } = useFileTree(projectId);
 
   // Checkpoints list
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [checkpoints, setCheckpoints] = useState<CheckpointRow[]>([]);
   const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   // Sandbox status indicator
   // There is no live sandbox-status endpoint; sandboxes are created per job and
   // destroyed right after, so a persistent "Running" badge would be a lie.
 
-  useEffect(() => {
-    // Load checkpoints from Supabase migrations or custom tables if present
-    const fetchCheckpoints = async () => {
-      setLoadingCheckpoints(true);
-      try {
-        const { data, error } = await supabase
-          .from("checkpoints")
-          .select("*")
-          .eq("project_id", projectId)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setCheckpoints((data ?? []) as Checkpoint[]);
-      } catch (e: any) {
-        setCheckpoints([]);
-        notify("Could not load checkpoints", e?.message ?? "Please try again.");
-      } finally {
-        setLoadingCheckpoints(false);
-      }
-    };
-    void fetchCheckpoints();
+  const loadCheckpoints = useCallback(async () => {
+    setLoadingCheckpoints(true);
+    try {
+      setCheckpoints(await getProjectCheckpoints(projectId));
+    } catch (e: any) {
+      setCheckpoints([]);
+      notify("Could not load restore points", e?.message ?? "Please try again.");
+    } finally {
+      setLoadingCheckpoints(false);
+    }
   }, [projectId]);
 
-  /** checkpoint-restore is service-role only, so the client can't restore yet. */
-  const handleRollback = (desc: string) => {
-    notify(
-      "Restore not available yet",
-      `Restoring “${desc}” is an admin-only operation in this build. Nothing was changed.`,
-    );
-  };
+  useEffect(() => {
+    void loadCheckpoints();
+  }, [loadCheckpoints]);
 
-  const handleCompare = (_c1: string, _c2: string) => {
-    notify("Diff not available", "There is no checkpoint-to-checkpoint diff endpoint yet.");
+  /**
+   * Rollback replaces the project's files. The backend snapshots the current
+   * state first, so this is destructive but reversible — which is what the
+   * confirmation says.
+   */
+  const handleRollback = async (checkpoint: CheckpointRow) => {
+    if (restoringId) return;
+    const when = relativeTime(checkpoint.created_at);
+    const confirmed = await confirmAction(
+      "Roll back the project?",
+      `Every file goes back to how it was ${when}. A restore point is saved first, so you can undo this too.`,
+    );
+    if (!confirmed) return;
+
+    setRestoringId(checkpoint.id);
+    try {
+      const result = await restoreCheckpoint(checkpoint.id);
+      notify("Rolled back", `${result.files_restored} file(s) restored.`);
+      await Promise.all([loadCheckpoints(), refreshFiles()]);
+    } catch (e: any) {
+      notify("Rollback failed", e?.message ?? "Nothing was changed.");
+    } finally {
+      setRestoringId(null);
+    }
   };
 
   return (
@@ -199,7 +206,7 @@ export const ProjectDetailScreen = () => {
               </View>
             ) : checkpoints.length === 0 ? (
               <View className="flex-1 items-center justify-center p-6">
-                <Text variant="caption">No checkpoints recorded.</Text>
+                <Text variant="caption">No restore points yet — one is saved before every run that can change files.</Text>
               </View>
             ) : (
               <FlatList
@@ -211,28 +218,25 @@ export const ProjectDetailScreen = () => {
                     className="bg-surfaceRaised p-4 rounded-card border border-borderHairline mb-3"
                     style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
                   >
-                    <Text variant="body" className="font-uiMedium text-left">
-                      {item.description}
+                    <Text variant="body" className="font-uiMedium text-left" numberOfLines={1}>
+                      {item.session_title ? `Before: ${item.session_title}` : "Restore point"}
                     </Text>
                     <Text variant="caption" className="opacity-60 text-left text-[10px] mt-1">
-                      {new Date(item.created_at).toLocaleTimeString("en-US")} - {new Date(item.created_at).toLocaleDateString("en-US")}
+                      {relativeTime(item.created_at)} · {item.id.slice(0, 7)}
                     </Text>
-                    
-                    {/* Actions */}
-                    <View className="flex-row justify-end space-x-2 mt-4">
-                      <TouchableOpacity 
-                        onPress={() => handleCompare("ch-1", item.id)}
-                        className="py-1 px-3 bg-canvasBase rounded border border-borderHairline mr-2"
-                        style={{ backgroundColor: colors.canvasBase, borderColor: colors.borderHairline }}
-                      >
-                        <Text variant="caption" className="text-[10px] font-uiMedium">Compare (Diff)</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        onPress={() => handleRollback(item.description)}
-                        className="py-1 px-3 bg-red-500/10 rounded border border-red-500/20 ml-2"
+
+                    <View className="flex-row justify-end mt-4">
+                      <TouchableOpacity
+                        onPress={() => handleRollback(item)}
+                        disabled={restoringId !== null}
+                        className="py-1 px-3 rounded border"
                         style={{ backgroundColor: `${colors.failed}15`, borderColor: `${colors.failed}30` }}
                       >
-                        <Text variant="caption" className="text-[10px] font-uiMedium text-red-500" style={{ color: colors.failed }}>Rollback</Text>
+                        {restoringId === item.id ? (
+                          <ActivityIndicator size="small" color={colors.failed} />
+                        ) : (
+                          <Text variant="caption" className="text-[10px] font-uiMedium" style={{ color: colors.failed }}>Roll back</Text>
+                        )}
                       </TouchableOpacity>
                     </View>
                   </View>
