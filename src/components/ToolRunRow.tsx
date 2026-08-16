@@ -14,6 +14,8 @@
 
 import React from "react";
 import { View, Text } from "react-native";
+import { useTheme } from "../theme/ThemeProvider";
+import { type ColorTokens } from "../theme/theme";
 
 export type ToolRunStatus = "running" | "completed" | "failed";
 
@@ -28,19 +30,20 @@ export interface ToolRunStep {
 
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
-function palette(isLight: boolean) {
+/** Names the role each token plays in the run log, so the JSX reads clearly. */
+function palette(colors: ColorTokens) {
   return {
-    panelBg: isLight ? "#F8FAFC" : "#0B0B0D",
-    panelBorder: isLight ? "#E2E8F0" : "#1F1F23",
-    tool: isLight ? "#0F172A" : "#E4E4E7",
-    target: isLight ? "#64748B" : "#8B8B93",
-    meta: isLight ? "#94A3B8" : "#5F5F66",
-    plus: isLight ? "#16A34A" : "#4ADE80",
-    minus: isLight ? "#DC2626" : "#F87171",
-    ok: isLight ? "#16A34A" : "#4ADE80",
-    fail: isLight ? "#DC2626" : "#F87171",
-    run: isLight ? "#D97706" : "#FBBF24",
-    errorBg: isLight ? "#FEF2F2" : "#2A1214",
+    panelBg: colors.surfaceCode,
+    panelBorder: colors.borderHairline,
+    tool: colors.inkPrimary,
+    target: colors.inkSecondary,
+    meta: colors.inkMuted,
+    plus: colors.success,
+    minus: colors.failed,
+    ok: colors.success,
+    fail: colors.failed,
+    run: colors.warning,
+    errorBg: colors.failedSoft,
   };
 }
 
@@ -58,7 +61,8 @@ export const ToolRunPanel = ({
   isLight: boolean;
   children: React.ReactNode;
 }) => {
-  const c = palette(isLight);
+  const { colors } = useTheme();
+  const c = palette(colors);
   return (
     <View
       style={{
@@ -78,7 +82,8 @@ export const ToolRunPanel = ({
 };
 
 export const ToolRunRow = ({ step, isLight }: { step: ToolRunStep; isLight: boolean }) => {
-  const c = palette(isLight);
+  const { colors } = useTheme();
+  const c = palette(colors);
   const isFailed = step.status === "failed";
   const isRunning = step.status === "running";
 

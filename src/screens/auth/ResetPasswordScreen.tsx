@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/ResetPasswordScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) RESET PASSWORD FORM SCREEN
+ * RESET PASSWORD FORM SCREEN
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  * 
@@ -26,8 +26,10 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { AuthStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
+import { useTheme } from "../../theme/ThemeProvider";
 
 export const ResetPasswordScreen = () => {
+  const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
 
   // --------------------------------------------------------------------------
@@ -75,12 +77,12 @@ export const ResetPasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ backgroundColor: "#000000" }} className="flex-1 justify-center px-6 bg-black">
+    <SafeAreaView style={{ backgroundColor: colors.canvasBase }} className="flex-1 justify-center px-6">
       
       {/* Brand Header */}
       <View className="mb-8">
         <View className="flex-row items-center mb-3">
-          <Icon name="ghost" size={22} color="#C084FC" style={{ marginRight: 8 }} />
+          <Icon name="ghost" size={22} color={colors.brandPrimary} style={{ marginRight: 8 }} />
           <Text className="text-white text-xl font-bold tracking-wider font-mono">RETRO CODE</Text>
         </View>
 
@@ -101,13 +103,13 @@ export const ResetPasswordScreen = () => {
             value={password}
             onChangeText={setPassword}
             placeholder="••••••••"
-            placeholderTextColor="#71717A"
+            placeholderTextColor={colors.inkMuted}
             secureTextEntry
             autoComplete="new-password"
             textContentType="newPassword"
             autoCapitalize="none"
-            className="w-full bg-[#141414] p-4 rounded-2xl text-white text-base text-left"
-            style={{ color: "#FFFFFF", outlineStyle: "none", outlineWidth: 0 } as any}
+            className="w-full p-4 rounded-2xl text-white text-base text-left"
+            style={{ backgroundColor: colors.surfaceRaised,  color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
           />
         </View>
 
@@ -117,21 +119,21 @@ export const ResetPasswordScreen = () => {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             placeholder="••••••••"
-            placeholderTextColor="#71717A"
+            placeholderTextColor={colors.inkMuted}
             secureTextEntry
             autoComplete="new-password"
             textContentType="newPassword"
             autoCapitalize="none"
-            className="w-full bg-[#141414] p-4 rounded-2xl text-white text-base text-left"
-            style={{ color: "#FFFFFF", outlineStyle: "none", outlineWidth: 0 } as any}
+            className="w-full p-4 rounded-2xl text-white text-base text-left"
+            style={{ backgroundColor: colors.surfaceRaised,  color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
           />
         </View>
 
         {/* Action Button */}
-        <TouchableOpacity
+        <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
           onPress={handleUpdatePassword}
           disabled={loading}
-          className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-2xl"
+          className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-2xl"
         >
           <Text className="text-white text-base font-bold tracking-wide">
             {loading ? "Updating Password..." : "Update Password"}

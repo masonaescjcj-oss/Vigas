@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/ForgotPasswordScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) FORGOT PASSWORD RECOVERY SCREEN
+ * FORGOT PASSWORD RECOVERY SCREEN
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  * 
@@ -24,8 +24,10 @@ import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
+import { useTheme } from "../../theme/ThemeProvider";
 
 export const ForgotPasswordScreen = () => {
+  const { colors } = useTheme();
   const navigation = useNavigation();
 
   // --------------------------------------------------------------------------
@@ -62,12 +64,12 @@ export const ForgotPasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ backgroundColor: "#000000" }} className="flex-1 justify-center px-6 bg-black">
+    <SafeAreaView style={{ backgroundColor: colors.canvasBase }} className="flex-1 justify-center px-6">
       
       {/* Brand Header */}
       <View className="mb-8">
         <View className="flex-row items-center mb-3">
-          <Icon name="ghost" size={22} color="#C084FC" style={{ marginRight: 8 }} />
+          <Icon name="ghost" size={22} color={colors.brandPrimary} style={{ marginRight: 8 }} />
           <Text className="text-white text-xl font-bold tracking-wider font-mono">RETRO CODE</Text>
         </View>
         
@@ -82,8 +84,8 @@ export const ForgotPasswordScreen = () => {
 
       {sent ? (
         /* Confirmation Success Card */
-        <View className="bg-[#141414] p-6 rounded-3xl items-center shadow-2xl">
-          <Icon name="mail" size={44} color="#34D399" style={{ marginBottom: 16 }} />
+        <View style={{ backgroundColor: colors.surfaceRaised }} className=" p-6 rounded-3xl items-center shadow-2xl">
+          <Icon name="mail" size={44} color={colors.success} style={{ marginBottom: 16 }} />
 
           <Text className="text-white text-lg font-bold text-center mb-2">
             Reset Link Sent Successfully
@@ -93,9 +95,9 @@ export const ForgotPasswordScreen = () => {
             We have sent password recovery instructions to <Text className="text-purple-300 font-bold">{email}</Text>. Check your inbox to proceed.
           </Text>
 
-          <TouchableOpacity 
+          <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }} 
             onPress={() => navigation.goBack()} 
-            className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
+            className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
           >
             <Text className="text-white text-base font-bold">Back to Sign In</Text>
           </TouchableOpacity>
@@ -109,21 +111,21 @@ export const ForgotPasswordScreen = () => {
               value={email}
               onChangeText={setEmail}
               placeholder="developer@retrocode.dev"
-              placeholderTextColor="#71717A"
+              placeholderTextColor={colors.inkMuted}
               autoCapitalize="none"
               keyboardType="email-address"
               autoComplete="email"
               textContentType="emailAddress"
-              className="w-full bg-[#141414] p-4 rounded-2xl text-white text-base text-left"
-              style={{ color: "#FFFFFF", outlineStyle: "none", outlineWidth: 0 } as any}
+              className="w-full p-4 rounded-2xl text-white text-base text-left"
+              style={{ backgroundColor: colors.surfaceRaised,  color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
             />
           </View>
 
           {/* Send Reset Link Action Button */}
-          <TouchableOpacity
+          <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
             onPress={handleReset}
             disabled={loading}
-            className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-2xl mb-3"
+            className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-2xl mb-3"
           >
             <Text className="text-white text-base font-bold tracking-wide">
               {loading ? "Sending Reset Link..." : "Send Reset Link"}
@@ -131,9 +133,9 @@ export const ForgotPasswordScreen = () => {
           </TouchableOpacity>
 
           {/* Back Action Button */}
-          <TouchableOpacity
+          <TouchableOpacity style={{ backgroundColor: colors.surfaceRaised }}
             onPress={() => navigation.goBack()}
-            className="w-full py-4 bg-[#141414] rounded-2xl items-center justify-center active:bg-[#1E1E1E]"
+            className="w-full py-4 rounded-2xl items-center justify-center active:"
           >
             <Text className="text-zinc-300 text-sm font-semibold">Back to Sign In</Text>
           </TouchableOpacity>

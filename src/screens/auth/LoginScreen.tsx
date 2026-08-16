@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/LoginScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) LOGIN SCREEN
+ * LOGIN SCREEN
  * BRAND: RETRO CODE
  * ============================================================================
  */
@@ -17,20 +17,22 @@ import { supabase } from "../../services/supabase";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../theme/store";
 import { type AuthStackParamList } from "../../navigation/types";
+import { useTheme } from "../../theme/ThemeProvider";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Login">;
 
 export const LoginScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { mode } = useThemeStore();
+  const { colors } = useTheme();
 
   const isLight = mode === "light";
-  const bgCanvas = isLight ? "#FFFFFF" : "#000000";
-  const bgCard = isLight ? "#F8FAFC" : "#141414";
-  const bgInput = isLight ? "#F1F5F9" : "#141414";
-  const textPrimary = isLight ? "#0F172A" : "#FFFFFF";
-  const textSecondary = isLight ? "#475569" : "#D4D4D8";
-  const textMuted = isLight ? "#64748B" : "#71717A";
+  const bgCanvas = colors.canvasBase;
+  const bgCard = colors.surfaceRaised;
+  const bgInput = colors.surfaceMuted;
+  const textPrimary = colors.inkPrimary;
+  const textSecondary = colors.inkSecondary;
+  const textMuted = colors.inkSecondary;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +64,7 @@ export const LoginScreen = () => {
         <View className="mb-8">
           <View className="flex-row items-center space-x-3 mb-4">
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Icon name="ghost" size={22} color="#C084FC" />
+              <Icon name="ghost" size={22} color={colors.brandPrimary} />
             </View>
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md border border-slate-200/50">
               <Text className="text-2xl">⚡</Text>
@@ -120,10 +122,10 @@ export const LoginScreen = () => {
           </View>
 
           {/* Action Button */}
-          <TouchableOpacity
+          <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
             onPress={handleLogin}
             disabled={loading}
-            className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
+            className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
           >
             <Text className="text-white text-base font-bold tracking-wide">
               {loading ? "Signing In..." : "Sign In"}

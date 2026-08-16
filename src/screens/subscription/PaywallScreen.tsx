@@ -65,7 +65,7 @@ export const PaywallScreen = () => {
 
         {/* Visual Header */}
         <View className="items-center mb-8">
-          <Icon name="sparkles" size={52} color="#C084FC" style={{ marginBottom: 16 }} />
+          <Icon name="sparkles" size={52} color={colors.brandPrimary} style={{ marginBottom: 16 }} />
           <Text variant="h2" className="font-uiSemiBold text-center">
             Access all Pro features
           </Text>

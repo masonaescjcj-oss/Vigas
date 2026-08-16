@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/SplashScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) MINIMALIST SPLASH & INITIAL LOADING SCREEN
+ * MINIMALIST SPLASH & INITIAL LOADING SCREEN
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  * 
@@ -22,10 +22,12 @@ import { Text } from "../../components/Typography";
 import { useAuthStore } from "../../stores/authStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { type AuthStackParamList } from "../../navigation/types";
+import { useTheme } from "../../theme/ThemeProvider";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Splash">;
 
 export const SplashScreen = () => {
+  const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { user, initialized } = useAuthStore();
   const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
@@ -46,7 +48,7 @@ export const SplashScreen = () => {
 
   return (
     <View 
-      style={{ backgroundColor: "#000000" }} 
+      style={{ backgroundColor: colors.canvasBase }} 
       className="flex-1 items-center justify-center bg-black px-6"
     >
       <View className="items-center select-none">
@@ -57,7 +59,7 @@ export const SplashScreen = () => {
             style={{ 
               fontSize: 34, 
               fontWeight: "300", 
-              color: "#E4E4E7", 
+              color: colors.inkPrimary, 
               fontFamily: "'Inter', 'SF Pro Display', -apple-system, 'Segoe UI', Roboto, sans-serif",
               letterSpacing: -1
             } as any}
@@ -68,7 +70,7 @@ export const SplashScreen = () => {
             style={{ 
               fontSize: 26, 
               fontWeight: "500", 
-              color: "#C084FC", 
+              color: colors.brandPrimary, 
               fontFamily: "'Inter', 'SF Pro Display', -apple-system, 'Segoe UI', Roboto, sans-serif",
               marginLeft: 8,
               letterSpacing: -0.5
@@ -83,7 +85,7 @@ export const SplashScreen = () => {
           style={{ 
             fontSize: 10, 
             fontWeight: "500", 
-            color: "#71717A", 
+            color: colors.inkMuted, 
             fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
             letterSpacing: 3,
             textTransform: "uppercase",
@@ -95,7 +97,7 @@ export const SplashScreen = () => {
 
         {/* Smooth Purple Loading Spinner */}
         <ActivityIndicator 
-          color="#C084FC" 
+          color={colors.brandPrimary} 
           size="small" 
           className="mt-8" 
         />

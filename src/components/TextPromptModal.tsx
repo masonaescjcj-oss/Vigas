@@ -80,7 +80,7 @@ export const TextPromptModal: React.FC<TextPromptModalProps> = ({
               className="px-4 py-2 rounded-lg"
               style={{ backgroundColor: colors.brandPrimary, opacity: trimmed ? 1 : 0.4 }}
             >
-              <Text variant="caption" className="font-uiSemiBold" style={{ color: "#FFFFFF" }}>
+              <Text variant="caption" className="font-uiSemiBold" style={{ color: colors.canvasBase }}>
                 {confirmLabel}
               </Text>
             </TouchableOpacity>

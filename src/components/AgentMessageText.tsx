@@ -13,6 +13,7 @@ import { ScrollView, Text, View } from "react-native";
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
 import { parseBlocks } from "./markdown";
+import { useTheme } from "../theme/ThemeProvider";
 
 /** Inline `code` and **bold** inside a prose block. */
 const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color: string; codeBg: string; codeColor: string }) => {
@@ -52,10 +53,11 @@ export const AgentMessageText = ({
   isLight: boolean;
   textColor: string;
 }) => {
-  const codeBg = isLight ? "#F1F5F9" : "#17171A";
-  const codeBorder = isLight ? "#E2E8F0" : "#26262B";
-  const codeColor = isLight ? "#0F172A" : "#E4E4E7";
-  const langColor = isLight ? "#94A3B8" : "#5F5F66";
+  const { colors } = useTheme();
+  const codeBg = colors.surfaceCode;
+  const codeBorder = colors.borderHairline;
+  const codeColor = colors.inkPrimary;
+  const langColor = colors.inkMuted;
 
   return (
     <View style={{ marginBottom: 12 }}>

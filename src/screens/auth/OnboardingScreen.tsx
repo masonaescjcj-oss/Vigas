@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/OnboardingScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) INTRODUCTORY ONBOARDING CAROUSEL
+ * INTRODUCTORY ONBOARDING CAROUSEL
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  */
@@ -15,6 +15,7 @@ import { Text } from "../../components/Typography";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useThemeStore } from "../../theme/store";
 import { useSettingsStore } from "../../stores/settingsStore";
+import { useTheme } from "../../theme/ThemeProvider";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Onboarding">;
 
@@ -31,13 +32,14 @@ export const OnboardingScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const [activeSlide, setActiveSlide] = useState(0);
   const { mode } = useThemeStore();
+  const { colors } = useTheme();
 
   const isLight = mode === "light";
-  const bgCanvas = isLight ? "#FFFFFF" : "#000000";
-  const bgCard = isLight ? "#F8FAFC" : "#141414";
-  const bgItem = isLight ? "#F1F5F9" : "#1E1E22";
-  const textPrimary = isLight ? "#0F172A" : "#FFFFFF";
-  const textSecondary = isLight ? "#475569" : "#D4D4D8";
+  const bgCanvas = colors.canvasBase;
+  const bgCard = colors.surfaceRaised;
+  const bgItem = colors.surfaceMuted;
+  const textPrimary = colors.inkPrimary;
+  const textSecondary = colors.inkSecondary;
 
   const slides: Slide[] = [
     {
@@ -45,7 +47,7 @@ export const OnboardingScreen = () => {
       subtitle: "The agent writes the code",
       desc: "Say what you want. Retro Code plans it, writes the files, runs the commands, and tells you what it changed — all from your phone.",
       badge: "AI AGENT",
-      badgeColor: "#C084FC",
+      badgeColor: colors.brandPrimary,
       heroEmblems: ["sparkles", "code", "zap"],
     },
     {
@@ -53,7 +55,7 @@ export const OnboardingScreen = () => {
       subtitle: "Landing page, todo, gallery, blog, quiz",
       desc: "Pick a starter and the agent edits it instead of writing everything from scratch — faster, cheaper, and far more predictable.",
       badge: "TEMPLATES",
-      badgeColor: "#38BDF8",
+      badgeColor: colors.brandPrimary,
       heroEmblems: ["layers", "folder", "edit"],
     },
     {
@@ -61,7 +63,7 @@ export const OnboardingScreen = () => {
       subtitle: "Live preview on your device",
       desc: "Your app is bundled and rendered right here — no server, no waiting. Change something and look again.",
       badge: "LIVE PREVIEW",
-      badgeColor: "#10B981",
+      badgeColor: colors.success,
       heroEmblems: ["eye", "mobile", "check"],
     },
   ];
@@ -106,7 +108,7 @@ export const OnboardingScreen = () => {
       <View className="items-center px-2 my-auto">
         
         {/* Rich Multi-Emblem Hero Visual Object Card */}
-        <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#E2E8F0" : "transparent" }} className="w-full p-6 rounded-3xl items-center mb-8 shadow-xl relative border">
+        <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="w-full p-6 rounded-3xl items-center mb-8 shadow-xl relative border">
           <View className="flex-row space-x-4 mb-4">
             {slide.heroEmblems.map((emblem, eIdx) => (
               <View key={eIdx} style={{ backgroundColor: bgItem }} className="w-14 h-14 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/30">
@@ -148,7 +150,7 @@ export const OnboardingScreen = () => {
                 className="h-2.5 rounded-full mx-1"
                 style={{
                   width: isActive ? 28 : 10,
-                  backgroundColor: isActive ? "#C084FC" : (isLight ? "#CBD5E1" : "#27272A"),
+                  backgroundColor: isActive ? colors.brandPrimary : (colors.borderHairline),
                 }}
               />
             );
@@ -156,9 +158,9 @@ export const OnboardingScreen = () => {
         </View>
 
         {/* Action Button */}
-        <TouchableOpacity
+        <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
           onPress={handleNext}
-          className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
+          className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
         >
           <Text className="text-white text-base font-bold tracking-wide">
             {activeSlide === slides.length - 1 ? "Get Started Now" : "Continue ➔"}

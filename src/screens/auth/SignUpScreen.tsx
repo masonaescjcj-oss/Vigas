@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/SignUpScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) SIGN UP SCREEN
+ * SIGN UP SCREEN
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  */
@@ -17,20 +17,22 @@ import { supabase } from "../../services/supabase";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../theme/store";
 import { type AuthStackParamList } from "../../navigation/types";
+import { useTheme } from "../../theme/ThemeProvider";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "SignUp">;
 
 export const SignUpScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { mode } = useThemeStore();
+  const { colors } = useTheme();
 
   const isLight = mode === "light";
-  const bgCanvas = isLight ? "#FFFFFF" : "#000000";
-  const bgCard = isLight ? "#F8FAFC" : "#141414";
-  const bgInput = isLight ? "#F1F5F9" : "#141414";
-  const textPrimary = isLight ? "#0F172A" : "#FFFFFF";
-  const textSecondary = isLight ? "#475569" : "#D4D4D8";
-  const textMuted = isLight ? "#64748B" : "#71717A";
+  const bgCanvas = colors.canvasBase;
+  const bgCard = colors.surfaceRaised;
+  const bgInput = colors.surfaceMuted;
+  const textPrimary = colors.inkPrimary;
+  const textSecondary = colors.inkSecondary;
+  const textMuted = colors.inkSecondary;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -109,13 +111,13 @@ export const SignUpScreen = () => {
         <View className="mb-6">
           <View className="flex-row items-center space-x-3 mb-4">
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Icon name="ghost" size={22} color="#C084FC" />
+              <Icon name="ghost" size={22} color={colors.brandPrimary} />
             </View>
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Icon name="puzzle" size={22} color="#38BDF8" />
+              <Icon name="puzzle" size={22} color={colors.brandPrimary} />
             </View>
             <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md border border-slate-200/50">
-              <Icon name="zap" size={22} color="#F59E0B" />
+              <Icon name="zap" size={22} color={colors.warning} />
             </View>
           </View>
 
@@ -197,10 +199,16 @@ export const SignUpScreen = () => {
             activeOpacity={0.8}
             className="flex-row items-center justify-start py-2 mb-2"
           >
-            <View className={`w-5 h-5 rounded-md border items-center justify-center mr-3 ${
-              acceptedTerms ? "bg-[#6D42C7] border-purple-500" : (isLight ? "bg-[#F1F5F9] border-slate-300" : "bg-[#141414] border-zinc-700")
-            }`}>
-              {acceptedTerms && <Text className="text-white text-xs font-bold">✓</Text>}
+            <View
+              className="w-5 h-5 rounded-md border items-center justify-center mr-3"
+              style={{
+                backgroundColor: acceptedTerms ? colors.brandPrimary : "transparent",
+                borderColor: acceptedTerms ? colors.brandPrimary : colors.borderHairline,
+              }}
+            >
+              {acceptedTerms && (
+                <Icon name="check" size={11} color={colors.canvasBase} />
+              )}
             </View>
             <Text style={{ color: textSecondary }} className="text-xs text-left font-medium">
               I accept the Terms of Service & Privacy Policy
@@ -208,10 +216,10 @@ export const SignUpScreen = () => {
           </TouchableOpacity>
 
           {/* Sign Up Button */}
-          <TouchableOpacity
+          <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
             onPress={handleSignUp}
             disabled={loading}
-            className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
+            className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
           >
             <Text className="text-white text-base font-bold tracking-wide">
               {loading ? "Creating Account..." : "Create Account"}

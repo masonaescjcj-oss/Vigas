@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/chat/AgentChatScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK THEME (#000000) AGENT WORKSPACE & AI CODING IDE
+ * AGENT WORKSPACE & AI CODING IDE
  * APPLICATION BRAND: RETRO CODE
  * SEAMLESS BORDERLESS MODERN DESIGN SYSTEM (CLEAN SLEEK MINIMALISM)
  * ============================================================================
@@ -146,12 +146,12 @@ export const AgentChatScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isLight = mode === "light";
-  const bgCanvas = colors.canvasBase;      // Pure 100% Crisp White (#FFFFFF)
-  const bgCard = colors.surfaceRaised;        // Pure White card (#FFFFFF)
-  const bgPill = colors.surfaceMuted;        // Clean soft white/gray pill (#F1F5F9)
-  const textPrimary = colors.inkPrimary;   // Dark Slate Charcoal text (#0F172A)
-  const textSecondary = colors.inkSecondary; // Muted Slate text (#475569)
-  const textMuted = colors.inkMuted;     // Placeholder text (#94A3B8)
+  const bgCanvas = colors.canvasBase;
+  const bgCard = colors.surfaceRaised;
+  const bgPill = colors.surfaceMuted;
+  const textPrimary = colors.inkPrimary;
+  const textSecondary = colors.inkSecondary;
+  const textMuted = colors.inkMuted;
 
   // --------------------------------------------------------------------------
   // STATE MANAGEMENT
@@ -1629,7 +1629,7 @@ export const AgentChatScreen = () => {
                 <VectorIcon 
                   name={hasInputText ? "arrow-up" : "arrow-up"} 
                   size={16} 
-                  color="#FFFFFF" 
+                  color={colors.canvasBase} 
                 />
               </TouchableOpacity>
 
@@ -1874,7 +1874,7 @@ export const AgentChatScreen = () => {
               onPress={handleNewChat}
               className="w-12 h-12 rounded-full items-center justify-center shadow-lg"
             >
-              <VectorIcon name="edit" size={18} color="#FFFFFF" />
+              <VectorIcon name="edit" size={18} color={colors.canvasBase} />
             </TouchableOpacity>
           </View>
         </View>
@@ -2053,11 +2053,11 @@ export const AgentChatScreen = () => {
                   key={t.id}
                   onPress={() => setNewProjectTemplate(t.id)}
                   className="px-3 py-2 rounded-xl mr-2 mb-2"
-                  style={{ backgroundColor: newProjectTemplate === t.id ? colors.warning : "#242424" }}
+                  style={{ backgroundColor: newProjectTemplate === t.id ? colors.warning : colors.surfaceStrong }}
                 >
                   <Text
                     className="text-xs font-semibold"
-                    style={{ color: newProjectTemplate === t.id ? "#000000" : colors.inkSecondary }}
+                    style={{ color: newProjectTemplate === t.id ? colors.canvasBase : colors.inkSecondary }}
                   >
                     {t.label}
                   </Text>
@@ -2072,11 +2072,11 @@ export const AgentChatScreen = () => {
               style={{ backgroundColor: colors.warning,  opacity: isCreatingProject ? 0.6 : 1 }}
             >
               {isCreatingProject ? (
-                <ActivityIndicator size="small" color="#000000" />
+                <ActivityIndicator size="small" color={colors.canvasBase} />
               ) : (
                 <>
                   <Text style={{ color: colors.canvasBase }} className=" text-xs font-bold mr-1.5">Create & Open Project</Text>
-                  <VectorIcon name="arrow-right" size={14} color="#000000" />
+                  <VectorIcon name="arrow-right" size={14} color={colors.canvasBase} />
                 </>
               )}
             </TouchableOpacity>
@@ -2093,7 +2093,7 @@ export const AgentChatScreen = () => {
         transparent={false}
         onRequestClose={() => setShowPreviewModal(false)}
       >
-        <View style={{ backgroundColor: "#000000" }} className="flex-1 bg-black">
+        <View style={{ backgroundColor: colors.canvasBase }} className="flex-1 bg-black">
           <View style={{ backgroundColor: colors.canvasBase }} className="flex-row items-center justify-between px-5 py-4">
             <TouchableOpacity onPress={() => setShowPreviewModal(false)} className="p-1 flex-row items-center">
               <VectorIcon name="x" size={14} color={colors.inkSecondary} style={{ marginRight: 6 }} />
@@ -2381,7 +2381,7 @@ export const AgentChatScreen = () => {
                   onPress={() => setProfileSubScreen("main")} 
                   className="w-10 h-10 rounded-full items-center justify-center mr-3"
                 >
-                  <VectorIcon name="arrow-left" size={16} color="#FFFFFF" />
+                  <VectorIcon name="arrow-left" size={16} color={colors.canvasBase} />
                 </TouchableOpacity>
                 <Text style={{ color: colors.inkPrimary }} className=" text-lg font-bold">Usage and credits</Text>
               </View>

@@ -103,7 +103,7 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
         }}
       >
         <View className="mr-2.5">
-          <Icon name={iconFor(node, isExpanded)} size={15} color={isDir ? "#F59E0B" : colors.inkSecondary} />
+          <Icon name={iconFor(node, isExpanded)} size={15} color={isDir ? colors.warning : colors.inkSecondary} />
         </View>
         <Text variant="body" className="flex-1 text-left font-uiRegular text-sm" numberOfLines={1}>
           {node.name}

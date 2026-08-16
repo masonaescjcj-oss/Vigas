@@ -1,7 +1,7 @@
 /**
  * frontend/src/components/NoInternetBanner.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) OFFLINE NETWORK BANNER
+ * OFFLINE NETWORK BANNER
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  */
@@ -45,7 +45,7 @@ export const NoInternetBanner = () => {
     >
       <Text 
         className="text-white text-xs font-bold font-mono tracking-wide"
-        style={{ color: "#FFFFFF" }}
+        style={{ color: colors.inkPrimary }}
       >
         No internet connection
       </Text>

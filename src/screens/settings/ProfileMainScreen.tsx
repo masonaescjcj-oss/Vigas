@@ -47,7 +47,7 @@ export const ProfileMainScreen = () => {
             className="w-20 h-20 rounded-full items-center justify-center bg-surfaceRaised border border-borderHairline mb-4"
             style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
           >
-            <Icon name="user" size={30} color="#C084FC" />
+            <Icon name="user" size={30} color={colors.brandPrimary} />
           </View>
 
           <Text variant="h2" className="font-uiSemiBold text-center">

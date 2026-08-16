@@ -1,7 +1,7 @@
 /**
  * frontend/src/screens/auth/EmailVerificationPendingScreen.tsx
  * ============================================================================
- * PURE OBSIDIAN BLACK (#000000) EMAIL VERIFICATION PENDING SCREEN
+ * EMAIL VERIFICATION PENDING SCREEN
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  * 
@@ -25,10 +25,12 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { AuthStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
+import { useTheme } from "../../theme/ThemeProvider";
 
 type RouteProps = RouteProp<AuthStackParamList, "EmailVerificationPending">;
 
 export const EmailVerificationPendingScreen = () => {
+  const { colors } = useTheme();
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { email } = route.params;
@@ -72,12 +74,12 @@ export const EmailVerificationPendingScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ backgroundColor: "#000000" }} className="flex-1 justify-center px-6 bg-black">
+    <SafeAreaView style={{ backgroundColor: colors.canvasBase }} className="flex-1 justify-center px-6">
       
       <View className="items-center mb-8">
         {/* Verification Emblem */}
-        <View className="w-20 h-20 rounded-3xl bg-[#141414] items-center justify-center mb-6 shadow-2xl">
-          <Icon name="mail" size={36} color="#C084FC" />
+        <View style={{ backgroundColor: colors.surfaceRaised }} className="w-20 h-20 rounded-3xl items-center justify-center mb-6 shadow-2xl">
+          <Icon name="mail" size={36} color={colors.brandPrimary} />
         </View>
 
         <Text className="text-white text-3xl font-extrabold text-center mb-2 font-sans">
@@ -102,8 +104,8 @@ export const EmailVerificationPendingScreen = () => {
         <TouchableOpacity
           onPress={handleResend}
           disabled={cooldown > 0 || resending}
-          style={{ opacity: cooldown > 0 ? 0.6 : 1.0 }}
-          className="w-full py-4 bg-[#6D42C7] rounded-2xl items-center justify-center active:opacity-90 shadow-2xl mb-3"
+          style={{ backgroundColor: colors.brandPrimary,  opacity: cooldown > 0 ? 0.6 : 1.0 }}
+          className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-2xl mb-3"
         >
           <Text className="text-white text-base font-bold tracking-wide">
             {cooldown > 0 ? `Resend Email (${cooldown}s)` : resending ? "Resending..." : "Resend Verification Email"}
@@ -111,9 +113,9 @@ export const EmailVerificationPendingScreen = () => {
         </TouchableOpacity>
 
         {/* Back to Sign In Action Button */}
-        <TouchableOpacity
+        <TouchableOpacity style={{ backgroundColor: colors.surfaceRaised }}
           onPress={() => navigation.navigate("Login")}
-          className="w-full py-4 bg-[#141414] rounded-2xl items-center justify-center active:bg-[#1E1E1E]"
+          className="w-full py-4 rounded-2xl items-center justify-center active:"
         >
           <Text className="text-zinc-300 text-sm font-semibold">Back to Sign In</Text>
         </TouchableOpacity>
