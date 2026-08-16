@@ -469,7 +469,8 @@ export const AgentChatScreen = () => {
             : {
                 projectId: await ensureProjectId(),
                 sessionId: activeSessionId ?? undefined,
-                title: userPromptText.slice(0, 48),
+                // Only names a new chat; an existing one keeps its title.
+                ...(activeSessionId ? {} : { title: userPromptText.slice(0, 48) }),
               }),
         });
         if (answer.session_id) setActiveSessionId(answer.session_id);
