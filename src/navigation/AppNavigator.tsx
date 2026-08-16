@@ -80,7 +80,7 @@ const AuthNavigator = () => {
       initialRouteName="Splash"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#000000" }
+        contentStyle: { backgroundColor: colors.canvasBase }
       }}
     >
       <AuthStack.Screen name="Splash" component={SplashScreen} />
@@ -97,12 +97,13 @@ const AuthNavigator = () => {
 
 // 2. Project Stack Navigator
 const ProjectNavigator = () => {
+  const { colors } = useTheme();
   return (
     <ProjectStack.Navigator
       initialRouteName="AgentChat"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#000000" }
+        contentStyle: { backgroundColor: colors.canvasBase }
       }}
     >
       <ProjectStack.Screen name="AgentChat" component={AgentChatScreen} />
@@ -118,12 +119,13 @@ const ProjectNavigator = () => {
 
 // 3. Profile Stack Navigator
 const ProfileNavigator = () => {
+  const { colors } = useTheme();
   return (
     <ProfileStack.Navigator
       initialRouteName="ProfileMain"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#000000" }
+        contentStyle: { backgroundColor: colors.canvasBase }
       }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileMainScreen} />
@@ -167,6 +169,7 @@ const MainTabNavigator = () => {
 // 5. Root Navigator Switch
 export const AppNavigator = () => {
   const { user, setSession, initialized } = useAuthStore();
+  const { colors } = useTheme();
 
   // Watch Supabase auth sessions
   useEffect(() => {
@@ -212,7 +215,7 @@ export const AppNavigator = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
+    <View style={{ flex: 1, backgroundColor: colors.canvasBase }}>
       {/* 1. Global No Internet Banner Overlay */}
       <NoInternetBanner />
 
@@ -221,7 +224,7 @@ export const AppNavigator = () => {
         <RootStack.Navigator
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: "#000000" }
+            contentStyle: { backgroundColor: colors.canvasBase }
           }}
         >
           {user ? (

@@ -1542,6 +1542,7 @@
         "npm:autoprefixer@^10.5.4",
         "npm:deno@^2.9.3",
         "npm:e2b@2.35.0",
+        "npm:expo-haptics@~13.0.1",
         "npm:expo-status-bar@~1.12.1",
         "npm:expo@51.0",
         "npm:lucide-react-native@^1.26.0",

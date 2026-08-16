@@ -17,6 +17,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Modal, Platform, ActivityIndicator, Alert } from "react-native";
 import { confirmAction, notify } from "../../services/notify";
+import {
+  errorFeedback,
+  selectionFeedback,
+  sendFeedback,
+  successFeedback,
+  warningFeedback,
+} from "../../services/haptics";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -41,6 +48,8 @@ import { isUuid } from "../../services/formatting";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
+import { ThinkingIndicator } from "../../components/ThinkingIndicator";
+import { AnimatedAgentText } from "../../components/AnimatedAgentText";
 import { PreviewSurface } from "../../components/PreviewSurface";
 import { Icon as VectorIcon } from "../../components/Icon";
 
@@ -58,10 +67,10 @@ import { Icon as VectorIcon } from "../../components/Icon";
  * default, so the picker can never point the agent at an arbitrary model.
  */
 const AI_MODELS_DATA = [
-  { id: "auto", name: "Auto", icon: "zap", color: "#F59E0B", category: "Best", description: "Let the server pick the default model" },
-  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "zap", color: "#22C55E", badge: "default", category: "Best", description: "Fast general coding model" },
-  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "code", color: "#38BDF8", category: "Best", description: "Fast and economical" },
-  { id: "deepseek-reasoner", name: "DeepSeek Reasoner", icon: "sparkles", color: "#6366F1", category: "Best", description: "Deeper reasoning for complex tasks" },
+  { id: "auto", name: "Auto", icon: "zap", tone: "warning" as const, category: "Best", description: "Let the server pick the default model" },
+  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "zap", tone: "success" as const, badge: "default", category: "Best", description: "Fast general coding model" },
+  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "code", tone: "brandPrimary" as const, category: "Best", description: "Fast and economical" },
+  { id: "deepseek-reasoner", name: "DeepSeek Reasoner", icon: "sparkles", tone: "brandPrimary" as const, category: "Best", description: "Deeper reasoning for complex tasks" },
 ];
 
 /**
@@ -137,12 +146,12 @@ export const AgentChatScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isLight = mode === "light";
-  const bgCanvas = isLight ? "#FFFFFF" : "#000000";      // Pure 100% Crisp White (#FFFFFF)
-  const bgCard = isLight ? "#FFFFFF" : "#141414";        // Pure White card (#FFFFFF)
-  const bgPill = isLight ? "#F1F5F9" : "#242424";        // Clean soft white/gray pill (#F1F5F9)
-  const textPrimary = isLight ? "#0F172A" : "#FFFFFF";   // Dark Slate Charcoal text (#0F172A)
-  const textSecondary = isLight ? "#475569" : "#A1A1AA"; // Muted Slate text (#475569)
-  const textMuted = isLight ? "#94A3B8" : "#71717A";     // Placeholder text (#94A3B8)
+  const bgCanvas = colors.canvasBase;      // Pure 100% Crisp White (#FFFFFF)
+  const bgCard = colors.surfaceRaised;        // Pure White card (#FFFFFF)
+  const bgPill = colors.surfaceMuted;        // Clean soft white/gray pill (#F1F5F9)
+  const textPrimary = colors.inkPrimary;   // Dark Slate Charcoal text (#0F172A)
+  const textSecondary = colors.inkSecondary; // Muted Slate text (#475569)
+  const textMuted = colors.inkMuted;     // Placeholder text (#94A3B8)
 
   // --------------------------------------------------------------------------
   // STATE MANAGEMENT
@@ -380,6 +389,25 @@ export const AgentChatScreen = () => {
     return () => { cancelled = true; };
   }, [profileSubScreen]);
 
+  /**
+   * The label under the pulsing mark. "Thinking" for half a minute is
+   * indistinguishable from being stuck, so a run names its current tool.
+   */
+  const liveSteps: ToolRunStep[] = (() => {
+    const exec = messages.find((m) => typeof m.id === "string" && m.id.startsWith("exec_"));
+    return (exec?.steps ?? []) as ToolRunStep[];
+  })();
+  const currentStep = [...liveSteps].reverse().find((s) => s.status === "running") ?? liveSteps.at(-1);
+  const isAsking = activeMode === "chat" || isIncognito;
+  const thinkingLabel = isAsking
+    ? "Thinking"
+    : currentStep
+      ? `Running ${currentStep.tool}`
+      : "Starting the agent";
+  const thinkingDetail = isAsking
+    ? undefined
+    : currentStep?.target ?? (liveSteps.length ? `${liveSteps.length} step(s) so far` : "Preparing the workspace");
+
   const loadCheckpoints = async (projectId: string) => {
     setCheckpointsLoading(true);
     try {
@@ -426,10 +454,20 @@ export const AgentChatScreen = () => {
    * agent-run enqueues a job (HTTP 202) → queue-worker executes the Agent Core
    * in the sandbox → progress is polled from agent_tasks (see effect below).
    */
-  const handleSend = async () => {
-    if (!inputText.trim() || isExecuting) return;
+  /** A suggestion is a prompt the user did not have to type. */
+  const handleAskFollowUp = (question: string) => {
+    if (isExecuting) return;
+    selectionFeedback();
+    setInputText(question);
+    // Let the input commit before send reads it.
+    setTimeout(() => { void handleSend(question); }, 0);
+  };
 
-    const userPromptText = inputText.trim();
+  const handleSend = async (override?: string) => {
+    const source = (override ?? inputText).trim();
+    if (!source || isExecuting) return;
+
+    const userPromptText = source;
     const isFirstPrompt = messages.length === 0;
 
     const userMsg = {
@@ -440,6 +478,7 @@ export const AgentChatScreen = () => {
       isIncognito,
     };
     setMessages((prev) => [...prev, userMsg]);
+    sendFeedback();
     setInputText("");
     setShowMentionsPopup(false);
     setShowSlashPopup(false);
@@ -474,6 +513,7 @@ export const AgentChatScreen = () => {
               }),
         });
         if (answer.session_id) setActiveSessionId(answer.session_id);
+        successFeedback();
         setMessages((prev) => [
           ...prev,
           {
@@ -481,6 +521,8 @@ export const AgentChatScreen = () => {
             role: "assistant",
             content: answer.text || "(no answer)",
             createdAt: Date.now(),
+            animate: true,
+            followUps: answer.follow_ups ?? [],
             isIncognito,
           },
         ]);
@@ -491,6 +533,7 @@ export const AgentChatScreen = () => {
             id: `msg_err_${Date.now()}`,
             role: "assistant",
             content: `⚠️ Could not answer: ${e instanceof Error ? e.message : String(e)}`,
+            isError: true,
             createdAt: Date.now(),
             isIncognito,
           },
@@ -551,18 +594,18 @@ export const AgentChatScreen = () => {
   };
 
   const saveRestorePointButton = (
-    <TouchableOpacity
+    <TouchableOpacity style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceMuted }}
       onPress={handleSaveRestorePoint}
       disabled={savingCheckpoint || isExecuting}
-      className="flex-row items-center justify-center py-2.5 mb-4 rounded-xl bg-[#1A1A1A] border border-zinc-800"
+      className="flex-row items-center justify-center py-2.5 mb-4 rounded-xl border"
       activeOpacity={0.8}
     >
       {savingCheckpoint ? (
-        <ActivityIndicator size="small" color="#C084FC" />
+        <ActivityIndicator size="small" color={colors.brandPrimary} />
       ) : (
         <>
-          <VectorIcon name="plus" size={13} color="#C084FC" style={{ marginRight: 6 }} />
-          <Text className="text-purple-300 text-xs font-semibold">Save a restore point now</Text>
+          <VectorIcon name="plus" size={13} color={colors.brandPrimary} style={{ marginRight: 6 }} />
+          <Text style={{ color: colors.brandPrimary }} className=" text-xs font-semibold">Save a restore point now</Text>
         </>
       )}
     </TouchableOpacity>
@@ -583,9 +626,11 @@ export const AgentChatScreen = () => {
     );
     if (!confirmed) return;
 
+    warningFeedback();
     setRestoringCheckpointId(checkpointId);
     try {
       const result = await restoreCheckpoint(checkpointId);
+      successFeedback();
       setShowCheckpointsModal(false);
       setMessages((prev) => [
         ...prev,
@@ -744,6 +789,7 @@ export const AgentChatScreen = () => {
             role: "assistant",
             content: finalText,
             createdAt: Date.now(),
+            animate: runRow.status === "success",
             hasCodeEdit: runRow.status === "success" && touchedWorkspace,
             // The worker snapshots before it runs and reports the id here, so
             // this message can offer to undo exactly what it did.
@@ -753,6 +799,8 @@ export const AgentChatScreen = () => {
           },
         ]);
         setIsExecuting(false);
+        if (runRow.status === "success") successFeedback();
+        else errorFeedback();
         scrollViewRef.current?.scrollToEnd({ animated: true });
         void backfillTranscriptIndices(activeSessionId);
       }
@@ -796,6 +844,7 @@ export const AgentChatScreen = () => {
    * attributing the previous conversation's steps to this one.
    */
   const handleToggleIncognito = () => {
+    selectionFeedback();
     const nextIncognitoState = !isIncognito;
     setIsIncognito(nextIncognitoState);
     if (nextIncognitoState) {
@@ -815,6 +864,7 @@ export const AgentChatScreen = () => {
    */
   const handleSelectMode = (mode: "chat" | "build") => {
     if (mode === activeMode || isExecuting) return;
+    selectionFeedback();
     setActiveMode(mode);
     if (activeSessionId) {
       setActiveSessionId(null);
@@ -1027,38 +1077,38 @@ export const AgentChatScreen = () => {
           {/* Profile Avatar / Drawer Trigger */}
           <TouchableOpacity 
             onPress={() => setShowDrawerModal(true)}
-            style={{ backgroundColor: isLight ? "#FFFFFF" : bgCard, borderColor: isLight ? "#E2E8F0" : "rgba(255,255,255,0.1)" }}
+            style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }}
             className="w-10 h-10 rounded-full items-center justify-center border shadow-sm"
             activeOpacity={0.8}
           >
-            <VectorIcon name="user" size={16} color={isLight ? "#0F172A" : "#D4D4D8"} />
+            <VectorIcon name="user" size={16} color={colors.inkPrimary} />
           </TouchableOpacity>
 
           {/* Chat asks the model directly; Build queues an agent run with tools. */}
           {isIncognito ? (
-            <Text className="text-zinc-400 text-sm font-medium">Incognito chat</Text>
+            <Text style={{ color: colors.inkSecondary }} className=" text-sm font-medium">Incognito chat</Text>
           ) : (
-            <View style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414", borderColor: isLight ? "#E2E8F0" : "transparent" }} className="flex-row items-center p-1 rounded-full border shadow-sm">
+            <View style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }} className="flex-row items-center p-1 rounded-full border shadow-sm">
               <TouchableOpacity
                 onPress={() => handleSelectMode("chat")}
-                style={{ backgroundColor: activeMode === "chat" ? (isLight ? "#F1F5F9" : "#242424") : "transparent" }}
+                style={{ backgroundColor: activeMode === "chat" ? (colors.surfaceMuted) : "transparent" }}
                 className="flex-row items-center px-4 py-1.5 rounded-full"
                 activeOpacity={0.8}
               >
-                <VectorIcon name="search" size={12} color={activeMode === "chat" ? "#38BDF8" : (isLight ? "#64748B" : "#9CA3AF")} style={{ marginRight: 6 }} />
-                <Text style={{ color: activeMode === "chat" ? (isLight ? "#0F172A" : "#FFFFFF") : (isLight ? "#64748B" : "#9CA3AF") }} className="text-xs font-semibold">
+                <VectorIcon name="search" size={12} color={activeMode === "chat" ? colors.brandPrimary : (colors.inkSecondary)} style={{ marginRight: 6 }} />
+                <Text style={{ color: activeMode === "chat" ? (colors.inkPrimary) : (colors.inkSecondary) }} className="text-xs font-semibold">
                   Chat
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => handleSelectMode("build")}
-                style={{ backgroundColor: activeMode === "build" ? (isLight ? "#F1F5F9" : "#242424") : "transparent" }}
+                style={{ backgroundColor: activeMode === "build" ? (colors.surfaceMuted) : "transparent" }}
                 className="flex-row items-center px-4 py-1.5 rounded-full"
                 activeOpacity={0.8}
               >
-                <VectorIcon name="code" size={12} color={activeMode === "build" ? "#C084FC" : (isLight ? "#64748B" : "#9CA3AF")} style={{ marginRight: 6 }} />
-                <Text style={{ color: activeMode === "build" ? (isLight ? "#0F172A" : "#FFFFFF") : (isLight ? "#64748B" : "#9CA3AF") }} className="text-xs font-semibold">
+                <VectorIcon name="code" size={12} color={activeMode === "build" ? colors.brandPrimary : (colors.inkSecondary)} style={{ marginRight: 6 }} />
+                <Text style={{ color: activeMode === "build" ? (colors.inkPrimary) : (colors.inkSecondary) }} className="text-xs font-semibold">
                   Build
                 </Text>
               </TouchableOpacity>
@@ -1068,11 +1118,11 @@ export const AgentChatScreen = () => {
           {/* Top-right incognito toggle */}
           <TouchableOpacity 
             onPress={handleToggleIncognito}
-            style={{ backgroundColor: isIncognito ? (isLight ? "#F3E8FF" : "rgba(59, 7, 100, 0.9)") : (isLight ? "#FFFFFF" : "#141414"), borderColor: isLight ? "#E2E8F0" : "transparent" }}
+            style={{ backgroundColor: isIncognito ? (colors.incognitoSoft) : (colors.surfaceRaised), borderColor: colors.borderHairline }}
             className="w-10 h-10 rounded-full items-center justify-center border shadow-sm transition-all"
             activeOpacity={0.8}
           >
-            <VectorIcon name="ghost" size={18} color={isIncognito ? "#A855F7" : (isLight ? "#0F172A" : "#A1A1AA")} />
+            <VectorIcon name="ghost" size={18} color={isIncognito ? colors.brandPrimary : (colors.inkSecondary)} />
           </TouchableOpacity>
 
         </View>
@@ -1083,7 +1133,7 @@ export const AgentChatScreen = () => {
           <View className="flex-row items-center flex-1 mr-2">
             <TouchableOpacity 
               onPress={() => setShowDrawerModal(true)}
-              style={{ backgroundColor: isLight ? "#FFFFFF" : bgCard, borderColor: isLight ? "#E2E8F0" : "rgba(255,255,255,0.1)" }}
+              style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }}
               className="w-9 h-9 rounded-full items-center justify-center mr-3 border shadow-sm"
               activeOpacity={0.8}
             >
@@ -1098,27 +1148,27 @@ export const AgentChatScreen = () => {
               <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left mr-1" numberOfLines={1}>
                 {isIncognito ? "Incognito Chat" : (threadTitle || activeProjectName || "New chat")}
               </Text>
-              <VectorIcon name="chevron-down" size={10} color={isLight ? "#64748B" : "#71717A"} />
+              <VectorIcon name="chevron-down" size={10} color={colors.inkSecondary} />
             </TouchableOpacity>
           </View>
 
           <View className="flex-row items-center">
             <TouchableOpacity 
               onPress={handleToggleIncognito}
-              style={{ backgroundColor: isIncognito ? (isLight ? "#F3E8FF" : "rgba(59, 7, 100, 0.9)") : (isLight ? "#FFFFFF" : "#141414"), borderColor: isLight ? "#E2E8F0" : "transparent" }}
+              style={{ backgroundColor: isIncognito ? (colors.incognitoSoft) : (colors.surfaceRaised), borderColor: colors.borderHairline }}
               className="w-9 h-9 rounded-full items-center justify-center mr-2 border shadow-sm"
               activeOpacity={0.8}
             >
-              <VectorIcon name="ghost" size={16} color={isIncognito ? "#A855F7" : (isLight ? "#0F172A" : "#A1A1AA")} />
+              <VectorIcon name="ghost" size={16} color={isIncognito ? colors.brandPrimary : (colors.inkSecondary)} />
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={handleNewChat}
-              style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
               className="w-9 h-9 rounded-full items-center justify-center border shadow-sm"
               activeOpacity={0.8}
             >
-              <VectorIcon name="edit" size={14} color={isLight ? "#0F172A" : "#E4E4E7"} />
+              <VectorIcon name="edit" size={14} color={colors.inkPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -1134,8 +1184,8 @@ export const AgentChatScreen = () => {
           isIncognito ? (
             /* INCOGNITO MODE ZERO-STATE CANVAS */
             <View className="flex-1 items-center justify-center px-6">
-              <View style={{ backgroundColor: bgCard }} className="w-20 h-20 rounded-3xl items-center justify-center mb-6 shadow-2xl border border-slate-200/40">
-                <VectorIcon name="ghost" size={40} color="#C084FC" />
+              <View style={{ borderColor: colors.borderHairline,  backgroundColor: bgCard }} className="w-20 h-20 rounded-3xl items-center justify-center mb-6 shadow-2xl border">
+                <VectorIcon name="ghost" size={40} color={colors.brandPrimary} />
               </View>
 
               <Text style={{ color: textPrimary }} className="text-base font-semibold text-center mb-2 leading-6">
@@ -1155,9 +1205,9 @@ export const AgentChatScreen = () => {
             /* PROJECT CONVERSATIONS LIST CANVAS (MATCHING USER SCREENSHOT) */
             <ScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
               {/* Active Project Banner Header */}
-              <View style={{ backgroundColor: isLight ? "#FFFFFF" : "#121214", borderColor: isLight ? "#E2E8F0" : "rgba(39, 39, 42, 0.6)" }} className="flex-row items-center justify-between mb-5 p-4 rounded-2xl border shadow-sm">
+              <View style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }} className="flex-row items-center justify-between mb-5 p-4 rounded-2xl border shadow-sm">
                 <View className="flex-row items-center flex-1 mr-2">
-                  <VectorIcon name="folder" size={22} color="#F59E0B" style={{ marginRight: 12 }} />
+                  <VectorIcon name="folder" size={22} color={colors.warning} style={{ marginRight: 12 }} />
                   <View className="flex-1">
                     <Text style={{ color: textPrimary }} className="text-base font-bold text-left" numberOfLines={1}>{activeProjectName}</Text>
                     <Text style={{ color: textSecondary }} className="text-xs text-left">Select a conversation or type below for a new thread</Text>
@@ -1169,7 +1219,7 @@ export const AgentChatScreen = () => {
                     setActiveProjectName("");
                     setThreadTitle("");
                   }}
-                  style={{ backgroundColor: isLight ? "#F1F5F9" : "#1F1F24" }}
+                  style={{ backgroundColor: colors.surfaceMuted }}
                   className="px-3 py-1.5 rounded-full active:opacity-80"
                 >
                   <Text style={{ color: textPrimary }} className="text-xs font-semibold">Change</Text>
@@ -1196,7 +1246,7 @@ export const AgentChatScreen = () => {
                       onPress={() =>
                         handleLoadSession(item, { id: activeProjectId!, name: activeProjectName })
                       }
-                      style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414", borderColor: isLight ? "#E2E8F0" : "rgba(39, 39, 42, 0.4)" }}
+                      style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
                       className="mb-3 p-4 rounded-2xl border active:opacity-80 shadow-sm"
                     >
                       <Text style={{ color: textPrimary }} className="text-sm font-semibold mb-2 text-left" numberOfLines={1}>
@@ -1223,7 +1273,7 @@ export const AgentChatScreen = () => {
                   style={{ 
                     fontSize: 28, 
                     fontWeight: isLight ? "600" : "300", 
-                    color: isLight ? "#0F172A" : "#3F3F46", 
+                    color: colors.inkMuted, 
                     fontFamily: "'Inter', 'SF Pro Display', sans-serif",
                     letterSpacing: -1
                   } as any}
@@ -1234,7 +1284,7 @@ export const AgentChatScreen = () => {
                   style={{ 
                     fontSize: 22, 
                     fontWeight: isLight ? "700" : "400", 
-                    color: isLight ? "#C084FC" : "#27272A", 
+                    color: colors.brandPrimary, 
                     fontFamily: "'Inter', 'SF Pro Display', sans-serif",
                     marginLeft: 6
                   } as any}
@@ -1247,7 +1297,7 @@ export const AgentChatScreen = () => {
                 style={{ 
                   fontSize: 10, 
                   fontWeight: "600", 
-                  color: isLight ? "#94A3B8" : "#27272A", 
+                  color: colors.inkMuted, 
                   fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                   letterSpacing: 3,
                   textTransform: "uppercase",
@@ -1276,7 +1326,7 @@ export const AgentChatScreen = () => {
                 const canFork = typeof msg.transcriptIndex === "number" && !isExecuting;
                 return (
                   <View key={msg.id} className="mb-6 items-end">
-                    <View style={{ backgroundColor: isLight ? "#F1F5F9" : "#231B32", borderColor: isLight ? "#E2E8F0" : "transparent" }} className="max-w-[92%] p-4 rounded-3xl border shadow-sm">
+                    <View style={{ backgroundColor: colors.bubbleUser, borderColor: colors.borderHairline }} className="max-w-[92%] p-4 rounded-3xl border shadow-sm">
                       <Text style={{ color: textPrimary }} className="text-sm leading-6 text-left font-sans font-medium">
                         {msg.content}
                       </Text>
@@ -1322,7 +1372,13 @@ export const AgentChatScreen = () => {
                   )}
 
                   {msg.content ? (
-                    <AgentMessageText content={msg.content} isLight={isLight} textColor={textPrimary} />
+                    <AnimatedAgentText
+                      id={msg.id}
+                      content={msg.content}
+                      animate={msg.animate === true}
+                      isLight={isLight}
+                      textColor={textPrimary}
+                    />
                   ) : null}
 
                   {/* Legacy step renderers (commands, thoughts, diff cards) */}
@@ -1331,14 +1387,14 @@ export const AgentChatScreen = () => {
                       return (
                         <View key={sIdx} className="flex-row items-center justify-between py-2 my-1">
                           <View className="flex-row items-center flex-1 mr-2">
-                            <VectorIcon name="terminal" size={12} color={isLight ? "#64748B" : "#A1A1AA"} style={{ marginRight: 6 }} />
+                            <VectorIcon name="terminal" size={12} color={colors.inkSecondary} style={{ marginRight: 6 }} />
                             <Text style={{ color: textSecondary }} className="text-xs font-mono mr-1">Command</Text>
                             <Text style={{ color: textPrimary }} className="text-xs font-mono font-medium" numberOfLines={1}>
                               {step.cmd}
                             </Text>
                           </View>
-                          <View style={{ backgroundColor: isLight ? "#D1FAE5" : "#054030" }} className="px-2.5 py-1 rounded-md">
-                            <Text style={{ color: isLight ? "#059669" : "#34D399" }} className="text-[11px] font-medium font-mono">completed &gt;</Text>
+                          <View style={{ backgroundColor: colors.successSoft }} className="px-2.5 py-1 rounded-md">
+                            <Text style={{ color: colors.success }} className="text-[11px] font-medium font-mono">completed &gt;</Text>
                           </View>
                         </View>
                       );
@@ -1346,7 +1402,7 @@ export const AgentChatScreen = () => {
 
                     if (step.type === "thought") {
                       return (
-                        <Text key={sIdx} style={{ color: isLight ? "#64748B" : "#9E99B0" }} className="text-xs italic leading-5 my-2 text-left pl-1">
+                        <Text key={sIdx} style={{ color: colors.inkSecondary }} className="text-xs italic leading-5 my-2 text-left pl-1">
                           {step.text}
                         </Text>
                       );
@@ -1363,19 +1419,51 @@ export const AgentChatScreen = () => {
                     return null;
                   })}
 
+                  {/* Where the conversation could go next. Generated with the
+                      answer, so they cost a handful of tokens rather than a
+                      second model call. Only on the newest message — stale
+                      suggestions are noise. */}
+                  {Array.isArray(msg.followUps) && msg.followUps.length > 0 &&
+                    msg.id === messages[messages.length - 1]?.id && !isExecuting && (
+                    <View className="mt-4 pt-1">
+                      {msg.followUps.map((question: string, qIdx: number) => (
+                        <TouchableOpacity
+                          key={qIdx}
+                          onPress={() => handleAskFollowUp(question)}
+                          style={{ borderTopColor: colors.borderHairline, borderTopWidth: 1 }}
+                          className="flex-row items-center py-3 active:opacity-70"
+                          activeOpacity={0.7}
+                        >
+                          <VectorIcon
+                            name="arrow-right"
+                            size={13}
+                            color={colors.inkMuted}
+                            style={{ marginRight: 10 }}
+                          />
+                          <Text
+                            style={{ color: textPrimary }}
+                            className="text-sm flex-1 text-left leading-5"
+                          >
+                            {question}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
                   {/* IN-STREAM ACTIONS: LIVE APP PREVIEW & GIT CHECKPOINT ROLLBACK BUTTONS */}
                   {msg.hasCodeEdit && (
                     <View className="flex-row items-center mt-3 pt-3 space-x-2">
                       {/* Live App Sandbox Runner Button */}
                       <TouchableOpacity
                         onPress={() => setShowPreviewModal(true)}
-                        style={{ backgroundColor: isLight ? "#E6F4EA" : "rgba(6, 78, 59, 0.8)", borderColor: isLight ? "#A7F3D0" : "transparent" }}
+                        style={{ backgroundColor: colors.successSoft, borderColor: colors.borderHairline }}
                         className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 mr-2 border shadow-sm"
                         activeOpacity={0.8}
                       >
-                        <VectorIcon name="eye" size={14} color={isLight ? "#16A34A" : "#34D399"} style={{ marginRight: 6 }} />
-                        <Text style={{ color: isLight ? "#15803D" : "#34D399" }} className="text-xs font-bold mr-1.5">Preview App</Text>
-                        <VectorIcon name="arrow-right" size={12} color={isLight ? "#16A34A" : "#34D399"} />
+                        <VectorIcon name="eye" size={14} color={colors.success} style={{ marginRight: 6 }} />
+                        <Text style={{ color: colors.success }} className="text-xs font-bold mr-1.5">Preview App</Text>
+                        <VectorIcon name="arrow-right" size={12} color={colors.success} />
                       </TouchableOpacity>
 
                       {/* Undo this turn — the worker snapshotted the project
@@ -1384,15 +1472,15 @@ export const AgentChatScreen = () => {
                         <TouchableOpacity
                           onPress={() => handleRollback(msg.checkpointId, "before this change")}
                           disabled={restoringCheckpointId !== null || isExecuting}
-                          style={{ backgroundColor: isLight ? "#F1F5F9" : "#1C1C1C", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+                          style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
                           className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 border shadow-sm"
                           activeOpacity={0.8}
                         >
                           {restoringCheckpointId === msg.checkpointId ? (
-                            <ActivityIndicator size="small" color={isLight ? "#6D42C7" : "#C084FC"} />
+                            <ActivityIndicator size="small" color={colors.brandPrimary} />
                           ) : (
                             <>
-                              <VectorIcon name="rotate-ccw" size={13} color={isLight ? "#6D42C7" : "#C084FC"} style={{ marginRight: 6 }} />
+                              <VectorIcon name="rotate-ccw" size={13} color={colors.brandPrimary} style={{ marginRight: 6 }} />
                               <Text style={{ color: textPrimary }} className="text-xs font-semibold">Undo this change</Text>
                             </>
                           )}
@@ -1404,12 +1492,8 @@ export const AgentChatScreen = () => {
                 </View>
               );
             })}
-            {/* Executing Status Indicator */}
             {isExecuting && (
-              <View className="flex-row items-center my-3 p-3 bg-[#111111] rounded-xl">
-                <View className="w-2 h-2 rounded-full bg-violet-500 animate-ping mr-2" />
-                <Text className="text-violet-300 text-xs">Thinking & running tools...</Text>
-              </View>
+              <ThinkingIndicator label={thinkingLabel} detail={thinkingDetail} />
             )}
 
           </ScrollView>
@@ -1421,15 +1505,15 @@ export const AgentChatScreen = () => {
         <View 
           style={{ 
             backgroundColor: bgCard, 
-            borderColor: isLight ? "#EAE6DF" : "transparent"
+            borderColor: colors.borderHairline
           }} 
           className="absolute bottom-4 left-3 right-3 p-3 rounded-3xl border shadow-2xl"
         >
 
           {/* '@' FILE PICKER — real files from the active project */}
           {showMentionsPopup && (
-            <View style={{ backgroundColor: isLight ? "#F2EFEA" : "#1C1C1E" }} className="mb-2 p-2 rounded-2xl shadow-2xl max-h-56">
-              <Text className="text-purple-500 text-[11px] font-mono px-2 py-1">
+            <View style={{ backgroundColor: colors.surfaceMuted }} className="mb-2 p-2 rounded-2xl shadow-2xl max-h-56">
+              <Text style={{ color: colors.brandPrimary }} className=" text-[11px] font-mono px-2 py-1">
                 @ Attach a project file
               </Text>
               <ScrollView>
@@ -1442,11 +1526,11 @@ export const AgentChatScreen = () => {
                     <TouchableOpacity
                       key={entry.path}
                       onPress={() => handleSelectMention(entry.path)}
-                      style={{ backgroundColor: isLight ? "#FFFFFF" : "transparent" }}
+                      style={{ backgroundColor: colors.surfaceRaised }}
                       className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
                     >
-                      <VectorIcon name="file-text" size={14} color="#C084FC" style={{ marginRight: 8 }} />
-                      <Text numberOfLines={1} className="text-purple-600 text-xs font-mono font-bold flex-1 text-left">
+                      <VectorIcon name="file-text" size={14} color={colors.brandPrimary} style={{ marginRight: 8 }} />
+                      <Text style={{ color: colors.brandPrimary }} numberOfLines={1} className=" text-xs font-mono font-bold flex-1 text-left">
                         {entry.path}
                       </Text>
                       <Text style={{ color: textSecondary }} className="text-[10px] ml-2">{entry.sizeLabel}</Text>
@@ -1459,17 +1543,17 @@ export const AgentChatScreen = () => {
 
           {/* '/' PROMPT SHORTCUTS — each expands into a full instruction */}
           {showSlashPopup && (
-            <View style={{ backgroundColor: isLight ? "#F2EFEA" : "#1C1C1E" }} className="mb-2 p-2 rounded-2xl shadow-2xl">
-              <Text className="text-sky-500 text-[11px] font-mono px-2 py-1">/ Prompt shortcuts</Text>
+            <View style={{ backgroundColor: colors.surfaceMuted }} className="mb-2 p-2 rounded-2xl shadow-2xl">
+              <Text style={{ color: colors.brandPrimary }} className=" text-[11px] font-mono px-2 py-1">/ Prompt shortcuts</Text>
               {SLASH_COMMANDS.map((item) => (
                 <TouchableOpacity
                   key={item.cmd}
                   onPress={() => handleSelectSlashCommand(item.cmd)}
-                  style={{ backgroundColor: isLight ? "#FFFFFF" : "transparent" }}
+                  style={{ backgroundColor: colors.surfaceRaised }}
                   className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
                 >
-                  <VectorIcon name={item.icon} size={14} color="#38BDF8" style={{ marginRight: 8 }} />
-                  <Text className="text-sky-600 text-xs font-mono font-bold mr-2">{item.cmd}</Text>
+                  <VectorIcon name={item.icon} size={14} color={colors.brandPrimary} style={{ marginRight: 8 }} />
+                  <Text style={{ color: colors.brandPrimary }} className=" text-xs font-mono font-bold mr-2">{item.cmd}</Text>
                   <Text style={{ color: textSecondary }} className="text-xs flex-1 text-left">{item.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -1479,9 +1563,9 @@ export const AgentChatScreen = () => {
           <TextInput
             value={inputText}
             onChangeText={handleInputChange}
-            onSubmitEditing={handleSend}
+            onSubmitEditing={() => void handleSend()}
             placeholder={isIncognito ? "Ask in Incognito — nothing is saved..." : (activeMode === "build" ? "Ask or build... (Type @ for files, / for commands)" : "Ask a question — answers come straight back...")}
-            placeholderTextColor={isLight ? "#8C877D" : "#71717A"}
+            placeholderTextColor={colors.inkMuted}
             className="w-full bg-transparent px-2 py-1 text-sm text-left mb-3 font-sans"
             style={{ color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
             multiline
@@ -1495,25 +1579,25 @@ export const AgentChatScreen = () => {
               {/* '+' BUTTON OPENS 'Add to Chat' BOTTOM SHEET MODAL */}
               <TouchableOpacity 
                 onPress={() => setShowAddToChatModal(true)}
-                style={{ backgroundColor: isLight ? "#FFFFFF" : "#242424", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
                 className="w-8 h-8 rounded-full items-center justify-center mr-2 border shadow-sm active:opacity-80"
                 activeOpacity={0.8}
               >
-                <VectorIcon name="plus" size={16} color={isLight ? "#0F172A" : "#D4D4D8"} />
+                <VectorIcon name="plus" size={16} color={colors.inkPrimary} />
               </TouchableOpacity>
 
               {/* Model & Thinking Switcher Pill */}
               <TouchableOpacity
                 onPress={() => setShowModelsModal(true)}
-                style={{ backgroundColor: isLight ? "#FFFFFF" : "#242424", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
                 className="flex-row items-center px-3.5 py-1.5 rounded-full border shadow-sm active:opacity-80"
                 activeOpacity={0.8}
               >
-                <VectorIcon name={activeModelObj.icon} size={12} color={activeModelObj.color} style={{ marginRight: 6 }} />
+                <VectorIcon name={activeModelObj.icon} size={12} color={colors[activeModelObj.tone]} style={{ marginRight: 6 }} />
                 <Text style={{ color: textPrimary }} className="text-xs font-semibold mr-1.5">
                   {activeModelObj.name}
                 </Text>
-                <VectorIcon name="chevron-down" size={10} color={isLight ? "#64748B" : "#71717A"} />
+                <VectorIcon name="chevron-down" size={10} color={colors.inkSecondary} />
               </TouchableOpacity>
 
             </View>
@@ -1522,17 +1606,17 @@ export const AgentChatScreen = () => {
               
               {isIncognito && (
                 <View className="px-2.5 py-1 bg-purple-950/80 rounded-full mr-2 flex-row items-center">
-                  <VectorIcon name="ghost" size={12} color="#C084FC" style={{ marginRight: 4 }} />
-                  <Text className="text-purple-300 text-[10px] font-mono">Incognito</Text>
+                  <VectorIcon name="ghost" size={12} color={colors.brandPrimary} style={{ marginRight: 4 }} />
+                  <Text style={{ color: colors.brandPrimary }} className=" text-[10px] font-mono">Incognito</Text>
                 </View>
               )}
 
               {/* Send Button (Dark circle) */}
               <TouchableOpacity
-                onPress={handleSend}
+                onPress={() => void handleSend()}
                 disabled={!hasInputText}
                 style={{
-                  backgroundColor: hasInputText ? "#6D42C7" : (isLight ? "#0F172A" : "#262626"),
+                  backgroundColor: hasInputText ? colors.brandPrimary : (colors.inkMuted),
                   width: 36,
                   height: 36,
                   borderRadius: 18,
@@ -1564,20 +1648,20 @@ export const AgentChatScreen = () => {
         onRequestClose={() => setShowAddToChatModal(false)}
       >
         <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-t-[32px] p-5 pb-8 relative shadow-2xl border">
+          <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-t-[32px] p-5 pb-8 relative shadow-2xl border">
             
             <View className="items-center mb-4">
-              <View className="w-12 h-1.5 bg-zinc-400 rounded-full opacity-60" />
+              <View style={{ backgroundColor: colors.inkMuted }} className="w-12 h-1.5 rounded-full opacity-60" />
             </View>
 
             <View className="flex-row items-center justify-between mb-5 px-1">
               <TouchableOpacity 
                 onPress={() => setShowAddToChatModal(false)}
-                style={{ backgroundColor: isLight ? "#EAE6DF" : "#222222" }}
+                style={{ backgroundColor: colors.surfaceStrong }}
                 className="w-9 h-9 rounded-full items-center justify-center"
                 activeOpacity={0.8}
               >
-                <VectorIcon name="x" size={14} color={isLight ? "#1E1D1A" : "#D4D4D8"} />
+                <VectorIcon name="x" size={14} color={colors.inkPrimary} />
               </TouchableOpacity>
               
               <Text style={{ color: textPrimary }} className="text-base font-bold">Project</Text>
@@ -1599,11 +1683,11 @@ export const AgentChatScreen = () => {
                     setShowAddToChatModal(false);
                     action.run();
                   }}
-                  style={{ backgroundColor: isLight ? "#F7F4EF" : "#1E1E1E" }}
+                  style={{ backgroundColor: colors.surfaceMuted }}
                   className="w-[31%] py-5 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5"
                 >
-                  <View style={{ backgroundColor: isLight ? "#EAE6DF" : "#2B2B2B" }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
-                    <VectorIcon name={action.icon} size={20} color={isLight ? "#1E1D1A" : "#E4E4E7"} />
+                  <View style={{ backgroundColor: colors.surfaceStrong }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
+                    <VectorIcon name={action.icon} size={20} color={colors.inkPrimary} />
                   </View>
                   <Text style={{ color: textPrimary }} className="text-xs font-semibold text-center">{action.label}</Text>
                 </TouchableOpacity>
@@ -1628,34 +1712,34 @@ export const AgentChatScreen = () => {
             {/* User Profile Avatar & Name Trigger */}
             <TouchableOpacity 
               onPress={handleOpenProfileFromDrawer}
-              style={{ backgroundColor: isLight ? "#FFFFFF" : "#141414" }}
-              className="flex-row items-center px-3 py-1.5 rounded-2xl border border-slate-200/40 active:opacity-80"
+              style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
+              className="flex-row items-center px-3 py-1.5 rounded-2xl border active:opacity-80"
             >
-              <View className="w-7 h-7 rounded-full bg-[#221F33] items-center justify-center mr-2">
-                <VectorIcon name="user" size={14} color="#C084FC" />
+              <View style={{ backgroundColor: colors.brandSoft }} className="w-7 h-7 rounded-full items-center justify-center mr-2">
+                <VectorIcon name="user" size={14} color={colors.brandPrimary} />
               </View>
               <Text style={{ color: textPrimary }} className="text-sm font-bold tracking-wide mr-1.5" numberOfLines={1}>
                 {displayName}
               </Text>
-              <VectorIcon name="chevron-right" size={10} color={isLight ? "#64748B" : "#71717A"} />
+              <VectorIcon name="chevron-right" size={10} color={colors.inkSecondary} />
             </TouchableOpacity>
 
             <View className="flex-row items-center">
               {/* Theme toggle */}
               <TouchableOpacity 
                 onPress={() => setMode(isLight ? "darkest" : "light")}
-                style={{ backgroundColor: isLight ? "#FFFFFF" : "#111111" }}
-                className="w-9 h-9 rounded-full items-center justify-center mr-2 border border-slate-200/40 active:opacity-80"
+                style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
+                className="w-9 h-9 rounded-full items-center justify-center mr-2 border active:opacity-80"
               >
-                <VectorIcon name={isLight ? "moon" : "sun"} size={15} color={isLight ? "#6E6D68" : "#FCD34D"} />
+                <VectorIcon name={isLight ? "moon" : "sun"} size={15} color={colors.warning} />
               </TouchableOpacity>
 
               <TouchableOpacity 
                 onPress={() => setShowDrawerModal(false)}
-                style={{ backgroundColor: isLight ? "#FFFFFF" : "#111111" }}
-                className="w-9 h-9 rounded-full items-center justify-center border border-slate-200/40"
+                style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
+                className="w-9 h-9 rounded-full items-center justify-center border"
               >
-                <VectorIcon name="x" size={14} color={isLight ? "#0F172A" : "#E4E4E7"} />
+                <VectorIcon name="x" size={14} color={colors.inkPrimary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -1663,12 +1747,12 @@ export const AgentChatScreen = () => {
           <ScrollView className="flex-1 px-5 py-3" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
             <TouchableOpacity 
               onPress={handleOpenProjectsFromDrawer}
-              style={{ backgroundColor: isLight ? "#FFFFFF" : "#111111" }}
-              className="flex-row items-center py-3 px-3.5 rounded-2xl mb-2.5 border border-slate-200/40 active:opacity-80"
+              style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
+              className="flex-row items-center py-3 px-3.5 rounded-2xl mb-2.5 border active:opacity-80"
             >
-              <VectorIcon name="folder" size={18} color="#F59E0B" style={{ marginRight: 12 }} />
+              <VectorIcon name="folder" size={18} color={colors.warning} style={{ marginRight: 12 }} />
               <Text style={{ color: textPrimary }} className="text-sm font-bold flex-1 text-left">Projects</Text>
-              <VectorIcon name="chevron-right" size={12} color={isLight ? "#64748B" : "#71717A"} />
+              <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
             </TouchableOpacity>
 
             {/* PROJECT GROUPED CHAT SESSIONS TREE — real projects + sessions */}
@@ -1679,7 +1763,7 @@ export const AgentChatScreen = () => {
 
               {projects.length === 0 ? (
                 <View className="items-center py-8 px-4">
-                  <VectorIcon name="folder" size={26} color="#52525B" style={{ marginBottom: 10 }} />
+                  <VectorIcon name="folder" size={26} color={colors.inkMuted} style={{ marginBottom: 10 }} />
                   <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
                     No projects yet. Create one to start building.
                   </Text>
@@ -1698,19 +1782,19 @@ export const AgentChatScreen = () => {
                         className="flex-row items-center justify-between mb-2 px-1 active:opacity-80"
                       >
                         <View className="flex-row items-center flex-1 mr-2">
-                          <VectorIcon name="folder" size={16} color="#F59E0B" style={{ marginRight: 8 }} />
+                          <VectorIcon name="folder" size={16} color={colors.warning} style={{ marginRight: 8 }} />
                           <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
                             {project.name}
                           </Text>
                         </View>
 
-                        <View style={{ backgroundColor: isLight ? "#E2E8F0" : "#1C1C1C" }} className="px-2.5 py-1 rounded-lg">
-                          <Text style={{ color: isLight ? "#6B21A8" : "#D8B4FE" }} className="text-[10px] font-mono font-bold">Open</Text>
+                        <View style={{ backgroundColor: colors.borderHairline }} className="px-2.5 py-1 rounded-lg">
+                          <Text style={{ color: colors.brandPrimary }} className="text-[10px] font-mono font-bold">Open</Text>
                         </View>
                       </TouchableOpacity>
 
                       {/* Real sessions for this project */}
-                      <View style={{ borderColor: isLight ? "#CBD5E1" : "rgba(39, 39, 42, 0.8)" }} className="pl-3 ml-2 border-l">
+                      <View style={{ borderColor: colors.borderHairline }} className="pl-3 ml-2 border-l">
                         {sessions.length === 0 ? (
                           <Text style={{ color: textMuted }} className="text-[10px] py-2 text-left">
                             {drawerSessions[project.id] ? "No chats yet" : "Loading…"}
@@ -1720,7 +1804,7 @@ export const AgentChatScreen = () => {
                             <TouchableOpacity
                               key={item.id}
                               onPress={() => handleLoadSession(item, project)}
-                              style={{ backgroundColor: isLight ? "#FFFFFF" : "#121212", borderColor: isLight ? "#E2E8F0" : "transparent" }}
+                              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
                               className="p-3 rounded-xl mb-2 border active:opacity-80 shadow-sm"
                             >
                               <Text style={{ color: textPrimary }} className="text-xs font-medium mb-1.5 text-left font-sans" numberOfLines={1}>
@@ -1734,10 +1818,10 @@ export const AgentChatScreen = () => {
                                   style={{
                                     backgroundColor:
                                       item.status === "completed"
-                                        ? (isLight ? "#DCFCE7" : "#14532D")
+                                        ? (colors.successSoft)
                                         : item.status === "failed"
-                                          ? (isLight ? "#FEE2E2" : "#7F1D1D")
-                                          : (isLight ? "#F1F5F9" : "#27272A"),
+                                          ? (colors.failedSoft)
+                                          : (colors.surfaceMuted),
                                   }}
                                   className="px-2 py-0.5 rounded-full"
                                 >
@@ -1745,10 +1829,10 @@ export const AgentChatScreen = () => {
                                     style={{
                                       color:
                                         item.status === "completed"
-                                          ? (isLight ? "#15803D" : "#86EFAC")
+                                          ? (colors.success)
                                           : item.status === "failed"
-                                            ? (isLight ? "#DC2626" : "#FCA5A5")
-                                            : (isLight ? "#475569" : "#A1A1AA"),
+                                            ? (colors.failed)
+                                            : (colors.inkSecondary),
                                     }}
                                     className="text-[9px] font-medium"
                                   >
@@ -1769,26 +1853,26 @@ export const AgentChatScreen = () => {
 
           {/* Bottom Floating Bar Navigation Container */}
           <View className="absolute bottom-4 left-4 right-4 flex-row items-center justify-between">
-            <View className="flex-1 flex-row items-center bg-[#141414] px-3.5 py-2.5 rounded-full mr-3">
-              <VectorIcon name="search" size={14} color="#A1A1AA" style={{ marginRight: 8 }} />
+            <View style={{ backgroundColor: colors.surfaceRaised }} className="flex-1 flex-row items-center px-3.5 py-2.5 rounded-full mr-3">
+              <VectorIcon name="search" size={14} color={colors.inkSecondary} style={{ marginRight: 8 }} />
               <TextInput
                 value={drawerQuery}
                 onChangeText={setDrawerQuery}
                 placeholder="Search chats..."
-                placeholderTextColor="#71717A"
-                className="flex-1 text-zinc-100 text-xs text-left"
-                style={{ color: "#F4F4F5" }}
+                placeholderTextColor={colors.inkMuted}
+                className="flex-1 text-xs text-left"
+                style={{ color: colors.inkPrimary }}
               />
               {drawerQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setDrawerQuery("")} className="p-1">
-                  <VectorIcon name="x" size={12} color="#A1A1AA" />
+                  <VectorIcon name="x" size={12} color={colors.inkSecondary} />
                 </TouchableOpacity>
               )}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }} 
               onPress={handleNewChat}
-              className="w-12 h-12 rounded-full bg-[#6D42C7] items-center justify-center shadow-lg"
+              className="w-12 h-12 rounded-full items-center justify-center shadow-lg"
             >
               <VectorIcon name="edit" size={18} color="#FFFFFF" />
             </TouchableOpacity>
@@ -1808,26 +1892,26 @@ export const AgentChatScreen = () => {
         <View className="flex-1 justify-end bg-black/80">
           <View style={{ backgroundColor: bgCard }} className="h-[85%] rounded-t-[32px] p-4 shadow-2xl">
             <View className="items-center mb-3">
-              <View className="w-12 h-1.5 bg-zinc-400 rounded-full opacity-60" />
+              <View style={{ backgroundColor: colors.inkMuted }} className="w-12 h-1.5 rounded-full opacity-60" />
             </View>
 
             <View className="flex-row items-center justify-between mb-4 pb-2 px-1">
               <Text style={{ color: textPrimary }} className="text-xl font-bold">Projects</Text>
               
               <View className="flex-row items-center">
-                <TouchableOpacity 
+                <TouchableOpacity style={{ backgroundColor: colors.warningSoft }} 
                   onPress={() => setShowNewProjectModal(true)}
-                  className="w-8 h-8 rounded-full bg-amber-500/20 items-center justify-center mr-2 active:bg-amber-500/30"
+                  className="w-8 h-8 rounded-full items-center justify-center mr-2 active:/30"
                 >
-                  <VectorIcon name="plus" size={16} color="#F59E0B" />
+                  <VectorIcon name="plus" size={16} color={colors.warning} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   onPress={() => setShowProjectsModal(false)}
-                  style={{ backgroundColor: isLight ? "#EAE6DF" : "#242424" }}
+                  style={{ backgroundColor: colors.surfaceStrong }}
                   className="w-8 h-8 rounded-full items-center justify-center"
                 >
-                  <VectorIcon name="x" size={14} color={isLight ? "#1E1D1A" : "#A1A1AA"} />
+                  <VectorIcon name="x" size={14} color={colors.inkSecondary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1838,7 +1922,7 @@ export const AgentChatScreen = () => {
                   setShowProjectsModal(false);
                   goTo("GlobalSearch");
                 }}
-                style={{ backgroundColor: isLight ? "#F7F4EF" : "#1A1A1A", borderColor: isLight ? "#EAE6DF" : "transparent" }}
+                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
                 className="mb-3 p-3 rounded-2xl flex-row items-center border active:opacity-80"
               >
                 <VectorIcon name="search" size={15} color={textSecondary} style={{ marginRight: 10 }} />
@@ -1849,24 +1933,24 @@ export const AgentChatScreen = () => {
 
               <TouchableOpacity
                 onPress={() => setShowNewProjectModal(true)}
-                style={{ backgroundColor: isLight ? "#FEF3C7" : "rgba(69, 26, 3, 0.3)" }}
+                style={{ backgroundColor: colors.warningSoft }}
                 className="mb-4 p-4 rounded-2xl flex-row items-center justify-between active:opacity-80"
               >
                 <View className="flex-row items-center">
-                  <View className="w-10 h-10 rounded-xl bg-amber-500/20 items-center justify-center mr-3">
-                    <VectorIcon name="sparkles" size={18} color="#D97706" />
+                  <View style={{ backgroundColor: colors.warningSoft }} className="w-10 h-10 rounded-xl items-center justify-center mr-3">
+                    <VectorIcon name="sparkles" size={18} color={colors.warning} />
                   </View>
                   <View>
-                    <Text style={{ color: isLight ? "#92400E" : "#FCD34D" }} className="text-sm font-bold text-left mb-0.5">New Project</Text>
-                    <Text style={{ color: isLight ? "#B45309" : "#FBBF24" }} className="text-xs text-left">Create coding environment & build new app</Text>
+                    <Text style={{ color: colors.warning }} className="text-sm font-bold text-left mb-0.5">New Project</Text>
+                    <Text style={{ color: colors.warning }} className="text-xs text-left">Create coding environment & build new app</Text>
                   </View>
                 </View>
-                <VectorIcon name="plus" size={18} color="#D97706" />
+                <VectorIcon name="plus" size={18} color={colors.warning} />
               </TouchableOpacity>
 
               {projects.length === 0 ? (
                 <View className="items-center py-10 px-4">
-                  <VectorIcon name="folder" size={28} color="#52525B" style={{ marginBottom: 10 }} />
+                  <VectorIcon name="folder" size={28} color={colors.inkMuted} style={{ marginBottom: 10 }} />
                   <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
                     No projects yet — tap “New Project” above to create your first one.
                   </Text>
@@ -1879,7 +1963,7 @@ export const AgentChatScreen = () => {
                       setShowProjectsModal(false);
                       handleOpenProjectFolder(proj.id, proj.name);
                     }}
-                    style={{ backgroundColor: isLight ? "#F7F4EF" : "#1A1A1A", borderColor: isLight ? "#EAE6DF" : "transparent" }}
+                    style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
                     className="mb-3.5 p-4 rounded-2xl border active:opacity-80 shadow-sm"
                   >
                     <View className="flex-row items-center justify-between mb-2">
@@ -1888,10 +1972,10 @@ export const AgentChatScreen = () => {
                       </Text>
                       <TouchableOpacity
                         onPress={() => handleDeleteProjectFromSheet(proj.id, proj.name)}
-                        style={{ backgroundColor: isLight ? "#EAE6DF" : "#262626" }}
+                        style={{ backgroundColor: colors.surfaceStrong }}
                         className="w-7 h-7 rounded-lg items-center justify-center"
                       >
-                        <VectorIcon name="trash" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
+                        <VectorIcon name="trash" size={12} color={colors.inkSecondary} />
                       </TouchableOpacity>
                     </View>
 
@@ -1916,7 +2000,7 @@ export const AgentChatScreen = () => {
                         <TouchableOpacity
                           key={entry.target}
                           onPress={() => goToProject(entry.target, { projectId: proj.id })}
-                          style={{ backgroundColor: isLight ? "#EAE6DF" : "#262626" }}
+                          style={{ backgroundColor: colors.surfaceStrong }}
                           className="px-2.5 py-1 rounded-lg mr-2 mb-1"
                         >
                           <Text style={{ color: textSecondary }} className="text-[10px] font-semibold">{entry.label}</Text>
@@ -1941,39 +2025,39 @@ export const AgentChatScreen = () => {
         onRequestClose={() => setShowNewProjectModal(false)}
       >
         <View className="flex-1 justify-center bg-black/80 px-6">
-          <View className="bg-[#181818] p-5 rounded-[28px] shadow-2xl">
+          <View style={{ backgroundColor: colors.surfaceRaised }} className="p-5 rounded-[28px] shadow-2xl">
             <View className="flex-row justify-between items-center mb-4">
               <View className="flex-row items-center">
-                <VectorIcon name="sparkles" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
-                <Text className="text-white text-base font-bold">Create New Project</Text>
+                <VectorIcon name="sparkles" size={16} color={colors.warning} style={{ marginRight: 6 }} />
+                <Text style={{ color: colors.inkPrimary }} className=" text-base font-bold">Create New Project</Text>
               </View>
               <TouchableOpacity onPress={() => setShowNewProjectModal(false)}>
-                <VectorIcon name="x" size={14} color="#A1A1AA" />
+                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
 
-            <Text className="text-zinc-400 text-xs mb-2 text-left">Project Name:</Text>
+            <Text style={{ color: colors.inkSecondary }} className=" text-xs mb-2 text-left">Project Name:</Text>
             <TextInput
               value={newProjectName}
               onChangeText={setNewProjectName}
               placeholder="e.g. AI Portfolio App..."
-              placeholderTextColor="#71717A"
-              className="bg-[#242424] p-3 rounded-xl text-white text-xs mb-4 text-left"
-              style={{ color: "#FFFFFF" }}
+              placeholderTextColor={colors.inkMuted}
+              className="p-3 rounded-xl text-xs mb-4 text-left"
+              style={{ backgroundColor: colors.surfaceStrong, color: colors.inkPrimary }}
             />
 
-            <Text className="text-zinc-400 text-xs mb-2 text-left">Start from a template:</Text>
+            <Text style={{ color: colors.inkSecondary }} className=" text-xs mb-2 text-left">Start from a template:</Text>
             <View className="flex-row flex-wrap mb-4">
               {PROJECT_TEMPLATE_CHOICES.map((t) => (
                 <TouchableOpacity
                   key={t.id}
                   onPress={() => setNewProjectTemplate(t.id)}
                   className="px-3 py-2 rounded-xl mr-2 mb-2"
-                  style={{ backgroundColor: newProjectTemplate === t.id ? "#F59E0B" : "#242424" }}
+                  style={{ backgroundColor: newProjectTemplate === t.id ? colors.warning : "#242424" }}
                 >
                   <Text
                     className="text-xs font-semibold"
-                    style={{ color: newProjectTemplate === t.id ? "#000000" : "#A1A1AA" }}
+                    style={{ color: newProjectTemplate === t.id ? "#000000" : colors.inkSecondary }}
                   >
                     {t.label}
                   </Text>
@@ -1984,14 +2068,14 @@ export const AgentChatScreen = () => {
             <TouchableOpacity
               onPress={handleCreateNewProject}
               disabled={isCreatingProject}
-              className="bg-amber-500 py-3 rounded-xl items-center shadow-lg flex-row justify-center"
-              style={{ opacity: isCreatingProject ? 0.6 : 1 }}
+              className=" py-3 rounded-xl items-center shadow-lg flex-row justify-center"
+              style={{ backgroundColor: colors.warning,  opacity: isCreatingProject ? 0.6 : 1 }}
             >
               {isCreatingProject ? (
                 <ActivityIndicator size="small" color="#000000" />
               ) : (
                 <>
-                  <Text className="text-black text-xs font-bold mr-1.5">Create & Open Project</Text>
+                  <Text style={{ color: colors.canvasBase }} className=" text-xs font-bold mr-1.5">Create & Open Project</Text>
                   <VectorIcon name="arrow-right" size={14} color="#000000" />
                 </>
               )}
@@ -2010,51 +2094,51 @@ export const AgentChatScreen = () => {
         onRequestClose={() => setShowPreviewModal(false)}
       >
         <View style={{ backgroundColor: "#000000" }} className="flex-1 bg-black">
-          <View className="flex-row items-center justify-between px-5 py-4 bg-[#09090B]">
+          <View style={{ backgroundColor: colors.canvasBase }} className="flex-row items-center justify-between px-5 py-4">
             <TouchableOpacity onPress={() => setShowPreviewModal(false)} className="p-1 flex-row items-center">
-              <VectorIcon name="x" size={14} color="#A1A1AA" style={{ marginRight: 6 }} />
-              <Text className="text-zinc-400 text-sm font-semibold">Close</Text>
+              <VectorIcon name="x" size={14} color={colors.inkSecondary} style={{ marginRight: 6 }} />
+              <Text style={{ color: colors.inkSecondary }} className=" text-sm font-semibold">Close</Text>
             </TouchableOpacity>
             <View className="flex-row items-center">
-              <VectorIcon name="eye" size={16} color="#34D399" style={{ marginRight: 6 }} />
-              <Text className="text-white text-base font-bold">Live App Preview</Text>
+              <VectorIcon name="eye" size={16} color={colors.success} style={{ marginRight: 6 }} />
+              <Text style={{ color: colors.inkPrimary }} className=" text-base font-bold">Live App Preview</Text>
             </View>
             <TouchableOpacity onPress={loadPreview} className="p-1 flex-row items-center">
-              <VectorIcon name="rotate-ccw" size={12} color="#38BDF8" style={{ marginRight: 4 }} />
-              <Text className="text-sky-400 text-xs font-bold">Refresh</Text>
+              <VectorIcon name="rotate-ccw" size={12} color={colors.brandPrimary} style={{ marginRight: 4 }} />
+              <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">Refresh</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="flex-1 bg-[#111113] p-4">
-            <View className="w-full h-full bg-[#18181B] rounded-3xl p-4 flex-col">
+          <View style={{ backgroundColor: colors.surfaceCode }} className="flex-1 p-4">
+            <View style={{ backgroundColor: colors.surfaceRaised }} className="w-full h-full rounded-3xl p-4 flex-col">
               <View className="flex-row items-center justify-between pb-3">
                 <View className="flex-row space-x-1.5">
                   <View className="w-3 h-3 rounded-full bg-red-500" />
-                  <View className="w-3 h-3 rounded-full bg-amber-500" />
+                  <View style={{ backgroundColor: colors.warning }} className="w-3 h-3 rounded-full" />
                   <View className="w-3 h-3 rounded-full bg-emerald-500" />
                 </View>
-                <Text className="text-zinc-400 text-xs font-mono">
+                <Text style={{ color: colors.inkSecondary }} className=" text-xs font-mono">
                   {activeProjectName ? activeProjectName.toLowerCase().replace(/\s+/g, "-") + ".app" : "preview"}
                 </Text>
               </View>
 
               {previewLoading ? (
                 <View className="flex-1 items-center justify-center">
-                  <ActivityIndicator size="large" color="#8B5CF6" />
-                  <Text className="text-zinc-400 text-xs mt-4">Building on-device preview…</Text>
+                  <ActivityIndicator size="large" color={colors.brandPrimary} />
+                  <Text style={{ color: colors.inkSecondary }} className=" text-xs mt-4">Building on-device preview…</Text>
                 </View>
               ) : previewError ? (
                 <View className="flex-1 items-center justify-center px-6">
-                  <VectorIcon name="x" size={32} color="#F87171" style={{ marginBottom: 12 }} />
-                  <Text className="text-white text-sm font-bold mb-2">Preview failed</Text>
-                  <Text className="text-zinc-400 text-xs text-center leading-5">{previewError}</Text>
+                  <VectorIcon name="x" size={32} color={colors.failed} style={{ marginBottom: 12 }} />
+                  <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold mb-2">Preview failed</Text>
+                  <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">{previewError}</Text>
                 </View>
               ) : previewHtml ? (
                 <PreviewSurface html={previewHtml} />
               ) : (
                 <View className="flex-1 items-center justify-center px-6">
-                  <VectorIcon name="eye" size={36} color="#52525B" style={{ marginBottom: 12 }} />
-                  <Text className="text-zinc-400 text-xs text-center leading-5">
+                  <VectorIcon name="eye" size={36} color={colors.inkMuted} style={{ marginBottom: 12 }} />
+                  <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">
                     Nothing to preview yet — ask the agent to build something.
                   </Text>
                 </View>
@@ -2074,35 +2158,35 @@ export const AgentChatScreen = () => {
         onRequestClose={() => setShowCheckpointsModal(false)}
       >
         <View className="flex-1 justify-end bg-black/80">
-          <View className="max-h-[85%] bg-[#121212] rounded-t-[32px] p-5 pb-8">
+          <View style={{ backgroundColor: colors.surfaceRaised }} className="max-h-[85%] rounded-t-[32px] p-5 pb-8">
             <View className="items-center mb-4">
               <View className="w-12 h-1.5 bg-zinc-700 rounded-full opacity-60" />
             </View>
 
             <View className="flex-row items-center justify-between mb-4 pb-3">
               <View className="flex-row items-center">
-                <VectorIcon name="rotate-ccw" size={18} color="#C084FC" style={{ marginRight: 8 }} />
-                <Text className="text-white text-xl font-bold">Restore points</Text>
+                <VectorIcon name="rotate-ccw" size={18} color={colors.brandPrimary} style={{ marginRight: 8 }} />
+                <Text style={{ color: colors.inkPrimary }} className=" text-xl font-bold">Restore points</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity style={{ backgroundColor: colors.surfaceStrong }} 
                 onPress={() => setShowCheckpointsModal(false)}
-                className="w-8 h-8 rounded-full bg-[#242424] items-center justify-center"
+                className="w-8 h-8 rounded-full items-center justify-center"
               >
-                <VectorIcon name="x" size={14} color="#A1A1AA" />
+                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {checkpointsLoading ? (
                 <View className="py-10 items-center">
-                  <ActivityIndicator size="small" color="#C084FC" />
-                  <Text className="text-zinc-500 text-xs mt-3">Loading checkpoints…</Text>
+                  <ActivityIndicator size="small" color={colors.brandPrimary} />
+                  <Text style={{ color: colors.inkMuted }} className=" text-xs mt-3">Loading checkpoints…</Text>
                 </View>
               ) : checkpoints.length === 0 ? (
                 <View className="py-10 items-center px-6">
-                  <VectorIcon name="rotate-ccw" size={26} color="#52525B" style={{ marginBottom: 10 }} />
-                  <Text className="text-zinc-300 text-sm font-bold mb-2">No restore points yet</Text>
-                  <Text className="text-zinc-500 text-xs text-center leading-5 mb-4">
+                  <VectorIcon name="rotate-ccw" size={26} color={colors.inkMuted} style={{ marginBottom: 10 }} />
+                  <Text style={{ color: colors.inkSecondary }} className=" text-sm font-bold mb-2">No restore points yet</Text>
+                  <Text style={{ color: colors.inkMuted }} className=" text-xs text-center leading-5 mb-4">
                     One is saved automatically before every run that can change your files.
                     Ask the agent to build something and it will show up here.
                   </Text>
@@ -2110,35 +2194,35 @@ export const AgentChatScreen = () => {
                 </View>
               ) : (
                 <>
-                  <Text className="text-zinc-500 text-xs text-left leading-5 mb-3 px-1">
+                  <Text style={{ color: colors.inkMuted }} className=" text-xs text-left leading-5 mb-3 px-1">
                     Each one is how the project looked before that run. Rolling back saves a
                     restore point first, so it can be undone.
                   </Text>
                   {saveRestorePointButton}
                   {checkpoints.map((cp) => (
-                    <View key={cp.id} className="mb-3 p-4 rounded-2xl bg-[#1A1A1A]">
+                    <View style={{ backgroundColor: colors.surfaceMuted }} key={cp.id} className="mb-3 p-4 rounded-2xl">
                       <View className="flex-row items-center mb-1">
                         <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2" />
-                        <Text className="text-white text-sm font-bold text-left flex-1" numberOfLines={1}>
+                        <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold text-left flex-1" numberOfLines={1}>
                           {cp.session_title ? `Before: ${cp.session_title}` : "Restore point"}
                         </Text>
                       </View>
                       <View className="flex-row items-center justify-between mt-1">
-                        <Text className="text-zinc-400 text-xs text-left font-mono">
+                        <Text style={{ color: colors.inkSecondary }} className=" text-xs text-left font-mono">
                           {relativeTime(cp.created_at)} · {cp.id.slice(0, 7)}
                         </Text>
-                        <TouchableOpacity
+                        <TouchableOpacity style={{ backgroundColor: colors.surfaceStrong }}
                           onPress={() => handleRollback(cp.id, `on ${relativeTime(cp.created_at)}`)}
                           disabled={restoringCheckpointId !== null || isExecuting}
-                          className="px-3 py-1.5 rounded-lg bg-[#242424] flex-row items-center"
+                          className="px-3 py-1.5 rounded-lg flex-row items-center"
                           activeOpacity={0.8}
                         >
                           {restoringCheckpointId === cp.id ? (
-                            <ActivityIndicator size="small" color="#C084FC" />
+                            <ActivityIndicator size="small" color={colors.brandPrimary} />
                           ) : (
                             <>
-                              <VectorIcon name="rotate-ccw" size={12} color="#C084FC" style={{ marginRight: 5 }} />
-                              <Text className="text-purple-300 text-xs font-semibold">Restore</Text>
+                              <VectorIcon name="rotate-ccw" size={12} color={colors.brandPrimary} style={{ marginRight: 5 }} />
+                              <Text style={{ color: colors.brandPrimary }} className=" text-xs font-semibold">Restore</Text>
                             </>
                           )}
                         </TouchableOpacity>
@@ -2168,7 +2252,7 @@ export const AgentChatScreen = () => {
             <View style={{ backgroundColor: bgCanvas }} className="flex-1">
               <View className="flex-row items-center justify-between px-5 py-4">
                 <TouchableOpacity onPress={() => setShowProfileModal(false)} className="p-1 flex-row items-center">
-                  <VectorIcon name="x" size={14} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 6 }} />
+                  <VectorIcon name="x" size={14} color={colors.inkSecondary} style={{ marginRight: 6 }} />
                   <Text style={{ color: textSecondary }} className="text-sm font-semibold">Close</Text>
                 </TouchableOpacity>
                 <Text style={{ color: textPrimary }} className="text-base font-bold">Settings</Text>
@@ -2177,10 +2261,10 @@ export const AgentChatScreen = () => {
 
               <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
                 {/* Profile Card */}
-                <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="p-4 rounded-2xl mb-4 flex-row items-center justify-between shadow-sm border">
+                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="p-4 rounded-2xl mb-4 flex-row items-center justify-between shadow-sm border">
                   <View className="flex-row items-center flex-1 mr-2">
                     <View className="w-10 h-10 rounded-full bg-purple-950/40 items-center justify-center mr-3">
-                      <VectorIcon name="user" size={18} color="#C084FC" />
+                      <VectorIcon name="user" size={18} color={colors.brandPrimary} />
                     </View>
                     <View className="flex-1">
                       <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
@@ -2192,15 +2276,15 @@ export const AgentChatScreen = () => {
                     </View>
                   </View>
 
-                  <View style={{ backgroundColor: isLight ? "#1E1D1A" : "#FFFFFF" }} className="px-3.5 py-1.5 rounded-full items-center justify-center">
-                    <Text style={{ color: isLight ? "#FFFFFF" : "#000000", fontWeight: "700", fontSize: 12 }}>
+                  <View style={{ backgroundColor: colors.inkPrimary }} className="px-3.5 py-1.5 rounded-full items-center justify-center">
+                    <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 12 }}>
                       {(profile?.subscription_tier ?? "free").toUpperCase()}
                     </Text>
                   </View>
                 </View>
 
                 {/* Upgrade Card */}
-                <View style={{ backgroundColor: isLight ? "#F2EFEA" : "#141417", borderColor: isLight ? "#EAE6DF" : "transparent" }} className="p-5 rounded-2xl mb-6 shadow-sm border relative overflow-hidden">
+                <View style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }} className="p-5 rounded-2xl mb-6 shadow-sm border relative overflow-hidden">
                   <Text style={{ color: textPrimary }} className="text-base font-bold text-left mb-1">Want more Retro Code?</Text>
                   <Text style={{ color: textSecondary }} className="text-xs text-left mb-4 leading-5">
                     Upgrade for more usage and capabilities.
@@ -2208,15 +2292,15 @@ export const AgentChatScreen = () => {
 
                   <TouchableOpacity
                     onPress={() => goTo("Paywall", {})}
-                    style={{ backgroundColor: isLight ? "#1E1D1A" : "#FFFFFF" }}
+                    style={{ backgroundColor: colors.inkPrimary }}
                     className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center"
                   >
-                    <Text style={{ color: isLight ? "#FFFFFF" : "#000000", fontWeight: "700", fontSize: 13 }}>Upgrade</Text>
+                    <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 13 }}>Upgrade</Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Account & app screens (these live in the Profile stack) */}
-                <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
+                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
                   {([
                     { label: "Account", icon: "user", target: "AccountSettings", root: false },
                     { label: "Preferences", icon: "settings", target: "Preferences", root: false },
@@ -2234,44 +2318,44 @@ export const AgentChatScreen = () => {
                       className="flex-row items-center justify-between p-4 active:opacity-80"
                     >
                       <View className="flex-row items-center">
-                        <VectorIcon name={row.icon} size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
+                        <VectorIcon name={row.icon} size={16} color={colors.inkSecondary} style={{ marginRight: 12 }} />
                         <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">{row.label}</Text>
                       </View>
-                      <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
+                      <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
+                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
                   <TouchableOpacity
                     onPress={() => setProfileSubScreen("usage")}
                     className="flex-row items-center justify-between p-4 active:opacity-80"
                   >
                     <View className="flex-row items-center">
-                      <VectorIcon name="card" size={16} color={isLight ? "#6E6D68" : "#A1A1AA"} style={{ marginRight: 12 }} />
+                      <VectorIcon name="card" size={16} color={colors.inkSecondary} style={{ marginRight: 12 }} />
                       <Text style={{ color: textPrimary }} className="text-sm font-semibold">Usage & Billing</Text>
                     </View>
-                    <VectorIcon name="chevron-right" size={12} color={isLight ? "#6E6D68" : "#71717A"} />
+                    <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
                   </TouchableOpacity>
                 </View>
 
 
                 {/* Theme & Preferences */}
-                <View style={{ backgroundColor: bgCard, borderColor: isLight ? "#EAE6DF" : "transparent" }} className="rounded-2xl overflow-hidden mb-6 border shadow-sm">
+                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-6 border shadow-sm">
                   <TouchableOpacity 
                     onPress={() => setMode(NEXT_THEME_MODE[mode])}
                     className="flex-row items-center justify-between p-4 active:opacity-80"
                   >
                     <View className="flex-row items-center">
-                      <VectorIcon name={isLight ? "sun" : "moon"} size={16} color={isLight ? "#D97757" : "#A1A1AA"} style={{ marginRight: 12 }} />
+                      <VectorIcon name={isLight ? "sun" : "moon"} size={16} color={colors.warning} style={{ marginRight: 12 }} />
                       <View>
                         <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">Color mode</Text>
-                        <Text style={{ color: isLight ? "#D97757" : "#A1A1AA" }} className="text-xs text-left font-medium">
+                        <Text style={{ color: colors.warning }} className="text-xs text-left font-medium">
                           {THEME_MODE_LABEL[mode]}
                         </Text>
                       </View>
                     </View>
-                    <Text className="text-xs font-bold text-purple-500">Tap to Switch ➔</Text>
+                    <Text style={{ color: colors.brandPrimary }} className="text-xs font-bold">Tap to Switch ➔</Text>
                   </TouchableOpacity>
 
                 </View>
@@ -2280,7 +2364,7 @@ export const AgentChatScreen = () => {
                   onPress={handleSignOut}
                   className="w-full py-3.5 rounded-full bg-red-500/10 items-center justify-center mb-8 active:opacity-80"
                 >
-                  <Text className="text-red-500 text-sm font-bold">Sign Out</Text>
+                  <Text style={{ color: colors.failed }} className=" text-sm font-bold">Sign Out</Text>
                 </TouchableOpacity>
 
               </ScrollView>
@@ -2291,52 +2375,52 @@ export const AgentChatScreen = () => {
 
           {/* SUB-SCREEN 5: USAGE AND CREDITS */}
           {profileSubScreen === "usage" && (
-            <View className="flex-1 bg-[#0A0A0A]">
+            <View style={{ backgroundColor: colors.canvasBase }} className="flex-1">
               <View className="flex-row items-center px-4 py-4">
-                <TouchableOpacity 
+                <TouchableOpacity style={{ backgroundColor: colors.surfaceRaised }} 
                   onPress={() => setProfileSubScreen("main")} 
-                  className="w-10 h-10 rounded-full bg-[#181818] items-center justify-center mr-3"
+                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
                 >
                   <VectorIcon name="arrow-left" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
-                <Text className="text-white text-lg font-bold">Usage and credits</Text>
+                <Text style={{ color: colors.inkPrimary }} className=" text-lg font-bold">Usage and credits</Text>
               </View>
 
               <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
                 {usageLoading ? (
                   <View className="py-12 items-center">
-                    <ActivityIndicator size="small" color="#8B5CF6" />
-                    <Text className="text-zinc-500 text-xs mt-3">Loading usage…</Text>
+                    <ActivityIndicator size="small" color={colors.brandPrimary} />
+                    <Text style={{ color: colors.inkMuted }} className=" text-xs mt-3">Loading usage…</Text>
                   </View>
                 ) : usage ? (
                   <>
-                    <View className="bg-[#141414] p-4 rounded-2xl mb-4">
+                    <View style={{ backgroundColor: colors.surfaceRaised }} className="p-4 rounded-2xl mb-4">
                       <View className="flex-row items-center justify-between mb-3">
-                        <Text className="text-zinc-400 text-xs">Plan</Text>
-                        <Text className="text-white text-xs font-bold uppercase">{usage.tier}</Text>
+                        <Text style={{ color: colors.inkSecondary }} className=" text-xs">Plan</Text>
+                        <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold uppercase">{usage.tier}</Text>
                       </View>
 
-                      <Text className="text-zinc-400 text-xs text-left mb-1">Tokens used this period</Text>
-                      <Text className="text-white text-2xl font-bold text-left mb-3">
+                      <Text style={{ color: colors.inkSecondary }} className=" text-xs text-left mb-1">Tokens used this period</Text>
+                      <Text style={{ color: colors.inkPrimary }} className=" text-2xl font-bold text-left mb-3">
                         {usage.tokensUsed.toLocaleString()}
                         {usage.tokenLimit ? (
-                          <Text className="text-zinc-500 text-sm font-medium"> / {usage.tokenLimit.toLocaleString()}</Text>
+                          <Text style={{ color: colors.inkMuted }} className=" text-sm font-medium"> / {usage.tokenLimit.toLocaleString()}</Text>
                         ) : null}
                       </Text>
 
                       {usage.tokenLimit > 0 && (
-                        <View className="h-2 bg-[#27272A] rounded-full overflow-hidden mb-2">
+                        <View style={{ backgroundColor: colors.surfaceStrong }} className="h-2 rounded-full overflow-hidden mb-2">
                           <View
                             style={{
                               width: `${Math.min(100, Math.round((usage.tokensUsed / usage.tokenLimit) * 100))}%`,
-                              backgroundColor: usage.remaining > 0 ? "#8B5CF6" : "#F87171",
+                              backgroundColor: usage.remaining > 0 ? colors.brandPrimary : colors.failed,
                             }}
                             className="h-full rounded-full"
                           />
                         </View>
                       )}
 
-                      <Text className="text-zinc-500 text-[11px] text-left">
+                      <Text style={{ color: colors.inkMuted }} className=" text-[11px] text-left">
                         {usage.remaining > 0
                           ? `${usage.remaining.toLocaleString()} tokens remaining`
                           : "Limit reached — new agent runs are blocked until the period resets."}
@@ -2344,23 +2428,23 @@ export const AgentChatScreen = () => {
                     </View>
 
                     <View className="flex-row justify-between">
-                      <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl">
-                        <Text className="text-white text-xs font-bold mb-2">Agent runs</Text>
-                        <Text className="text-white text-xl font-bold text-left">{usage.requests.toLocaleString()}</Text>
-                        <Text className="text-zinc-500 text-[10px] text-left">this period</Text>
+                      <View style={{ backgroundColor: colors.surfaceRaised }} className="w-[48%] p-3.5 rounded-2xl">
+                        <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold mb-2">Agent runs</Text>
+                        <Text style={{ color: colors.inkPrimary }} className=" text-xl font-bold text-left">{usage.requests.toLocaleString()}</Text>
+                        <Text style={{ color: colors.inkMuted }} className=" text-[10px] text-left">this period</Text>
                       </View>
-                      <View className="w-[48%] bg-[#141414] p-3.5 rounded-2xl">
-                        <Text className="text-white text-xs font-bold mb-2">Resets</Text>
-                        <Text className="text-white text-sm font-bold text-left">
+                      <View style={{ backgroundColor: colors.surfaceRaised }} className="w-[48%] p-3.5 rounded-2xl">
+                        <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold mb-2">Resets</Text>
+                        <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold text-left">
                           {usage.periodEnd ? new Date(usage.periodEnd).toLocaleDateString() : "—"}
                         </Text>
-                        <Text className="text-zinc-500 text-[10px] text-left">end of period</Text>
+                        <Text style={{ color: colors.inkMuted }} className=" text-[10px] text-left">end of period</Text>
                       </View>
                     </View>
                   </>
                 ) : (
                   <View className="py-12 items-center px-6">
-                    <Text className="text-zinc-400 text-xs text-center leading-5">
+                    <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">
                       {usageError ?? "Usage is unavailable right now."}
                     </Text>
                   </View>
@@ -2389,12 +2473,12 @@ export const AgentChatScreen = () => {
           <TouchableOpacity 
             activeOpacity={1} 
             onPress={(e) => e.stopPropagation()}
-            style={{ backgroundColor: isLight ? "#FFFFFF" : bgCard, borderColor: isLight ? "#E2E8F0" : "rgba(255,255,255,0.1)" }} 
+            style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} 
             className="h-[52%] rounded-t-[32px] px-5 pt-3 pb-4 shadow-2xl border flex-col"
           >
             {/* Top Drag Indicator Handle */}
             <View className="items-center mb-1.5">
-              <View style={{ backgroundColor: isLight ? "#CBD5E1" : "#52525B" }} className="w-10 h-1 rounded-full" />
+              <View style={{ backgroundColor: colors.borderHairline }} className="w-10 h-1 rounded-full" />
             </View>
 
             {/* Header Row */}
@@ -2405,10 +2489,10 @@ export const AgentChatScreen = () => {
               </View>
               <TouchableOpacity 
                 onPress={() => setShowModelsModal(false)}
-                style={{ backgroundColor: isLight ? "#F1F5F9" : "#1A1A1A" }}
+                style={{ backgroundColor: colors.surfaceMuted }}
                 className="w-7 h-7 rounded-full items-center justify-center border border-slate-200/50"
               >
-                <VectorIcon name="x" size={13} color={isLight ? "#0F172A" : "#A1A1AA"} />
+                <VectorIcon name="x" size={13} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -2424,30 +2508,30 @@ export const AgentChatScreen = () => {
                     activeOpacity={0.9}
                     style={{
                       backgroundColor: isSelected 
-                        ? (isLight ? "#F1F5F9" : "#1C1C1C")
-                        : (isLight ? "#FAFAFA" : "transparent"),
+                        ? (colors.surfaceMuted)
+                        : (colors.surfaceMuted),
                       borderColor: isSelected
-                        ? (isLight ? "#CBD5E1" : "rgba(255,255,255,0.15)")
-                        : (isLight ? "#F1F5F9" : "transparent")
+                        ? (colors.borderHairline)
+                        : (colors.surfaceMuted)
                     }}
                     className="mb-2 p-3 rounded-2xl transition-all border"
                   >
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center">
-                        <VectorIcon name={model.icon} size={15} color={model.color} style={{ marginRight: 8 }} />
+                        <VectorIcon name={model.icon} size={15} color={colors[model.tone]} style={{ marginRight: 8 }} />
                         <Text style={{ color: textPrimary }} className="text-sm font-semibold mr-2">
                           {model.name}
                         </Text>
                         
                         {model.badge && (
                           <View className="bg-sky-500/20 px-1.5 py-0.5 rounded mr-1">
-                            <Text className="text-sky-400 text-[9px] font-mono uppercase">{model.badge}</Text>
+                            <Text style={{ color: colors.brandPrimary }} className=" text-[9px] font-mono uppercase">{model.badge}</Text>
                           </View>
                         )}
                       </View>
 
                       {isSelected && (
-                        <VectorIcon name="check" size={15} color="#38BDF8" />
+                        <VectorIcon name="check" size={15} color={colors.brandPrimary} />
                       )}
                     </View>
 
@@ -2472,24 +2556,24 @@ export const AgentChatScreen = () => {
         onRequestClose={() => setShowFileModal(false)}
       >
         <View className="flex-1 justify-end bg-black/80">
-          <View className="h-3/4 bg-[#0F0F0F] p-4 rounded-t-[28px]">
+          <View style={{ backgroundColor: colors.surfaceRaised }} className="h-3/4 p-4 rounded-t-[28px]">
             <View className="flex-row justify-between items-center mb-4 pb-3">
-              <Text className="text-zinc-200 text-sm font-bold">Project Files</Text>
+              <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold">Project Files</Text>
               <TouchableOpacity onPress={() => setShowFileModal(false)} className="p-1">
-                <VectorIcon name="x" size={14} color="#A1A1AA" />
+                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
 
             <ScrollView className="flex-1">
               {filesLoading ? (
                 <View className="py-10 items-center">
-                  <ActivityIndicator size="small" color="#8B5CF6" />
-                  <Text className="text-zinc-500 text-xs mt-3">Loading project files…</Text>
+                  <ActivityIndicator size="small" color={colors.brandPrimary} />
+                  <Text style={{ color: colors.inkMuted }} className=" text-xs mt-3">Loading project files…</Text>
                 </View>
               ) : fileEntries.length === 0 ? (
                 <View className="py-10 items-center px-6">
-                  <VectorIcon name="folder" size={28} color="#52525B" style={{ marginBottom: 10 }} />
-                  <Text className="text-zinc-400 text-xs text-center leading-5">
+                  <VectorIcon name="folder" size={28} color={colors.inkMuted} style={{ marginBottom: 10 }} />
+                  <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">
                     {filesError ?? "No files yet — ask the agent to build something and they'll appear here."}
                   </Text>
                 </View>
@@ -2497,14 +2581,14 @@ export const AgentChatScreen = () => {
                 fileEntries.map((entry) => (
                   <View
                     key={entry.path}
-                    className="py-2.5 px-3 bg-[#1A1A1A] rounded-xl flex-row justify-between items-center mb-1.5"
-                    style={{ marginLeft: entry.depth * 12 }}
+                    className="py-2.5 px-3 rounded-xl flex-row justify-between items-center mb-1.5"
+                    style={{ backgroundColor: colors.surfaceMuted,  marginLeft: entry.depth * 12 }}
                   >
                     <View className="flex-row items-center flex-1 mr-2">
-                      <VectorIcon name="file-text" size={13} color="#38BDF8" style={{ marginRight: 6 }} />
-                      <Text numberOfLines={1} className="text-zinc-300 text-xs font-mono">{entry.path}</Text>
+                      <VectorIcon name="file-text" size={13} color={colors.brandPrimary} style={{ marginRight: 6 }} />
+                      <Text style={{ color: colors.inkSecondary }} numberOfLines={1} className=" text-xs font-mono">{entry.path}</Text>
                     </View>
-                    <Text className="text-zinc-500 text-[10px]">{entry.sizeLabel}</Text>
+                    <Text style={{ color: colors.inkMuted }} className=" text-[10px]">{entry.sizeLabel}</Text>
                   </View>
                 ))
               )}

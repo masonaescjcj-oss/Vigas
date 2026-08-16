@@ -99,7 +99,14 @@ export const agentService = {
     /** Incognito only — a stored chat rejects this, it has its own. */
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     model?: string;
-  }): Promise<{ text: string; stored: boolean; session_id: string | null; context_turns: number }> {
+  }): Promise<{
+    text: string;
+    /** Up to 3 likely next questions, generated with the answer. */
+    follow_ups: string[];
+    stored: boolean;
+    session_id: string | null;
+    context_turns: number;
+  }> {
     const { prompt, projectId, sessionId, title, history, model } = options;
     return invokeFunction("agent-ask", {
       body: {

@@ -34,7 +34,7 @@ export const NoInternetBanner = () => {
         left: 0,
         right: 0,
         height: 48,
-        backgroundColor: "#EF4444",
+        backgroundColor: colors.failed,
         justifyContent: "center",
         alignItems: "center",
         zIndex: 9999,

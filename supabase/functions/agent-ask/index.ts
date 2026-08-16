@@ -44,6 +44,38 @@ const SYSTEM_PROMPT = [
   "Be direct and concise. Use fenced code blocks for code.",
 ].join(" ");
 
+/**
+ * Follow-up suggestions cost one line of prompt and a handful of output
+ * tokens, because they come back with the answer instead of in a second call.
+ * The model already has the conversation in front of it — that is the whole
+ * "algorithm".
+ */
+const FOLLOW_UP_MARKER = "###FOLLOWUPS###";
+const FOLLOW_UP_PROMPT = [
+  `After your answer, output the line ${FOLLOW_UP_MARKER} and then up to 3`,
+  "follow-up questions the user is most likely to ask next, one per line,",
+  "no numbering or bullets. Each under 60 characters, phrased as the user",
+  "would type them. Omit the marker entirely if none would genuinely help.",
+].join(" ");
+
+/** Split the answer from the suggestions, tolerating a model that skips them. */
+export function splitFollowUps(raw: string): { text: string; followUps: string[] } {
+  const at = raw.indexOf(FOLLOW_UP_MARKER);
+  if (at === -1) return { text: raw.trim(), followUps: [] };
+
+  const text = raw.slice(0, at).trim();
+  const followUps = raw
+    .slice(at + FOLLOW_UP_MARKER.length)
+    .split("\n")
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+    .filter((line) => line.length > 0 && line.length <= 120)
+    .slice(0, 3);
+
+  // A model that emitted the marker and nothing usable must not leave the
+  // answer truncated to nothing.
+  return { text: text || raw.trim(), followUps };
+}
+
 const INCOGNITO_NOTE =
   "This conversation is not stored anywhere, so you have only the messages in this request.";
 
@@ -160,7 +192,11 @@ export async function handler(req: Request): Promise<Response> {
     const stamp = Date.now();
     const model = new OpenAIChatModel(resolveRequestedModel(input.model));
     const result = await model.generate({
-      systemPrompt: stored ? SYSTEM_PROMPT : `${SYSTEM_PROMPT} ${INCOGNITO_NOTE}`,
+      systemPrompt: [
+        SYSTEM_PROMPT,
+        stored ? "" : INCOGNITO_NOTE,
+        FOLLOW_UP_PROMPT,
+      ].filter(Boolean).join(" "),
       messages: turns.map((m, index) => ({
         id: `ask-${index}`,
         role: m.role,
@@ -169,7 +205,9 @@ export async function handler(req: Request): Promise<Response> {
       })),
       tools: [],
     });
-    const text = result.text ?? "";
+    // The suggestions are not part of the answer: they are stripped before the
+    // transcript is written, so a later turn never sees the marker block.
+    const { text, followUps } = splitFollowUps(result.text ?? "");
 
     if (sessionId) await appendTurns(service, sessionId, input.prompt, text);
 
@@ -183,6 +221,7 @@ export async function handler(req: Request): Promise<Response> {
     return json(
       {
         text,
+        follow_ups: followUps,
         usage: result.usage ?? null,
         stored,
         session_id: sessionId,
