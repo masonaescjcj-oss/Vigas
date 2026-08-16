@@ -15,6 +15,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
+import { MONO_FAMILY } from "../theme/fonts";
 import { type ColorTokens } from "../theme/theme";
 
 export type ToolRunStatus = "running" | "completed" | "failed";
@@ -28,7 +29,8 @@ export interface ToolRunStep {
   error?: string;
 }
 
-const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+/** Tool names and paths are always monospace, whatever the chat language. */
+const MONO = MONO_FAMILY;
 
 /** Names the role each token plays in the run log, so the JSX reads clearly. */
 function palette(colors: ColorTokens) {

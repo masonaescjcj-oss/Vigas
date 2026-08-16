@@ -1,16 +1,28 @@
 /**
  * frontend/src/components/Typography.tsx
  * ---------------------------------------------------------------------------
- * Dual typography system:
- *   - Clean Grotesk font (Inter) for UI elements (buttons, labels, headings)
- *   - Editorial Serif font (Source Serif) for agent responses (Perplexity style)
- *   - Monospace (JetBrains Mono) for code blocks and terminal elements
+ * Every piece of text in the app, set in the right typeface.
+ *
+ *   Inter          Latin UI text and headings
+ *   Vazirmatn      Persian and Arabic — chosen per string, because React
+ *                  Native takes one family per Text and no good Latin face
+ *                  covers Persian (see theme/fonts.ts)
+ *   JetBrains Mono code, paths, the run log
+ *
+ * The family is applied as a style rather than a Tailwind class: NativeWind
+ * maps `font-ui*` to a fixed name, which cannot depend on what the text says.
  * ---------------------------------------------------------------------------
  */
 
 import React from "react";
 import { Text as RNText, type TextProps } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
+import {
+  MONO_FAMILY,
+  fontFamilyFor,
+  textOf,
+  type FontWeightName,
+} from "../theme/fonts";
 
 export type TypographyVariant =
   | "h1"
@@ -37,18 +49,23 @@ export const Text: React.FC<TypographyProps> = ({
 }) => {
   const { colors } = useTheme();
 
-  // Map variants to Tailwind classes
+  // Map variants to Tailwind classes. The family comes from the style below;
+  // these only carry size, colour and spacing.
   let variantClass = "";
+  let weight: FontWeightName = "regular";
   switch (variant) {
     case "h1":
+      weight = "bold";
       // Clean UI font, semibold (Inter), size 24px
       variantClass = "font-uiSemiBold text-2xl tracking-tight text-inkPrimary";
       break;
     case "h2":
+      weight = "semibold";
       // Clean UI font, semibold (Inter), size 20px
       variantClass = "font-uiSemiBold text-xl tracking-tight text-inkPrimary";
       break;
     case "h3":
+      weight = "medium";
       // Clean UI font, medium (Inter), size 16px
       variantClass = "font-uiMedium text-base text-inkPrimary";
       break;
@@ -64,6 +81,7 @@ export const Text: React.FC<TypographyProps> = ({
       variantClass = "font-editorialItalic text-base text-inkPrimary leading-6";
       break;
     case "label":
+      weight = "medium";
       // Clean UI label, medium, size 12px
       variantClass = "font-uiMedium text-xs text-inkSecondary uppercase tracking-wider";
       break;
@@ -76,10 +94,14 @@ export const Text: React.FC<TypographyProps> = ({
       break;
   }
 
+  // Code keeps its monospace regardless of script: a file path in a Persian
+  // sentence is still a file path.
+  const family = variant === "code" ? MONO_FAMILY : fontFamilyFor(textOf(children), weight);
+
   return (
     <RNText
       className={`${variantClass} ${className}`}
-      style={[{ color: colors.inkPrimary }, style]}
+      style={[{ color: colors.inkPrimary, fontFamily: family }, style]}
       {...props}
     >
       {children}

@@ -10,16 +10,22 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
-const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+/** The loaded monospace. A CSS stack would only ever work on web. */
+const MONO = MONO_FAMILY;
 
 import { parseBlocks } from "./markdown";
 import { useTheme } from "../theme/ThemeProvider";
+import { MONO_FAMILY, fontFamilyFor } from "../theme/fonts";
 
 /** Inline `code` and **bold** inside a prose block. */
 const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color: string; codeBg: string; codeColor: string }) => {
   const parts = value.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*)/g).filter(Boolean);
+  // An answer in Persian must be set in Vazirmatn; Inter has no Arabic script
+  // and the platform would substitute a face of its own choosing.
+  const family = fontFamilyFor(value);
+  const bold = fontFamilyFor(value, "bold");
   return (
-    <Text style={{ color, fontSize: 14, lineHeight: 22 }}>
+    <Text style={{ color, fontSize: 14, lineHeight: 22, fontFamily: family }}>
       {parts.map((part, index) => {
         if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
           return (
@@ -33,7 +39,7 @@ const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color:
         }
         if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
           return (
-            <Text key={index} style={{ fontWeight: "700" }}>
+            <Text key={index} style={{ fontFamily: bold }}>
               {part.slice(2, -2)}
             </Text>
           );

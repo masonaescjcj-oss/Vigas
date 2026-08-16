@@ -1527,6 +1527,9 @@
     "packageJson": {
       "dependencies": [
         "npm:@babel/core@^7.20.0",
+        "npm:@expo-google-fonts/inter@~0.4.2",
+        "npm:@expo-google-fonts/jetbrains-mono@~0.4.1",
+        "npm:@expo-google-fonts/vazirmatn@~0.4.1",
         "npm:@expo/metro-runtime@~3.2.3",
         "npm:@expo/vector-icons@^15.1.1",
         "npm:@opentelemetry/api@^1.9.1",
@@ -1542,6 +1545,7 @@
         "npm:autoprefixer@^10.5.4",
         "npm:deno@^2.9.3",
         "npm:e2b@2.35.0",
+        "npm:expo-font@~12.0.10",
         "npm:expo-haptics@~13.0.1",
         "npm:expo-status-bar@~1.12.1",
         "npm:expo@51.0",

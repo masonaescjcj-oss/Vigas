@@ -151,15 +151,24 @@ export const themeColors: Record<ThemeMode, ColorTokens> = {
   },
 };
 
+/**
+ * The families the app actually loads — see theme/useAppFonts.ts. A serif was
+ * named here for months and never loaded, which is why nothing rendered in one.
+ * Persian and Arabic are chosen per string rather than by name; theme/fonts.ts
+ * explains why one family cannot cover both scripts.
+ */
 export const themeFonts = {
-  ui: "Inter_500Medium",           // Grotesk clean UI font (Inter/System)
+  ui: "Inter_500Medium",
   uiRegular: "Inter_400Regular",
   uiMedium: "Inter_500Medium",
   uiSemiBold: "Inter_600SemiBold",
-  editorial: "SourceSerifPro_400Regular", // Serif editorial response font
-  editorialItalic: "SourceSerifPro_400Regular_Italic",
-  editorialSemiBold: "SourceSerifPro_600SemiBold",
-  mono: "JetBrainsMono_400Regular",      // Monospace code font
+  uiBold: "Inter_700Bold",
+  fa: "Vazirmatn_400Regular",
+  faMedium: "Vazirmatn_500Medium",
+  faSemiBold: "Vazirmatn_600SemiBold",
+  faBold: "Vazirmatn_700Bold",
+  mono: "JetBrainsMono_400Regular",
+  monoMedium: "JetBrainsMono_500Medium",
 };
 
 export const themeSpacing = {

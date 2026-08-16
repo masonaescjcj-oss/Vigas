@@ -28,7 +28,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useThemeStore } from "../../theme/store";
-import { type ThemeMode } from "../../theme/theme";
+import { themeFonts, type ThemeMode } from "../../theme/theme";
+import { fontFamilyFor } from "../../theme/fonts";
 import { type ProjectNavigationProp } from "../../navigation/types";
 import { useProjects } from "../../hooks/useProjects";
 import { agentService, type AgentTaskData, type AgentSessionData } from "../../services/agentService";
@@ -1274,7 +1275,7 @@ export const AgentChatScreen = () => {
                     fontSize: 28, 
                     fontWeight: isLight ? "600" : "300", 
                     color: colors.inkMuted, 
-                    fontFamily: "'Inter', 'SF Pro Display', sans-serif",
+                    fontFamily: themeFonts.uiBold,
                     letterSpacing: -1
                   } as any}
                 >
@@ -1285,7 +1286,7 @@ export const AgentChatScreen = () => {
                     fontSize: 22, 
                     fontWeight: isLight ? "700" : "400", 
                     color: colors.brandPrimary, 
-                    fontFamily: "'Inter', 'SF Pro Display', sans-serif",
+                    fontFamily: themeFonts.uiBold,
                     marginLeft: 6
                   } as any}
                 >
@@ -1298,7 +1299,7 @@ export const AgentChatScreen = () => {
                   fontSize: 10, 
                   fontWeight: "600", 
                   color: colors.inkMuted, 
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                  fontFamily: themeFonts.mono,
                   letterSpacing: 3,
                   textTransform: "uppercase",
                   opacity: 0.8
@@ -1566,8 +1567,15 @@ export const AgentChatScreen = () => {
             onSubmitEditing={() => void handleSend()}
             placeholder={isIncognito ? "Ask in Incognito — nothing is saved..." : (activeMode === "build" ? "Ask or build... (Type @ for files, / for commands)" : "Ask a question — answers come straight back...")}
             placeholderTextColor={colors.inkMuted}
-            className="w-full bg-transparent px-2 py-1 text-sm text-left mb-3 font-sans"
-            style={{ color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
+            className="w-full bg-transparent px-2 py-1 text-sm text-left mb-3"
+            style={{
+              color: textPrimary,
+              // Follows what is being typed, so a Persian prompt is set in
+              // Vazirmatn as it is written rather than after it is sent.
+              fontFamily: fontFamilyFor(inputText),
+              outlineStyle: "none",
+              outlineWidth: 0,
+            } as any}
             multiline
           />
 
