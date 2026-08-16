@@ -261,14 +261,28 @@ export class OpenAIChatModel implements ChatModel {
       body.tools = formattedTools;
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "authorization": `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    // A refused connection, a DNS failure or a dropped TLS session throws here
+    // rather than returning a response. Left alone it becomes a bare 500 —
+    // "an unexpected server error occurred" — which tells the user neither what
+    // broke nor that trying again is worth it.
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "authorization": `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (error) {
+      throw new AppError(
+        502,
+        "MODEL_UNREACHABLE",
+        "Could not reach the model provider. This is usually temporary — try again.",
+        { cause: error instanceof Error ? error.message : String(error) },
+      );
+    }
 
     const data = await response.json().catch(() => null);
     if (!response.ok || !data) {

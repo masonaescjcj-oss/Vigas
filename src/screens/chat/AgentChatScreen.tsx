@@ -444,15 +444,35 @@ export const AgentChatScreen = () => {
     setShowMentionsPopup(false);
     setShowSlashPopup(false);
 
-    // Incognito answers come straight back in the response — no session, no
-    // transcript, no job queue — so the conversation exists only in this state.
-    if (isIncognito) {
+    if (isFirstPrompt) setThreadTitle(userPromptText.slice(0, 48));
+
+    // Asking a question does not need the agent. Chat and Incognito call the
+    // model directly and the answer is in the response — no job queue, no cron
+    // worker, no sandbox, and no polling for a reply that is already here.
+    if (activeMode === "chat" || isIncognito) {
+      runStartedAtRef.current = null; // stops the agent-task poller from waking
       setIsExecuting(true);
       try {
-        const history = messages
-          .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
-          .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }));
-        const answer = await agentService.askIncognito(userPromptText, history, selectedModelId);
+        // A stored chat keeps its own history server-side; incognito has no
+        // server-side anything, so the conversation travels with the request.
+        const history = isIncognito
+          ? messages
+              .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
+              .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }))
+          : undefined;
+
+        const answer = await agentService.ask({
+          prompt: userPromptText,
+          model: selectedModelId,
+          ...(isIncognito
+            ? { history }
+            : {
+                projectId: await ensureProjectId(),
+                sessionId: activeSessionId ?? undefined,
+                title: userPromptText.slice(0, 48),
+              }),
+        });
+        if (answer.session_id) setActiveSessionId(answer.session_id);
         setMessages((prev) => [
           ...prev,
           {
@@ -469,7 +489,7 @@ export const AgentChatScreen = () => {
           {
             id: `msg_err_${Date.now()}`,
             role: "assistant",
-            content: `⚠️ Incognito reply failed: ${e instanceof Error ? e.message : String(e)}`,
+            content: `⚠️ Could not answer: ${e instanceof Error ? e.message : String(e)}`,
             createdAt: Date.now(),
             isIncognito,
           },
@@ -481,7 +501,6 @@ export const AgentChatScreen = () => {
       return;
     }
 
-    if (isFirstPrompt) setThreadTitle(userPromptText.slice(0, 48));
     setIsExecuting(true);
 
     try {
@@ -491,9 +510,6 @@ export const AgentChatScreen = () => {
         title: userPromptText.slice(0, 48),
         sessionId: activeSessionId ?? undefined,
         model: selectedModelId,
-        // Chat mode answers questions about the project without being able to
-        // change it; Build mode is the full agent.
-        profile: activeMode === "chat" ? "readonly" : "standard",
       });
       setActiveSessionId(res.session_id);
     } catch (e) {
@@ -657,7 +673,8 @@ export const AgentChatScreen = () => {
    * (no RLS-visible rows for Realtime) and production.
    */
   useEffect(() => {
-    if (!activeSessionId || !isExecuting) return;
+    // Only a Build run produces agent_tasks rows; runStartedAtRef marks one.
+    if (!activeSessionId || !isExecuting || !runStartedAtRef.current) return;
     let cancelled = false;
 
     const tick = async () => {
@@ -789,10 +806,11 @@ export const AgentChatScreen = () => {
   };
 
   /**
-   * Chat vs Build is a real difference in what the agent may do: Build runs
-   * with the standard profile and can write files, Chat runs read-only. The
-   * backend fixes a session's profile at creation, so switching modes starts a
-   * new conversation rather than silently keeping the old permissions.
+   * Chat and Build are different machines, not two settings on one. Chat asks
+   * the model directly and gets an answer back; Build queues a job the worker
+   * picks up, with tools and a sandbox. Switching starts a new conversation:
+   * a Q&A transcript is not an agent run's, and agent-run would otherwise
+   * inherit the chat session's profile.
    */
   const handleSelectMode = (mode: "chat" | "build") => {
     if (mode === activeMode || isExecuting) return;
@@ -1015,7 +1033,7 @@ export const AgentChatScreen = () => {
             <VectorIcon name="user" size={16} color={isLight ? "#0F172A" : "#D4D4D8"} />
           </TouchableOpacity>
 
-          {/* Mode Switcher: Chat (Q&A) vs Build (AI Agent IDE Workspace) (Crisp white pill with light border) */}
+          {/* Chat asks the model directly; Build queues an agent run with tools. */}
           {isIncognito ? (
             <Text className="text-zinc-400 text-sm font-medium">Incognito chat</Text>
           ) : (
@@ -1235,7 +1253,7 @@ export const AgentChatScreen = () => {
                   opacity: 0.8
                 } as any}
               >
-                {activeMode === "build" ? "AI AGENT CODING & BUILDER SPACE" : "CHAT & QA WORKSPACE"}
+                {activeMode === "build" ? "AI AGENT CODING & BUILDER SPACE" : "ASK ABOUT CODE — NO FILES TOUCHED"}
               </Text>
             </View>
           )
@@ -1461,7 +1479,7 @@ export const AgentChatScreen = () => {
             value={inputText}
             onChangeText={handleInputChange}
             onSubmitEditing={handleSend}
-            placeholder={isIncognito ? "Chat in Incognito mode..." : (activeMode === "build" ? "Ask or build... (Type @ for files, / for commands)" : "Ask anything...")}
+            placeholder={isIncognito ? "Ask in Incognito — nothing is saved..." : (activeMode === "build" ? "Ask or build... (Type @ for files, / for commands)" : "Ask a question — answers come straight back...")}
             placeholderTextColor={isLight ? "#8C877D" : "#71717A"}
             className="w-full bg-transparent px-2 py-1 text-sm text-left mb-3 font-sans"
             style={{ color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}

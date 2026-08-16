@@ -3,6 +3,13 @@ import { z } from "zod";
 const uuid = z.string().uuid();
 const trimmed = (max: number) => z.string().trim().min(1).max(max);
 
+/**
+ * How many past turns a question carries. Enough that a follow-up like "and
+ * the second one?" still makes sense, small enough that a long chat does not
+ * quietly grow the cost of every message.
+ */
+export const ASK_HISTORY_TURNS = 20;
+
 export const EmptyInputSchema = z.object({}).strict();
 
 export const ProjectCreateSchema = z.object({
@@ -82,18 +89,34 @@ export const AgentResumeSchema = z.object({
 }).strict();
 
 /**
- * Incognito chat. Nothing is stored server-side, so the client has to send the
- * conversation back with every turn — capped well below the run limit, since
- * an unbounded history would be a free way to push tokens through the model.
+ * Asking a question, as opposed to running the agent. Answers come straight
+ * back — no job queue, no worker, no sandbox — because none of that is needed
+ * to talk to a model.
+ *
+ * Two ways to carry the conversation:
+ *   - `projectId` (+ `sessionId` after the first turn): the chat is stored, and
+ *     the server reads the recent history back itself.
+ *   - `history`: incognito. Nothing is stored, so the client is the only place
+ *     the conversation exists and it sends it each turn. Capped, since an
+ *     unbounded history would be a free way to push tokens through the model.
  */
 export const AgentAskSchema = z.object({
   prompt: trimmed(20_000),
   history: z.array(z.object({
     role: z.enum(["user", "assistant"]),
     content: trimmed(20_000),
-  })).max(20).default([]),
+  })).max(ASK_HISTORY_TURNS).default([]),
+  projectId: uuid.optional(),
+  sessionId: uuid.optional(),
+  title: z.string().trim().min(1).max(200).optional(),
   model: z.string().trim().min(1).max(80).optional(),
-}).strict();
+}).strict().refine(
+  (input) => !input.sessionId || !!input.projectId,
+  { message: "sessionId requires projectId." },
+).refine(
+  (input) => !(input.projectId && input.history.length > 0),
+  { message: "A stored chat keeps its own history; do not also send one." },
+);
 
 export const AgentForkSchema = z.object({
   sessionId: uuid,

@@ -76,3 +76,18 @@ describe("invokeFunction error reporting", () => {
     await expect(invoke(200, { accepted: true })).resolves.toEqual({ accepted: true });
   });
 });
+
+describe("invokeFunction when the backend cannot be reached", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+  });
+
+  it("names the endpoint instead of leaving 'Failed to fetch'", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const { invokeFunction } = await import("../functionsClient");
+    await expect(invokeFunction("agent-ask", { body: {} })).rejects.toThrow(
+      /Could not reach "agent-ask" at .+not be deployed/s,
+    );
+  });
+});

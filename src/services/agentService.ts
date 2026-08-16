@@ -3,6 +3,8 @@
  * ---------------------------------------------------------------------------
  * Talks to the real agent backend:
  *   - actions (run / ask / fork) go through Edge Functions
+ *   - Build runs the agent through the job queue; Chat and Incognito answer
+ *     directly via agent-ask, with no queue, worker or sandbox involved
  *   - reads (sessions / tasks) go through Supabase tables under RLS, or the
  *     local dev gateway's /api/* endpoints when EXPO_PUBLIC_API_URL points at
  *     localhost (guest mode has no real JWT, so RLS reads would return nothing)
@@ -12,6 +14,13 @@
 
 import { supabase } from "./supabase";
 import { API_ORIGIN, IS_LOCAL_API, invokeFunction } from "./functionsClient";
+
+/**
+ * How many past turns a question carries. Mirrors ASK_HISTORY_TURNS in the
+ * edge function's schema — the server enforces it, this just avoids sending
+ * more than will be used.
+ */
+export const ASK_HISTORY_TURNS = 20;
 
 export interface AgentSessionData {
   id: string;
@@ -59,8 +68,6 @@ export const agentService = {
       title?: string;
       sessionId?: string;
       model?: string;
-      /** "readonly" gives the agent tools that cannot modify the project. */
-      profile?: "standard" | "readonly";
     } = {},
   ): Promise<AgentRunAccepted> {
     return invokeFunction<AgentRunAccepted>("agent-run", {
@@ -69,7 +76,6 @@ export const agentService = {
         prompt,
         title: options.title,
         sessionId: options.sessionId,
-        ...(options.profile ? { profile: options.profile } : {}),
         // "auto" means "server decides" — don't send it.
         ...(options.model && options.model !== "auto" ? { model: options.model } : {}),
       },
@@ -77,20 +83,32 @@ export const agentService = {
   },
 
   /**
-   * Incognito turn: answers and stores nothing — no session, no transcript, no
-   * task rows. There is no server-side history, so the caller sends the
-   * conversation with each turn and the reply lives only in local state.
+   * Ask a question. The answer comes back in the response — no job queue, no
+   * worker, no sandbox — because talking to a model needs none of them.
+   *
+   * With a projectId the chat is stored and the server carries the history, so
+   * a follow-up only sends the new message. Without one it is incognito:
+   * nothing is stored, so the caller sends the conversation each turn and the
+   * reply lives only in local state.
    */
-  async askIncognito(
-    prompt: string,
-    history: Array<{ role: "user" | "assistant"; content: string }>,
-    model?: string,
-  ): Promise<{ text: string; stored: boolean }> {
+  async ask(options: {
+    prompt: string;
+    projectId?: string;
+    sessionId?: string;
+    title?: string;
+    /** Incognito only — a stored chat rejects this, it has its own. */
+    history?: Array<{ role: "user" | "assistant"; content: string }>;
+    model?: string;
+  }): Promise<{ text: string; stored: boolean; session_id: string | null; context_turns: number }> {
+    const { prompt, projectId, sessionId, title, history, model } = options;
     return invokeFunction("agent-ask", {
       body: {
         prompt,
+        ...(projectId ? { projectId } : {}),
+        ...(sessionId ? { sessionId } : {}),
+        ...(title ? { title } : {}),
         // The endpoint caps this; trimming here keeps the request small too.
-        history: history.slice(-20),
+        ...(projectId ? {} : { history: (history ?? []).slice(-ASK_HISTORY_TURNS) }),
         ...(model && model !== "auto" ? { model } : {}),
       },
     });

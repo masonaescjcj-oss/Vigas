@@ -3,8 +3,8 @@
  * a client may request, and what the audit sink records for the UI. Both are
  * pure functions, so they are tested without touching Supabase or an LLM.
  */
-import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { resolveRequestedModel } from "../shared/agentRuntime.ts";
+import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { OpenAIChatModel, resolveRequestedModel } from "../shared/agentRuntime.ts";
 import { PROJECT_TEMPLATES, templateContentType } from "../shared/templates.ts";
 import { describeToolMetrics, describeToolTarget } from "../../../src/core/agent/hooks/defaultHooks.ts";
 
@@ -82,4 +82,30 @@ Deno.test("audit metrics report line counts and edit deltas", () => {
     { plus: 2, minus: 1 },
   );
   assertEquals(describeToolMetrics("todo_write", {}, "ignored"), undefined);
+});
+
+/**
+ * A dropped connection to the model provider used to surface as a bare 500
+ * ("an unexpected server error occurred"), which says neither what broke nor
+ * that retrying is worth it. Chat mode answers synchronously now, so the user
+ * reads this message directly.
+ */
+Deno.test("an unreachable model provider is a 502 that says to try again", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = Deno.env.get("OPENAI_API_KEY");
+  Deno.env.set("OPENAI_API_KEY", "test-key");
+  globalThis.fetch = () => Promise.reject(new TypeError("fetch failed"));
+  try {
+    const model = new OpenAIChatModel("gpt-5.6-luna");
+    const error = await model
+      .generate({ systemPrompt: "s", messages: [], tools: [] })
+      .then(() => null, (e) => e);
+    assertEquals((error as { status?: number }).status, 502);
+    assertEquals((error as { code?: string }).code, "MODEL_UNREACHABLE");
+    assertStringIncludes((error as { message: string }).message, "try again");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) Deno.env.delete("OPENAI_API_KEY");
+    else Deno.env.set("OPENAI_API_KEY", originalKey);
+  }
 });

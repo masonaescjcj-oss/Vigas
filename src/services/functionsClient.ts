@@ -71,15 +71,27 @@ export async function invokeFunction<T>(
   const method = options.method ?? "POST";
   const token = useAuthStore.getState().session?.access_token;
 
-  const res = await fetch(`${FUNCTIONS_URL}/${name}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(ANON_KEY ? { apikey: ANON_KEY } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(method === "GET" ? {} : { body: JSON.stringify(options.body ?? {}) }),
-  });
+  // A function that isn't deployed, or a host that can't be reached, rejects
+  // here — the browser's own message for that is "Failed to fetch", which
+  // names neither. Say which endpoint and where it was looked for.
+  let res: Response;
+  try {
+    res = await fetch(`${FUNCTIONS_URL}/${name}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(ANON_KEY ? { apikey: ANON_KEY } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(method === "GET" ? {} : { body: JSON.stringify(options.body ?? {}) }),
+    });
+  } catch {
+    throw new FunctionsError(
+      0,
+      "UNREACHABLE",
+      `Could not reach "${name}" at ${FUNCTIONS_URL}. It may not be deployed yet, or the backend is unreachable.`,
+    );
+  }
 
   const raw = await res.text();
   let data: any = null;
