@@ -38,7 +38,7 @@ npx supabase@latest secrets set OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://ap
 ## ۳. Deploy فانکشن‌ها
 
 ```bash
-npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
+npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask provider-keys projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
 ```
 
 ```bash
@@ -46,6 +46,19 @@ npx supabase@latest functions deploy queue-worker --no-verify-jwt
 ```
 
 (`--no-verify-jwt` عمداً است: pg_cron کاربر Auth نیست و ورکر خودش bearer خودش را چک می‌کند.)
+
+## ۳.۵ سکرت رمزنگاری کلیدهای کاربران
+
+قابلیت «ارائه‌دهندهٔ خودت» کلید API کاربران را رمزنگاری‌شده ذخیره می‌کند. کلید
+رمزنگاری باید در سکرت‌های edge باشد، **نه** در دیتابیس — تا یک دامپ دیتابیس
+به‌تنهایی چیزی جز ciphertext نباشد:
+
+```bash
+npx supabase@latest secrets set PROVIDER_KEY_SECRET="$(openssl rand -base64 48)"
+```
+
+⚠️ اگر این را عوض کنی، کلیدهای ذخیره‌شدهٔ قبلی دیگر باز نمی‌شوند و کاربران باید
+دوباره اضافه‌شان کنند. جای امنی نگهش دار.
 
 ## ۴. Vault برای cron ورکر (SQL Editor داشبورد)
 

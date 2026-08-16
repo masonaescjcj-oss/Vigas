@@ -118,6 +118,26 @@ export const AgentAskSchema = z.object({
   { message: "A stored chat keeps its own history; do not also send one." },
 );
 
+/**
+ * Bring-your-own provider. The base URL is free-form on purpose — a fixed list
+ * of providers would shut out every new entrant — and is checked by
+ * providerGuard rather than by an allow-list of companies.
+ */
+export const ProviderKeysSchema = z.object({
+  action: z.enum(["list", "add", "test", "delete"]),
+  id: uuid.optional(),
+  label: z.string().trim().min(1).max(60).optional(),
+  baseUrl: z.string().trim().min(8).max(300).optional(),
+  apiKey: z.string().trim().min(8).max(500).optional(),
+  model: z.string().trim().min(1).max(120).optional(),
+}).strict().refine(
+  (input) => input.action !== "add" || (!!input.label && !!input.baseUrl && !!input.apiKey),
+  { message: "label, baseUrl and apiKey are required to add a provider." },
+).refine(
+  (input) => (input.action !== "test" && input.action !== "delete") || !!input.id,
+  { message: "id is required." },
+);
+
 export const AgentForkSchema = z.object({
   sessionId: uuid,
   atMessageIndex: z.number().int().min(0).max(1_000_000),

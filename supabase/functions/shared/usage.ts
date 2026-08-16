@@ -9,6 +9,27 @@ export interface UsageMeter {
   period_end: string;
 }
 
+/**
+ * Free Build runs per day. Asking a question is free and unmetered — talking to
+ * a model costs us nothing but tokens — but a Build run occupies a worker and a
+ * sandbox, and those are ours to pay for whoever supplied the model key.
+ */
+export const FREE_BUILD_RUNS_PER_DAY = 4;
+
+/**
+ * Whether a Build run may start. Deliberately separate from token metering:
+ * this is about our infrastructure, not the model, so bringing your own API key
+ * does not lift it.
+ */
+export function evaluateBuildQuota(
+  tier: "free" | "pro" | "team",
+  runsToday: number,
+): { allowed: boolean; remaining: number } {
+  if (tier !== "free") return { allowed: true, remaining: Number.POSITIVE_INFINITY };
+  const remaining = Math.max(0, FREE_BUILD_RUNS_PER_DAY - runsToday);
+  return { allowed: remaining > 0, remaining };
+}
+
 export function evaluateUsage(
   tier: "free" | "pro" | "team",
   meter: UsageMeter,
@@ -59,6 +80,41 @@ export async function checkUsage(service: SupabaseClient, userId: string): Promi
     });
   }
   return { tier: profile.subscription_tier, meter: current };
+}
+
+/**
+ * How many Build runs this user has started since midnight UTC. Counted from
+ * job_queue rather than a counter column so it cannot drift, and so a run that
+ * failed to enqueue never costs anyone an allowance.
+ */
+export async function buildRunsToday(service: SupabaseClient, userId: string): Promise<number> {
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  const { count, error } = await service
+    .from("job_queue")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", since.toISOString());
+  if (error) asAppError(error, "Counting today's runs");
+  return count ?? 0;
+}
+
+/** Throws when a free user has spent their Build runs for the day. */
+export async function checkBuildQuota(service: SupabaseClient, userId: string): Promise<void> {
+  const { data: profile, error } = await service
+    .from("profiles").select("subscription_tier").eq("id", userId).maybeSingle();
+  if (error) asAppError(error, "Loading subscription tier");
+  const tier = (profile?.subscription_tier ?? "free") as "free" | "pro" | "team";
+
+  const decision = evaluateBuildQuota(tier, await buildRunsToday(service, userId));
+  if (!decision.allowed) {
+    throw new AppError(
+      429,
+      "BUILD_LIMIT_REACHED",
+      `Free accounts get ${FREE_BUILD_RUNS_PER_DAY} builds a day. Chat is still unlimited, and the allowance resets at midnight UTC.`,
+      { upgrade_required: true, free_builds_per_day: FREE_BUILD_RUNS_PER_DAY },
+    );
+  }
 }
 
 export async function recordUsage(service: SupabaseClient, userId: string, tokens: number): Promise<void> {

@@ -38,6 +38,7 @@ export type ProfileStackParamList = {
   ProfileMain: undefined;
   AccountSettings: undefined;
   Preferences: undefined;
+  Providers: undefined;
   SecuritySettings: undefined;
   HelpSupport: undefined;
   About: undefined;

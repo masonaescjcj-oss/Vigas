@@ -195,10 +195,27 @@ export class OpenAIChatModel implements ChatModel {
   private readonly model: string;
   private readonly baseUrl: string;
 
-  constructor(modelOverride?: string) {
-    this.apiKey = Deno.env.get("OPENAI_API_KEY") || Deno.env.get("AI_API_KEY") || "";
-    this.model = modelOverride ?? Deno.env.get("OPENAI_MODEL") ?? "gpt-4o";
-    this.baseUrl = Deno.env.get("OPENAI_BASE_URL") ?? "https://api.openai.com/v1";
+  /**
+   * @param modelOverride A model id, allow-listed by the caller.
+   * @param credentials   A user's own provider. When present it replaces the
+   *                      server's entirely — key, endpoint and default model —
+   *                      because those three only make sense together.
+   */
+  constructor(
+    modelOverride?: string,
+    credentials?: { apiKey?: string; baseUrl?: string; model?: string },
+  ) {
+    this.apiKey = credentials?.apiKey
+      || Deno.env.get("OPENAI_API_KEY")
+      || Deno.env.get("AI_API_KEY")
+      || "";
+    this.model = modelOverride
+      ?? credentials?.model
+      ?? Deno.env.get("OPENAI_MODEL")
+      ?? "gpt-4o";
+    this.baseUrl = credentials?.baseUrl
+      ?? Deno.env.get("OPENAI_BASE_URL")
+      ?? "https://api.openai.com/v1";
     if (!this.apiKey) throw new AppError(500, "SERVER_MISCONFIGURED", "OPENAI_API_KEY is not configured.");
   }
 
@@ -333,6 +350,12 @@ export interface RuntimeFactoryOptions {
   sandboxManager?: SandboxManager;
   /** Allow-listed model id for this run; falls back to the server default. */
   model?: string;
+  /**
+   * The user's own provider, already decrypted. Passed in rather than looked
+   * up here so the key exists only for the life of the run and never reaches
+   * a job payload or a session row.
+   */
+  credentials?: { apiKey?: string; baseUrl?: string; model?: string };
 }
 
 /** Builds the sandbox manager with the same provider selection the runtime uses
@@ -351,8 +374,13 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
     sandboxRoot: workspace.root,
     workspace,
     store: new EdgeSessionStore(options.client, options.user.id, options.projectId),
-    model: Deno.env.get("OPENAI_API_KEY") || Deno.env.get("AI_API_KEY") || !Deno.env.get("ANTHROPIC_API_KEY")
-      ? new OpenAIChatModel(options.model)
+    // A user's own provider is OpenAI-compatible by definition, so it always
+    // takes the OpenAI path regardless of what the server is configured with.
+    model: options.credentials?.apiKey
+      || Deno.env.get("OPENAI_API_KEY")
+      || Deno.env.get("AI_API_KEY")
+      || !Deno.env.get("ANTHROPIC_API_KEY")
+      ? new OpenAIChatModel(options.model, options.credentials)
       : new AnthropicChatModel(options.model),
     profile: options.profile ?? "standard",
     // The workspace lives in Storage, not on this host's filesystem, so

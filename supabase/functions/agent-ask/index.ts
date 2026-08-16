@@ -27,7 +27,8 @@ import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { OpenAIChatModel, assertProjectOwner, resolveRequestedModel } from "../shared/agentRuntime.ts";
-import { checkUsage, recordUsage } from "../shared/usage.ts";
+import { recordUsage } from "../shared/usage.ts";
+import { resolveProvider } from "../shared/resolveProvider.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface Turn {
@@ -171,7 +172,8 @@ export async function handler(req: Request): Promise<Response> {
     const input = await parseJson(req, AgentAskSchema);
     const service = createServiceClient();
     await enforceRateLimit(service, "agent-ask", user.id, 20, 60);
-    await checkUsage(service, user.id);
+    // Questions are unmetered on purpose: they cost tokens and nothing else,
+    // and a chat that stops mid-thought is a worse product than a cheap one.
 
     const stored = !!input.projectId;
     let sessionId: string | null = null;
@@ -190,7 +192,10 @@ export async function handler(req: Request): Promise<Response> {
     // here, but the model interface asks for it.
     const turns: Turn[] = [...history, { role: "user", content: input.prompt }];
     const stamp = Date.now();
-    const model = new OpenAIChatModel(resolveRequestedModel(input.model));
+    // A user who brought their own provider pays for their own tokens, so
+    // theirs is used. The key is decrypted here and never leaves this scope.
+    const credentials = await resolveProvider(service, user.id);
+    const model = new OpenAIChatModel(resolveRequestedModel(input.model), credentials);
     const result = await model.generate({
       systemPrompt: [
         SYSTEM_PROMPT,
@@ -224,6 +229,8 @@ export async function handler(req: Request): Promise<Response> {
         follow_ups: followUps,
         usage: result.usage ?? null,
         stored,
+        // Which credentials answered, so the UI can show it. Never the key.
+        provider: credentials.label ?? null,
         session_id: sessionId,
         // How many past turns the model actually saw, so the UI can be honest
         // about the memory window instead of implying it is unlimited.

@@ -5,7 +5,7 @@ import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { assertProjectOwner, ensureSession, resolveRequestedModel } from "../shared/agentRuntime.ts";
-import { checkUsage } from "../shared/usage.ts";
+import { checkBuildQuota } from "../shared/usage.ts";
 
 export async function handler(req: Request): Promise<Response> {
   const requestId = crypto.randomUUID();
@@ -19,7 +19,9 @@ export async function handler(req: Request): Promise<Response> {
     const service = createServiceClient();
     await enforceRateLimit(service, "agent-run", user.id, 5, 60);
     const project = await assertProjectOwner(service, user.id, input.projectId);
-    await checkUsage(service, user.id);
+    // Build occupies a worker and a sandbox, which we pay for however the
+    // model was billed — so this limit applies even with the user's own key.
+    await checkBuildQuota(service, user.id);
     let profile: "standard" | "readonly" = input.profile ?? "standard";
     if (input.sessionId) {
       const { data: existing, error } = await service.from("agent_sessions").select("project_id,profile,status").eq("id", input.sessionId).eq("user_id", user.id).maybeSingle();

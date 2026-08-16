@@ -2304,6 +2304,7 @@ export const AgentChatScreen = () => {
                   {([
                     { label: "Account", icon: "user", target: "AccountSettings", root: false },
                     { label: "Preferences", icon: "settings", target: "Preferences", root: false },
+                    { label: "Your AI providers", icon: "cpu", target: "Providers", root: false },
                     { label: "Security", icon: "lock", target: "SecuritySettings", root: false },
                     { label: "Subscription", icon: "zap", target: "ManageSubscription", root: true },
                     { label: "Token usage", icon: "chart", target: "TokenUsage", root: true },

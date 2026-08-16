@@ -78,6 +78,10 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
     // path lightweight and prevents an optional sandbox SDK from becoming a
     // module-boot dependency when the queue is empty.
     const { createEdgeAgentRuntime, createEdgeSandboxManager } = await import("../shared/agentRuntime.ts");
+    const { resolveProvider } = await import("../shared/resolveProvider.ts");
+    // Read at run time, not from the job payload: the payload is a plain jsonb
+    // column, and a decrypted key must never be written to one.
+    const credentials = await resolveProvider(client, job.user_id);
     const payload = job.payload;
     const mode = payload.mode === "resume" ? "resume" : "run";
     const profile = payload.profile === "readonly" ? "readonly" : "standard";
@@ -101,6 +105,7 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         profile,
         sandboxManager,
         model: typeof payload.model === "string" ? payload.model : undefined,
+        credentials,
       });
       const result = await withSentrySpan("agent.execute", "agent.run", async () => await runtime.run(String(payload.prompt ?? ""), { sessionId: job.session_id, title: typeof payload.title === "string" ? payload.title : undefined }));
       await recordUsage(client, job.user_id, result.usage.inputTokens + result.usage.outputTokens);
