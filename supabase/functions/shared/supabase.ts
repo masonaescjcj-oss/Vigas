@@ -96,6 +96,29 @@ export async function requireUser(req: Request): Promise<{ user: User; client: S
   return { user: data.user, client, token };
 }
 
+/**
+ * A signed-in user who is also an operator.
+ *
+ * `is_admin` is read from the database with the service client, never from the
+ * JWT: a claim in a token is whatever the token says, and the admin panel can
+ * change pricing, models and the key pool. The flag is set by hand in SQL —
+ * there is deliberately no endpoint that grants it.
+ *
+ * The 404 is not politeness. An admin-only route that answers 403 tells an
+ * attacker the route exists and that they merely lack the flag.
+ */
+export async function requireAdmin(req: Request): Promise<{ user: User; service: SupabaseClient }> {
+  const { user } = await requireUser(req);
+  const service = createServiceClient();
+
+  const { data, error } = await service
+    .from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
+  if (error) throw new AppError(500, "NOT_FOUND", "Not found.");
+  if (!data?.is_admin) throw new AppError(404, "NOT_FOUND", "Not found.");
+
+  return { user, service };
+}
+
 export async function requireServiceRole(req: Request): Promise<SupabaseClient> {
   const token = bearerToken(req);
   const keys = serviceApiKeys();

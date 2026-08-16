@@ -3,6 +3,7 @@ import { handler as agentResumeHandler } from "./supabase/functions/agent-resume
 import { handler as agentForkHandler } from "./supabase/functions/agent-fork/index.ts";
 import { handler as agentAskHandler } from "./supabase/functions/agent-ask/index.ts";
 import { handler as providerKeysHandler } from "./supabase/functions/provider-keys/index.ts";
+import { handler as adminHandler } from "./supabase/functions/admin/index.ts";
 import { handler as checkpointCreateHandler } from "./supabase/functions/checkpoint-create/index.ts";
 import { handler as checkpointRestoreHandler } from "./supabase/functions/checkpoint-restore/index.ts";
 import { handler as projectsCreateHandler } from "./supabase/functions/projects-create/index.ts";
@@ -41,6 +42,8 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await agentResumeHandler(req);
     } else if (path === "/functions/v1/agent-ask") {
       res = await agentAskHandler(req);
+    } else if (path === "/functions/v1/admin") {
+      res = await adminHandler(req);
     } else if (path === "/functions/v1/provider-keys") {
       res = await providerKeysHandler(req);
     } else if (path === "/functions/v1/checkpoint-create") {

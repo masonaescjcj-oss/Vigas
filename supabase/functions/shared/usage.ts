@@ -99,22 +99,47 @@ export async function buildRunsToday(service: SupabaseClient, userId: string): P
   return count ?? 0;
 }
 
-/** Throws when a free user has spent their Build runs for the day. */
+/**
+ * The daily build allowance for a tier, from the plans table.
+ *
+ * Read rather than hardcoded so the operator can change a limit in the admin
+ * panel without a deploy. A missing plans table (the migration has not run) or
+ * a missing row falls back to the constant, so an unmigrated database keeps
+ * working instead of letting everyone through.
+ */
+export async function buildAllowance(
+  service: SupabaseClient,
+  tier: string,
+): Promise<number | null> {
+  const { data, error } = await service
+    .from("plans").select("build_runs_per_day").eq("key", tier).maybeSingle();
+  if (error || !data) {
+    return tier === "free" ? FREE_BUILD_RUNS_PER_DAY : null;
+  }
+  // Null in the column means unlimited, and is deliberate — not missing data.
+  const limit = (data as { build_runs_per_day: number | null }).build_runs_per_day;
+  return limit === null ? null : Number(limit);
+}
+
+/** Throws when a user has spent their Build runs for the day. */
 export async function checkBuildQuota(service: SupabaseClient, userId: string): Promise<void> {
   const { data: profile, error } = await service
     .from("profiles").select("subscription_tier").eq("id", userId).maybeSingle();
   if (error) asAppError(error, "Loading subscription tier");
-  const tier = (profile?.subscription_tier ?? "free") as "free" | "pro" | "team";
+  const tier = String(profile?.subscription_tier ?? "free");
 
-  const decision = evaluateBuildQuota(tier, await buildRunsToday(service, userId));
-  if (!decision.allowed) {
-    throw new AppError(
-      429,
-      "BUILD_LIMIT_REACHED",
-      `Free accounts get ${FREE_BUILD_RUNS_PER_DAY} builds a day. Chat is still unlimited, and the allowance resets at midnight UTC.`,
-      { upgrade_required: true, free_builds_per_day: FREE_BUILD_RUNS_PER_DAY },
-    );
-  }
+  const limit = await buildAllowance(service, tier);
+  if (limit === null) return;
+
+  const used = await buildRunsToday(service, userId);
+  if (used < limit) return;
+
+  throw new AppError(
+    429,
+    "BUILD_LIMIT_REACHED",
+    `Your plan includes ${limit} build${limit === 1 ? "" : "s"} a day. Chat is still unlimited, and the allowance resets at midnight UTC.`,
+    { upgrade_required: true, builds_per_day: limit, tier },
+  );
 }
 
 export async function recordUsage(service: SupabaseClient, userId: string, tokens: number): Promise<void> {

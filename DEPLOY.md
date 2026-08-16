@@ -38,7 +38,7 @@ npx supabase@latest secrets set OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://ap
 ## ۳. Deploy فانکشن‌ها
 
 ```bash
-npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask provider-keys projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
+npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask provider-keys admin projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
 ```
 
 ```bash
@@ -59,6 +59,15 @@ npx supabase@latest secrets set PROVIDER_KEY_SECRET="$(openssl rand -base64 48)"
 
 ⚠️ اگر این را عوض کنی، کلیدهای ذخیره‌شدهٔ قبلی دیگر باز نمی‌شوند و کاربران باید
 دوباره اضافه‌شان کنند. جای امنی نگهش دار.
+
+## ۳.۶ خودت را ادمین کن
+
+پنل ادمین با یک پرچم در دیتابیس باز می‌شود، نه با هیچ endpointی — عمداً هیچ
+راهی برای *دادن* این دسترسی از داخل اپ وجود ندارد:
+
+```sql
+update public.profiles set is_admin = true where email = 'YOUR@EMAIL';
+```
 
 ## ۴. Vault برای cron ورکر (SQL Editor داشبورد)
 

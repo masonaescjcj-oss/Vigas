@@ -138,6 +138,61 @@ export const ProviderKeysSchema = z.object({
   { message: "id is required." },
 );
 
+/**
+ * The admin panel. One schema for every action because they share one gate;
+ * the per-action requirements are checked in refinements rather than by
+ * splitting this into a dozen near-identical objects.
+ */
+export const AdminSchema = z.object({
+  action: z.enum([
+    "keys.list", "keys.add", "keys.update", "keys.delete", "keys.test", "keys.testAll",
+    "models.list", "models.upsert", "models.delete",
+    "plans.list", "plans.update",
+    "overview",
+  ]),
+
+  // Key pool
+  id: uuid.optional(),
+  label: z.string().trim().min(1).max(60).optional(),
+  baseUrl: z.string().trim().min(8).max(300).optional(),
+  apiKey: z.string().trim().min(8).max(500).optional(),
+  priority: z.number().int().min(0).max(10_000).optional(),
+
+  // Models
+  modelId: z.string().trim().min(1).max(120).optional(),
+  displayName: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().max(300).nullable().optional(),
+  tone: z.enum(["brandPrimary", "success", "warning", "failed"]).optional(),
+  icon: z.string().trim().min(1).max(40).optional(),
+  minTier: z.string().trim().min(1).max(20).nullable().optional(),
+  isDefault: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).max(1_000).optional(),
+
+  // Shared between models and the key pool
+  model: z.string().trim().min(1).max(120).nullable().optional(),
+  isActive: z.boolean().optional(),
+
+  // Plans. Null means unlimited, which is why these are nullable rather than
+  // absent — absent means "leave it alone".
+  planKey: z.string().trim().min(1).max(20).optional(),
+  buildRunsPerDay: z.number().int().min(0).max(100_000).nullable().optional(),
+  tokenLimitPerDay: z.number().int().min(0).nullable().optional(),
+  maxProjects: z.number().int().min(0).max(10_000).nullable().optional(),
+  priceLabel: z.string().trim().max(60).nullable().optional(),
+}).strict()
+  .refine((i) => i.action !== "keys.add" || (!!i.label && !!i.baseUrl && !!i.apiKey), {
+    message: "label, baseUrl and apiKey are required to add a key.",
+  })
+  .refine(
+    (i) => !["keys.update", "keys.delete", "keys.test"].includes(i.action) || !!i.id,
+    { message: "id is required for that key action." },
+  )
+  .refine((i) => i.action !== "models.upsert" || (!!i.modelId && !!i.displayName), {
+    message: "modelId and displayName are required to save a model.",
+  })
+  .refine((i) => i.action !== "models.delete" || !!i.modelId, { message: "modelId is required." })
+  .refine((i) => i.action !== "plans.update" || !!i.planKey, { message: "planKey is required." });
+
 export const AgentForkSchema = z.object({
   sessionId: uuid,
   atMessageIndex: z.number().int().min(0).max(1_000_000),
