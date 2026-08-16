@@ -98,8 +98,8 @@ export const TokenUsageScreen = () => {
             <View className="mt-3">
               <Text variant="h2" className="font-uiSemiBold text-left">
                 {hasLimit
-                  ? `${tokensUsed.toLocaleString()} / ${tokensLimit.toLocaleString()} tokens`
-                  : `${tokensUsed.toLocaleString()} tokens`}
+                  ? `${tokensUsed.toLocaleString("en-US")} / ${tokensLimit.toLocaleString("en-US")} tokens`
+                  : `${tokensUsed.toLocaleString("en-US")} tokens`}
               </Text>
 
               {/* Progress bar container — only meaningful against a limit. */}

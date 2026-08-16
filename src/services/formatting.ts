@@ -62,3 +62,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID.test(value);
 }
+
+/**
+ * A count, grouped with commas.
+ *
+ * The locale is pinned because `toLocaleString()` follows the *device*, and
+ * this UI is English-only: on a Persian phone every number rendered as ۱٬۰۰۰
+ * in the middle of an English sentence.
+ */
+export function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}

@@ -43,6 +43,7 @@ import { ProfileMainScreen } from "../screens/settings/ProfileMainScreen";
 import { AccountSettingsScreen } from "../screens/settings/AccountSettingsScreen";
 import { PreferencesScreen } from "../screens/settings/PreferencesScreen";
 import { ProvidersScreen } from "../screens/settings/ProvidersScreen";
+import { AdminScreen } from "../screens/admin/AdminScreen";
 import { SecuritySettingsScreen } from "../screens/settings/SecuritySettingsScreen";
 import { HelpSupportScreen } from "../screens/settings/HelpSupportScreen";
 import { AboutScreen } from "../screens/settings/AboutScreen";
@@ -133,6 +134,7 @@ const ProfileNavigator = () => {
       <ProfileStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
       <ProfileStack.Screen name="Preferences" component={PreferencesScreen} />
       <ProfileStack.Screen name="Providers" component={ProvidersScreen} />
+      <ProfileStack.Screen name="Admin" component={AdminScreen} />
       <ProfileStack.Screen name="SecuritySettings" component={SecuritySettingsScreen} />
       <ProfileStack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <ProfileStack.Screen name="About" component={AboutScreen} />

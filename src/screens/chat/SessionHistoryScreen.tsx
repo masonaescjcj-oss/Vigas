@@ -90,7 +90,7 @@ export const SessionHistoryScreen = () => {
                 
                 <View className="flex-row justify-between mt-2">
                   <Text variant="caption" className="opacity-60 text-[10px]">
-                    Usage: {item.token_usage_total.toLocaleString()} tokens
+                    Usage: {item.token_usage_total.toLocaleString("en-US")} tokens
                   </Text>
                   <Text variant="caption" className="opacity-60 text-[10px]">
                     Last activity: {formattedDate}

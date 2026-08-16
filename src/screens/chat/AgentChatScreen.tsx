@@ -1258,7 +1258,7 @@ export const AgentChatScreen = () => {
                           {relativeTime(item.updated_at ?? item.created_at)}
                         </Text>
                         <Text style={{ color: textMuted }} className="text-[10px] font-mono">
-                          {item.token_usage_total ? `${item.token_usage_total.toLocaleString()} tokens` : item.status}
+                          {item.token_usage_total ? `${item.token_usage_total.toLocaleString("en-US")} tokens` : item.status}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -2310,6 +2310,11 @@ export const AgentChatScreen = () => {
                 {/* Account & app screens (these live in the Profile stack) */}
                 <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
                   {([
+                    // Only an operator sees this. Hiding it is presentation —
+                    // every admin action re-checks the flag server-side.
+                    ...(profile?.is_admin
+                      ? [{ label: "Admin", icon: "shield", target: "Admin", root: false } as const]
+                      : []),
                     { label: "Account", icon: "user", target: "AccountSettings", root: false },
                     { label: "Preferences", icon: "settings", target: "Preferences", root: false },
                     { label: "Your AI providers", icon: "cpu", target: "Providers", root: false },
@@ -2411,9 +2416,9 @@ export const AgentChatScreen = () => {
 
                       <Text style={{ color: colors.inkSecondary }} className=" text-xs text-left mb-1">Tokens used this period</Text>
                       <Text style={{ color: colors.inkPrimary }} className=" text-2xl font-bold text-left mb-3">
-                        {usage.tokensUsed.toLocaleString()}
+                        {usage.tokensUsed.toLocaleString("en-US")}
                         {usage.tokenLimit ? (
-                          <Text style={{ color: colors.inkMuted }} className=" text-sm font-medium"> / {usage.tokenLimit.toLocaleString()}</Text>
+                          <Text style={{ color: colors.inkMuted }} className=" text-sm font-medium"> / {usage.tokenLimit.toLocaleString("en-US")}</Text>
                         ) : null}
                       </Text>
 
@@ -2431,7 +2436,7 @@ export const AgentChatScreen = () => {
 
                       <Text style={{ color: colors.inkMuted }} className=" text-[11px] text-left">
                         {usage.remaining > 0
-                          ? `${usage.remaining.toLocaleString()} tokens remaining`
+                          ? `${usage.remaining.toLocaleString("en-US")} tokens remaining`
                           : "Limit reached — new agent runs are blocked until the period resets."}
                       </Text>
                     </View>
@@ -2439,7 +2444,7 @@ export const AgentChatScreen = () => {
                     <View className="flex-row justify-between">
                       <View style={{ backgroundColor: colors.surfaceRaised }} className="w-[48%] p-3.5 rounded-2xl">
                         <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold mb-2">Agent runs</Text>
-                        <Text style={{ color: colors.inkPrimary }} className=" text-xl font-bold text-left">{usage.requests.toLocaleString()}</Text>
+                        <Text style={{ color: colors.inkPrimary }} className=" text-xl font-bold text-left">{usage.requests.toLocaleString("en-US")}</Text>
                         <Text style={{ color: colors.inkMuted }} className=" text-[10px] text-left">this period</Text>
                       </View>
                       <View style={{ backgroundColor: colors.surfaceRaised }} className="w-[48%] p-3.5 rounded-2xl">

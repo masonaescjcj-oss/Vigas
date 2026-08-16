@@ -113,7 +113,22 @@ export async function requireAdmin(req: Request): Promise<{ user: User; service:
 
   const { data, error } = await service
     .from("profiles").select("is_admin").eq("id", user.id).maybeSingle();
-  if (error) throw new AppError(500, "NOT_FOUND", "Not found.");
+
+  // The column arrives with a migration. Until it is applied every admin call
+  // would fail as a bare 404, which reads as "you are not an admin" and sends
+  // the operator looking in the wrong place.
+  if (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "PGRST204" || code === "PGRST205" || code === "42703" || code === "42P01") {
+      throw new AppError(
+        503,
+        "ADMIN_NOT_MIGRATED",
+        "The admin panel needs a database migration that has not been applied yet (profiles.is_admin).",
+      );
+    }
+    throw new AppError(404, "NOT_FOUND", "Not found.");
+  }
+
   if (!data?.is_admin) throw new AppError(404, "NOT_FOUND", "Not found.");
 
   return { user, service };

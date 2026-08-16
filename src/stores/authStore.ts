@@ -14,7 +14,9 @@ export interface UserProfile {
   email: string;
   display_name?: string;
   avatar_url?: string;
-  subscription_tier: "free" | "pro" | "team";
+  subscription_tier: "free" | "pro" | "ultra" | "team";
+  /** Opens the admin panel. Set by hand in SQL; the app can only read it. */
+  is_admin?: boolean;
 }
 
 interface AuthState {
