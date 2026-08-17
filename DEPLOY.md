@@ -35,6 +35,25 @@ npx supabase@latest secrets set OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://ap
 
 > ☠️ **هرگز `LOCAL_DEV_BYPASS` را روی ابر ست نکن** — بایپس کامل احراز هویت است و فقط مال `.env` محلی است.
 
+## ۲.۵ اعمال مایگریشن‌ها بدون CLI (ساده‌ترین راه)
+
+`supabase db push` به `login` (توکن دسترسی) و `link` (پسورد دیتابیس) نیاز دارد.
+اگر آن‌ها را نداری، همان SQL را از داشبورد اجرا کن — هیچ اعتبارنامهٔ اضافه‌ای لازم نیست:
+
+**داشبورد → SQL Editor → New query → کل محتوای `supabase/APPLY_IN_DASHBOARD.sql` را پیست کن → Run.**
+
+این فایل **تولیدشده** است؛ اگر مایگریشن جدیدی اضافه شد، بازش بساز:
+
+```bash
+npx deno run --allow-read --allow-write scripts/bundle-migrations.ts
+```
+
+همهٔ دستوراتش idempotent‌اند (اجرای دوباره بی‌اثر است) و در انتها نسخه‌ها را در
+`supabase_migrations.schema_migrations` ثبت می‌کند تا `db push` بعدی دوباره اجرایشان نکند.
+
+اگر وسط اجرا خطایی داد، بقیهٔ دستورها ممکن است اجرا نشوند — چون idempotent است،
+کافی است خطا را برطرف کنی و دوباره کل فایل را Run کنی.
+
 ## ۳. Deploy فانکشن‌ها
 
 ```bash
