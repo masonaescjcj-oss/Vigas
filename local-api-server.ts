@@ -6,6 +6,7 @@ import { handler as providerKeysHandler } from "./supabase/functions/provider-ke
 import { handler as adminHandler } from "./supabase/functions/admin/index.ts";
 import { handler as shareHandler } from "./supabase/functions/share/index.ts";
 import { handler as pushRegisterHandler } from "./supabase/functions/push-register/index.ts";
+import { handler as projectExportHandler } from "./supabase/functions/project-export/index.ts";
 import { handler as checkpointCreateHandler } from "./supabase/functions/checkpoint-create/index.ts";
 import { handler as checkpointRestoreHandler } from "./supabase/functions/checkpoint-restore/index.ts";
 import { handler as projectsCreateHandler } from "./supabase/functions/projects-create/index.ts";
@@ -52,6 +53,8 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await shareHandler(req);
     } else if (path === "/functions/v1/push-register") {
       res = await pushRegisterHandler(req);
+    } else if (path === "/functions/v1/project-export") {
+      res = await projectExportHandler(req);
     } else if (path === "/functions/v1/checkpoint-create") {
       res = await checkpointCreateHandler(req);
     } else if (path === "/functions/v1/checkpoint-restore") {

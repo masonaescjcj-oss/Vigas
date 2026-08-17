@@ -57,7 +57,7 @@ npx deno run --allow-read --allow-write scripts/bundle-migrations.ts
 ## ۳. Deploy فانکشن‌ها
 
 ```bash
-npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask provider-keys admin share push-register projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
+npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask provider-keys admin share push-register project-export projects-create projects-list projects-update projects-delete usage-check checkpoint-create checkpoint-restore revenuecat-webhook revenuecat-sync project-files user-delete
 ```
 
 ```bash

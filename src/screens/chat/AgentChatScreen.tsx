@@ -49,6 +49,7 @@ import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../ser
 import { isUuid } from "../../services/formatting";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { createShare } from "../../services/shareService";
+import { exportProject, openDownload, readableSize } from "../../services/exportService";
 import { shareLink } from "../../services/shareSheet";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
@@ -198,6 +199,10 @@ export const AgentChatScreen = () => {
   // one of them in the user's hand.
   const [publishing, setPublishing] = useState(false);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+
+  // Building a zip reads every file in the project, so the tile shows it is
+  // working rather than looking ignored.
+  const [exporting, setExporting] = useState(false);
 
   // Template picked in the New Project dialog
   const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
@@ -664,6 +669,36 @@ export const AgentChatScreen = () => {
       notify("Rollback failed", e instanceof Error ? e.message : String(e));
     } finally {
       setRestoringCheckpointId(null);
+    }
+  };
+
+  /**
+   * Download the project as a zip.
+   *
+   * The link is signed and short-lived, so it is handed straight to whatever
+   * saves downloads here rather than stored — a stale link in state would fail
+   * silently later.
+   */
+  const handleExport = async () => {
+    if (exporting) return;
+    tapFeedback();
+    setExporting(true);
+    try {
+      const projectId = await ensureProjectId();
+      const result = await exportProject(projectId);
+      successFeedback();
+      const opened = await openDownload(result.url);
+      notify(
+        opened ? "Download started" : "Your download link",
+        opened
+          ? `${result.fileName} — ${result.fileCount} files, ${readableSize(result.sizeBytes)}.`
+          : result.url,
+      );
+    } catch (e) {
+      errorFeedback();
+      notify("Could not export", e instanceof Error ? e.message : String(e));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -1733,14 +1768,16 @@ export const AgentChatScreen = () => {
               <View className="w-9" />
             </View>
 
-            {/* Three ways into the project from the composer. Restore points
-                used to have no entry point at all — the sheet existed but
-                nothing opened it. */}
-            <View className="flex-row justify-between mb-6">
+            {/* Ways into the project from the composer. Restore points used to
+                have no entry point at all — the sheet existed but nothing
+                opened it. A 2x2 grid rather than one row: four tiles across a
+                phone leaves each one too narrow to read. */}
+            <View className="flex-row flex-wrap justify-between mb-3">
               {([
                 { key: "files", label: "Files", icon: "file-text", run: () => setShowFileModal(true) },
                 { key: "preview", label: "Preview", icon: "eye", run: () => setShowPreviewModal(true) },
                 { key: "restore", label: "Restore points", icon: "rotate-ccw", run: () => setShowCheckpointsModal(true) },
+                { key: "export", label: "Download as zip", icon: "download", run: () => void handleExport() },
               ] as const).map((action) => (
                 <TouchableOpacity
                   key={action.key}
@@ -1748,11 +1785,16 @@ export const AgentChatScreen = () => {
                     setShowAddToChatModal(false);
                     action.run();
                   }}
+                  disabled={action.key === "export" && exporting}
                   style={{ backgroundColor: colors.surfaceMuted }}
-                  className="w-[31%] py-5 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5"
+                  className="w-[48%] py-5 mb-3 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5"
                 >
                   <View style={{ backgroundColor: colors.surfaceStrong }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
-                    <VectorIcon name={action.icon} size={20} color={colors.inkPrimary} />
+                    {action.key === "export" && exporting ? (
+                      <ActivityIndicator size="small" color={colors.brandPrimary} />
+                    ) : (
+                      <VectorIcon name={action.icon} size={20} color={colors.inkPrimary} />
+                    )}
                   </View>
                   <Text style={{ color: textPrimary }} className="text-xs font-semibold text-center">{action.label}</Text>
                 </TouchableOpacity>

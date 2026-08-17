@@ -32,6 +32,7 @@ import {
   Cloud,
   Code2,
   Cpu,
+  Download,
   CreditCard,
   Eye,
   FileText,
@@ -125,6 +126,7 @@ const ICONS = {
   bell: Bell,
   alert: AlertCircle,
   link: Link2,
+  download: Download,
   "share-2": Share2,
 } as const;
 

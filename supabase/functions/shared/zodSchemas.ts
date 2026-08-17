@@ -138,6 +138,9 @@ export const ProviderKeysSchema = z.object({
   { message: "id is required." },
 );
 
+/** Downloading a project as a zip. */
+export const ProjectExportSchema = z.object({ projectId: uuid }).strict();
+
 /**
  * Registering a device for run-finished notifications.
  *
