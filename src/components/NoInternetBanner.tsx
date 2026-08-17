@@ -1,13 +1,25 @@
 /**
  * frontend/src/components/NoInternetBanner.tsx
- * ============================================================================
- * OFFLINE NETWORK BANNER
- * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
- * ============================================================================
+ * ---------------------------------------------------------------------------
+ * The banner shown when the app cannot reach its backend.
+ *
+ * It used to be permanently mounted and slid off-screen with an animated
+ * translateY. Two things were wrong with that, both found by testing the offline
+ * path rather than reading the code:
+ *
+ *   1. Visibility depended on an animation. Animated needs requestAnimationFrame,
+ *      and rAF does not run in a backgrounded or non-compositing page — so the
+ *      state could say "offline" while the banner stayed parked off-screen. An
+ *      error indicator must not be defeatable by a throttled timer.
+ *   2. The text was in the document at all times. Off-screen is not hidden to a
+ *      screen reader, so it announced "No internet connection" permanently.
+ *
+ * So visibility is now a render decision. Nothing is mounted while things work.
+ * ---------------------------------------------------------------------------
  */
 
-import React, { useEffect, useRef } from "react";
-import { View, Animated } from "react-native";
+import React from "react";
+import { View } from "react-native";
 import { Text } from "./Typography";
 import { useTheme } from "../theme/ThemeProvider";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
@@ -15,19 +27,12 @@ import { useNetworkStatus } from "../hooks/useNetworkStatus";
 export const NoInternetBanner = () => {
   const { colors } = useTheme();
   const { isConnected } = useNetworkStatus();
-  const slideAnim = useRef(new Animated.Value(-60)).current;
 
-  // Slide down if disconnected, slide up if connected
-  useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: isConnected ? -60 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [isConnected, slideAnim]);
+  if (isConnected) return null;
 
   return (
-    <Animated.View
+    <View
+      accessibilityRole="alert"
       style={{
         position: "absolute",
         top: 0,
@@ -38,17 +43,21 @@ export const NoInternetBanner = () => {
         justifyContent: "center",
         alignItems: "center",
         zIndex: 9999,
-        transform: [{ translateY: slideAnim }],
         flexDirection: "row",
         paddingHorizontal: 16,
       }}
     >
-      <Text 
-        className="text-white text-xs font-bold font-mono tracking-wide"
-        style={{ color: colors.inkPrimary }}
+      <Text
+        className="text-xs font-bold tracking-wide"
+        // Always light: the background is the error red in every theme, and
+        // inkPrimary is dark in the light theme — dark on red is barely readable.
+        style={{ color: "#FFFFFF" }}
       >
-        No internet connection
+        {/* What is actually known is that our server did not answer. The user's
+            internet may be fine, and telling them it is not sends them to fix
+            the wrong thing. */}
+        Can't reach Retro Code — retrying
       </Text>
-    </Animated.View>
+    </View>
   );
 };
