@@ -7,12 +7,13 @@
  * ---------------------------------------------------------------------------
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Text } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, type NavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuthStore } from "../stores/authStore";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import { supabase } from "../services/supabase";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -177,6 +178,14 @@ export const AppNavigator = () => {
   const { user, setSession, initialized } = useAuthStore();
   const { colors } = useTheme();
 
+  // Held here because the notification tap handler lives outside the navigator
+  // tree — it fires before any screen is mounted on a cold start.
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  // Registers this device once signed in, and opens the right project when a
+  // "your build is ready" notification is tapped.
+  usePushNotifications(user?.id ?? null, navigationRef);
+
   // Watch Supabase auth sessions
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -226,7 +235,7 @@ export const AppNavigator = () => {
       <NoInternetBanner />
 
       {/* 2. Navigation Container Stacks */}
-      <NavigationContainer linking={linking as never}>
+      <NavigationContainer ref={navigationRef} linking={linking as never}>
         <RootStack.Navigator
           screenOptions={{
             headerShown: false,

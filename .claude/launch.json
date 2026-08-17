@@ -8,7 +8,9 @@
       "port": 8082,
       "autoPort": false,
       "env": {
-        "CI": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "BROWSER": "none",
+        "EXPO_NO_PROMPT": "1"
       }
     }
   ]

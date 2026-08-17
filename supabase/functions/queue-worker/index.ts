@@ -69,10 +69,44 @@ async function snapshotBeforeRun(
   }
 }
 
+/**
+ * Tell the user their run finished.
+ *
+ * Deliberately after the job is already recorded as complete, and deliberately
+ * unable to throw: the user asked for a build, not for a notification. A push
+ * that fails must not turn a finished run into a retried one.
+ */
+async function notify(
+  client: SupabaseClient,
+  job: QueueJob,
+  outcome: { succeeded: boolean; detail: string },
+  durationMs: number,
+): Promise<void> {
+  try {
+    const { notifyRunFinished } = await import("../shared/push.ts");
+    const { data } = await client.from("projects").select("name").eq("id", job.project_id).maybeSingle();
+    const result = await notifyRunFinished(client, job.user_id, {
+      projectName: data?.name ? String(data.name) : null,
+      sessionId: job.session_id,
+      projectId: job.project_id,
+      succeeded: outcome.succeeded,
+      detail: outcome.detail,
+    }, durationMs);
+    // Logged either way: a worker that has quietly stopped notifying anyone is
+    // otherwise invisible until a user complains.
+    console.log(`[queue-worker] push for job ${job.id}: sent=${result.sent}${result.skipped ? ` (${result.skipped})` : ""}`);
+  } catch (error) {
+    captureException(error, { function: "queue-worker", phase: "push" });
+  }
+}
+
 export async function processNextJob(client: SupabaseClient, workerId: string): Promise<{ processed: boolean; status?: string; jobId?: string }> {
   const job = await claim(client, workerId);
   if (!job) return { processed: false };
   await setTask(client, job.session_id, "running", { status: "processing", attempt: job.attempts });
+  // Measured here rather than from locked_at: this is the wall-clock the user
+  // actually waited, which is what decides whether a push is welcome or noise.
+  const startedAt = Date.now();
   try {
     // Load the Agent Core lazily. This keeps the worker's authenticated health
     // path lightweight and prevents an optional sandbox SDK from becoming a
@@ -119,6 +153,7 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         checkpoint_id: checkpoint.id,
         checkpoint_note: checkpoint.note,
       });
+      await notify(client, job, { succeeded: true, detail: result.finalText }, Date.now() - startedAt);
       return { processed: true, status: "completed", jobId: job.id };
     } finally {
       // Cost control: never leave a sandbox warm after the job — idle warm time
@@ -131,6 +166,12 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
     const { error: failError } = await client.rpc("fail_agent_job", { p_job_id: job.id, p_error: message });
     if (failError) throw failError;
     await setTask(client, job.session_id, decision.status === "failed" ? "failed" : "running", { error: message, retry_in_seconds: decision.delaySeconds, attempts: job.attempts });
+    // Only once it has genuinely given up. Notifying on each retry would buzz a
+    // phone four times for one run that is still, as far as the user is
+    // concerned, in progress.
+    if (decision.status === "failed") {
+      await notify(client, job, { succeeded: false, detail: message }, Date.now() - startedAt);
+    }
     return { processed: true, status: decision.status, jobId: job.id };
   }
 }

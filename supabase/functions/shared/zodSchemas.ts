@@ -139,6 +139,25 @@ export const ProviderKeysSchema = z.object({
 );
 
 /**
+ * Registering a device for run-finished notifications.
+ *
+ * The token's shape is checked properly in shared/push.ts — this only bounds it
+ * so a megabyte of junk never reaches the database.
+ */
+export const PushRegisterSchema = z.object({
+  action: z.enum(["register", "unregister", "list"]),
+  token: z.string().trim().min(10).max(300).optional(),
+  platform: z.enum(["ios", "android", "web"]).optional(),
+  deviceName: z.string().trim().min(1).max(80).optional(),
+}).strict().refine(
+  (input) => input.action !== "register" || (!!input.token && !!input.platform),
+  { message: "token and platform are required to register a device." },
+).refine(
+  (input) => input.action !== "unregister" || !!input.token,
+  { message: "token is required to unregister a device." },
+);
+
+/**
  * Publishing a build to a public link.
  *
  * `html` is the document the client is already previewing, so what gets shared
