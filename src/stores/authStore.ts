@@ -27,6 +27,10 @@ interface AuthState {
   setSession: (session: Session | null) => Promise<void>;
   loadProfile: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** A token that is valid now, refreshing first if the stored one has expired. */
+  getAccessToken: () => Promise<string | undefined>;
+  /** Force a refresh. True when a new token was obtained. */
+  refreshAccessToken: () => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -66,5 +70,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ user: null, session: null, profile: null });
+  },
+
+  /**
+   * Session handling lives here rather than in functionsClient because this is
+   * already the module that owns the Supabase client. Keeping it that way means
+   * the network layer stays free of auth plumbing — and testable without
+   * standing up React Native's whole module graph.
+   *
+   * `getSession()` refreshes an expired session before returning it, which the
+   * stored snapshot cannot do: after the app has been backgrounded past expiry,
+   * `session` here is simply out of date.
+   */
+  getAccessToken: async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) {
+        // Keep the store in step, so anything reading `session` directly sees
+        // the refreshed token too.
+        if (data.session.access_token !== get().session?.access_token) {
+          set({ session: data.session, user: data.session.user });
+        }
+        return data.session.access_token;
+      }
+    } catch {
+      /* fall through to the last known token */
+    }
+    return get().session?.access_token;
+  },
+
+  refreshAccessToken: async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error || !data.session?.access_token) return false;
+      set({ session: data.session, user: data.session.user });
+      return true;
+    } catch {
+      return false;
+    }
   },
 }));

@@ -64,12 +64,47 @@ function describeDetails(details: unknown): string | null {
   return parts.length ? parts.slice(0, 3).join("; ") : null;
 }
 
+/**
+ * A token that is valid *now*.
+ *
+ * Asked of the auth store rather than read from its `session` field: that field
+ * is whatever the last `onAuthStateChange` delivered, which after the app has
+ * been backgrounded past expiry is simply out of date. The store refreshes
+ * before answering.
+ *
+ * The `?.` is a real fallback, not defensive noise — this module must keep
+ * working against a minimal store, and a stale token still beats no token
+ * because the server makes the decision either way.
+ */
+async function currentToken(): Promise<string | undefined> {
+  const state = useAuthStore.getState();
+  return (await state.getAccessToken?.()) ?? state.session?.access_token;
+}
+
+/**
+ * Whether a failure is worth one refresh-and-retry.
+ *
+ * Only an authentication failure, and only when a token was actually sent —
+ * retrying an anonymous call would just fail again, and retrying a 403 or a 404
+ * would retry a decision the server has already made deliberately.
+ */
+export function shouldRetryAfterRefresh(
+  status: number,
+  code: string | undefined,
+  hadToken: boolean,
+): boolean {
+  if (!hadToken || status !== 401) return false;
+  return code === undefined || code === "UNAUTHORIZED";
+}
+
 export async function invokeFunction<T>(
   name: string,
   options: { method?: HttpMethod; body?: unknown } = {},
+  /** Internal: set on the one retry, so a persistent 401 cannot loop. */
+  isRetry = false,
 ): Promise<T> {
   const method = options.method ?? "POST";
-  const token = useAuthStore.getState().session?.access_token;
+  const token = await currentToken();
 
   // A function that isn't deployed, or a host that can't be reached, rejects
   // here — the browser's own message for that is "Failed to fetch", which
@@ -111,10 +146,21 @@ export async function invokeFunction<T>(
       nested?.message ??
       (typeof data?.error === "string" ? data.error : undefined) ??
       (raw || res.statusText || `HTTP ${res.status}`);
+    const code = data?.code ?? nested?.code;
+
+    // An expired token is the single most common failure in a phone app: the
+    // user backgrounds it, comes back, and taps something. Force a refresh and
+    // send the request once more rather than handing them a dead end. Safe to
+    // repeat because a 401 means the server rejected it before doing any work.
+    if (!isRetry && shouldRetryAfterRefresh(res.status, code, !!token)) {
+      const refreshed = await useAuthStore.getState().refreshAccessToken?.();
+      if (refreshed) return invokeFunction<T>(name, options, true);
+    }
+
     const detail = describeDetails(data?.details ?? nested?.details);
     throw new FunctionsError(
       res.status,
-      data?.code ?? nested?.code,
+      code,
       detail ? `${message} (${detail})` : String(message),
     );
   }

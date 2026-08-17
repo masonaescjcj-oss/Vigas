@@ -77,6 +77,46 @@ describe("invokeFunction error reporting", () => {
   });
 });
 
+/**
+ * A phone app's most ordinary session is: open it, background it, come back an
+ * hour later, tap something. That used to produce "the token is invalid or
+ * expired" with no recovery. The risk in fixing it is retrying too much, so
+ * these pin down exactly which failures earn a second attempt.
+ */
+describe("shouldRetryAfterRefresh", () => {
+  it("retries an expired token", async () => {
+    const { shouldRetryAfterRefresh } = await import("../functionsClient");
+    expect(shouldRetryAfterRefresh(401, "UNAUTHORIZED", true)).toBe(true);
+  });
+
+  it("retries a bare 401, since a gateway may not use our error envelope", async () => {
+    const { shouldRetryAfterRefresh } = await import("../functionsClient");
+    expect(shouldRetryAfterRefresh(401, undefined, true)).toBe(true);
+  });
+
+  it("does not retry when no token was sent", async () => {
+    // Refreshing nothing yields nothing; the second call would fail identically.
+    const { shouldRetryAfterRefresh } = await import("../functionsClient");
+    expect(shouldRetryAfterRefresh(401, "UNAUTHORIZED", false)).toBe(false);
+  });
+
+  it("does not retry a decision the server made deliberately", async () => {
+    // A fresh token does not change an admin check or a missing row.
+    const { shouldRetryAfterRefresh } = await import("../functionsClient");
+    expect(shouldRetryAfterRefresh(403, "SERVICE_ROLE_REQUIRED", true)).toBe(false);
+    expect(shouldRetryAfterRefresh(404, "NOT_FOUND", true)).toBe(false);
+    expect(shouldRetryAfterRefresh(400, "VALIDATION_ERROR", true)).toBe(false);
+    expect(shouldRetryAfterRefresh(503, "SHARING_NOT_MIGRATED", true)).toBe(false);
+    expect(shouldRetryAfterRefresh(500, undefined, true)).toBe(false);
+  });
+
+  it("does not retry a 401 that names some other cause", async () => {
+    // Something we have not thought about should surface, not be papered over.
+    const { shouldRetryAfterRefresh } = await import("../functionsClient");
+    expect(shouldRetryAfterRefresh(401, "PROVIDER_REJECTED", true)).toBe(false);
+  });
+});
+
 describe("invokeFunction when the backend cannot be reached", () => {
   beforeEach(() => {
     vi.resetModules();
