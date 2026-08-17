@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6D42C7"
+      "backgroundColor": "#0E0F0F"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -29,7 +29,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6D42C7"
+        "backgroundColor": "#0E0F0F"
       },
       "permissions": ["INTERNET", "android.permission.POST_NOTIFICATIONS"],
       "blockedPermissions": [

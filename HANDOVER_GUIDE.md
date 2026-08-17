@@ -24,16 +24,21 @@ graph TD
 
 ### 1. Automatic System Color Scheme Detection
 *   **Default Theme:** Automatically detects OS preference via React Native `Appearance.getColorScheme()`.
-*   **Pure Crisp White Light Mode:**
-    *   `canvasBase`: `#FFFFFF` (Pristine 100% White background)
-    *   `surfaceRaised`: `#FFFFFF` (Crisp white floating cards)
-    *   `inkPrimary`: `#0F172A` (Dark slate charcoal text for maximum contrast)
-    *   `inkSecondary`: `#475569` (Muted slate gray text)
-    *   `brandPrimary`: `#6D42C7` (Signature deep purple accent)
-    *   `controlPills`: `#FFFFFF` background with `#E2E8F0` hairline border & shadow.
-*   **Obsidian Dark Mode:**
-    *   `canvasBase`: `#000000` / `#171615` (Deep charcoal canvas)
-    *   `surfaceRaised`: `#141414` (Dark surface cards)
+*   **Three themes:** `light`, `dark`, `darkest`.
+*   **The palette lives in [`src/theme/theme.ts`](src/theme/theme.ts) and that file is the only source of truth.**
+
+> ⚠️ **Corrected 17 Aug 2026.** This section used to list every colour by hex — a
+> deep purple `#6D42C7` brand on pure white. All of it was out of date: the
+> palette was replaced with a Perplexity-derived one (near-black `#0E0F0F`
+> canvas, turquoise `#3FC1D3` accent, `#F3F3EE` ink). Rather than restate values
+> that will drift again the moment the theme changes, read `ColorTokens` in
+> `src/theme/theme.ts`. Nothing in the app hardcodes a colour; every component
+> reads tokens through `useTheme()`.
+>
+> The launch assets in `assets/` follow the same palette — regenerate them with
+> `python scripts/recolour-assets.py` if it changes again, and keep
+> `app.json`'s `splash.backgroundColor` equal to `canvasBase` in the darkest
+> theme, or launching flashes one colour and then another.
 
 ### 2. Header Bar & Floating Controls (`AgentChatScreen.tsx`)
 *   **Top Header Bar:** Profile avatar button (left), Chat/Build mode switcher (center), Incognito ghost button (right) styled with `#FFFFFF` background, `#E2E8F0` border, and elevated `zIndex: 50` for unblocked touch interactions.
