@@ -22,6 +22,7 @@ import {
   selectionFeedback,
   sendFeedback,
   successFeedback,
+  tapFeedback,
   warningFeedback,
 } from "../../services/haptics";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -47,6 +48,8 @@ import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { isUuid } from "../../services/formatting";
 import { buildPreviewHtml } from "../../services/previewBuilder";
+import { createShare } from "../../services/shareService";
+import { shareLink } from "../../services/shareSheet";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
 import { AgentMessageText } from "../../components/AgentMessageText";
 import { ThinkingIndicator } from "../../components/ThinkingIndicator";
@@ -190,6 +193,12 @@ export const AgentChatScreen = () => {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Publishing the previewed page to a link. The URL is kept so the button can
+  // become "Copy link" — publishing twice would leave two live pages and only
+  // one of them in the user's hand.
+  const [publishing, setPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+
   // Template picked in the New Project dialog
   const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -331,6 +340,9 @@ export const AgentChatScreen = () => {
   const loadPreview = async () => {
     setPreviewLoading(true);
     setPreviewError(null);
+    // Any previously published link describes the old build. Offering "Copy
+    // link" next to a page that has since changed would hand out a stale URL.
+    setPublishedUrl(null);
     try {
       const projectId = await ensureProjectId();
       const files = await getProjectFiles(projectId);
@@ -652,6 +664,51 @@ export const AgentChatScreen = () => {
       notify("Rollback failed", e instanceof Error ? e.message : String(e));
     } finally {
       setRestoringCheckpointId(null);
+    }
+  };
+
+  /**
+   * Publish the previewed page to a public link, then hand that link over.
+   *
+   * The document sent up is exactly the one on screen, so what a friend opens is
+   * what the user just looked at. Published once and remembered: pressing again
+   * shares the same URL rather than leaving a second live page behind.
+   */
+  const handleShareApp = async () => {
+    if (publishing) return;
+
+    if (publishedUrl) {
+      const outcome = await shareLink(publishedUrl, activeProjectName || "My app");
+      if (outcome === "copied") notify("Link copied", publishedUrl);
+      else if (outcome === "manual") notify("Your link", publishedUrl);
+      return;
+    }
+
+    if (!previewHtml) {
+      notify("Nothing to share yet", "Ask the agent to build something first.");
+      return;
+    }
+
+    tapFeedback();
+    setPublishing(true);
+    try {
+      const projectId = await ensureProjectId();
+      const share = await createShare({
+        projectId,
+        html: previewHtml,
+        title: activeProjectName || undefined,
+      });
+      setPublishedUrl(share.url);
+      successFeedback();
+
+      const outcome = await shareLink(share.url, activeProjectName || "My app");
+      if (outcome === "copied") notify("Link copied", share.url);
+      else if (outcome === "manual") notify("Your link", share.url);
+    } catch (e) {
+      errorFeedback();
+      notify("Could not publish", e instanceof Error ? e.message : String(e));
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -2111,10 +2168,39 @@ export const AgentChatScreen = () => {
               <VectorIcon name="eye" size={16} color={colors.success} style={{ marginRight: 6 }} />
               <Text style={{ color: colors.inkPrimary }} className=" text-base font-bold">Live App Preview</Text>
             </View>
-            <TouchableOpacity onPress={loadPreview} className="p-1 flex-row items-center">
-              <VectorIcon name="rotate-ccw" size={12} color={colors.brandPrimary} style={{ marginRight: 4 }} />
-              <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">Refresh</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center">
+              {/* Share what is on screen. Placed here rather than in the chat so
+                  "what you see is what you share" is literally true — this
+                  publishes the document the surface below is rendering. */}
+              <TouchableOpacity
+                onPress={handleShareApp}
+                disabled={publishing || previewLoading || !previewHtml}
+                style={{ opacity: previewHtml && !previewLoading ? 1 : 0.4 }}
+                className="p-1 flex-row items-center mr-4"
+                activeOpacity={0.7}
+              >
+                {publishing ? (
+                  <ActivityIndicator size="small" color={colors.brandPrimary} />
+                ) : (
+                  <>
+                    <VectorIcon
+                      name={publishedUrl ? "link" : "share-2"}
+                      size={12}
+                      color={colors.brandPrimary}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">
+                      {publishedUrl ? "Copy link" : "Share"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={loadPreview} className="p-1 flex-row items-center">
+                <VectorIcon name="rotate-ccw" size={12} color={colors.brandPrimary} style={{ marginRight: 4 }} />
+                <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">Refresh</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={{ backgroundColor: colors.surfaceCode }} className="flex-1 p-4">
@@ -2318,6 +2404,7 @@ export const AgentChatScreen = () => {
                     { label: "Account", icon: "user", target: "AccountSettings", root: false },
                     { label: "Preferences", icon: "settings", target: "Preferences", root: false },
                     { label: "Your AI providers", icon: "cpu", target: "Providers", root: false },
+                    { label: "Shared links", icon: "link", target: "SharedLinks", root: false },
                     { label: "Security", icon: "lock", target: "SecuritySettings", root: false },
                     { label: "Subscription", icon: "zap", target: "ManageSubscription", root: true },
                     { label: "Token usage", icon: "chart", target: "TokenUsage", root: true },

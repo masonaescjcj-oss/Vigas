@@ -43,6 +43,7 @@ import { ProfileMainScreen } from "../screens/settings/ProfileMainScreen";
 import { AccountSettingsScreen } from "../screens/settings/AccountSettingsScreen";
 import { PreferencesScreen } from "../screens/settings/PreferencesScreen";
 import { ProvidersScreen } from "../screens/settings/ProvidersScreen";
+import { SharedLinksScreen } from "../screens/settings/SharedLinksScreen";
 import { AdminScreen } from "../screens/admin/AdminScreen";
 import { SecuritySettingsScreen } from "../screens/settings/SecuritySettingsScreen";
 import { HelpSupportScreen } from "../screens/settings/HelpSupportScreen";
@@ -134,6 +135,7 @@ const ProfileNavigator = () => {
       <ProfileStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
       <ProfileStack.Screen name="Preferences" component={PreferencesScreen} />
       <ProfileStack.Screen name="Providers" component={ProvidersScreen} />
+      <ProfileStack.Screen name="SharedLinks" component={SharedLinksScreen} />
       <ProfileStack.Screen name="Admin" component={AdminScreen} />
       <ProfileStack.Screen name="SecuritySettings" component={SecuritySettingsScreen} />
       <ProfileStack.Screen name="HelpSupport" component={HelpSupportScreen} />

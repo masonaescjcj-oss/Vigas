@@ -45,6 +45,7 @@ import {
   Info,
   Layers,
   LineChart,
+  Link2,
   Lock,
   Mail,
   MapPin,
@@ -56,6 +57,7 @@ import {
   RotateCcw,
   Search,
   Settings,
+  Share2,
   Shield,
   Smartphone,
   Sparkles,
@@ -122,6 +124,8 @@ const ICONS = {
   lock: Lock,
   bell: Bell,
   alert: AlertCircle,
+  link: Link2,
+  "share-2": Share2,
 } as const;
 
 export type IconName = keyof typeof ICONS;

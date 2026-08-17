@@ -139,6 +139,28 @@ export const ProviderKeysSchema = z.object({
 );
 
 /**
+ * Publishing a build to a public link.
+ *
+ * `html` is the document the client is already previewing, so what gets shared
+ * is what the user saw. The ceiling here is deliberately looser than the real
+ * one in shareDoc (2 MB): this is only a parser guard, and the size refusal
+ * belongs where it can explain itself in kilobytes.
+ */
+export const ShareSchema = z.object({
+  action: z.enum(["create", "list", "revoke"]),
+  projectId: uuid.optional(),
+  title: z.string().trim().min(1).max(120).optional(),
+  html: z.string().min(1).max(4_000_000).optional(),
+  code: z.string().trim().min(4).max(40).optional(),
+}).strict().refine(
+  (input) => input.action !== "create" || (!!input.projectId && !!input.html),
+  { message: "projectId and html are required to create a share." },
+).refine(
+  (input) => input.action !== "revoke" || !!input.code,
+  { message: "code is required to revoke a share." },
+);
+
+/**
  * The admin panel. One schema for every action because they share one gate;
  * the per-action requirements are checked in refinements rather than by
  * splitting this into a dozen near-identical objects.
