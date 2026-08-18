@@ -42,7 +42,28 @@ Deno.test("a malformed request does not blame the key", () => {
   // The critical case: rotating here would mark all ten keys dead for a
   // problem every one of them would have rejected identically.
   assertEquals(classifyFailure(400, "invalid 'messages': expected an array"), "request_rejected");
-  assertEquals(classifyFailure(404, "model not found"), "request_rejected");
+});
+
+Deno.test("a missing model is the provider's gap, not a bad request", () => {
+  // This expectation used to be request_rejected, which stopped the whole run at
+  // the first key. But "model not found" is a statement about *that provider* —
+  // another key may well carry the model — so the right move is to try the next
+  // one while leaving this key's health alone. Changed deliberately, not to make
+  // a test pass.
+  assertEquals(classifyFailure(404, "model not found"), "model_unavailable");
+});
+
+Deno.test("neither of the blameless kinds ever rests a key", () => {
+  // The invariant the two tests above are really protecting.
+  for (const kind of ["request_rejected", "model_unavailable"] as const) {
+    const health = nextHealth(
+      key({ failure_count: 2, exhausted_at: null }),
+      { ok: false, kind, detail: "d" },
+      new Date(NOW),
+    );
+    assertEquals(health.exhausted_at, undefined, kind);
+    assertEquals(health.failure_count, undefined, kind);
+  }
 });
 
 Deno.test("an upstream outage is the provider's fault, not the key's", () => {
@@ -140,4 +161,51 @@ Deno.test("a resting key keeps its original rest time, so cooldown cannot be ext
     new Date(NOW),
   );
   assertEquals(health.exhausted_at, started);
+});
+
+/**
+ * The cases below are real responses from the configured provider, captured by
+ * making the calls. Every classification test before them used bodies I made up,
+ * and two of them were wrong about what actually arrives.
+ */
+const REAL_INVALID_KEY = '{"error":{"code":"","message":"Invalid token (request id: 2026...)","type":"new_api_error"}}';
+const REAL_NO_MODEL_ACCESS = '{"error":{"code":"","message":"This token has no access to model totally-not-a-model-xyz (request id: 2026...)","type":"new_api_error"}}';
+const REAL_MALFORMED = '{"error":{"message":"json: cannot unmarshal string into Go struct field ***.messages of type []***.Message","type":"new_api_error","param":"","code":"invalid_request"}}';
+
+Deno.test("a real invalid key rests that key so the pool rotates", () => {
+  assertEquals(classifyFailure(401, REAL_INVALID_KEY), "key_exhausted");
+});
+
+Deno.test("a real 'no access to model' does NOT rest the key", () => {
+  // It arrives as a 403, which used to mean key_exhausted — so every key in the
+  // pool answered the same way and every key got a 30-minute cooldown. One
+  // unsupported model id took the whole service down for half an hour.
+  assertEquals(classifyFailure(403, REAL_NO_MODEL_ACCESS), "model_unavailable");
+});
+
+Deno.test("a key that lacks a model keeps its health untouched", () => {
+  const subject = key({ failure_count: 1, exhausted_at: null });
+  const health = nextHealth(subject, { ok: false, kind: "model_unavailable", detail: "no access" }, new Date());
+  assertEquals(health.exhausted_at, undefined, "must not be rested");
+  assertEquals(health.failure_count, undefined, "must not count against it");
+  assertEquals(health.last_error, "no access", "but the reason is recorded");
+});
+
+Deno.test("a real malformed request is our fault even though it arrives as a 500", () => {
+  // The provider reports our bad JSON with status 500. Read as a bare status that
+  // is an outage, and the request would tour the entire pool costing money on
+  // something that can never succeed.
+  assertEquals(classifyFailure(500, REAL_MALFORMED), "request_rejected");
+});
+
+Deno.test("a genuine provider outage is still provider_down", () => {
+  // The body must not be over-read: an empty or generic 500 is an outage.
+  assertEquals(classifyFailure(500, ""), "provider_down");
+  assertEquals(classifyFailure(502, "<html>Bad Gateway</html>"), "provider_down");
+  assertEquals(classifyFailure(0, ""), "provider_down");
+});
+
+Deno.test("a quota message still rests the key, even alongside other wording", () => {
+  assertEquals(classifyFailure(429, '{"error":{"message":"You exceeded your current quota"}}'), "key_exhausted");
+  assertEquals(classifyFailure(200, '{"error":{"message":"insufficient credit"}}'), "key_exhausted");
 });
