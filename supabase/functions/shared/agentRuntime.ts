@@ -190,6 +190,46 @@ export function resolveRequestedModel(requested?: string | null): string | undef
   return ALLOWED_MODELS.includes(requested) ? requested : undefined;
 }
 
+/**
+ * Read the arguments of a tool call.
+ *
+ * The provider sends these as a JSON *string* — measured, not assumed. Two things
+ * can go wrong with that, and the old code answered both by substituting `{}`:
+ *
+ *   - The JSON is truncated, which happens when a model runs out of room
+ *     mid-argument. A long `content` for `write` is exactly where that lands.
+ *   - A different provider hands back an object instead of a string.
+ *
+ * Calling a tool with `{}` is the worst available response. `write` with no path,
+ * `edit` with no content, `bash` with no command — each then fails for a reason
+ * that looks like the tool's fault or the model's, when in fact we dropped what
+ * the model said. Failing here names the real cause.
+ */
+export function parseToolArguments(name: unknown, raw: unknown): Record<string, unknown> {
+  // Some providers skip the string encoding entirely.
+  if (raw && typeof raw === "object") return raw as Record<string, unknown>;
+
+  // No arguments at all is legitimate for a tool that takes none.
+  if (raw === undefined || raw === null || raw === "") return {};
+
+  try {
+    const parsed = JSON.parse(String(raw));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("arguments were not a JSON object");
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new AppError(
+      502,
+      "MODEL_TOOL_ARGUMENTS_UNREADABLE",
+      `The model's arguments for "${String(name ?? "a tool")}" arrived incomplete, ` +
+        "so the step was not run. This usually means the answer was cut off — try again, " +
+        "or ask for a smaller change.",
+      { arguments: String(raw).slice(0, 200) },
+    );
+  }
+}
+
 export class OpenAIChatModel implements ChatModel {
   private readonly apiKey: string;
   private readonly model: string;
@@ -314,19 +354,11 @@ export class OpenAIChatModel implements ChatModel {
     const text = choice?.message?.content;
     const openAiToolCalls = choice?.message?.tool_calls;
 
-    const toolCalls = openAiToolCalls?.map((tc: any) => {
-      let input = {};
-      try {
-        input = JSON.parse(tc.function.arguments);
-      } catch {
-        // Fallback parsing
-      }
-      return {
-        id: tc.id,
-        name: tc.function.name,
-        input,
-      };
-    });
+    const toolCalls = openAiToolCalls?.map((tc: any) => ({
+      id: tc.id,
+      name: tc.function?.name,
+      input: parseToolArguments(tc.function?.name, tc.function?.arguments),
+    }));
 
     return {
       text: text || undefined,
