@@ -17,6 +17,7 @@ import { parseBlocks } from "./markdown";
 import { CopyButton } from "./CopyButton";
 import { useTheme } from "../theme/ThemeProvider";
 import { MONO_FAMILY, fontFamilyFor } from "../theme/fonts";
+import { directionStyleFor } from "../theme/direction";
 
 /** Inline `code` and **bold** inside a prose block. */
 const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color: string; codeBg: string; codeColor: string }) => {
@@ -26,7 +27,13 @@ const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color:
   const family = fontFamilyFor(value);
   const bold = fontFamilyFor(value, "bold");
   return (
-    <Text selectable style={{ color, fontSize: 14, lineHeight: 22, fontFamily: family }}>
+    // Alignment stated rather than left to `start`: a browser resolves that
+    // correctly because it detects the direction itself, but React Native does
+    // not, so on a phone this was left-aligned Persian.
+    <Text
+      selectable
+      style={{ color, fontSize: 14, lineHeight: 22, fontFamily: family, ...directionStyleFor(value) }}
+    >
       {parts.map((part, index) => {
         if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
           return (

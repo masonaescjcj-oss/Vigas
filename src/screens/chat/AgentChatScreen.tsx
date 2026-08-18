@@ -47,6 +47,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { isUuid } from "../../services/formatting";
+import { directionStyleFor } from "../../theme/direction";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { createShare } from "../../services/shareService";
 import { exportProject, openDownload, readableSize } from "../../services/exportService";
@@ -179,6 +180,7 @@ export const AgentChatScreen = () => {
   const [threadTitle, setThreadTitle] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
 
+
   // Live agent session wiring (agent-run → job_queue → queue-worker → agent_tasks)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -275,6 +277,14 @@ export const AgentChatScreen = () => {
   
   // Active Selected Project State (Empty by default, populated when user selects a project)
   const [activeProjectName, setActiveProjectName] = useState<string>("");
+  /**
+   * What the header shows. Named here so the text and its direction are measured
+   * from the same string — a title is whatever the user asked, so it is Persian
+   * as often as English.
+   */
+  const headerTitle = isIncognito
+    ? "Incognito Chat"
+    : (threadTitle || activeProjectName || "New chat");
   
   // Settings sheet view: the menu, or the usage panel.
   const [profileSubScreen, setProfileSubScreen] = useState<"main" | "usage">("main");
@@ -1222,7 +1232,7 @@ export const AgentChatScreen = () => {
       ) : (
         /* ACTIVE THREAD HEADER STATE */
         <View style={{ backgroundColor: bgCanvas, zIndex: 50, elevation: 10 }} className="flex-row items-center justify-between px-4 py-3 z-50">
-          
+
           <View className="flex-row items-center flex-1 mr-2">
             <TouchableOpacity 
               onPress={() => setShowDrawerModal(true)}
@@ -1238,8 +1248,14 @@ export const AgentChatScreen = () => {
               className="flex-row items-center flex-1" 
               activeOpacity={0.8}
             >
-              <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left mr-1" numberOfLines={1}>
-                {isIncognito ? "Incognito Chat" : (threadTitle || activeProjectName || "New chat")}
+              {/* A thread's title is whatever the user asked, so it is Persian
+                  as often as not. `text-left` truncated it from the wrong end. */}
+              <Text
+                style={{ color: textPrimary, ...directionStyleFor(headerTitle) }}
+                className="text-sm font-semibold mr-1"
+                numberOfLines={1}
+              >
+                {headerTitle}
               </Text>
               <VectorIcon name="chevron-down" size={10} color={colors.inkSecondary} />
             </TouchableOpacity>
@@ -1420,7 +1436,13 @@ export const AgentChatScreen = () => {
                 return (
                   <View key={msg.id} className="mb-6 items-end">
                     <View style={{ backgroundColor: colors.bubbleUser, borderColor: colors.borderHairline }} className="max-w-[92%] p-4 rounded-3xl border shadow-sm">
-                      <Text style={{ color: textPrimary }} className="text-sm leading-6 text-left font-sans font-medium">
+                      {/* Direction from the text itself. `text-left` here was
+                          left-aligning Persian, so a user's own message ran the
+                          opposite way to the answer below it. */}
+                      <Text
+                        style={{ color: textPrimary, ...directionStyleFor(msg.content) }}
+                        className="text-sm leading-6 font-sans font-medium"
+                      >
                         {msg.content}
                       </Text>
                     </View>
@@ -1659,12 +1681,17 @@ export const AgentChatScreen = () => {
             onSubmitEditing={() => void handleSend()}
             placeholder={isIncognito ? "Ask in Incognito — nothing is saved..." : (activeMode === "build" ? "Ask or build... (Type @ for files, / for commands)" : "Ask a question — answers come straight back...")}
             placeholderTextColor={colors.inkMuted}
-            className="w-full bg-transparent px-2 py-1 text-sm text-left mb-3"
+            className="w-full bg-transparent px-2 py-1 text-sm mb-3"
             style={{
               color: textPrimary,
               // Follows what is being typed, so a Persian prompt is set in
               // Vazirmatn as it is written rather than after it is sent.
               fontFamily: fontFamilyFor(inputText),
+              // And runs the right way as it is typed. The input was hard-set to
+              // left, so writing Persian put the caret and the text on the wrong
+              // side of the field — the one place a user notices on every
+              // keystroke rather than only when reading back.
+              ...directionStyleFor(inputText),
               outlineStyle: "none",
               outlineWidth: 0,
             } as any}
