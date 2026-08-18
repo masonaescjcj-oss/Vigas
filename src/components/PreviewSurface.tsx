@@ -19,8 +19,18 @@
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
-const RADIUS = 16;
-const BACKGROUND = "#0f1115";
+/**
+ * Square, on purpose. The preview used to sit inside a fake browser window, so
+ * rounded corners read as part of that frame. Now it fills the screen — and a
+ * radius there would clip the corners of the user's own page.
+ */
+const RADIUS = 0;
+/**
+ * Only ever seen for the instant before the document paints. Matches the app's
+ * darkest canvas so there is no flash of a different colour; hardcoded because a
+ * StyleSheet is built once at module load, before any theme exists.
+ */
+const BACKGROUND = "#0E0F0F";
 
 /** Web: an opaque-origin iframe, so preview code cannot reach the app's storage. */
 const WebPreview = ({ html }: { html: string }) => {

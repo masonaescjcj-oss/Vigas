@@ -2288,19 +2288,14 @@ export const AgentChatScreen = () => {
             </View>
           </View>
 
-          <View style={{ backgroundColor: colors.surfaceCode }} className="flex-1 p-4">
-            <View style={{ backgroundColor: colors.surfaceRaised }} className="w-full h-full rounded-3xl p-4 flex-col">
-              <View className="flex-row items-center justify-between pb-3">
-                <View className="flex-row space-x-1.5">
-                  <View className="w-3 h-3 rounded-full bg-red-500" />
-                  <View style={{ backgroundColor: colors.warning }} className="w-3 h-3 rounded-full" />
-                  <View className="w-3 h-3 rounded-full bg-emerald-500" />
-                </View>
-                <Text style={{ color: colors.inkSecondary }} className=" text-xs font-mono">
-                  {activeProjectName ? activeProjectName.toLowerCase().replace(/\s+/g, "-") + ".app" : "preview"}
-                </Text>
-              </View>
-
+          {/* No frame, no padding, no fake window buttons. This used to be dressed
+              up as a desktop browser — two nested paddings, rounded corners and
+              three traffic lights — which on a phone spent most of the width on
+              decoration and made the preview itself a small box in the middle.
+              The real app gets the whole surface; the controls it needs are in
+              the header above. */}
+          <View style={{ backgroundColor: colors.canvasBase }} className="flex-1">
+            <View className="w-full h-full flex-col">
               {previewLoading ? (
                 <View className="flex-1 items-center justify-center">
                   <ActivityIndicator size="large" color={colors.brandPrimary} />
