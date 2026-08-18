@@ -70,6 +70,8 @@ export const agentService = {
       model?: string;
       /** Skill ids the user switched on; unknown ones are dropped server-side. */
       skills?: string[];
+      /** The user's own Supabase project. Public values only. */
+      backend?: { url: string; anonKey: string } | null;
     } = {},
   ): Promise<AgentRunAccepted> {
     return invokeFunction<AgentRunAccepted>("agent-run", {
@@ -83,6 +85,7 @@ export const agentService = {
         // Omitted when empty rather than sent as [], so an untouched request
         // stays byte-identical to what it was before skills existed.
         ...(options.skills?.length ? { skills: options.skills } : {}),
+        ...(options.backend ? { backend: options.backend } : {}),
       },
     });
   },

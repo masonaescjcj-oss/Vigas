@@ -52,6 +52,14 @@ import { SKILLS } from "../../core/agent/skills/catalog";
 import { deployProject } from "../../services/deployService";
 import { forgetNetlifyToken, loadNetlifyToken, saveNetlifyToken, tokenStorageIsSecure } from "../../services/deployToken";
 import { looksLikeNetlifyToken } from "../../services/netlify";
+import {
+  classifySupabaseKey,
+  forgetBackendTarget,
+  isSupabaseUrl,
+  loadBackendTarget,
+  saveBackendTarget,
+  type BackendTarget,
+} from "../../services/backendTarget";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { createShare } from "../../services/shareService";
 import { exportProject, openDownload, readableSize } from "../../services/exportService";
@@ -226,6 +234,12 @@ export const AgentChatScreen = () => {
   const [netlifyToken, setNetlifyToken] = useState("");
   const [hasNetlifyToken, setHasNetlifyToken] = useState(false);
 
+  // The user's own Supabase project, for skills that build against a backend.
+  const [backend, setBackend] = useState<BackendTarget | null>(null);
+  const [showBackendModal, setShowBackendModal] = useState(false);
+  const [backendUrl, setBackendUrl] = useState("");
+  const [backendKey, setBackendKey] = useState("");
+
   // Template picked in the New Project dialog
   const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -376,6 +390,9 @@ export const AgentChatScreen = () => {
     let cancelled = false;
     void loadNetlifyToken().then((token) => {
       if (!cancelled) setHasNetlifyToken(!!token);
+    });
+    void loadBackendTarget().then((target) => {
+      if (!cancelled) setBackend(target);
     });
     return () => { cancelled = true; };
   }, []);
@@ -614,6 +631,9 @@ export const AgentChatScreen = () => {
         sessionId: activeSessionId ?? undefined,
         model: selectedModelId,
         ...(activeSkills.length ? { skills: activeSkills } : {}),
+        // Only when the Supabase skill asked for it. Otherwise the project URL
+        // would sit in every stored transcript for no reason.
+        ...(activeSkills.includes("supabase-backend") && backend ? { backend } : {}),
       });
       setActiveSessionId(res.session_id);
     } catch (e) {
@@ -785,6 +805,38 @@ export const AgentChatScreen = () => {
     } finally {
       setDeploying(false);
     }
+  };
+
+  const handleSaveBackend = async () => {
+    if (!isSupabaseUrl(backendUrl)) {
+      notify("That is not a project URL", "It should look like https://abcdefgh.supabase.co with nothing after it.");
+      return;
+    }
+    const kind = classifySupabaseKey(backendKey);
+    if (kind === "service_role") {
+      // The whole reason this check exists. The key ends up inside a page that
+      // gets published, and a service role key there is the entire database.
+      notify(
+        "That is the secret key",
+        "Paste the anon / publishable key instead. The secret key would end up inside the published page and give anyone full access to your database.",
+      );
+      return;
+    }
+    if (kind === "unknown") {
+      notify("That key was not recognised", "Copy the anon (publishable) key from Supabase → Project Settings → API.");
+      return;
+    }
+
+    const target = { url: backendUrl.trim(), anonKey: backendKey.trim() };
+    await saveBackendTarget(target);
+    setBackend(target);
+    setBackendUrl("");
+    setBackendKey("");
+    setShowBackendModal(false);
+    // Switching the skill on is the point of connecting, so it is done for them.
+    setActiveSkills((prev) => (prev.includes("supabase-backend") ? prev : [...prev, "supabase-backend"]));
+    successFeedback();
+    notify("Supabase connected", "The Connect Supabase skill is on, so builds can use it now.");
   };
 
   const handleSaveToken = async () => {
@@ -1859,24 +1911,28 @@ export const AgentChatScreen = () => {
               )}
 
               {/* Send Button (Dark circle) */}
+              {/* `handleSend` also refuses while a run is in progress, and the
+                  button used to stay brand-coloured and fully tappable through
+                  all of it — pressing did nothing, with no explanation. Whatever
+                  stops the press has to be visible in the button. */}
               <TouchableOpacity
                 onPress={() => void handleSend()}
-                disabled={!hasInputText}
+                disabled={!hasInputText || isExecuting}
                 style={{
-                  backgroundColor: hasInputText ? colors.brandPrimary : (colors.inkMuted),
+                  backgroundColor: hasInputText && !isExecuting ? colors.brandPrimary : (colors.inkMuted),
                   width: 36,
                   height: 36,
                   borderRadius: 18,
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: 1
+                  opacity: isExecuting ? 0.5 : 1
                 }}
                 activeOpacity={0.8}
               >
-                <VectorIcon 
-                  name={hasInputText ? "arrow-up" : "arrow-up"} 
-                  size={16} 
-                  color={colors.canvasBase} 
+                <VectorIcon
+                  name={hasInputText ? "arrow-up" : "arrow-up"}
+                  size={16}
+                  color={colors.canvasBase}
                 />
               </TouchableOpacity>
 
@@ -2357,6 +2413,109 @@ export const AgentChatScreen = () => {
       </Modal>
 
       {/* =================================================================== */}
+      {/* MODAL: CONNECT SUPABASE                                             */}
+      {/* =================================================================== */}
+      <Modal
+        visible={showBackendModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowBackendModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/80">
+          <View style={{ backgroundColor: colors.surfaceRaised }} className="rounded-t-[32px] p-5 pb-8">
+            <View className="items-center mb-4">
+              <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
+            </View>
+
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <VectorIcon name="drive" size={18} color={colors.brandPrimary} style={{ marginRight: 8 }} />
+                <Text style={{ color: textPrimary }} className="text-xl font-bold">Connect Supabase</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowBackendModal(false)} className="px-3 py-2">
+                <Text style={{ color: colors.inkSecondary }} className="text-sm font-semibold">Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
+              Give the agent your own Supabase project and it can build against a real
+              backend — sign-in, saved data — instead of a page with nowhere to send to.
+            </Text>
+
+            {/* The warning that matters. The anon key is meant to be public; the
+                secret key inside a published page is the whole database. */}
+            <View
+              className="p-3 rounded-xl mb-4"
+              style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.warning, borderWidth: 1 }}
+            >
+              <Text style={{ color: colors.warning }} className="text-[11px] font-bold text-left mb-1">
+                Use the anon key, never the secret one
+              </Text>
+              <Text style={{ color: textSecondary }} className="text-[11px] leading-5 text-left">
+                The anon key is designed to be public and ends up inside the page you
+                publish. A service role key there would hand anyone full access to your
+                database — this screen refuses one if you paste it.
+              </Text>
+            </View>
+
+            <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">Project URL</Text>
+            <TextInput
+              value={backendUrl}
+              onChangeText={setBackendUrl}
+              placeholder="https://abcdefgh.supabase.co"
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              className="w-full p-4 rounded-2xl text-sm mb-3"
+              style={{ backgroundColor: colors.surfaceMuted, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
+            />
+
+            <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">
+              Anon / publishable key
+            </Text>
+            <TextInput
+              value={backendKey}
+              onChangeText={setBackendKey}
+              placeholder="sb_publishable_... or eyJ..."
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="w-full p-4 rounded-2xl text-sm mb-2"
+              style={{ backgroundColor: colors.surfaceMuted, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
+            />
+            <Text style={{ color: colors.inkMuted }} className="text-[10px] leading-4 mb-4 text-left">
+              Supabase → Project Settings → API. Both values are on that page.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => void handleSaveBackend()}
+              style={{ backgroundColor: colors.brandPrimary }}
+              className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90"
+              activeOpacity={0.9}
+            >
+              <Text style={{ color: colors.canvasBase }} className="text-sm font-bold">Connect</Text>
+            </TouchableOpacity>
+
+            {backend && (
+              <TouchableOpacity
+                onPress={async () => {
+                  await forgetBackendTarget();
+                  setBackend(null);
+                  notify("Supabase disconnected", "The project has been removed from this device.");
+                }}
+                className="mt-3 self-center px-3 py-2"
+              >
+                <Text style={{ color: colors.failed }} className="text-xs font-semibold">
+                  Remove the saved project
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* =================================================================== */}
       {/* MODAL: CONNECT NETLIFY                                              */}
       {/* =================================================================== */}
       <Modal
@@ -2538,6 +2697,36 @@ export const AgentChatScreen = () => {
                 );
               })}
             </ScrollView>
+
+            {/* Shown where the Supabase skill is switched on, because that is the
+                moment it becomes relevant that a project is needed. */}
+            {activeSkills.includes("supabase-backend") && (
+              <TouchableOpacity
+                onPress={() => { tapFeedback(); setShowBackendModal(true); }}
+                style={{
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: backend ? colors.success : colors.warning,
+                }}
+                className="flex-row items-center p-3 rounded-2xl border mt-1"
+                activeOpacity={0.8}
+              >
+                <VectorIcon
+                  name={backend ? "check" : "alert"}
+                  size={14}
+                  color={backend ? colors.success : colors.warning}
+                  style={{ marginRight: 8 }}
+                />
+                <View className="flex-1">
+                  <Text style={{ color: textPrimary }} className="text-xs font-semibold text-left">
+                    {backend ? "Supabase project connected" : "No Supabase project connected"}
+                  </Text>
+                  <Text style={{ color: textSecondary }} className="text-[11px] text-left mt-0.5" numberOfLines={1}>
+                    {backend ? backend.url : "Tap to add your project URL and anon key"}
+                  </Text>
+                </View>
+                <VectorIcon name="chevron-right" size={12} color={colors.inkMuted} />
+              </TouchableOpacity>
+            )}
 
             {activeSkills.length > 0 && (
               <TouchableOpacity

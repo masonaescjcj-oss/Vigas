@@ -86,6 +86,16 @@ export const AgentRunSchema = z.object({
    * unknown id is dropped rather than becoming arbitrary system-prompt text.
    */
   skills: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
+  /**
+   * The user's own Supabase project, sent only when the Supabase skill is on. The
+   * anon key is public by design — it ships inside the built page either way — so
+   * this carries nothing that is secret. A service role key is refused on the
+   * client before it can get here.
+   */
+  backend: z.object({
+    url: z.string().trim().url().max(300),
+    anonKey: z.string().trim().min(20).max(500),
+  }).strict().optional(),
 }).strict();
 
 export const AgentResumeSchema = z.object({

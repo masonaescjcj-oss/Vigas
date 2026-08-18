@@ -12,6 +12,7 @@ import {
 } from "../../../src/core/agent/index.ts";
 import { AppError, asAppError } from "./errorHandler.ts";
 import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
+import { backendContextFor } from "../../../src/core/agent/backendContext.ts";
 import { buildSystemPrompt } from "../../../src/core/agent/systemPrompt.ts";
 import { PROJECT_FILES_BUCKET, StorageWorkspace } from "./storage.ts";
 import { SandboxManager } from "../../../src/infra/sandbox/sandboxManager.ts";
@@ -396,6 +397,8 @@ export interface RuntimeFactoryOptions {
    * its own.
    */
   skills?: readonly string[];
+  /** The user's Supabase project, when they have connected one. */
+  backend?: { url: string; anonKey: string } | null;
 }
 
 /** Builds the sandbox manager with the same provider selection the runtime uses
@@ -412,9 +415,14 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
   const workspace = new StorageWorkspace({ client: options.client, bucket: PROJECT_FILES_BUCKET, prefix, projectId: options.projectId, userId: options.user.id, sessionId: options.sessionId, sandboxManager });
   // Appended, not replaced: the base prompt is what makes the tools work at all,
   // and a skill is guidance layered on top of it.
-  const extra = skillPromptFor(options.skills);
-  const systemPrompt = extra ? `${buildSystemPrompt()}
-${extra}` : undefined;
+  const extra = [
+    skillPromptFor(options.skills),
+    // Last, so it is the closest thing to the request — and it ends on the Row
+    // Level Security instruction, which is what decides whether the built app is
+    // safe or wide open.
+    backendContextFor(options.backend ?? null),
+  ].filter(Boolean).join("\n");
+  const systemPrompt = extra ? `${buildSystemPrompt()}\n${extra}` : undefined;
 
   return createAgentRuntime({
     sandboxRoot: workspace.root,

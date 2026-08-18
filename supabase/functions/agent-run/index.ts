@@ -55,6 +55,8 @@ export async function handler(req: Request): Promise<Response> {
         // Ids only. The prompt text is resolved from the catalog in the worker, so
         // a job row never carries instructions a client supplied.
         skills: input.skills ?? [],
+        // Public values only, so a job row carries nothing secret.
+        backend: input.backend ?? null,
       },
     }).select("id,status,created_at").single();
     if (error?.code === "23505" || error?.code === "23P01" || /duplicate key|unique/i.test(error?.message ?? "")) {
