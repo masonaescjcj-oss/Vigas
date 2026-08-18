@@ -1358,7 +1358,11 @@ export const AgentChatScreen = () => {
                       style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
                       className="mb-3 p-4 rounded-2xl border active:opacity-80 shadow-sm"
                     >
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold mb-2 text-left" numberOfLines={1}>
+                      <Text
+                        style={{ color: textPrimary, ...directionStyleFor(item.title) }}
+                        className="text-sm font-semibold mb-2"
+                        numberOfLines={1}
+                      >
                         {item.title || "Untitled chat"}
                       </Text>
                       <View className="flex-row items-center justify-between">
@@ -1917,7 +1921,11 @@ export const AgentChatScreen = () => {
                       >
                         <View className="flex-row items-center flex-1 mr-2">
                           <VectorIcon name="folder" size={16} color={colors.warning} style={{ marginRight: 8 }} />
-                          <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
+                          <Text
+                            style={{ color: textPrimary, ...directionStyleFor(project.name) }}
+                            className="text-sm font-bold"
+                            numberOfLines={1}
+                          >
                             {project.name}
                           </Text>
                         </View>
@@ -1941,7 +1949,11 @@ export const AgentChatScreen = () => {
                               style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
                               className="p-3 rounded-xl mb-2 border active:opacity-80 shadow-sm"
                             >
-                              <Text style={{ color: textPrimary }} className="text-xs font-medium mb-1.5 text-left font-sans" numberOfLines={1}>
+                              <Text
+                                style={{ color: textPrimary, ...directionStyleFor(item.title) }}
+                                className="text-xs font-medium mb-1.5 font-sans"
+                                numberOfLines={1}
+                              >
                                 {item.title || "Untitled chat"}
                               </Text>
                               <View className="flex-row items-center justify-between">
@@ -2101,7 +2113,11 @@ export const AgentChatScreen = () => {
                     className="mb-3.5 p-4 rounded-2xl border active:opacity-80 shadow-sm"
                   >
                     <View className="flex-row items-center justify-between mb-2">
-                      <Text style={{ color: textPrimary }} className="text-base font-bold text-left flex-1 mr-2" numberOfLines={1}>
+                      <Text
+                        style={{ color: textPrimary, ...directionStyleFor(proj.name) }}
+                        className="text-base font-bold flex-1 mr-2"
+                        numberOfLines={1}
+                      >
                         {proj.name}
                       </Text>
                       <TouchableOpacity

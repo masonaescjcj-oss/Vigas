@@ -17,6 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Icon } from "../../components/Icon";
 import { useTheme } from "../../theme/ThemeProvider";
+import { directionStyleFor } from "../../theme/direction";
 import { confirmAction, notify } from "../../services/notify";
 import { errorFeedback, successFeedback, tapFeedback } from "../../services/haptics";
 import { listShares, revokeShare, type ShareRecord } from "../../services/shareService";
@@ -140,7 +141,12 @@ export const SharedLinksScreen = () => {
                     color={revoked ? colors.inkMuted : colors.success}
                     style={{ marginRight: 8 }}
                   />
-                  <Text variant="body" className="font-uiMedium text-left flex-1" numberOfLines={1}>
+                  <Text
+                    variant="body"
+                    className="font-uiMedium flex-1"
+                    style={directionStyleFor(share.title)}
+                    numberOfLines={1}
+                  >
                     {share.title ?? "Untitled page"}
                   </Text>
                   <Text variant="caption" style={{ color: colors.inkMuted }} className="text-[10px]">

@@ -18,6 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { EmptyState } from "../../components/EmptyState";
 import { useTheme } from "../../theme/ThemeProvider";
+import { directionStyleFor } from "../../theme/direction";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useProjects } from "../../hooks/useProjects";
 import { agentService } from "../../services/agentService";
@@ -190,10 +191,15 @@ export const GlobalSearchScreen = () => {
                 activeOpacity={0.8}
               >
                 <View className="items-start flex-1 pl-4">
-                  <Text variant="body" className="font-uiMedium text-left">
+                  <Text variant="body" className="font-uiMedium" style={directionStyleFor(item.title)}>
                     {item.title}
                   </Text>
-                  <Text variant="caption" className="opacity-70 mt-0.5 text-left" numberOfLines={1}>
+                  <Text
+                    variant="caption"
+                    className="opacity-70 mt-0.5"
+                    style={directionStyleFor(item.subtitle)}
+                    numberOfLines={1}
+                  >
                     {item.subtitle}
                   </Text>
                 </View>
