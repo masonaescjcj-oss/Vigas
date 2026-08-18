@@ -52,6 +52,9 @@ export async function handler(req: Request): Promise<Response> {
         // Unknown/"auto" model ids resolve to undefined so the worker uses the
         // server default instead of trusting client input.
         model: resolveRequestedModel(input.model) ?? null,
+        // Ids only. The prompt text is resolved from the catalog in the worker, so
+        // a job row never carries instructions a client supplied.
+        skills: input.skills ?? [],
       },
     }).select("id,status,created_at").single();
     if (error?.code === "23505" || error?.code === "23P01" || /duplicate key|unique/i.test(error?.message ?? "")) {

@@ -68,6 +68,8 @@ export const agentService = {
       title?: string;
       sessionId?: string;
       model?: string;
+      /** Skill ids the user switched on; unknown ones are dropped server-side. */
+      skills?: string[];
     } = {},
   ): Promise<AgentRunAccepted> {
     return invokeFunction<AgentRunAccepted>("agent-run", {
@@ -78,6 +80,9 @@ export const agentService = {
         sessionId: options.sessionId,
         // "auto" means "server decides" — don't send it.
         ...(options.model && options.model !== "auto" ? { model: options.model } : {}),
+        // Omitted when empty rather than sent as [], so an untouched request
+        // stays byte-identical to what it was before skills existed.
+        ...(options.skills?.length ? { skills: options.skills } : {}),
       },
     });
   },
@@ -99,6 +104,7 @@ export const agentService = {
     /** Incognito only — a stored chat rejects this, it has its own. */
     history?: Array<{ role: "user" | "assistant"; content: string }>;
     model?: string;
+    skills?: string[];
   }): Promise<{
     text: string;
     /** Up to 3 likely next questions, generated with the answer. */
@@ -107,7 +113,7 @@ export const agentService = {
     session_id: string | null;
     context_turns: number;
   }> {
-    const { prompt, projectId, sessionId, title, history, model } = options;
+    const { prompt, projectId, sessionId, title, history, model, skills } = options;
     return invokeFunction("agent-ask", {
       body: {
         prompt,
@@ -117,6 +123,7 @@ export const agentService = {
         // The endpoint caps this; trimming here keeps the request small too.
         ...(projectId ? {} : { history: (history ?? []).slice(-ASK_HISTORY_TURNS) }),
         ...(model && model !== "auto" ? { model } : {}),
+        ...(skills?.length ? { skills } : {}),
       },
     });
   },

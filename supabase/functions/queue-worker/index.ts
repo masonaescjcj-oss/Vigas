@@ -140,6 +140,9 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         sandboxManager,
         model: typeof payload.model === "string" ? payload.model : undefined,
         credentials,
+        skills: Array.isArray(payload.skills)
+          ? payload.skills.filter((id): id is string => typeof id === "string")
+          : [],
       });
       const result = await withSentrySpan("agent.execute", "agent.run", async () => await runtime.run(String(payload.prompt ?? ""), { sessionId: job.session_id, title: typeof payload.title === "string" ? payload.title : undefined }));
       await recordUsage(client, job.user_id, result.usage.inputTokens + result.usage.outputTokens);

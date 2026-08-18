@@ -81,6 +81,11 @@ export const AgentRunSchema = z.object({
   profile: z.enum(["standard", "readonly"]).default("standard"),
   /** Provider model id. Must be allow-listed server-side; omit for the default. */
   model: z.string().trim().min(1).max(80).optional(),
+  /**
+   * Skills the user switched on. Validated against the catalog server-side, so an
+   * unknown id is dropped rather than becoming arbitrary system-prompt text.
+   */
+  skills: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
 }).strict();
 
 export const AgentResumeSchema = z.object({
@@ -110,6 +115,11 @@ export const AgentAskSchema = z.object({
   sessionId: uuid.optional(),
   title: z.string().trim().min(1).max(200).optional(),
   model: z.string().trim().min(1).max(80).optional(),
+  /**
+   * Skills the user switched on. Validated against the catalog server-side, so an
+   * unknown id is dropped rather than becoming arbitrary system-prompt text.
+   */
+  skills: z.array(z.string().trim().min(1).max(60)).max(8).optional(),
 }).strict().refine(
   (input) => !input.sessionId || !!input.projectId,
   { message: "sessionId requires projectId." },

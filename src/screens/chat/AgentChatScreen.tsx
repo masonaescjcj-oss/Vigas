@@ -48,6 +48,7 @@ import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
+import { SKILLS } from "../../core/agent/skills/catalog";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { createShare } from "../../services/shareService";
 import { exportProject, openDownload, readableSize } from "../../services/exportService";
@@ -205,6 +206,14 @@ export const AgentChatScreen = () => {
   // Building a zip reads every file in the project, so the tile shows it is
   // working rather than looking ignored.
   const [exporting, setExporting] = useState(false);
+
+  /**
+   * Skills switched on for the next request. Kept per-chat rather than saved: a
+   * skill is a choice about *this* piece of work, and one silently left on from
+   * last week would quietly shape every later answer.
+   */
+  const [activeSkills, setActiveSkills] = useState<string[]>([]);
+  const [showSkillsModal, setShowSkillsModal] = useState(false);
 
   // Template picked in the New Project dialog
   const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
@@ -531,6 +540,7 @@ export const AgentChatScreen = () => {
         const answer = await agentService.ask({
           prompt: userPromptText,
           model: selectedModelId,
+          ...(activeSkills.length ? { skills: activeSkills } : {}),
           ...(isIncognito
             ? { history }
             : {
@@ -582,6 +592,7 @@ export const AgentChatScreen = () => {
         title: userPromptText.slice(0, 48),
         sessionId: activeSessionId ?? undefined,
         model: selectedModelId,
+        ...(activeSkills.length ? { skills: activeSkills } : {}),
       });
       setActiveSessionId(res.session_id);
     } catch (e) {
@@ -1679,6 +1690,33 @@ export const AgentChatScreen = () => {
             </View>
           )}
 
+          {/* Whatever is switched on shapes every answer, so it is visible here
+              rather than only inside the sheet that set it. Tapping one turns it
+              off — the fastest way back is where you noticed it. */}
+          {activeSkills.length > 0 && (
+            <View className="flex-row flex-wrap mb-2">
+              {SKILLS.filter((skill) => activeSkills.includes(skill.id)).map((skill) => (
+                <TouchableOpacity
+                  key={skill.id}
+                  onPress={() => {
+                    selectionFeedback();
+                    setActiveSkills((prev) => prev.filter((id) => id !== skill.id));
+                  }}
+                  style={{ backgroundColor: colors.brandSoft, borderColor: colors.brandPrimary }}
+                  className="flex-row items-center px-2.5 py-1 rounded-full border mr-1.5 mb-1.5"
+                  activeOpacity={0.7}
+                  accessibilityLabel={`Turn off ${skill.name}`}
+                >
+                  <VectorIcon name={skill.icon} size={10} color={colors.brandPrimary} style={{ marginRight: 4 }} />
+                  <Text style={{ color: colors.brandPrimary }} className="text-[10px] font-semibold">
+                    {skill.name}
+                  </Text>
+                  <VectorIcon name="x" size={9} color={colors.brandPrimary} style={{ marginLeft: 5 }} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           <TextInput
             value={inputText}
             onChangeText={handleInputChange}
@@ -1809,6 +1847,12 @@ export const AgentChatScreen = () => {
                 { key: "preview", label: "Preview", icon: "eye", run: () => setShowPreviewModal(true) },
                 { key: "restore", label: "Restore points", icon: "rotate-ccw", run: () => setShowCheckpointsModal(true) },
                 { key: "export", label: "Download as zip", icon: "download", run: () => void handleExport() },
+                {
+                  key: "skills",
+                  label: activeSkills.length ? `Skills · ${activeSkills.length} on` : "Skills",
+                  icon: "sparkles",
+                  run: () => setShowSkillsModal(true),
+                },
               ] as const).map((action) => (
                 <TouchableOpacity
                   key={action.key}
@@ -2230,6 +2274,107 @@ export const AgentChatScreen = () => {
                 </>
               )}
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* =================================================================== */}
+      {/* MODAL: SKILLS PICKER                                                */}
+      {/* =================================================================== */}
+      <Modal
+        visible={showSkillsModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowSkillsModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/80">
+          <View style={{ backgroundColor: colors.surfaceRaised }} className="max-h-[85%] rounded-t-[32px] p-5 pb-8">
+            <View className="items-center mb-4">
+              <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
+            </View>
+
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <VectorIcon name="sparkles" size={18} color={colors.brandPrimary} style={{ marginRight: 8 }} />
+                <Text style={{ color: textPrimary }} className="text-xl font-bold">Skills</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowSkillsModal(false)} className="px-3 py-2">
+                <Text style={{ color: colors.brandPrimary }} className="text-sm font-semibold">Done</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
+              Extra instructions for what you are building. Only the ones you switch
+              on are sent, and they never override what you actually ask for.
+            </Text>
+
+            <ScrollView className="max-h-[420px]" showsVerticalScrollIndicator={false}>
+              {SKILLS.map((skill) => {
+                const on = activeSkills.includes(skill.id);
+                return (
+                  <TouchableOpacity
+                    key={skill.id}
+                    onPress={() => {
+                      selectionFeedback();
+                      setActiveSkills((prev) =>
+                        prev.includes(skill.id)
+                          ? prev.filter((id) => id !== skill.id)
+                          : [...prev, skill.id],
+                      );
+                    }}
+                    style={{
+                      backgroundColor: on ? colors.brandSoft : colors.surfaceMuted,
+                      borderColor: on ? colors.brandPrimary : colors.borderHairline,
+                      borderWidth: on ? 2 : 1,
+                    }}
+                    className="flex-row items-center p-4 rounded-2xl mb-2.5 active:opacity-80"
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={{ backgroundColor: on ? colors.brandPrimary : colors.surfaceStrong }}
+                      className="w-9 h-9 rounded-full items-center justify-center mr-3"
+                    >
+                      <VectorIcon
+                        name={skill.icon}
+                        size={16}
+                        color={on ? colors.canvasBase : colors.inkSecondary}
+                      />
+                    </View>
+                    <View className="flex-1 mr-2">
+                      <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">
+                        {skill.name}
+                      </Text>
+                      <Text style={{ color: textSecondary }} className="text-xs text-left mt-0.5 leading-4">
+                        {skill.description}
+                      </Text>
+                    </View>
+                    {/* A tick, not a switch: the whole row is the target, and a
+                        switch beside a pressable row invites two different taps. */}
+                    <View
+                      style={{
+                        borderColor: on ? colors.brandPrimary : colors.borderHairline,
+                        backgroundColor: on ? colors.brandPrimary : "transparent",
+                      }}
+                      className="w-5 h-5 rounded-md border items-center justify-center"
+                    >
+                      {on ? <VectorIcon name="check" size={12} color={colors.canvasBase} /> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {activeSkills.length > 0 && (
+              <TouchableOpacity
+                onPress={() => { tapFeedback(); setActiveSkills([]); }}
+                className="mt-3 self-start px-3 py-2 rounded-lg"
+                style={{ backgroundColor: colors.surfaceMuted }}
+              >
+                <Text style={{ color: colors.inkSecondary }} className="text-xs font-semibold">
+                  Turn all off
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>

@@ -24,6 +24,7 @@ import { withSentryHandler } from "../../../src/infra/monitoring/sentryConfig.ts
 import { ASK_HISTORY_TURNS, AgentAskSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";
 import { corsHeaders, json, preflight } from "../shared/http.ts";
+import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { OpenAIChatModel, assertProjectOwner, resolveRequestedModel } from "../shared/agentRuntime.ts";
@@ -201,6 +202,9 @@ export async function handler(req: Request): Promise<Response> {
         SYSTEM_PROMPT,
         stored ? "" : INCOGNITO_NOTE,
         FOLLOW_UP_PROMPT,
+        // Chat gets skills too: "how should this landing page be laid out" is the
+        // same question whether or not files end up written.
+        skillPromptFor(input.skills),
       ].filter(Boolean).join(" "),
       messages: turns.map((m, index) => ({
         id: `ask-${index}`,

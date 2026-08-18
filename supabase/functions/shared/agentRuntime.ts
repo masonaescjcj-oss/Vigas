@@ -11,6 +11,8 @@ import {
   type UsageStats,
 } from "../../../src/core/agent/index.ts";
 import { AppError, asAppError } from "./errorHandler.ts";
+import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
+import { buildSystemPrompt } from "../../../src/core/agent/systemPrompt.ts";
 import { PROJECT_FILES_BUCKET, StorageWorkspace } from "./storage.ts";
 import { SandboxManager } from "../../../src/infra/sandbox/sandboxManager.ts";
 import { LocalSandboxProvider } from "./localProvider.ts";
@@ -388,6 +390,12 @@ export interface RuntimeFactoryOptions {
    * a job payload or a session row.
    */
   credentials?: { apiKey?: string; baseUrl?: string; model?: string };
+  /**
+   * Skill ids the user switched on. Resolved against the catalog here, so an id a
+   * client invented contributes nothing rather than becoming system-prompt text of
+   * its own.
+   */
+  skills?: readonly string[];
 }
 
 /** Builds the sandbox manager with the same provider selection the runtime uses
@@ -402,8 +410,15 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
   const prefix = options.sandboxPath ?? `users/${options.user.id}/projects/${options.projectId}`;
   const sandboxManager = options.sandboxManager ?? createEdgeSandboxManager(options.client);
   const workspace = new StorageWorkspace({ client: options.client, bucket: PROJECT_FILES_BUCKET, prefix, projectId: options.projectId, userId: options.user.id, sessionId: options.sessionId, sandboxManager });
+  // Appended, not replaced: the base prompt is what makes the tools work at all,
+  // and a skill is guidance layered on top of it.
+  const extra = skillPromptFor(options.skills);
+  const systemPrompt = extra ? `${buildSystemPrompt()}
+${extra}` : undefined;
+
   return createAgentRuntime({
     sandboxRoot: workspace.root,
+    ...(systemPrompt ? { systemPrompt } : {}),
     workspace,
     store: new EdgeSessionStore(options.client, options.user.id, options.projectId),
     // A user's own provider is OpenAI-compatible by definition, so it always
