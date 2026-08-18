@@ -49,6 +49,9 @@ import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../ser
 import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
 import { SKILLS } from "../../core/agent/skills/catalog";
+import { deployProject } from "../../services/deployService";
+import { forgetNetlifyToken, loadNetlifyToken, saveNetlifyToken, tokenStorageIsSecure } from "../../services/deployToken";
+import { looksLikeNetlifyToken } from "../../services/netlify";
 import { buildPreviewHtml } from "../../services/previewBuilder";
 import { createShare } from "../../services/shareService";
 import { exportProject, openDownload, readableSize } from "../../services/exportService";
@@ -215,6 +218,14 @@ export const AgentChatScreen = () => {
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
 
+  // Publishing to Netlify. The live URL is kept so the button becomes "Open site"
+  // rather than silently deploying a second copy.
+  const [deploying, setDeploying] = useState(false);
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [netlifyToken, setNetlifyToken] = useState("");
+  const [hasNetlifyToken, setHasNetlifyToken] = useState(false);
+
   // Template picked in the New Project dialog
   const [newProjectTemplate, setNewProjectTemplate] = useState<string>("landing");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -360,6 +371,15 @@ export const AgentChatScreen = () => {
     return created.id;
   };
 
+  // Whether an account is already connected decides what the deploy button says.
+  useEffect(() => {
+    let cancelled = false;
+    void loadNetlifyToken().then((token) => {
+      if (!cancelled) setHasNetlifyToken(!!token);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   /** Load the project's files and build the on-device preview document. */
   const loadPreview = async () => {
     setPreviewLoading(true);
@@ -367,6 +387,7 @@ export const AgentChatScreen = () => {
     // Any previously published link describes the old build. Offering "Copy
     // link" next to a page that has since changed would hand out a stale URL.
     setPublishedUrl(null);
+    setDeployedUrl(null);
     try {
       const projectId = await ensureProjectId();
       const files = await getProjectFiles(projectId);
@@ -721,6 +742,63 @@ export const AgentChatScreen = () => {
     } finally {
       setExporting(false);
     }
+  };
+
+  /**
+   * Publish the project to Netlify's free tier.
+   *
+   * The token goes from this device straight to Netlify — it is never sent to our
+   * backend, so there is nothing of the user's account in our database at all.
+   */
+  const handleDeploy = async () => {
+    if (deploying) return;
+
+    if (deployedUrl) {
+      const opened = await openDownload(deployedUrl);
+      if (!opened) notify("Your site", deployedUrl);
+      return;
+    }
+
+    tapFeedback();
+    setDeploying(true);
+    try {
+      const projectId = await ensureProjectId();
+      const result = await deployProject(projectId, activeProjectName || "Retro app");
+
+      if (result.needsToken) {
+        // Not a failure — there is just no account connected yet.
+        setShowDeployModal(true);
+        return;
+      }
+      if (!result.ok || !result.url) {
+        errorFeedback();
+        notify("Could not deploy", result.error ?? "Netlify did not accept the upload.");
+        return;
+      }
+
+      setDeployedUrl(result.url);
+      successFeedback();
+      notify("Your site is live", result.url);
+    } catch (e) {
+      errorFeedback();
+      notify("Could not deploy", e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleSaveToken = async () => {
+    if (!looksLikeNetlifyToken(netlifyToken)) {
+      notify("That does not look like a token", "Paste the personal access token from Netlify — it has no spaces.");
+      return;
+    }
+    await saveNetlifyToken(netlifyToken);
+    // Cleared from state immediately: it does not need to sit in a React tree.
+    setNetlifyToken("");
+    setHasNetlifyToken(true);
+    setShowDeployModal(false);
+    successFeedback();
+    notify("Netlify connected", "Press Deploy again to publish this project.");
   };
 
   /**
@@ -2279,6 +2357,103 @@ export const AgentChatScreen = () => {
       </Modal>
 
       {/* =================================================================== */}
+      {/* MODAL: CONNECT NETLIFY                                              */}
+      {/* =================================================================== */}
+      <Modal
+        visible={showDeployModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowDeployModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/80">
+          <View style={{ backgroundColor: colors.surfaceRaised }} className="rounded-t-[32px] p-5 pb-8">
+            <View className="items-center mb-4">
+              <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
+            </View>
+
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center">
+                <VectorIcon name="cloud" size={18} color={colors.success} style={{ marginRight: 8 }} />
+                <Text style={{ color: textPrimary }} className="text-xl font-bold">Publish to Netlify</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowDeployModal(false)} className="px-3 py-2">
+                <Text style={{ color: colors.inkSecondary }} className="text-sm font-semibold">Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
+              Netlify's free tier hosts static sites at no cost. Paste a personal
+              access token from your own Netlify account — it is used to publish and
+              nothing else.
+            </Text>
+
+            {/* Said plainly rather than implied. The token is a credential for
+                their account and they are entitled to know where it lives. */}
+            <View
+              className="p-3 rounded-xl mb-4"
+              style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline, borderWidth: 1 }}
+            >
+              <Text style={{ color: textSecondary }} className="text-[11px] leading-5 text-left">
+                The token is stored {tokenStorageIsSecure()
+                  ? "in this device's secure keystore"
+                  : "in this browser's local storage, which any script on this page could read"}
+                {" "}and is sent only to Netlify. It never reaches our servers.
+              </Text>
+            </View>
+
+            <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">
+              Netlify personal access token
+            </Text>
+            <TextInput
+              value={netlifyToken}
+              onChangeText={setNetlifyToken}
+              placeholder="nfp_..."
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              className="w-full p-4 rounded-2xl text-sm mb-2"
+              style={{
+                backgroundColor: colors.surfaceMuted,
+                color: textPrimary,
+                outlineStyle: "none",
+                outlineWidth: 0,
+              } as any}
+            />
+            <Text style={{ color: colors.inkMuted }} className="text-[10px] leading-4 mb-4 text-left">
+              Netlify → User settings → Applications → Personal access tokens → New
+              access token.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => void handleSaveToken()}
+              style={{ backgroundColor: colors.success }}
+              className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90"
+              activeOpacity={0.9}
+            >
+              <Text style={{ color: colors.canvasBase }} className="text-sm font-bold">Connect</Text>
+            </TouchableOpacity>
+
+            {hasNetlifyToken && (
+              <TouchableOpacity
+                onPress={async () => {
+                  await forgetNetlifyToken();
+                  setHasNetlifyToken(false);
+                  setDeployedUrl(null);
+                  notify("Netlify disconnected", "The token has been removed from this device.");
+                }}
+                className="mt-3 self-center px-3 py-2"
+              >
+                <Text style={{ color: colors.failed }} className="text-xs font-semibold">
+                  Remove the saved token
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* =================================================================== */}
       {/* MODAL: SKILLS PICKER                                                */}
       {/* =================================================================== */}
       <Modal
@@ -2421,6 +2596,30 @@ export const AgentChatScreen = () => {
                     />
                     <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">
                       {publishedUrl ? "Copy link" : "Share"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleDeploy}
+                disabled={deploying || previewLoading}
+                style={{ opacity: previewLoading ? 0.4 : 1 }}
+                className="p-1 flex-row items-center mr-4"
+                activeOpacity={0.7}
+              >
+                {deploying ? (
+                  <ActivityIndicator size="small" color={colors.success} />
+                ) : (
+                  <>
+                    <VectorIcon
+                      name={deployedUrl ? "globe" : "cloud"}
+                      size={12}
+                      color={colors.success}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={{ color: colors.success }} className=" text-xs font-bold">
+                      {deployedUrl ? "Open site" : "Deploy"}
                     </Text>
                   </>
                 )}
