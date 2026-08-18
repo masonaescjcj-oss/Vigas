@@ -64,6 +64,23 @@ export function isOffline(failures: number): boolean {
 }
 
 /**
+ * When to probe again, or null to wait for an event instead.
+ *
+ * The middle case is the one that matters, and I got it wrong the first time: a
+ * single failure is not yet an outage, but it is also not nothing. Leaving it
+ * unscheduled on web meant one failed probe put the app in a state where it
+ * never checked again — so a real outage went unreported while the app sat there
+ * claiming to be online. Any pending failure must be chased to a conclusion.
+ *
+ * @param isWeb Browsers raise online/offline events, so a healthy web client
+ *              needs no timer at all. React Native has no such signal here.
+ */
+export function nextProbeDelay(failures: number, isWeb: boolean): number | null {
+  if (failures > 0) return OFFLINE_RECHECK_MS;
+  return isWeb ? null : ONLINE_RECHECK_MS;
+}
+
+/**
  * Ask the network, once.
  *
  * @returns true when the server answered at all. No credential is sent: the

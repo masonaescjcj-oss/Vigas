@@ -24,6 +24,17 @@ interface AuthState {
   session: Session | null;
   profile: UserProfile | null;
   initialized: boolean;
+  /**
+   * True while the user is here from a password-reset link.
+   *
+   * A recovery link produces a real session, which would otherwise drop them
+   * straight into the app — past the screen where they were supposed to choose a
+   * new password. This keeps the auth stack in front until they have.
+   */
+  passwordRecovery: boolean;
+  /** Why a recovery link was refused, if it was. Shown on the reset screen. */
+  recoveryError: string | null;
+  setPasswordRecovery: (active: boolean, error?: string | null) => void;
   setSession: (session: Session | null) => Promise<void>;
   loadProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -38,6 +49,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   profile: null,
   initialized: false,
+  passwordRecovery: false,
+  recoveryError: null,
+
+  setPasswordRecovery: (active, error = null) =>
+    set({ passwordRecovery: active, recoveryError: error }),
 
   setSession: async (session) => {
     const user = session?.user ?? null;
@@ -69,7 +85,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ user: null, session: null, profile: null });
+    // Recovery is cleared too: leaving it set would pin the app to the reset
+    // screen after the very sign-out that ends the flow.
+    set({ user: null, session: null, profile: null, passwordRecovery: false, recoveryError: null });
   },
 
   /**

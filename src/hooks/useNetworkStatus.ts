@@ -13,10 +13,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, Platform, type AppStateStatus } from "react-native";
 import {
-  OFFLINE_RECHECK_MS,
-  ONLINE_RECHECK_MS,
   countFailure,
   isOffline,
+  nextProbeDelay,
   probeOnce,
   probeTarget,
 } from "../services/connectivity";
@@ -48,14 +47,14 @@ export const useNetworkStatus = () => {
       if (cancelled) return;
 
       failures.current = countFailure(failures.current, reachable);
-      const offline = isOffline(failures.current);
-      setIsConnected(!offline);
+      setIsConnected(!isOffline(failures.current));
 
-      // Fast while offline so recovery is noticed quickly; slow otherwise. On web
-      // the online/offline events do the noticing, so no timer is needed at all
-      // while things are working.
-      if (offline) schedule(OFFLINE_RECHECK_MS);
-      else if (Platform.OS !== "web") schedule(ONLINE_RECHECK_MS);
+      // Any pending failure gets chased to a conclusion, on every platform. The
+      // first version skipped this on web whenever the app still *believed* it
+      // was online, which meant a single failed probe left it stuck believing
+      // that forever — no timer, no event, no second opinion.
+      const delay = nextProbeDelay(failures.current, Platform.OS === "web");
+      if (delay !== null) schedule(delay);
     };
 
     void run();

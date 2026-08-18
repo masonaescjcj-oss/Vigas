@@ -14,6 +14,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuthStore } from "../stores/authStore";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { usePasswordRecovery } from "../hooks/usePasswordRecovery";
 import { supabase } from "../services/supabase";
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -77,11 +78,13 @@ const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // 1. Auth Stack Navigator
-const AuthNavigator = () => {
+const AuthNavigator = ({ startAtReset = false }: { startAtReset?: boolean }) => {
   const { colors } = useTheme();
   return (
     <AuthStack.Navigator
-      initialRouteName="Splash"
+      // A reset link must land on the reset screen, not walk the user back
+      // through Splash and Login while holding a one-use recovery session.
+      initialRouteName={startAtReset ? "ResetPassword" : "Splash"}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.canvasBase }
@@ -175,7 +178,7 @@ const MainTabNavigator = () => {
 
 // 5. Root Navigator Switch
 export const AppNavigator = () => {
-  const { user, setSession, initialized } = useAuthStore();
+  const { user, setSession, initialized, passwordRecovery } = useAuthStore();
   const { colors } = useTheme();
 
   // Held here because the notification tap handler lives outside the navigator
@@ -185,6 +188,10 @@ export const AppNavigator = () => {
   // Registers this device once signed in, and opens the right project when a
   // "your build is ready" notification is tapped.
   usePushNotifications(user?.id ?? null, navigationRef);
+
+  // Consumes an emailed reset link and raises passwordRecovery before the
+  // session lands, so the swap below cannot happen mid-flow.
+  usePasswordRecovery();
 
   // Watch Supabase auth sessions
   useEffect(() => {
@@ -242,7 +249,7 @@ export const AppNavigator = () => {
             contentStyle: { backgroundColor: colors.canvasBase }
           }}
         >
-          {user ? (
+          {user && !passwordRecovery ? (
             <React.Fragment>
               {/* Authenticated stack with AI Agent as 1st page */}
               <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
@@ -256,7 +263,9 @@ export const AppNavigator = () => {
               </RootStack.Group>
             </React.Fragment>
           ) : (
-            <RootStack.Screen name="AuthStack" component={AuthNavigator} />
+            <RootStack.Screen name="AuthStack">
+              {() => <AuthNavigator startAtReset={passwordRecovery} />}
+            </RootStack.Screen>
           )}
         </RootStack.Navigator>
       </NavigationContainer>

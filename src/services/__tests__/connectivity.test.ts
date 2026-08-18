@@ -6,8 +6,11 @@
 import { describe, expect, it } from "vitest";
 import {
   FAILURES_BEFORE_OFFLINE,
+  OFFLINE_RECHECK_MS,
+  ONLINE_RECHECK_MS,
   countFailure,
   isOffline,
+  nextProbeDelay,
   probeTarget,
 } from "../connectivity";
 
@@ -53,5 +56,28 @@ describe("declaring an outage", () => {
   it("clears immediately on the first success", () => {
     expect(countFailure(9, true)).toBe(0);
     expect(isOffline(0)).toBe(false);
+  });
+});
+
+describe("nextProbeDelay", () => {
+  it("chases a single failure to a conclusion, on web too", () => {
+    // The bug this exists for: with no timer scheduled, one failed probe left a
+    // web client believing it was online forever, and a real outage during which
+    // no banner ever appeared.
+    expect(nextProbeDelay(1, true)).toBe(OFFLINE_RECHECK_MS);
+    expect(nextProbeDelay(1, false)).toBe(OFFLINE_RECHECK_MS);
+  });
+
+  it("keeps checking while offline", () => {
+    expect(nextProbeDelay(5, true)).toBe(OFFLINE_RECHECK_MS);
+  });
+
+  it("needs no timer on a healthy web client", () => {
+    // The browser's online/offline events are free and instant.
+    expect(nextProbeDelay(0, true)).toBeNull();
+  });
+
+  it("polls slowly on a healthy native client, which has no such events", () => {
+    expect(nextProbeDelay(0, false)).toBe(ONLINE_RECHECK_MS);
   });
 });
