@@ -147,6 +147,25 @@ Deno.test("other errors do not disable a device", () => {
   assertEquals(dead, []);
 });
 
+Deno.test("the token Expo names is preferred over the position", () => {
+  // Expo puts the token in details.expoPushToken. Position is only correct while
+  // the response is exactly parallel to the request, and being wrong there means
+  // disabling a device that was working fine.
+  const dead = deadTokens(["a", "b", "c"], [
+    { status: "error", details: { error: "DeviceNotRegistered", expoPushToken: "c" } },
+  ]);
+  assertEquals(dead, ["c"], "not the positionally-first token");
+});
+
+Deno.test("a named token we never sent to is ignored in favour of the position", () => {
+  // Something else's token must not disable someone else's row.
+  const dead = deadTokens(["a", "b"], [
+    { status: "ok" },
+    { status: "error", details: { error: "DeviceNotRegistered", expoPushToken: "stranger" } },
+  ]);
+  assertEquals(dead, ["b"]);
+});
+
 Deno.test("a short or missing ticket list never invents a token", () => {
   assertEquals(deadTokens(["a", "b"], []), []);
   assertEquals(

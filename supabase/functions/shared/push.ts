@@ -128,24 +128,33 @@ export function chunkTokens(tokens: string[], size = MAX_TOKENS_PER_REQUEST): st
 export interface ExpoTicket {
   status?: string;
   message?: string;
-  details?: { error?: string };
+  details?: { error?: string; expoPushToken?: string };
 }
 
 /**
  * Which tokens Expo says are dead, from one response.
  *
- * Tickets come back positionally, so the nth ticket belongs to the nth token.
  * `DeviceNotRegistered` means the app was uninstalled or the token rotated —
- * without acting on it, the table accumulates dead tokens and every run pays to
+ * without acting on it the table fills with dead tokens and every run pays to
  * send to them forever.
+ *
+ * Expo names the token in `details.expoPushToken`, so that is used when present.
+ * Position is only the fallback: matching a ticket to a token by index is
+ * correct only while the response is exactly parallel to the request, and the
+ * cost of being wrong is disabling notifications for a device that was fine.
+ * Trusting the identifier the API actually gives us is strictly better, and it
+ * was there in the real response all along — I only saw it by making the call.
  */
 export function deadTokens(tokens: string[], tickets: ExpoTicket[]): string[] {
   const dead: string[] = [];
+  const known = new Set(tokens);
   tickets.forEach((ticket, index) => {
-    if (ticket?.status === "error" && ticket.details?.error === "DeviceNotRegistered") {
-      const token = tokens[index];
-      if (token) dead.push(token);
-    }
+    if (ticket?.status !== "error" || ticket.details?.error !== "DeviceNotRegistered") return;
+    const named = ticket.details?.expoPushToken;
+    // Only honour a named token we actually sent to. A token from elsewhere in
+    // the response must not disable someone else's row.
+    const token = named && known.has(named) ? named : tokens[index];
+    if (token) dead.push(token);
   });
   return dead;
 }
