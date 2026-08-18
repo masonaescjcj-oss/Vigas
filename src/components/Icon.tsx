@@ -31,6 +31,7 @@ import {
   ChevronRight,
   Cloud,
   Code2,
+  Copy,
   Cpu,
   Download,
   CreditCard,
@@ -127,6 +128,7 @@ const ICONS = {
   alert: AlertCircle,
   link: Link2,
   download: Download,
+  copy: Copy,
   "share-2": Share2,
 } as const;
 

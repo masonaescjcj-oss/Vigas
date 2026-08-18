@@ -14,6 +14,7 @@ import { ScrollView, Text, View } from "react-native";
 const MONO = MONO_FAMILY;
 
 import { parseBlocks } from "./markdown";
+import { CopyButton } from "./CopyButton";
 import { useTheme } from "../theme/ThemeProvider";
 import { MONO_FAMILY, fontFamilyFor } from "../theme/fonts";
 
@@ -25,7 +26,7 @@ const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color:
   const family = fontFamilyFor(value);
   const bold = fontFamilyFor(value, "bold");
   return (
-    <Text style={{ color, fontSize: 14, lineHeight: 22, fontFamily: family }}>
+    <Text selectable style={{ color, fontSize: 14, lineHeight: 22, fontFamily: family }}>
       {parts.map((part, index) => {
         if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
           return (
@@ -65,9 +66,16 @@ export const AgentMessageText = ({
   const codeColor = colors.inkPrimary;
   const langColor = colors.inkMuted;
 
+  const blocks = parseBlocks(content);
+  // Offered only when there is prose to copy. If the answer is a single code
+  // block, that block's own button already covers it and a second one directly
+  // above would just be clutter.
+  const showWholeAnswerCopy =
+    content.trim().length > 120 && blocks.some((block) => block.type === "text");
+
   return (
     <View style={{ marginBottom: 12 }}>
-      {parseBlocks(content).map((block, index) =>
+      {blocks.map((block, index) =>
         block.type === "text" ? (
           <View key={index} style={{ marginBottom: 4 }}>
             <InlineText value={block.value.trim()} color={textColor} codeBg={codeBg} codeColor={codeColor} />
@@ -85,19 +93,42 @@ export const AgentMessageText = ({
               marginVertical: 8,
             }}
           >
-            {block.lang ? (
-              <Text style={{ color: langColor, fontFamily: MONO, fontSize: 10, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-                {block.lang}
+            {/* The header row always exists now, even without a language, because
+                it is what carries the copy button. Selecting code by hand inside
+                a horizontally scrolling block on a phone is close to impossible,
+                so this is the only practical way to get it out. */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <Text style={{ color: langColor, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>
+                {block.lang ?? "code"}
               </Text>
-            ) : null}
+              <CopyButton value={block.value} compact />
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <Text style={{ color: codeColor, fontFamily: MONO, fontSize: 12.5, lineHeight: 19 }}>
+              <Text
+                style={{ color: codeColor, fontFamily: MONO, fontSize: 12.5, lineHeight: 19 }}
+                // Long-press selection as well as the button: some people want a
+                // fragment rather than the whole block.
+                selectable
+              >
                 {block.value}
               </Text>
             </ScrollView>
           </View>
         ),
       )}
+
+      {showWholeAnswerCopy ? (
+        <View style={{ flexDirection: "row", marginTop: 2 }}>
+          <CopyButton value={content.trim()} label="Copy answer" compact />
+        </View>
+      ) : null}
     </View>
   );
 };
