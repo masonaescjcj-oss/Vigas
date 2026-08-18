@@ -96,7 +96,15 @@ export function prepareShareDocument(html: string): PrepareResult {
   return { ok: true, document, bytes: new TextEncoder().encode(document).length };
 }
 
-/** The public URL a code resolves to. */
+/**
+ * The public URL a code resolves to.
+ *
+ * An edge function, not a Storage object URL. Measured, not assumed: Supabase
+ * Storage serves `text/html` as `text/plain` — deliberately, so that
+ * `*.supabase.co` cannot be used to host arbitrary pages — while every other
+ * content type passes through. A direct object link would have shown someone's
+ * app as its own source code. See functions/share-page.
+ */
 export function shareUrl(supabaseUrl: string, code: string): string {
-  return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/shared-apps/${code}.html`;
+  return `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/share-page/${code}`;
 }

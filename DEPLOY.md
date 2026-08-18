@@ -64,6 +64,14 @@ npx supabase@latest functions deploy agent-run agent-resume agent-fork agent-ask
 npx supabase@latest functions deploy queue-worker --no-verify-jwt
 ```
 
+```bash
+npx supabase@latest functions deploy share-page --no-verify-jwt
+```
+
+(`share-page` هم عمداً بدون JWT است: کل هدفش این است که یک غریبه با لینک بازش کند.
+باکت `shared-apps` **خصوصی** است — Storage سوپابیس `text/html` را در باکت عمومی
+به `text/plain` تبدیل می‌کند، پس صفحه باید از فانکشن سرو شود، نه از لینک مستقیم فایل.)
+
 (`--no-verify-jwt` عمداً است: pg_cron کاربر Auth نیست و ورکر خودش bearer خودش را چک می‌کند.)
 
 ## ۳.۵ سکرت رمزنگاری کلیدهای کاربران

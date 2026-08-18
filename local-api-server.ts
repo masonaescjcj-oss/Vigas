@@ -5,6 +5,7 @@ import { handler as agentAskHandler } from "./supabase/functions/agent-ask/index
 import { handler as providerKeysHandler } from "./supabase/functions/provider-keys/index.ts";
 import { handler as adminHandler } from "./supabase/functions/admin/index.ts";
 import { handler as shareHandler } from "./supabase/functions/share/index.ts";
+import { handler as sharePageHandler } from "./supabase/functions/share-page/index.ts";
 import { handler as pushRegisterHandler } from "./supabase/functions/push-register/index.ts";
 import { handler as projectExportHandler } from "./supabase/functions/project-export/index.ts";
 import { handler as checkpointCreateHandler } from "./supabase/functions/checkpoint-create/index.ts";
@@ -51,6 +52,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await providerKeysHandler(req);
     } else if (path === "/functions/v1/share") {
       res = await shareHandler(req);
+    } else if (path.startsWith("/functions/v1/share-page")) {
+      // Prefix match: the code travels as a path segment.
+      res = await sharePageHandler(req);
     } else if (path === "/functions/v1/push-register") {
       res = await pushRegisterHandler(req);
     } else if (path === "/functions/v1/project-export") {

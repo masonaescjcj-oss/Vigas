@@ -12,9 +12,18 @@
 -- taken down.
 -- ---------------------------------------------------------------------------
 
-insert into storage.buckets (id, name, public)
-values ('shared-apps', 'shared-apps', true)
-on conflict (id) do update set public = true;
+-- Deliberately PRIVATE, which is the opposite of what this migration first said.
+-- Supabase Storage serves text/html as text/plain in a public bucket -- measured,
+-- and deliberate on their side, so that *.supabase.co cannot host arbitrary
+-- pages. A direct object URL would have shown someone's app as its own source
+-- code. The share-page edge function reads the object with the service key and
+-- returns it with the right content type, so nothing needs public access here.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('shared-apps', 'shared-apps', false, 2000000, array['text/html'])
+on conflict (id) do update set
+  public = false,
+  file_size_limit = 2000000,
+  allowed_mime_types = array['text/html'];
 
 create table if not exists public.shares (
   -- A short URL-safe code, not a uuid: this ends up in a link someone types

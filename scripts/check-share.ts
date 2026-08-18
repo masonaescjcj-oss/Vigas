@@ -133,6 +133,67 @@ try {
     trespassBody,
   );
 
+  // ── Serving. Checked directly against Storage, so it does not depend on the
+  //    `shares` table and runs even before the migration.
+  //
+  //    This exists because the original design was wrong in a way no amount of
+  //    reading would have caught: Supabase Storage serves text/html as
+  //    text/plain in a public bucket — deliberately, so *.supabase.co cannot host
+  //    arbitrary pages — so a direct object link showed someone's app as its own
+  //    source code. The page now comes from an edge function.
+  {
+    const { generateShareCode, prepareShareDocument, shareUrl } =
+      await import("../supabase/functions/shared/shareDoc.ts");
+
+    const code = generateShareCode();
+    const prepared = prepareShareDocument(PAGE);
+    const upload = await admin.storage.from("shared-apps").upload(
+      `${code}.html`,
+      new Blob([prepared.document!], { type: "text/html" }),
+      { upsert: true, contentType: "text/html" },
+    );
+    check("a page can be stored for serving", !upload.error, upload.error?.message);
+
+    if (!upload.error) {
+      cleanup.push(() => admin.storage.from("shared-apps").remove([`${code}.html`]));
+      // API_URL is the gateway; the real link uses the same path shape.
+      const served = await fetch(`${API_URL}/share-page/${code}`);
+      const body = await served.text();
+      check(`the link serves with no credentials at all (${served.status})`, served.ok, body.slice(0, 200));
+      check(
+        `it is real text/html, not text/plain (${served.headers.get("content-type")})`,
+        (served.headers.get("content-type") ?? "").startsWith("text/html"),
+      );
+      check("nosniff is set — the page is attacker-controlled by definition",
+        served.headers.get("x-content-type-options") === "nosniff");
+      check("what is served is the page that was published", body.includes(`Hello from ${stamp}`));
+      check("the attribution badge is in what is served", body.includes("Built with Retro Code"));
+
+      // The raw object must not be reachable from the Storage domain.
+      const raw = await fetch(shareUrl(SUPABASE_URL, code).replace(
+        `/functions/v1/share-page/${code}`,
+        `/storage/v1/object/public/shared-apps/${code}.html`,
+      ));
+      check(`the raw storage object is not public (${raw.status})`, !raw.ok);
+
+      // A code that is not a code must never become a Storage path.
+      for (const bad of ["../../secret", "ABCDEFGHJ", "0000000oo"]) {
+        const refused = await fetch(`${API_URL}/share-page/${encodeURIComponent(bad)}`);
+        check(`serving refuses "${bad}" (${refused.status})`, refused.status === 400);
+      }
+
+      // Takedown. This failed the first time: the SDK's download() reads through
+      // Supabase's Smart CDN, which kept serving a deleted object, so revocation
+      // silently did nothing.
+      await admin.storage.from("shared-apps").remove([`${code}.html`]);
+      const afterRemoval = await fetch(`${API_URL}/share-page/${code}`);
+      const afterBody = await afterRemoval.text();
+      check(`removing the object stops serving at once (${afterRemoval.status})`,
+        afterRemoval.status === 404, afterBody.slice(0, 120));
+      check("and it reads as taken down rather than broken", /no longer shared/i.test(afterBody));
+    }
+  }
+
   // ── The real thing.
   if (notMigrated) {
     skip("a published link serves the page to a stranger");

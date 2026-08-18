@@ -89,13 +89,21 @@ Deno.test("the reported size counts the injected badge, not just the input", () 
   assertEquals(result.bytes! > new TextEncoder().encode(html).length, true);
 });
 
-Deno.test("the url points at the public bucket and tolerates a trailing slash", () => {
+Deno.test("the url points at the serving function, not a storage object", () => {
+  // Storage serves text/html as text/plain, so a direct object link would show
+  // someone's app as its own source code.
   assertEquals(
     shareUrl("https://x.supabase.co", "abcdefghj"),
-    "https://x.supabase.co/storage/v1/object/public/shared-apps/abcdefghj.html",
+    "https://x.supabase.co/functions/v1/share-page/abcdefghj",
   );
   assertEquals(
     shareUrl("https://x.supabase.co/", "abcdefghj"),
-    "https://x.supabase.co/storage/v1/object/public/shared-apps/abcdefghj.html",
+    "https://x.supabase.co/functions/v1/share-page/abcdefghj",
   );
+});
+
+Deno.test("the url carries nothing that could be mistaken for a storage path", () => {
+  const url = shareUrl("https://x.supabase.co", "abcdefghj");
+  assertEquals(url.includes("/storage/"), false);
+  assertEquals(url.endsWith(".html"), false);
 });
