@@ -136,8 +136,14 @@ class ByteWriter {
     this.push(view);
   }
 
-  concat(): Uint8Array {
-    const out = new Uint8Array(this.length);
+  /**
+   * Built over an explicit ArrayBuffer so the result is a `Uint8Array<ArrayBuffer>`
+   * rather than `<ArrayBufferLike>`. Without that, every caller that hands the zip
+   * to `fetch` or `new Blob` fails to typecheck, because a SharedArrayBuffer-backed
+   * array is not a BodyInit.
+   */
+  concat(): Uint8Array<ArrayBuffer> {
+    const out = new Uint8Array(new ArrayBuffer(this.length));
     let offset = 0;
     for (const chunk of this.chunks) {
       out.set(chunk, offset);
@@ -153,7 +159,7 @@ class ByteWriter {
  * Entries keep the order given, and an entry whose path normalises to nothing is
  * dropped rather than written under a meaningless name.
  */
-export async function createZip(entries: ZipEntry[]): Promise<Uint8Array> {
+export async function createZip(entries: ZipEntry[]): Promise<Uint8Array<ArrayBuffer>> {
   const encoder = new TextEncoder();
   const body = new ByteWriter();
   const central = new ByteWriter();

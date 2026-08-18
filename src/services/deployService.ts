@@ -1,36 +1,64 @@
 /**
  * frontend/src/services/deployService.ts
  * ---------------------------------------------------------------------------
- * Putting a project on the internet.
+ * Putting a project on the internet, on whichever host the user connected.
  *
- * The zip comes from our own export endpoint — the same bytes the download button
- * produces, already verified to unzip correctly — and goes straight from the device
- * to Netlify. Our server builds the archive and never sees the token; Netlify
- * receives the token and never sees our database.
+ * Both providers answer browser origins, so in both cases the token goes from the
+ * device to the host and never touches our server. What differs is the payload, and
+ * it is worth knowing which is which:
+ *
+ *   Netlify takes the whole zip — the same archive the download button produces, so
+ *   every file goes, binary assets included.
+ *
+ *   Vercel takes no zip. Its API wants a file list, and this inlines the project's
+ *   *text* files, which is what a phone-built static site is. A binary asset the
+ *   agent could not have written itself would not be included.
+ *
+ * Netlify is therefore the more complete of the two, and the sheet says so.
  * ---------------------------------------------------------------------------
  */
 
 import { exportProject } from "./exportService";
+import { getProjectFiles } from "./fileService";
 import { deployZipToNetlify, siteNameFor, type DeployResult } from "./netlify";
-import { loadNetlifyToken } from "./deployToken";
+import { deployFilesToVercel, inlineFilesFrom, vercelProjectName } from "./vercel";
+import { loadDeployToken, type DeployProvider } from "./deployToken";
 
-export type { DeployResult };
+export type { DeployResult, DeployProvider };
 
-/**
- * Deploy a project, end to end.
- *
- * @returns A DeployResult rather than throwing, because every failure here is
- *          something to show the user, not an exception to swallow.
- */
+export interface DeployOutcome extends DeployResult {
+  /** No account connected yet — the caller shows the connect sheet, not an error. */
+  needsToken?: boolean;
+  provider?: DeployProvider;
+}
+
+/** Where a project's live address ends up, per host. */
+export const PROVIDER_LABEL: Record<DeployProvider, string> = {
+  netlify: "Netlify",
+  vercel: "Vercel",
+};
+
 export async function deployProject(
   projectId: string,
   projectName: string,
-): Promise<DeployResult & { needsToken?: boolean }> {
-  const token = await loadNetlifyToken();
-  if (!token) {
-    // Not an error: the user simply has not connected an account yet, and the
-    // caller shows the token sheet rather than a failure.
-    return { ok: false, needsToken: true };
+  provider: DeployProvider = "netlify",
+): Promise<DeployOutcome> {
+  const token = await loadDeployToken(provider);
+  if (!token) return { ok: false, needsToken: true, provider };
+
+  if (provider === "vercel") {
+    let files: Record<string, string>;
+    try {
+      files = await getProjectFiles(projectId);
+    } catch (error) {
+      return {
+        ok: false,
+        provider,
+        error: `Could not read the project: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+    const result = await deployFilesToVercel(inlineFilesFrom(files), vercelProjectName(projectName), token);
+    return { ...result, provider };
   }
 
   let zip: Blob;
@@ -40,15 +68,17 @@ export async function deployProject(
     const exported = await exportProject(projectId);
     const response = await fetch(exported.url);
     if (!response.ok) {
-      return { ok: false, error: `Could not read the project archive (${response.status}).` };
+      return { ok: false, provider, error: `Could not read the project archive (${response.status}).` };
     }
     zip = await response.blob();
   } catch (error) {
     return {
       ok: false,
+      provider,
       error: `Could not build the project: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 
-  return await deployZipToNetlify(zip, siteNameFor(projectName), token);
+  const result = await deployZipToNetlify(zip, siteNameFor(projectName), token);
+  return { ...result, provider };
 }

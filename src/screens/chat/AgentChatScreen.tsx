@@ -50,8 +50,10 @@ import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
 import { SKILLS } from "../../core/agent/skills/catalog";
 import { deployProject } from "../../services/deployService";
-import { forgetNetlifyToken, loadNetlifyToken, saveNetlifyToken, tokenStorageIsSecure } from "../../services/deployToken";
+import { forgetDeployToken, loadDeployToken, saveDeployToken, tokenStorageIsSecure, type DeployProvider } from "../../services/deployToken";
+import { PROVIDER_LABEL } from "../../services/deployService";
 import { looksLikeNetlifyToken } from "../../services/netlify";
+import { looksLikeVercelToken } from "../../services/vercel";
 import {
   classifySupabaseKey,
   forgetBackendTarget,
@@ -231,8 +233,11 @@ export const AgentChatScreen = () => {
   const [deploying, setDeploying] = useState(false);
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [showDeployModal, setShowDeployModal] = useState(false);
-  const [netlifyToken, setNetlifyToken] = useState("");
-  const [hasNetlifyToken, setHasNetlifyToken] = useState(false);
+  // Which host the Deploy button uses. Netlify by default because it takes the whole
+  // archive; Vercel inlines text files only.
+  const [deployProvider, setDeployProvider] = useState<DeployProvider>("netlify");
+  const [deployTokenInput, setDeployTokenInput] = useState("");
+  const [connected, setConnected] = useState<Record<DeployProvider, boolean>>({ netlify: false, vercel: false });
 
   // The user's own Supabase project, for skills that build against a backend.
   const [backend, setBackend] = useState<BackendTarget | null>(null);
@@ -388,8 +393,11 @@ export const AgentChatScreen = () => {
   // Whether an account is already connected decides what the deploy button says.
   useEffect(() => {
     let cancelled = false;
-    void loadNetlifyToken().then((token) => {
-      if (!cancelled) setHasNetlifyToken(!!token);
+    void Promise.all([loadDeployToken("netlify"), loadDeployToken("vercel")]).then(([netlify, vercel]) => {
+      if (cancelled) return;
+      setConnected({ netlify: !!netlify, vercel: !!vercel });
+      // Open on whichever is already connected, so the common case is one press.
+      if (!netlify && vercel) setDeployProvider("vercel");
     });
     void loadBackendTarget().then((target) => {
       if (!cancelled) setBackend(target);
@@ -783,7 +791,7 @@ export const AgentChatScreen = () => {
     setDeploying(true);
     try {
       const projectId = await ensureProjectId();
-      const result = await deployProject(projectId, activeProjectName || "Retro app");
+      const result = await deployProject(projectId, activeProjectName || "Retro app", deployProvider);
 
       if (result.needsToken) {
         // Not a failure — there is just no account connected yet.
@@ -798,7 +806,7 @@ export const AgentChatScreen = () => {
 
       setDeployedUrl(result.url);
       successFeedback();
-      notify("Your site is live", result.url);
+      notify(`Live on ${PROVIDER_LABEL[deployProvider]}`, result.url);
     } catch (e) {
       errorFeedback();
       notify("Could not deploy", e instanceof Error ? e.message : String(e));
@@ -840,17 +848,21 @@ export const AgentChatScreen = () => {
   };
 
   const handleSaveToken = async () => {
-    if (!looksLikeNetlifyToken(netlifyToken)) {
-      notify("That does not look like a token", "Paste the personal access token from Netlify — it has no spaces.");
+    const label = PROVIDER_LABEL[deployProvider];
+    const plausible = deployProvider === "vercel"
+      ? looksLikeVercelToken(deployTokenInput)
+      : looksLikeNetlifyToken(deployTokenInput);
+    if (!plausible) {
+      notify("That does not look like a token", `Paste the access token from ${label} — it has no spaces.`);
       return;
     }
-    await saveNetlifyToken(netlifyToken);
+    await saveDeployToken(deployProvider, deployTokenInput);
     // Cleared from state immediately: it does not need to sit in a React tree.
-    setNetlifyToken("");
-    setHasNetlifyToken(true);
+    setDeployTokenInput("");
+    setConnected((prev) => ({ ...prev, [deployProvider]: true }));
     setShowDeployModal(false);
     successFeedback();
-    notify("Netlify connected", "Press Deploy again to publish this project.");
+    notify(`${label} connected`, "Press Deploy again to publish this project.");
   };
 
   /**
@@ -2530,20 +2542,56 @@ export const AgentChatScreen = () => {
               <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
             </View>
 
-            <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center justify-between mb-3">
               <View className="flex-row items-center">
                 <VectorIcon name="cloud" size={18} color={colors.success} style={{ marginRight: 8 }} />
-                <Text style={{ color: textPrimary }} className="text-xl font-bold">Publish to Netlify</Text>
+                <Text style={{ color: textPrimary }} className="text-xl font-bold">
+                  Publish to {PROVIDER_LABEL[deployProvider]}
+                </Text>
               </View>
               <TouchableOpacity onPress={() => setShowDeployModal(false)} className="px-3 py-2">
                 <Text style={{ color: colors.inkSecondary }} className="text-sm font-semibold">Close</Text>
               </TouchableOpacity>
             </View>
 
+            {/* Both hosts, so the choice is visible rather than a setting to find. */}
+            <View className="flex-row mb-4">
+              {(["netlify", "vercel"] as const).map((option) => {
+                const active = deployProvider === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => { selectionFeedback(); setDeployProvider(option); setDeployTokenInput(""); }}
+                    style={{
+                      backgroundColor: active ? colors.brandSoft : colors.surfaceMuted,
+                      borderColor: active ? colors.brandPrimary : colors.borderHairline,
+                      borderWidth: active ? 2 : 1,
+                    }}
+                    className="flex-1 p-3 rounded-2xl mr-2 active:opacity-80"
+                    activeOpacity={0.8}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text style={{ color: textPrimary }} className="text-sm font-bold">
+                        {PROVIDER_LABEL[option]}
+                      </Text>
+                      {connected[option] ? (
+                        <VectorIcon name="check" size={12} color={colors.success} />
+                      ) : null}
+                    </View>
+                    <Text style={{ color: textSecondary }} className="text-[10px] mt-1 leading-4 text-left">
+                      {option === "netlify"
+                        ? "Sends the whole archive, images included."
+                        : "Sends text files only, no images."}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
-              Netlify's free tier hosts static sites at no cost. Paste a personal
-              access token from your own Netlify account — it is used to publish and
-              nothing else.
+              {PROVIDER_LABEL[deployProvider]}'s free tier hosts static sites at no
+              cost. Paste an access token from your own account — it is used to
+              publish and nothing else.
             </Text>
 
             {/* Said plainly rather than implied. The token is a credential for
@@ -2556,17 +2604,18 @@ export const AgentChatScreen = () => {
                 The token is stored {tokenStorageIsSecure()
                   ? "in this device's secure keystore"
                   : "in this browser's local storage, which any script on this page could read"}
-                {" "}and is sent only to Netlify. It never reaches our servers.
+                {" "}and is sent only to {PROVIDER_LABEL[deployProvider]}. It never
+                reaches our servers.
               </Text>
             </View>
 
             <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">
-              Netlify personal access token
+              {PROVIDER_LABEL[deployProvider]} access token
             </Text>
             <TextInput
-              value={netlifyToken}
-              onChangeText={setNetlifyToken}
-              placeholder="nfp_..."
+              value={deployTokenInput}
+              onChangeText={setDeployTokenInput}
+              placeholder={deployProvider === "vercel" ? "Vercel token" : "nfp_..."}
               placeholderTextColor={colors.inkMuted}
               autoCapitalize="none"
               autoCorrect={false}
@@ -2580,8 +2629,9 @@ export const AgentChatScreen = () => {
               } as any}
             />
             <Text style={{ color: colors.inkMuted }} className="text-[10px] leading-4 mb-4 text-left">
-              Netlify → User settings → Applications → Personal access tokens → New
-              access token.
+              {deployProvider === "vercel"
+                ? "Vercel → Account Settings → Tokens → Create Token."
+                : "Netlify → User settings → Applications → Personal access tokens → New access token."}
             </Text>
 
             <TouchableOpacity
@@ -2593,13 +2643,16 @@ export const AgentChatScreen = () => {
               <Text style={{ color: colors.canvasBase }} className="text-sm font-bold">Connect</Text>
             </TouchableOpacity>
 
-            {hasNetlifyToken && (
+            {connected[deployProvider] && (
               <TouchableOpacity
                 onPress={async () => {
-                  await forgetNetlifyToken();
-                  setHasNetlifyToken(false);
+                  await forgetDeployToken(deployProvider);
+                  setConnected((prev) => ({ ...prev, [deployProvider]: false }));
                   setDeployedUrl(null);
-                  notify("Netlify disconnected", "The token has been removed from this device.");
+                  notify(
+                    `${PROVIDER_LABEL[deployProvider]} disconnected`,
+                    "The token has been removed from this device.",
+                  );
                 }}
                 className="mt-3 self-center px-3 py-2"
               >
@@ -2790,10 +2843,14 @@ export const AgentChatScreen = () => {
                 )}
               </TouchableOpacity>
 
+              {/* Not gated on previewLoading. Deploy publishes the project's files,
+                  not the previewed document — so a preview that is slow or stuck has
+                  nothing to do with whether the project can ship, and coupling them
+                  meant a broken preview also blocked deploying. */}
               <TouchableOpacity
                 onPress={handleDeploy}
-                disabled={deploying || previewLoading}
-                style={{ opacity: previewLoading ? 0.4 : 1 }}
+                disabled={deploying}
+                style={{ opacity: deploying ? 0.5 : 1 }}
                 className="p-1 flex-row items-center mr-4"
                 activeOpacity={0.7}
               >

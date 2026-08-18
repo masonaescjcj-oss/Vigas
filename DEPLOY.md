@@ -121,6 +121,14 @@ npx deno run --allow-all --env-file=.env scripts/cloud-check.ts
 
 هر چهار بخش را چک می‌کند: deploy بودن ۱۴ فانکشن، کار کردن cron→pg_net→worker، پذیرش سکرت توسط ورکر، و نبودِ job گیرکرده.
 
+بررسی سرویس‌های میزبانی — بدون توکن هم اجرا می‌شود و چیزی منتشر نمی‌کند:
+
+```bash
+npx deno run --allow-all scripts/check-hosts.ts
+```
+
+با `NETLIFY_TOKEN` یا `VERCEL_TOKEN` یک دیپلوی واقعی هم انجام می‌دهد (سایت آزمایشی نتلیفای بعدش پاک می‌شود).
+
 بررسی فعال بودن زمان‌بندی‌ها:
 
 ```sql
