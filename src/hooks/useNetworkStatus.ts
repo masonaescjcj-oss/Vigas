@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, Platform, type AppStateStatus } from "react-native";
 import {
+  ONLINE_RECHECK_MS,
   countFailure,
   isOffline,
   nextProbeDelay,
@@ -59,9 +60,18 @@ export const useNetworkStatus = () => {
 
     void run();
 
-    // Coming back to the app is the moment a user most wants the truth.
+    // Coming back to the app is the moment a user most wants the truth — but on
+    // web react-native-web implements AppState with `visibilitychange`, which
+    // fires far more often than a person actually returns to the app. Measured in
+    // the running app: a probe every six seconds, forever, for nothing. So a
+    // foreground event only forces a probe if the last one is genuinely stale.
+    let lastProbe = 0;
     const appState = AppState.addEventListener("change", (next: AppStateStatus) => {
-      if (next === "active") void run();
+      if (next !== "active") return;
+      const now = Date.now();
+      if (now - lastProbe < ONLINE_RECHECK_MS) return;
+      lastProbe = now;
+      void run();
     });
 
     // The browser knows about the network interface for free. It is not

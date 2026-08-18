@@ -57,12 +57,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setSession: async (session) => {
     const user = session?.user ?? null;
+    const previous = get();
     set({ session, user, initialized: true });
-    if (user) {
-      await get().loadProfile();
-    } else {
+
+    if (!user) {
       set({ profile: null });
+      return;
     }
+
+    // Only when it could have changed. supabase-js emits an auth event on every
+    // token refresh and, on web, on every tab focus — and this used to refetch the
+    // whole profile row each time. Measured in the running app: a full
+    // `profiles?select=*` every six seconds alongside nothing else happening.
+    const sameUser = previous.profile?.id === user.id;
+    if (sameUser) return;
+
+    await get().loadProfile();
   },
 
   loadProfile: async () => {
