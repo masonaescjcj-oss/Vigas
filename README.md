@@ -59,6 +59,39 @@ select vault.create_secret(:'worker_secret', 'queue_worker_secret');
 The project URL should be replaced if the project reference changes. Rotate the
 worker secret by updating both the Edge Function secret and the Vault secret.
 
+## Running it locally
+
+Three processes. The functions run on this machine; Postgres, Auth and Storage
+stay on the Supabase project named in `.env`, so a local run exercises the real
+database rather than a stub.
+
+```bash
+npx deno run --allow-all --env-file=.env local-api-server.ts
+```
+
+```bash
+npx deno run --allow-all --env-file=.env run-local-worker.ts
+```
+
+```bash
+npx expo start --web --port 8082
+```
+
+The app reaches the local gateway because `EXPO_PUBLIC_API_URL` is set to
+`http://localhost:54321/functions/v1`; unset it and the same build talks to the
+deployed project instead. Two things to know:
+
+- The worker runs *alongside* the Cron-invoked one in the cloud. Both claim jobs
+  atomically, so this is safe, but a job you enqueue locally may well be run by
+  the deployed worker — check which one logged it before concluding a local edit
+  had no effect.
+- `LOCAL_DEV_BYPASS` skips auth entirely and belongs only here. It is a full
+  bypass, so it must never be set as a Function secret on a deployed project;
+  `scripts/check-share.ts` notes which assertions it makes unassertable.
+
+Don't pipe a long-running process through `tail` — it buffers until the pipe
+closes, so a server that never exits appears to produce no output at all.
+
 ## Deploy and verify
 
 Apply migrations in order, then deploy the functions with the repository's
