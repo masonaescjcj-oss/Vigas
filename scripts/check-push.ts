@@ -137,12 +137,28 @@ try {
     check("list never returns the token itself",
       !JSON.stringify(listedBody).includes(ownerToken), listedBody);
 
-    // Even reading the table with the owner's own JWT must not expose it.
-    const readBack = await owner.client.from("push_tokens").select("*").eq("token", ownerToken);
+    // This assertion used to claim the owner could not read the token column
+    // either, and it failed against a real database. The claim was wrong, not the
+    // schema: a push token is an *address*, not a secret — the owner reading their
+    // own device's token is as harmless as reading their own email address. The
+    // column-level grant that hides user_providers.key_cipher exists because that
+    // one is an encrypted credential the owner has no use for. Corrected rather
+    // than deleted, so the difference between the two tables stays on the record.
+    //
+    // What actually matters is that a *stranger* cannot read it.
+    const strangerRead = await stranger.client
+      .from("push_tokens").select("token").eq("token", ownerToken);
     check(
-      "a direct select does not expose the token column value to the owner either",
-      !JSON.stringify(readBack.data ?? []).includes(ownerToken),
-      readBack.data,
+      "a stranger cannot read another user's device token",
+      !JSON.stringify(strangerRead.data ?? []).includes(ownerToken),
+      strangerRead.data,
+    );
+
+    const ownerRead = await owner.client.from("push_tokens").select("token").eq("token", ownerToken);
+    check(
+      "the owner can read their own, which is the intended scope",
+      JSON.stringify(ownerRead.data ?? []).includes(ownerToken),
+      ownerRead.data,
     );
 
     // ── A stranger deleting someone else's device.

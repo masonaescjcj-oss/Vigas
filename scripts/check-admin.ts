@@ -99,14 +99,11 @@ try {
     check(`an anonymous caller is refused (${anonymous.status})`, anonymous.status === 401);
   }
 
-  // ── A nonsense action must not reach the gate's far side. Schema validation
-  //    happens after the gate, so this is only observable once migrated.
-  const badAction = await call(operator.token, { action: "keys.nuke" });
-  if (notMigrated) {
-    skip(`an unknown action is refused (got ${badAction.status}, which is the migration error)`);
-  } else {
-    check(`an unknown action is refused (${badAction.status})`, badAction.status === 400, badAction.status);
-  }
+  // The "unknown action" check moved below, after the admin flag is set. Schema
+  // validation happens *after* the gate, so before the flag exists this returned
+  // the gate's own 404 — and asserting 400 against it failed for a reason that had
+  // nothing to do with validation. A check has to be placed where the thing it
+  // claims to test is the thing that actually answers.
 
   if (notMigrated) {
     skip("a signed-in non-admin is refused with 404, not 403 (needs the migration)");
@@ -145,6 +142,15 @@ try {
     const afterBody = await afterFlag.json().catch(() => ({}));
     check(`with the flag the panel opens (${afterFlag.status})`, afterFlag.status === 200, afterBody);
     check("the key list is an array", Array.isArray(afterBody?.keys), afterBody);
+
+    // Only meaningful past the gate: before the flag, the gate's 404 answers first.
+    const badAction = await call(operator.token, { action: "keys.nuke" });
+    const badActionBody = await badAction.json().catch(() => ({}));
+    check(
+      `an unknown action is refused by validation (${badAction.status} ${badActionBody?.error?.code})`,
+      badAction.status === 400,
+      badActionBody,
+    );
 
     // ── The key pool. Uses the real provider so the probe means something.
     if (!REAL_KEY) {

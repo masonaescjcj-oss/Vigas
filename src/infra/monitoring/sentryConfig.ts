@@ -1,4 +1,11 @@
-import * as Sentry from "@sentry/deno";
+// Fully qualified rather than a bare specifier, and deliberately so: this file
+// lives in src/ but is imported by every edge function, i.e. from outside
+// supabase/functions/. An import map only governs its own directory scope, so a
+// bare "@sentry/deno" resolves when Deno runs it locally and fails when the
+// Supabase bundler reaches it from the other side of that boundary — which broke
+// the deploy of all 22 functions with "Relative import path not found". Nothing
+// but edge functions imports this module, so a npm: specifier costs nothing here.
+import * as Sentry from "npm:@sentry/deno@10.66.0";
 
 let initialized = false;
 
