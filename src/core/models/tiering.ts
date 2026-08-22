@@ -65,7 +65,7 @@ export const AUTO_MODEL: CatalogModel = {
   name: "Auto",
   description: "Let the server pick the default model",
   tone: "warning",
-  icon: "zap",
+  icon: "model-auto",
   isDefault: false,
   minTier: null,
   locked: false,

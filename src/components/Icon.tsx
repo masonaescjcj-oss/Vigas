@@ -73,6 +73,13 @@ import {
   X,
   Zap,
 } from "lucide-react-native";
+import {
+  ModelAuto,
+  ModelEconomical,
+  ModelFast,
+  ModelFrontier,
+  ModelReasoning,
+} from "./ModelMarks";
 
 const ICONS = {
   user: User,
@@ -130,6 +137,13 @@ const ICONS = {
   download: Download,
   copy: Copy,
   "share-2": Share2,
+  // Model marks. Same prop shape as the lucide glyphs, so they need no special
+  // case here; the catalogue's `icon` column selects between them.
+  "model-auto": ModelAuto,
+  "model-fast": ModelFast,
+  "model-economical": ModelEconomical,
+  "model-reasoning": ModelReasoning,
+  "model-frontier": ModelFrontier,
 } as const;
 
 export type IconName = keyof typeof ICONS;
