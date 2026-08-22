@@ -80,6 +80,7 @@ import {
   ModelFrontier,
   ModelReasoning,
 } from "./ModelMarks";
+import { BrandDeepSeek } from "./BrandMarks";
 
 const ICONS = {
   user: User,
@@ -144,6 +145,8 @@ const ICONS = {
   "model-economical": ModelEconomical,
   "model-reasoning": ModelReasoning,
   "model-frontier": ModelFrontier,
+  // Vendor logos. Coloured by the vendor, not the theme — see BrandMarks.tsx.
+  "brand-deepseek": BrandDeepSeek,
 } as const;
 
 export type IconName = keyof typeof ICONS;
@@ -177,9 +180,14 @@ export const Icon = ({
     );
   }
 
+  // Vendor logos keep their own colour: recolouring a logo modifies it, and
+  // being recognisable is the whole reason one is shown. Everything else
+  // inherits the caller's colour so the interface reads as one system.
+  const ownsItsColour = name.startsWith("brand-");
+
   return (
     <View style={style as never}>
-      <Glyph size={size} color={color} strokeWidth={strokeWidth} />
+      <Glyph size={size} color={ownsItsColour ? undefined : color} strokeWidth={strokeWidth} />
     </View>
   );
 };

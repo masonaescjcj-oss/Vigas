@@ -16,8 +16,9 @@
 update public.models set icon = 'model-fast'
   where id = 'gpt-5.6-luna' and icon = 'zap';
 
-update public.models set icon = 'model-economical'
-  where id = 'deepseek-v4-flash' and icon = 'code';
-
-update public.models set icon = 'model-reasoning'
-  where id = 'deepseek-reasoner' and icon = 'sparkles';
+-- The DeepSeek rows carry DeepSeek's own logo. Both get the same mark, which is
+-- how every model picker does it: the logo says whose model it is, the name and
+-- description say which one.
+update public.models set icon = 'brand-deepseek'
+  where id in ('deepseek-v4-flash', 'deepseek-reasoner')
+    and icon in ('code', 'sparkles', 'model-economical', 'model-reasoning');
