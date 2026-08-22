@@ -3,23 +3,124 @@
  * a client may request, and what the audit sink records for the UI. Both are
  * pure functions, so they are tested without touching Supabase or an LLM.
  */
-import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import {
+  assertEquals,
+  assertRejects,
+  assertStringIncludes,
+} from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { OpenAIChatModel, resolveRequestedModel } from "../shared/agentRuntime.ts";
+import { AppError } from "../shared/errorHandler.ts";
 import { PROJECT_TEMPLATES, templateContentType } from "../shared/templates.ts";
 import { describeToolMetrics, describeToolTarget } from "../../../src/core/agent/hooks/defaultHooks.ts";
 
-Deno.test("model allow-list accepts configured models", () => {
-  assertEquals(resolveRequestedModel("gpt-5.6-luna"), "gpt-5.6-luna");
-  assertEquals(resolveRequestedModel("deepseek-v4-flash"), "deepseek-v4-flash");
+/**
+ * Enough of the Supabase client for the catalogue lookup: `models` rows keyed by
+ * id and `plans` rows keyed by key. Two tables, two `maybeSingle` reads.
+ */
+type Row = Record<string, unknown> | null;
+function fakeService(
+  models: Record<string, Row>,
+  plans: Record<string, Row> = { free: { sort_order: 0 }, pro: { sort_order: 1 }, ultra: { sort_order: 2 } },
+  failTable?: string,
+) {
+  // deno-lint-ignore no-explicit-any
+  return {
+    from(table: string) {
+      const source = table === "models" ? models : plans;
+      return {
+        select: () => ({
+          eq: (_column: string, value: string) => ({
+            maybeSingle: () =>
+              Promise.resolve(
+                table === failTable
+                  ? { data: null, error: { message: "relation does not exist" } }
+                  : { data: source[value] ?? null, error: null },
+              ),
+          }),
+        }),
+      };
+    },
+    // deno-lint-ignore no-explicit-any
+  } as any;
+}
+
+const CATALOGUE = {
+  "gpt-5.6-luna": { id: "gpt-5.6-luna", is_active: true, min_tier: null },
+  "deepseek-v4-flash": { id: "deepseek-v4-flash", is_active: true, min_tier: null },
+  "deepseek-reasoner": { id: "deepseek-reasoner", is_active: true, min_tier: "pro" },
+  "retired-model": { id: "retired-model", is_active: false, min_tier: null },
+};
+
+Deno.test("a free model is allowed on the free tier", async () => {
+  const service = fakeService(CATALOGUE);
+  assertEquals(await resolveRequestedModel(service, "gpt-5.6-luna", "free"), "gpt-5.6-luna");
+  assertEquals(await resolveRequestedModel(service, "deepseek-v4-flash", "free"), "deepseek-v4-flash");
 });
 
-Deno.test("model allow-list falls back to the server default for anything else", () => {
+Deno.test("the server default is used for anything unrecognised", async () => {
+  const service = fakeService(CATALOGUE);
   // "auto" means "server decides"; unknown or hostile input must not pass through.
-  assertEquals(resolveRequestedModel("auto"), undefined);
-  assertEquals(resolveRequestedModel(undefined), undefined);
-  assertEquals(resolveRequestedModel(""), undefined);
-  assertEquals(resolveRequestedModel("gpt-4o-expensive"), undefined);
-  assertEquals(resolveRequestedModel("../../etc/passwd"), undefined);
+  assertEquals(await resolveRequestedModel(service, "auto", "free"), undefined);
+  assertEquals(await resolveRequestedModel(service, undefined, "free"), undefined);
+  assertEquals(await resolveRequestedModel(service, "", "free"), undefined);
+  assertEquals(await resolveRequestedModel(service, "gpt-4o-expensive", "free"), undefined);
+  assertEquals(await resolveRequestedModel(service, "../../etc/passwd", "free"), undefined);
+});
+
+Deno.test("a model switched off falls back rather than failing the run", async () => {
+  // is_active=false is how an operator takes a broken model out of service. The
+  // kinder answer is a working model, not a dead end.
+  const service = fakeService(CATALOGUE);
+  assertEquals(await resolveRequestedModel(service, "retired-model", "pro"), undefined);
+});
+
+Deno.test("a premium model is refused on the free tier, by name", async () => {
+  // The regression this exists for: min_tier was stored and editable in the
+  // admin panel while the server read an environment variable instead, so a
+  // free account could ask for the premium model and be served it.
+  const service = fakeService(CATALOGUE);
+  const error = await assertRejects(
+    () => resolveRequestedModel(service, "deepseek-reasoner", "free"),
+    AppError,
+  );
+  assertEquals(error.status, 403);
+  assertEquals(error.code, "MODEL_REQUIRES_UPGRADE");
+  // The app routes to the paywall on this code, and needs the tier to name it.
+  assertEquals((error.details as { requiredTier: string }).requiredTier, "pro");
+});
+
+Deno.test("a premium model is allowed at its tier and above", async () => {
+  const service = fakeService(CATALOGUE);
+  assertEquals(await resolveRequestedModel(service, "deepseek-reasoner", "pro"), "deepseek-reasoner");
+  assertEquals(await resolveRequestedModel(service, "deepseek-reasoner", "ultra"), "deepseek-reasoner");
+});
+
+Deno.test("an unrecognised tier is treated as the lowest, not the highest", async () => {
+  // A typo in a profile row must not hand out the paid models.
+  const service = fakeService(CATALOGUE);
+  await assertRejects(
+    () => resolveRequestedModel(service, "deepseek-reasoner", "enterprise-typo"),
+    AppError,
+  );
+});
+
+Deno.test("a model gated on a deleted plan stays locked rather than becoming free", async () => {
+  // The two ranks fail closed in opposite directions. Ranking an unknown
+  // *required* tier at 0 like an unknown *held* one would tie it with free and
+  // hand the paid model to everybody — found by the equivalent client-side test.
+  const service = fakeService({
+    orphan: { id: "orphan", is_active: true, min_tier: "retired-plan" },
+  });
+  await assertRejects(() => resolveRequestedModel(service, "orphan", "free"), AppError);
+  await assertRejects(() => resolveRequestedModel(service, "orphan", "ultra"), AppError);
+});
+
+Deno.test("an unreadable catalogue degrades to the fallback list", async () => {
+  // Before the models table is migrated, or during a transient failure: the
+  // usual models must keep working rather than every run refusing.
+  const service = fakeService(CATALOGUE, undefined, "models");
+  assertEquals(await resolveRequestedModel(service, "gpt-5.6-luna", "free"), "gpt-5.6-luna");
+  assertEquals(await resolveRequestedModel(service, "never-heard-of-it", "free"), undefined);
 });
 
 Deno.test("every starter template has an entry file and sane content types", () => {

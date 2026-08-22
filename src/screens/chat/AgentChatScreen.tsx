@@ -48,6 +48,8 @@ import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
+import { fetchModelCatalog } from "../../services/modelCatalog";
+import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
 import { SKILLS } from "../../core/agent/skills/catalog";
 import { deployProject } from "../../services/deployService";
 import { forgetDeployToken, loadDeployToken, saveDeployToken, tokenStorageIsSecure, type DeployProvider } from "../../services/deployToken";
@@ -78,20 +80,12 @@ import { Icon as VectorIcon } from "../../components/Icon";
 // ============================================================================
 
 /**
- * AI Models Directory
- * Ids must match the server's ALLOWED_MODELS allow-list; the server rejects anything else.
+ * The picker's contents come from the `models` table via fetchModelCatalog, so
+ * what the admin marks free or premium is what a user sees. This is the list
+ * shown until that read returns — Auto alone, because "server decides" is the
+ * one entry that is always valid and never gated.
  */
-/**
- * Selectable models. These ids are sent to agent-run, which only honours ids on
- * its own allow-list (ALLOWED_MODELS) — anything else falls back to the server
- * default, so the picker can never point the agent at an arbitrary model.
- */
-const AI_MODELS_DATA = [
-  { id: "auto", name: "Auto", icon: "zap", tone: "warning" as const, category: "Best", description: "Let the server pick the default model" },
-  { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", icon: "zap", tone: "success" as const, badge: "default", category: "Best", description: "Fast general coding model" },
-  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "code", tone: "brandPrimary" as const, category: "Best", description: "Fast and economical" },
-  { id: "deepseek-reasoner", name: "DeepSeek Reasoner", icon: "sparkles", tone: "brandPrimary" as const, category: "Best", description: "Deeper reasoning for complex tasks" },
-];
+const INITIAL_MODELS: CatalogModel[] = [AUTO_MODEL];
 
 /**
  * "/" shortcuts. These are prompt expansions, not backend commands — each one
@@ -186,6 +180,7 @@ export const AgentChatScreen = () => {
   // Selected Model & Thinking Reasoning Toggle State
   const defaultModel = useSettingsStore((s) => s.defaultModel);
   const [selectedModelId, setSelectedModelId] = useState<string>(defaultModel);
+  const [models, setModels] = useState<CatalogModel[]>(INITIAL_MODELS);
   
   // Chat Stream Messages & Execution State
   const [inputText, setInputText] = useState("");
@@ -335,7 +330,23 @@ export const AgentChatScreen = () => {
   const [newProjectName, setNewProjectName] = useState("");
 
   // Active Model Helper Object
-  const activeModelObj = AI_MODELS_DATA.find(m => m.id === selectedModelId) || AI_MODELS_DATA[0];
+  const activeModelObj = models.find(m => m.id === selectedModelId) || models[0] || AUTO_MODEL;
+
+  // The catalogue depends on the plan, so a subscription that changes mid-session
+  // has to re-read it — otherwise a model just paid for stays locked.
+  const tier = profile?.subscription_tier ?? "free";
+  useEffect(() => {
+    let cancelled = false;
+    fetchModelCatalog(tier).then((loaded) => {
+      if (cancelled) return;
+      setModels(loaded);
+      // A model that became gated while it was selected must not stay selected —
+      // the run would be refused with MODEL_REQUIRES_UPGRADE on send.
+      const current = loaded.find((entry) => entry.id === selectedModelId);
+      if (current?.locked) setSelectedModelId(AUTO_MODEL.id);
+    });
+    return () => { cancelled = true; };
+  }, [tier]);
 
   // --------------------------------------------------------------------------
   // HANDLERS & API ACTION HOOKS
@@ -3273,40 +3284,81 @@ export const AgentChatScreen = () => {
 
             {/* Scrollable Models List */}
             <ScrollView className="flex-1 mt-1" showsVerticalScrollIndicator={false}>
-              {AI_MODELS_DATA.map((model) => {
+              {models.map((model) => {
                 const isSelected = selectedModelId === model.id;
 
                 return (
                   <TouchableOpacity
                     key={model.id}
-                    onPress={() => setSelectedModelId(model.id)}
+                    // A locked model goes to the payment screen instead of being
+                    // selected. Selecting it would only produce a refused run.
+                    onPress={() => {
+                      if (model.locked) {
+                        setShowModelsModal(false);
+                        navigation.getParent()?.navigate("Paywall", {
+                          lockedModel: model.name,
+                          requiredTier: model.minTier ?? undefined,
+                        });
+                        return;
+                      }
+                      setSelectedModelId(model.id);
+                    }}
                     activeOpacity={0.9}
                     style={{
-                      backgroundColor: isSelected 
-                        ? (colors.surfaceMuted)
-                        : (colors.surfaceMuted),
-                      borderColor: isSelected
-                        ? (colors.borderHairline)
-                        : (colors.surfaceMuted)
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: isSelected ? colors.borderHairline : colors.surfaceMuted,
                     }}
                     className="mb-2 p-3 rounded-2xl transition-all border"
                   >
                     <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center">
-                        <VectorIcon name={model.icon} size={15} color={colors[model.tone]} style={{ marginRight: 8 }} />
-                        <Text style={{ color: textPrimary }} className="text-sm font-semibold mr-2">
+                      <View className="flex-row items-center flex-1 mr-2">
+                        <VectorIcon
+                          name={model.locked ? "lock" : model.icon}
+                          size={15}
+                          color={model.locked ? colors.inkSecondary : colors[model.tone]}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text
+                          style={{ color: model.locked ? textSecondary : textPrimary }}
+                          className="text-sm font-semibold mr-2"
+                          numberOfLines={1}
+                        >
                           {model.name}
                         </Text>
-                        
-                        {model.badge && (
-                          <View className="bg-sky-500/20 px-1.5 py-0.5 rounded mr-1">
-                            <Text style={{ color: colors.brandPrimary }} className=" text-[9px] font-mono uppercase">{model.badge}</Text>
+
+                        {/* Free or the plan it needs — the admin's min_tier, in words. */}
+                        <View
+                          className="px-1.5 py-0.5 rounded mr-1"
+                          style={{
+                            backgroundColor: model.minTier
+                              ? `${colors.warning}26`
+                              : `${colors.success}26`,
+                          }}
+                        >
+                          <Text
+                            style={{ color: model.minTier ? colors.warning : colors.success }}
+                            className="text-[9px] font-mono uppercase"
+                          >
+                            {model.badge}
+                          </Text>
+                        </View>
+
+                        {model.isDefault && (
+                          <View className="bg-sky-500/20 px-1.5 py-0.5 rounded">
+                            <Text style={{ color: colors.brandPrimary }} className="text-[9px] font-mono uppercase">
+                              default
+                            </Text>
                           </View>
                         )}
                       </View>
 
-                      {isSelected && (
+                      {isSelected && !model.locked && (
                         <VectorIcon name="check" size={15} color={colors.brandPrimary} />
+                      )}
+                      {model.locked && (
+                        <Text style={{ color: colors.warning }} className="text-[10px] font-uiSemiBold">
+                          Upgrade
+                        </Text>
                       )}
                     </View>
 

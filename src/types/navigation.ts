@@ -61,7 +61,11 @@ export type RootStackParamList = {
   AuthStack: NavigatorScreenParams<AuthStackParamList>;
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   // Global Modals
-  Paywall: { triggeredByLimit?: boolean };
+  /**
+   * lockedModel/requiredTier let the screen name what the user just tried to
+   * use, instead of opening on a generic pitch when they tapped a specific model.
+   */
+  Paywall: { triggeredByLimit?: boolean; lockedModel?: string; requiredTier?: string };
   ManageSubscription: undefined;
   TokenUsage: undefined;
   GlobalSearch: undefined;

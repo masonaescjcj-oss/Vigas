@@ -121,18 +121,34 @@ export async function buildAllowance(
   return limit === null ? null : Number(limit);
 }
 
-/** Throws when a user has spent their Build runs for the day. */
-export async function checkBuildQuota(service: SupabaseClient, userId: string): Promise<void> {
-  const { data: profile, error } = await service
+/**
+ * The plan a user is on.
+ *
+ * Defaults to free when the profile row is missing rather than throwing: the
+ * callers use this to *restrict*, so the absence of a row must not read as
+ * unlimited access.
+ */
+export async function tierOf(service: SupabaseClient, userId: string): Promise<string> {
+  const { data, error } = await service
     .from("profiles").select("subscription_tier").eq("id", userId).maybeSingle();
   if (error) asAppError(error, "Loading subscription tier");
-  const tier = String(profile?.subscription_tier ?? "free");
+  return String(data?.subscription_tier ?? "free");
+}
+
+/**
+ * Throws when a user has spent their Build runs for the day.
+ *
+ * Returns the tier it had to load anyway, so the caller can gate the model
+ * choice on it without a second read of the same row.
+ */
+export async function checkBuildQuota(service: SupabaseClient, userId: string): Promise<string> {
+  const tier = await tierOf(service, userId);
 
   const limit = await buildAllowance(service, tier);
-  if (limit === null) return;
+  if (limit === null) return tier;
 
   const used = await buildRunsToday(service, userId);
-  if (used < limit) return;
+  if (used < limit) return tier;
 
   throw new AppError(
     429,

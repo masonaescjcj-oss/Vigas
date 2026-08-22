@@ -11,7 +11,8 @@
 import React, { useState } from "react";
 import { View, TouchableOpacity, ScrollView, SafeAreaView } from "react-native";
 import { Icon } from "../../components/Icon";
-import { useNavigation } from "@react-navigation/native";
+import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import type { RootStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { PlanCard } from "../../components/PlanCard";
@@ -22,7 +23,15 @@ import { notify } from "../../services/notify";
 export const PaywallScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<RootStackParamList, "Paywall">>();
   const { offerings, purchasePackage, isLoading } = useSubscription();
+
+  // Set when a locked model sent the user here, so the screen can say which one.
+  const lockedModel = route.params?.lockedModel;
+  // Title-cased because the route carries a plan *key* ("pro"), and "Pro" is
+  // what the plan is called.
+  const requiredTier = route.params?.requiredTier ?? "pro";
+  const requiredPlanName = requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1);
 
   const [selectedPkgId, setSelectedPkgId] = useState("pkg_yearly"); // default selected
   // Close means close. This used to swallow the first dismissal to show a
@@ -67,10 +76,15 @@ export const PaywallScreen = () => {
         <View className="items-center mb-8">
           <Icon name="sparkles" size={52} color={colors.brandPrimary} style={{ marginBottom: 16 }} />
           <Text variant="h2" className="font-uiSemiBold text-center">
-            Access all Pro features
+            {/* Named when a specific model sent them here: someone who tapped
+                "DeepSeek Reasoner" is owed an answer about that model, not a
+                generic pitch they have to translate. */}
+            {lockedModel ? `${lockedModel} needs ${requiredPlanName}` : "Access all Pro features"}
           </Text>
           <Text variant="caption" className="text-center mt-2 opacity-80 leading-5 px-6">
-            Remove limits and code at the fastest speed.
+            {lockedModel
+              ? `Your plan does not include it yet. ${requiredPlanName} unlocks it along with everything below.`
+              : "Remove limits and code at the fastest speed."}
           </Text>
         </View>
 

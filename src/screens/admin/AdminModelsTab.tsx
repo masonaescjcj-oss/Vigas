@@ -16,13 +16,29 @@ import { Icon } from "../../components/Icon";
 import { useTheme } from "../../theme/ThemeProvider";
 import { confirmAction, notify } from "../../services/notify";
 import { successFeedback } from "../../services/haptics";
-import { deleteModel, listModels, saveModel, type ModelRow } from "../../services/adminService";
+import {
+  deleteModel,
+  listModels,
+  listPlans,
+  type ModelRow,
+  type PlanRow,
+  saveModel,
+} from "../../services/adminService";
 import { Action, Card, Field, Pill, SectionTitle, TabState } from "./adminUi";
+
+/**
+ * What a plan key is called. Falls back to the key so a model gated on a plan
+ * that has since been removed still reads as gated rather than as free.
+ */
+function planName(plans: PlanRow[], key: string): string {
+  return plans.find((plan) => plan.key === key)?.display_name ?? key;
+}
 
 export const AdminModelsTab: React.FC = () => {
   const { colors } = useTheme();
 
   const [models, setModels] = useState<ModelRow[]>([]);
+  const [plans, setPlans] = useState<PlanRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -34,7 +50,11 @@ export const AdminModelsTab: React.FC = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setModels(await listModels());
+      // Plans as well as models: min_tier holds a plan *key*, and the tier
+      // control has to offer the plans that exist rather than a hardcoded set.
+      const [loadedModels, loadedPlans] = await Promise.all([listModels(), listPlans()]);
+      setModels(loadedModels);
+      setPlans(loadedPlans);
     } catch (e: any) {
       notify("Could not load models", e?.message ?? "Please try again.");
     } finally {
@@ -83,6 +103,50 @@ export const AdminModelsTab: React.FC = () => {
       await load();
     } catch (e: any) {
       notify("Could not update it", e?.message ?? "Please try again.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /**
+   * Move a model along the plan ladder: Free → the cheapest paid plan → … → Free.
+   *
+   * A cycle rather than a picker because the ladder is short and the question is
+   * binary most of the time. min_tier null is what "free for everyone" means in
+   * the table, so wrapping back to null is how a model is made free again.
+   */
+  const handleCycleTier = async (model: ModelRow) => {
+    const paid = [...plans]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .filter((plan) => plan.sort_order > 0);
+    if (paid.length === 0) {
+      notify("No paid plans configured", "Add a plan above the free tier before gating a model.");
+      return;
+    }
+    const at = paid.findIndex((plan) => plan.key === model.min_tier);
+    const next = model.min_tier === null
+      ? paid[0].key
+      : at >= 0 && at < paid.length - 1
+        ? paid[at + 1].key
+        : null;
+
+    setBusyId(model.id);
+    try {
+      await saveModel({
+        modelId: model.id,
+        displayName: model.display_name,
+        description: model.description,
+        tone: model.tone,
+        icon: model.icon,
+        minTier: next,
+        isDefault: model.is_default,
+        isActive: model.is_active,
+        sortOrder: model.sort_order,
+      });
+      successFeedback();
+      await load();
+    } catch (e: any) {
+      notify("Could not change who can use it", e?.message ?? "Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -137,6 +201,8 @@ export const AdminModelsTab: React.FC = () => {
         style={{ color: colors.inkSecondary }}
       >
         Turning a model off hides it from the picker and stops the server accepting it.
+        A paid model shows its plan in the picker and sends anyone below that plan
+        to the payment screen instead of running.
       </Text>
 
       <TabState loading={loading} empty={models.length === 0} emptyText="No models configured." />
@@ -148,6 +214,10 @@ export const AdminModelsTab: React.FC = () => {
             <Text variant="body" className="font-uiMedium text-left flex-1" numberOfLines={1}>
               {model.display_name}
             </Text>
+            {/* Who can use it, in the same words the picker shows the user. */}
+            {model.min_tier
+              ? <Pill tone="warning">{planName(plans, model.min_tier)}</Pill>
+              : <Pill tone="success">Free</Pill>}
             {model.is_default ? <Pill tone="success">Default</Pill> : null}
             {!model.is_active ? <Pill tone="muted">Off</Pill> : null}
           </View>
@@ -171,6 +241,12 @@ export const AdminModelsTab: React.FC = () => {
           ) : null}
 
           <View className="flex-row justify-end mt-3">
+            <Action
+              label={model.min_tier ? `${planName(plans, model.min_tier)} →` : "Make paid"}
+              onPress={() => handleCycleTier(model)}
+              busy={busyId === model.id}
+              className="mr-2"
+            />
             {!model.is_default ? (
               <Action
                 label="Make default"

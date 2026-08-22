@@ -177,20 +177,95 @@ export class AnthropicChatModel implements ChatModel {
 }
 
 /**
- * Models a client may request per run. Anything else falls back to the server
- * default — a client must never be able to point the agent at an arbitrary
- * model string (cost and availability are server concerns).
+ * Fallback allow-list, used only when the catalogue cannot be read.
+ *
+ * The `models` table is the real allow-list — its own migration says it
+ * "replaces a hardcoded list in the app and an ALLOWED_MODELS environment
+ * variable", and this is what is left of that variable. It stays as a floor so
+ * that a database hiccup degrades to "the usual models work" instead of
+ * "nobody can pick anything".
  */
-export const ALLOWED_MODELS: readonly string[] = (
+export const FALLBACK_MODELS: readonly string[] = (
   Deno.env.get("ALLOWED_MODELS") ?? "gpt-5.6-luna,deepseek-v4-flash,deepseek-chat,deepseek-reasoner"
 )
   .split(",")
   .map((entry) => entry.trim())
   .filter(Boolean);
 
-export function resolveRequestedModel(requested?: string | null): string | undefined {
+/**
+ * Rank of a plan key. Higher includes everything lower.
+ *
+ * @param whenUnknown What an unrecognised key ranks as. Asymmetric on purpose,
+ *   because both directions have to fail closed: the tier a user *holds* ranks
+ *   lowest when unknown (a typo in a profile row must not hand out paid models),
+ *   while the tier a model *demands* ranks highest (a model gated on a deleted
+ *   plan would otherwise tie with free and be given away).
+ */
+async function planRank(
+  service: SupabaseClient,
+  key: string,
+  whenUnknown: number,
+): Promise<number> {
+  const { data } = await service.from("plans").select("sort_order").eq("key", key).maybeSingle();
+  return data?.sort_order === undefined || data?.sort_order === null
+    ? whenUnknown
+    : Number(data.sort_order);
+}
+
+/**
+ * Decide which model id a run may use.
+ *
+ * This is where "the admin marks a model premium" becomes true. Until now the
+ * decision lived in an environment variable that knew nothing about the
+ * catalogue, so `min_tier` was stored, editable in the admin panel, and
+ * enforced nowhere — a free account could request the premium model by name and
+ * be served it.
+ *
+ * Two failure modes, deliberately different:
+ *
+ *   - **Not allowed for this tier** throws. The picker should have prevented it,
+ *     so arriving here means a stale client or a direct API call. Silently
+ *     substituting the default would bill someone for a model they did not pick
+ *     and never tell them, which is worse than an error naming the upgrade.
+ *   - **Unknown, or switched off** falls back to the server default. `is_active`
+ *     false is how an operator takes a broken model out of service, and the
+ *     kinder response to that is a working model, not a dead end.
+ */
+export async function resolveRequestedModel(
+  service: SupabaseClient,
+  requested: string | null | undefined,
+  tier: string,
+): Promise<string | undefined> {
   if (!requested || requested === "auto") return undefined;
-  return ALLOWED_MODELS.includes(requested) ? requested : undefined;
+
+  const { data: model, error } = await service
+    .from("models")
+    .select("id,is_active,min_tier")
+    .eq("id", requested)
+    .maybeSingle();
+
+  // Catalogue unreadable (not yet migrated, or a transient failure): fall back
+  // to the floor rather than refusing every run.
+  if (error) {
+    console.error(`[models] catalogue unreadable, using fallback list: ${error.message}`);
+    return FALLBACK_MODELS.includes(requested) ? requested : undefined;
+  }
+
+  if (!model || model.is_active === false) return undefined;
+  if (!model.min_tier) return requested;
+
+  const [required, held] = await Promise.all([
+    planRank(service, String(model.min_tier), Number.POSITIVE_INFINITY),
+    planRank(service, tier, 0),
+  ]);
+  if (held >= required) return requested;
+
+  throw new AppError(
+    403,
+    "MODEL_REQUIRES_UPGRADE",
+    `That model is available on ${model.min_tier} and above.`,
+    { model: model.id, requiredTier: model.min_tier, currentTier: tier },
+  );
 }
 
 /**

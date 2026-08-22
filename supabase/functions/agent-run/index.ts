@@ -21,7 +21,11 @@ export async function handler(req: Request): Promise<Response> {
     const project = await assertProjectOwner(service, user.id, input.projectId);
     // Build occupies a worker and a sandbox, which we pay for however the
     // model was billed — so this limit applies even with the user's own key.
-    await checkBuildQuota(service, user.id);
+    const tier = await checkBuildQuota(service, user.id);
+    // Resolved here, not in the worker: a model the caller may not use has to
+    // be refused while there is still a request to answer, so the app can send
+    // them to the paywall instead of surfacing a failed run minutes later.
+    const model = await resolveRequestedModel(service, input.model, tier);
     let profile: "standard" | "readonly" = input.profile ?? "standard";
     if (input.sessionId) {
       const { data: existing, error } = await service.from("agent_sessions").select("project_id,profile,status").eq("id", input.sessionId).eq("user_id", user.id).maybeSingle();
@@ -51,7 +55,7 @@ export async function handler(req: Request): Promise<Response> {
         sandbox_path: project.sandbox_path,
         // Unknown/"auto" model ids resolve to undefined so the worker uses the
         // server default instead of trusting client input.
-        model: resolveRequestedModel(input.model) ?? null,
+        model: model ?? null,
         // Ids only. The prompt text is resolved from the catalog in the worker, so
         // a job row never carries instructions a client supplied.
         skills: input.skills ?? [],

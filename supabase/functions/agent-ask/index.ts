@@ -28,7 +28,7 @@ import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { OpenAIChatModel, assertProjectOwner, resolveRequestedModel } from "../shared/agentRuntime.ts";
-import { recordUsage } from "../shared/usage.ts";
+import { recordUsage, tierOf } from "../shared/usage.ts";
 import { resolveProvider } from "../shared/resolveProvider.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -196,7 +196,10 @@ export async function handler(req: Request): Promise<Response> {
     // A user who brought their own provider pays for their own tokens, so
     // theirs is used. The key is decrypted here and never leaves this scope.
     const credentials = await resolveProvider(service, user.id);
-    const model = new OpenAIChatModel(resolveRequestedModel(input.model), credentials);
+    // Chat is unlimited but not un-gated: a premium model costs the same here as
+    // it does in Build, so the same catalogue check applies.
+    const chosen = await resolveRequestedModel(service, input.model, await tierOf(service, user.id));
+    const model = new OpenAIChatModel(chosen, credentials);
     const result = await model.generate({
       systemPrompt: [
         SYSTEM_PROMPT,
