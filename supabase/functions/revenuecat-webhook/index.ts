@@ -1,4 +1,4 @@
-import { withSentryHandler, withSentrySpan } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { withSentryHandler, withSentrySpan } from "../shared/sentry.ts";
 import { RevenueCatWebhookSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";
 import { clientIp, constantTimeEqual, corsHeaders, json, preflight } from "../shared/http.ts";

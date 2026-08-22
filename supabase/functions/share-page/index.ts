@@ -25,7 +25,7 @@
  * open it.
  * ---------------------------------------------------------------------------
  */
-import { withSentryHandler } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { withSentryHandler } from "../shared/sentry.ts";
 import { corsHeaders } from "../shared/http.ts";
 import { createServiceClient } from "../shared/supabase.ts";
 import { isShareCode } from "../shared/shareDoc.ts";

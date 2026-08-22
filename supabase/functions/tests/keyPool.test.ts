@@ -209,3 +209,31 @@ Deno.test("a quota message still rests the key, even alongside other wording", (
   assertEquals(classifyFailure(429, '{"error":{"message":"You exceeded your current quota"}}'), "key_exhausted");
   assertEquals(classifyFailure(200, '{"error":{"message":"insufficient credit"}}'), "key_exhausted");
 });
+
+/**
+ * The same provider, a different account: the shape of "that model is not
+ * available" changed entirely between two real keys. Captured verbatim, because
+ * matching on prose alone let the second one through as an outage — which rests a
+ * healthy key after three tries.
+ */
+const REAL_MODEL_NOT_FOUND_503 = '{"error":{"code":"model_not_found","message":"Failed to get available channel for model totally-not-a-model-xyz under group default (distributor): no enabled channel for cheapest routing (request id: 2026...)","type":"new_api_error"}}';
+
+Deno.test("a 503 whose code says model_not_found does not blame the key", () => {
+  // Read as a bare status this is an outage, and provider_down counts against the
+  // key's health. The structured code is the honest signal.
+  assertEquals(classifyFailure(503, REAL_MODEL_NOT_FOUND_503), "model_unavailable");
+});
+
+Deno.test("the underscore spelling is recognised as well as the spaced one", () => {
+  assertEquals(classifyFailure(404, '{"code":"model_not_found"}'), "model_unavailable");
+  assertEquals(classifyFailure(404, "model not found"), "model_unavailable");
+  assertEquals(classifyFailure(404, "model-not-available"), "model_unavailable");
+});
+
+Deno.test("a genuine 503 with no model complaint is still an outage", () => {
+  // The new matching must not swallow real outages into model_unavailable, or a
+  // dead provider would never rest anything.
+  assertEquals(classifyFailure(503, ""), "provider_down");
+  assertEquals(classifyFailure(503, "<html>Service Unavailable</html>"), "provider_down");
+  assertEquals(classifyFailure(503, '{"error":{"message":"upstream timeout"}}'), "provider_down");
+});

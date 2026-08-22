@@ -17,7 +17,7 @@
  * export into an unlisted copy of someone's source code, indefinitely.
  * ---------------------------------------------------------------------------
  */
-import { withSentryHandler } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { withSentryHandler } from "../shared/sentry.ts";
 import { ProjectExportSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";
 import { corsHeaders, json, preflight } from "../shared/http.ts";

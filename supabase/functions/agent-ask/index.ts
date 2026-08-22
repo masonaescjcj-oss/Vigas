@@ -20,7 +20,7 @@
  * "answered without the agent" must not mean "answered for free".
  * ---------------------------------------------------------------------------
  */
-import { withSentryHandler } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { withSentryHandler } from "../shared/sentry.ts";
 import { ASK_HISTORY_TURNS, AgentAskSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";
 import { corsHeaders, json, preflight } from "../shared/http.ts";

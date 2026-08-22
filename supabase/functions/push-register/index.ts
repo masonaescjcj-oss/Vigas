@@ -12,7 +12,7 @@
  * addresses a phone, and a phone has one person holding it.
  * ---------------------------------------------------------------------------
  */
-import { withSentryHandler } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { withSentryHandler } from "../shared/sentry.ts";
 import { PushRegisterSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";
 import { corsHeaders, json, preflight } from "../shared/http.ts";

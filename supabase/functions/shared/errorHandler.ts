@@ -1,5 +1,5 @@
 import { z, ZodError, type ZodType } from "zod";
-import { captureException, flushSentry } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { captureException, flushSentry } from "./sentry.ts";
 
 export class AppError extends Error {
   constructor(

@@ -1,4 +1,4 @@
-import { captureException, flushSentry, withSentryHandler, withSentrySpan } from "../../../src/infra/monitoring/sentryConfig.ts";
+import { captureException, flushSentry, withSentryHandler, withSentrySpan } from "../shared/sentry.ts";
 import { EmptyInputSchema } from "../shared/zodSchemas.ts";
 import { AppError, assertMethod, errorResponse, parseJson } from "../shared/errorHandler.ts";
 import { corsHeaders, constantTimeEqual, json, preflight } from "../shared/http.ts";

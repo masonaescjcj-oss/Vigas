@@ -61,7 +61,19 @@ export type FailureKind =
  * pool, one after another, because each key answered the same way — so a single
  * unsupported model id took the whole service down for half an hour.
  */
-const MODEL_ACCESS = /no access to model|model.{0,30}not (found|available|supported)|unsupported model|does not exist/i;
+const MODEL_ACCESS =
+  // The machine-readable code first. Prose varies by account and by routing
+  // config — the *same* provider answered `403 "This token has no access to
+  // model X"` on one account and `503 {"code":"model_not_found"}` on another, and
+  // matching only the sentence meant the second one fell through to
+  // provider_down, which rests a perfectly healthy key after three tries.
+  /"?code"?\s*[:=]\s*"?(model_not_found|model_not_available|unsupported_model)/i;
+
+/** The same thing said in prose, for providers that send no structured code. */
+const MODEL_ACCESS_PROSE =
+  // `[\s_-]` rather than a literal space: `model_not_found` and `model not found`
+  // are the same fact wearing different punctuation.
+  /no access to model|model[\s_-]{0,4}not[\s_-](found|available|supported)|unsupported model|no enabled channel for model|does not exist/i;
 
 /**
  * Wording that means the provider understood us and objected to the request.
@@ -85,7 +97,7 @@ export function classifyFailure(status: number, body: string): FailureKind {
   const text = body.toLowerCase();
 
   // A key that cannot serve this model is not a spent key.
-  if (MODEL_ACCESS.test(body)) return "model_unavailable";
+  if (MODEL_ACCESS.test(body) || MODEL_ACCESS_PROSE.test(body)) return "model_unavailable";
 
   // Our own bad request, whatever status it arrived under.
   if (OUR_FAULT.test(body)) return "request_rejected";

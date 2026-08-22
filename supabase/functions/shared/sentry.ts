@@ -1,11 +1,9 @@
-// Fully qualified rather than a bare specifier, and deliberately so: this file
-// lives in src/ but is imported by every edge function, i.e. from outside
-// supabase/functions/. An import map only governs its own directory scope, so a
-// bare "@sentry/deno" resolves when Deno runs it locally and fails when the
-// Supabase bundler reaches it from the other side of that boundary — which broke
-// the deploy of all 22 functions with "Relative import path not found". Nothing
-// but edge functions imports this module, so a npm: specifier costs nothing here.
-import * as Sentry from "npm:@sentry/deno@10.66.0";
+// Bare specifier, resolved by supabase/functions/deno.json. That only works
+// because this file lives here: while it sat in src/ it was outside the import
+// map's scope, which broke the deploy of all 22 functions — and the npm: specifier
+// that fixed the deploy was in turn unresolvable by the frontend's tsc. Moving the
+// file removed both problems instead of trading one for the other.
+import * as Sentry from "@sentry/deno";
 
 let initialized = false;
 
