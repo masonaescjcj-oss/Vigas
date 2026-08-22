@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { buildPreviewHtml } from "../previewBuilder";
+import { PROJECT_TEMPLATES } from "../../../supabase/functions/shared/templates";
 
 describe("buildPreviewHtml", () => {
   it("inlines a local stylesheet so the preview needs no server", () => {
@@ -174,5 +175,114 @@ describe("loading state for CDN-backed previews", () => {
       "app.js": "console.log('hi');",
     });
     expect(html).not.toContain("__preview-loading");
+  });
+});
+
+/**
+ * React Native in the preview.
+ *
+ * The product exists to build apps that ship to the stores, which means the
+ * output is a React Native project — and a browser cannot run one. What it can
+ * run is react-native-web, the same substitution Expo's own web target makes,
+ * so the preview needs no Metro, no device and no build.
+ *
+ * The template itself is the fixture: a test against a hand-written App.tsx
+ * would keep passing after the real starter drifted away from it.
+ */
+describe("previewing a React Native project", () => {
+  const expoApp = PROJECT_TEMPLATES.expo.files;
+
+  it("resolves react-native to react-native-web on the CDN", () => {
+    const html = buildPreviewHtml(expoApp);
+    // The specifier the code imports stays "react-native" — that is the key the
+    // module registry looks up — while the URL points at the web implementation.
+    expect(html).toContain('["react-native", "https://esm.sh/react-native-web@');
+  });
+
+  it("pins the versions it loads", () => {
+    // An unpinned major on the CDN would change what a preview does without
+    // anything in this repository changing.
+    const html = buildPreviewHtml(expoApp);
+    expect(html).toMatch(/react-native-web@\d+\.\d+\.\d+/);
+    expect(html).toMatch(/esm\.sh\/react@18\./);
+  });
+
+  it("fetches the renderer the project never imports", () => {
+    // App.tsx imports react and react-native, never react-dom: mounting is
+    // supposed to be the framework's job. Here it is the shell's.
+    expect(expoApp["App.tsx"]).not.toContain("react-dom");
+    const html = buildPreviewHtml(expoApp);
+    expect(html).toContain("react-dom@18.3.1/client");
+  });
+
+  it("mounts the default export, because a React Native entry does not", () => {
+    const html = buildPreviewHtml(expoApp);
+    expect(expoApp["App.tsx"]).toContain("export default function App");
+    expect(html).toContain("__previewEntryExports");
+    expect(html).toContain("React.createElement(App)");
+  });
+
+  it("does not mount over an entry that mounted itself", () => {
+    // A plain React project calls createRoot in its own entry. Mounting again
+    // would produce two trees; the guard is that #root is already populated.
+    const html = buildPreviewHtml(expoApp);
+    expect(html).toContain("root.childNodes.length > 0");
+  });
+
+  it("waits with a timer rather than a frame", () => {
+    // A preview in a backgrounded tab or an inactive pane gets no frames at
+    // all, so anything gated on requestAnimationFrame never mounts there.
+    const html = buildPreviewHtml(expoApp);
+    const autoMount = html.slice(html.indexOf("__previewEntryExports") - 400);
+    expect(autoMount).not.toContain("requestAnimationFrame");
+  });
+
+  it("leaves a plain HTML project alone", () => {
+    // The static templates must not start pulling a renderer off the network.
+    const html = buildPreviewHtml(PROJECT_TEMPLATES.todo.files);
+    expect(html).not.toContain("react-native-web");
+    expect(html).not.toContain("esm.sh");
+  });
+});
+
+/**
+ * The bug this guards against rendered a *perfect-looking* bundle and then
+ * threw at runtime.
+ *
+ * Modern React and React Native code does not import React — `import { useState }
+ * from "react"` is the normal shape and Expo's own template is written that way.
+ * Compiled with the classic JSX runtime that becomes bare `React.createElement`
+ * calls in a file with no `React` binding: a free variable, and a ReferenceError
+ * the moment the component renders. Every structural assertion still passed.
+ */
+describe("JSX compiles against a runtime that is actually present", () => {
+  const modernComponent = {
+    "App.tsx": `import { useState } from "react";
+import { Text, View } from "react-native";
+export default function App() {
+  const [n] = useState(0);
+  return <View><Text>{n}</Text></View>;
+}`,
+  };
+
+  it("never emits a React reference the file does not bind", () => {
+    const html = buildPreviewHtml(modernComponent);
+    const compiled = html.slice(html.indexOf('"App.tsx"'), html.indexOf("__cache"));
+    expect(compiled).not.toContain("React.createElement");
+  });
+
+  it("imports the jsx factory instead, and can resolve it", () => {
+    const html = buildPreviewHtml(modernComponent);
+    // Emitted by the compiler, so it has to be in the alias table or the module
+    // registry would throw "not available in this preview".
+    expect(html).toContain("react/jsx-runtime");
+    expect(html).toContain('["react/jsx-runtime", "https://esm.sh/react@18.3.1/jsx-runtime"]');
+  });
+
+  it("holds for the Expo starter too", () => {
+    expect(PROJECT_TEMPLATES.expo.files["App.tsx"]).not.toContain("import React");
+    const html = buildPreviewHtml(PROJECT_TEMPLATES.expo.files);
+    const compiled = html.slice(html.indexOf('"App.tsx"'), html.indexOf("__cache"));
+    expect(compiled).not.toContain("React.createElement");
   });
 });

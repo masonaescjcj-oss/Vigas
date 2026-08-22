@@ -27,10 +27,40 @@ function escapeHtml(text: string): string {
  */
 const ESM_CDN = "https://esm.sh";
 
+/**
+ * Bare specifiers that resolve to a different package, or a pinned one.
+ *
+ * `react-native` is the one that matters: a React Native app imports its
+ * primitives from there, and on the web those come from react-native-web. This
+ * is exactly what Expo's own web target does, so an Expo project previews here
+ * with no bundler, no Metro and no device — measured in the running app, a real
+ * View/Text/Pressable tree renders, StyleSheet styles apply, and state updates
+ * on press.
+ *
+ * Versions are pinned because an unpinned major on the CDN would change what a
+ * preview does without anything in this repository changing. react and
+ * react-dom are pinned to the same 18.x react-native-web expects, which is also
+ * what keeps a second copy of React out of the page — RNW's own hooks
+ * (useWindowDimensions, Animated) were checked against it.
+ */
+const IMPORT_ALIASES: Record<string, string> = {
+  "react-native": "react-native-web@0.19.13",
+  react: "react@18.3.1",
+  "react-dom": "react-dom@18.3.1",
+  "react-dom/client": "react-dom@18.3.1/client",
+  // Emitted by the compiler, never written by hand: with the automatic JSX
+  // runtime every file containing JSX imports its factory from here.
+  "react/jsx-runtime": "react@18.3.1/jsx-runtime",
+};
+
+function cdnUrlFor(specifier: string): string {
+  return `${ESM_CDN}/${IMPORT_ALIASES[specifier] ?? specifier}`;
+}
+
 /** Import map + shim so bundled code can `require("react")` etc. */
 function externalsLoader(externals: string[]): string {
   if (externals.length === 0) return "";
-  const entries = externals.map((name) => `[${JSON.stringify(name)}, ${JSON.stringify(`${ESM_CDN}/${name}`)}]`);
+  const entries = externals.map((name) => `[${JSON.stringify(name)}, ${JSON.stringify(cdnUrlFor(name))}]`);
   return `<script type="module">
   window.__previewExternals = window.__previewExternals || {};
   const wanted = [${entries.join(", ")}];
@@ -102,19 +132,68 @@ function loadingSplash(externals: string[]): string {
 </div>`;
 }
 
+/**
+ * Render the entry's default export when nothing has rendered itself.
+ *
+ * A React Native entry is just `export default function App()` — mounting is
+ * the framework's job, and the preview is not the framework. A plain React
+ * entry usually calls createRoot itself; that leaves #root populated, so this
+ * sees it and does nothing. Anything else already showed an error box.
+ *
+ * Deferred by a tick, so an entry that mounts asynchronously is not mounted
+ * twice. The tick is a `setTimeout` and not a `requestAnimationFrame`: a
+ * preview in a backgrounded tab or an inactive pane is served no frames at all,
+ * and anything waiting on one would never mount there. A timer still fires.
+ */
+const AUTO_MOUNT = `
+(function () {
+  setTimeout(function () {
+    var root = document.getElementById("root");
+    if (!root || root.childNodes.length > 0) return;
+    var entry = window.__previewEntryExports;
+    var App = entry && (entry.default || (typeof entry === "function" ? entry : null));
+    if (typeof App !== "function") return;
+    var React = window.__previewExternals && window.__previewExternals["react"];
+    var client = window.__previewExternals && window.__previewExternals["react-dom/client"];
+    if (!React || !client) return;
+    var create = client.createRoot || (client.default && client.default.createRoot);
+    if (!create) return;
+    try {
+      create(root).render(React.createElement(App));
+    } catch (error) {
+      var box = document.createElement("pre");
+      box.style.cssText = "white-space:pre-wrap;color:#f87171;background:#2a1214;padding:16px;border-radius:12px;font:13px ui-monospace,monospace;margin:16px";
+      box.textContent = String((error && error.stack) || error);
+      document.body.appendChild(box);
+    }
+  }, 0);
+})();
+`;
+
 function renderBundle(bundle: ReturnType<typeof bundleModules>): string {
   if (!bundle.code) return `<script>console.error(${JSON.stringify(bundle.warnings.join("; "))})</script>`;
-  const externals = externalsLoader(bundle.externals);
+
+  // A React Native entry imports react and react-native, never react-dom — its
+  // renderer is supposed to be the framework's. Since the shell has to mount it
+  // here, the renderer is fetched whether the project asked for it or not.
+  const needed = [...bundle.externals];
+  const isReactish = needed.includes("react") || needed.includes("react-native");
+  if (isReactish && !needed.includes("react-dom/client")) needed.push("react-dom/client");
+  if (needed.includes("react-native") && !needed.includes("react")) needed.push("react");
+
+  const externals = externalsLoader(needed);
   const run = `<script>\n${bundle.code}\n</script>`;
   if (!externals) return run;
   // With externals we must wait for the dynamic imports to resolve first, and
-  // show something in the meantime.
+  // show something in the meantime. The splash names what the *project* asked
+  // for, not what was added on its behalf.
   return `${loadingSplash(bundle.externals)}
 ${externals}
 <script>window.addEventListener("preview-externals-ready", function () {
   var splash = document.getElementById("__preview-loading");
   if (splash) splash.remove();
 ${bundle.code}
+${isReactish ? AUTO_MOUNT : ""}
 });</script>`;
 }
 

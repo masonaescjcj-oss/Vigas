@@ -89,7 +89,21 @@ function compile(path: string, source: string): { code: string; error?: string }
     const transforms: Array<"jsx" | "typescript" | "imports"> = ["imports"];
     if (isTs) transforms.push("typescript");
     if (isJsx) transforms.push("jsx");
-    return { code: transform(source, { transforms, filePath: path, production: true }).code };
+    return {
+      code: transform(source, {
+        transforms,
+        filePath: path,
+        production: true,
+        // The automatic runtime, because modern React and React Native code does
+        // not import React at all — `import { useState } from "react"` is the
+        // normal shape, and Expo's own template is written that way. The classic
+        // runtime emits bare `React.createElement` calls, which in a file with no
+        // default import is a free variable and a ReferenceError the moment the
+        // component renders. Automatic emits an import of the jsx factory
+        // instead, which the bundler then resolves like any other dependency.
+        jsxRuntime: "automatic",
+      }).code,
+    };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     // Surface the failure inside the preview instead of rendering a blank page.
@@ -183,7 +197,11 @@ ${registry}
     return module.exports;
   }
   try {
-    __require(${JSON.stringify(normalizePath(entry))}, "");
+    // Kept, not discarded: a React Native entry only \`export default App\` — the
+    // mounting is Expo's job, and there is no Expo here. The shell reads this to
+    // render that component itself. A web entry that mounts on its own leaves
+    // #root non-empty, so the shell skips it and this is simply unused.
+    window.__previewEntryExports = __require(${JSON.stringify(normalizePath(entry))}, "");
   } catch (error) {
     var box = document.createElement("pre");
     box.style.cssText = "white-space:pre-wrap;color:#f87171;background:#2a1214;padding:16px;border-radius:12px;font:13px ui-monospace,monospace;margin:16px";

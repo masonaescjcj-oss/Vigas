@@ -124,9 +124,16 @@ Deno.test("an unreadable catalogue degrades to the fallback list", async () => {
 });
 
 Deno.test("every starter template has an entry file and sane content types", () => {
+  // An entry the preview can find, which is no longer always index.html: a
+  // React Native project's entry is App.tsx, and mounting it is the shell's job.
+  const ENTRIES = ["index.html", "App.tsx"];
   for (const [key, template] of Object.entries(PROJECT_TEMPLATES)) {
     const paths = Object.keys(template.files);
-    assertEquals(paths.includes("index.html"), true, `${key} must ship an index.html`);
+    assertEquals(
+      paths.some((path) => ENTRIES.includes(path)),
+      true,
+      `${key} must ship one of ${ENTRIES.join(" / ")}, has ${paths.join(", ")}`,
+    );
     for (const path of paths) {
       assertEquals(template.files[path].length > 0, true, `${key}:${path} must not be empty`);
     }
@@ -136,20 +143,38 @@ Deno.test("every starter template has an entry file and sane content types", () 
   assertEquals(templateContentType("app.js"), "text/javascript; charset=utf-8");
   assertEquals(templateContentType("notes.md"), "text/markdown; charset=utf-8");
   assertEquals(templateContentType("noext"), "text/plain; charset=utf-8");
+  // The Expo starter's own files, which the seeding loop uploads by extension.
+  assertEquals(templateContentType("App.tsx"), "text/plain; charset=utf-8");
+  assertEquals(templateContentType("app.json"), "application/json; charset=utf-8");
 });
 
 Deno.test("templates reference only files they actually ship", () => {
   const ref = /(?:href|src)="\.?\/?([^"#?]+)"/g;
+  // A relative import in a React Native entry, which has no index.html to scan.
+  const relativeImport = /(?:from\s+|require\()\s*["'](\.[^"']+)["']/g;
+
   for (const [key, template] of Object.entries(PROJECT_TEMPLATES)) {
+    const names = Object.keys(template.files);
+
     const html = template.files["index.html"];
-    for (const match of html.matchAll(ref)) {
-      const target = match[1];
-      if (target.startsWith("http")) continue;
-      assertEquals(
-        Object.keys(template.files).includes(target),
-        true,
-        `${key} references missing file ${target}`,
-      );
+    if (html) {
+      for (const match of html.matchAll(ref)) {
+        const target = match[1];
+        if (target.startsWith("http")) continue;
+        assertEquals(names.includes(target), true, `${key} references missing file ${target}`);
+      }
+    }
+
+    // Same guarantee for a code entry: an import of a file the template forgot
+    // to ship is a preview that opens on an error box.
+    for (const path of names.filter((name) => /\.(tsx?|jsx?)$/.test(name))) {
+      for (const match of template.files[path].matchAll(relativeImport)) {
+        const target = match[1].replace(/^\.\//, "");
+        const found = names.some((name) =>
+          name === target || name.replace(/\.(tsx?|jsx?)$/, "") === target
+        );
+        assertEquals(found, true, `${key}:${path} imports missing file ${match[1]}`);
+      }
     }
   }
 });

@@ -1,11 +1,20 @@
 /**
  * shared/templates.ts
  * ---------------------------------------------------------------------------
- * Starter project templates. Plain HTML/CSS/JS on purpose:
- *   - the on-device preview renders them with zero bundling,
- *   - the agent edits small readable files instead of generating apps from
- *     scratch (fewer tokens, more stable output).
- * Seeded into the project's Storage prefix by projects-create.
+ * Starter project templates, seeded into the project's Storage prefix by
+ * projects-create.
+ *
+ * Two kinds, and the split is deliberate:
+ *
+ *   - `expo` is a real React Native project — the output that becomes an app in
+ *     the stores, which is what this product is for.
+ *   - the rest are plain HTML/CSS/JS, which need no bundling at all and give the
+ *     agent small readable files to edit rather than a framework to scaffold
+ *     (fewer tokens, more stable output). Right for a page, wrong for an app.
+ *
+ * Both preview through the same pipeline: previewBuilder compiles JSX/TS and
+ * maps "react-native" to react-native-web on the CDN, the same substitution
+ * Expo's own web target makes.
  * ---------------------------------------------------------------------------
  */
 
@@ -25,7 +34,115 @@ a{color:var(--accent2);text-decoration:none}
 .btn:hover{filter:brightness(1.1)}
 .muted{color:var(--muted)}`;
 
+/**
+ * The Expo starter.
+ *
+ * A real React Native project, not a web page pretending to be one: the same
+ * App.tsx, app.json and package.json `npx create-expo-app` produces, so it can
+ * be exported and built with EAS without being rewritten first.
+ *
+ * It previews without Metro, a device or a build. React Native code imports its
+ * primitives from "react-native", which previewBuilder maps to
+ * react-native-web on the CDN — the same substitution Expo's own web target
+ * makes. Verified in the running app: View/Text/Pressable render, StyleSheet
+ * styles apply, and state updates on press.
+ *
+ * The limit is honest and worth knowing: anything needing a native module
+ * (camera, notifications, filesystem) has no web implementation and will not
+ * appear in the preview. It still ships in the exported project.
+ */
+const EXPO_APP_TSX = `import { useState } from "react";
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Your app</Text>
+        <Text style={styles.subtitle}>
+          Tell the agent what to change and watch it happen here.
+        </Text>
+
+        <Text style={styles.count}>{count}</Text>
+        <Pressable style={styles.button} onPress={() => setCount(count + 1)}>
+          <Text style={styles.buttonText}>Tap me</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: "#0f1115", alignItems: "center", justifyContent: "center", padding: 24 },
+  card: { width: "100%", maxWidth: 420, backgroundColor: "#181b22", borderRadius: 16, padding: 24, alignItems: "center" },
+  title: { color: "#f4f4f5", fontSize: 24, fontWeight: "700" },
+  subtitle: { color: "#9ca3af", fontSize: 14, textAlign: "center", marginTop: 8, lineHeight: 20 },
+  count: { color: "#38bdf8", fontSize: 48, fontWeight: "800", marginTop: 20 },
+  button: { backgroundColor: "#8b5cf6", borderRadius: 12, paddingVertical: 12, paddingHorizontal: 28, marginTop: 16 },
+  buttonText: { color: "#ffffff", fontSize: 15, fontWeight: "600" },
+});
+`;
+
 export const PROJECT_TEMPLATES: Record<string, ProjectTemplate> = {
+  expo: {
+    name: "Mobile App (Expo)",
+    description: "A real iOS and Android app in React Native. Previews here, builds with EAS.",
+    files: {
+      "App.tsx": EXPO_APP_TSX,
+      "app.json": JSON.stringify(
+        {
+          expo: {
+            name: "My App",
+            slug: "my-app",
+            version: "1.0.0",
+            orientation: "portrait",
+            userInterfaceStyle: "automatic",
+            newArchEnabled: true,
+            splash: { resizeMode: "contain", backgroundColor: "#0f1115" },
+            ios: { supportsTablet: true },
+            android: { adaptiveIcon: { backgroundColor: "#0f1115" } },
+            web: { bundler: "metro" },
+          },
+        },
+        null,
+        2,
+      ) + "\n",
+      "package.json": JSON.stringify(
+        {
+          name: "my-app",
+          version: "1.0.0",
+          main: "expo/AppEntry.js",
+          scripts: { start: "expo start", android: "expo start --android", ios: "expo start --ios", web: "expo start --web" },
+          dependencies: {
+            expo: "~51.0.0",
+            react: "18.2.0",
+            "react-native": "0.74.5",
+          },
+          private: true,
+        },
+        null,
+        2,
+      ) + "\n",
+      "README.md": `# My App
+
+A React Native app made with Expo.
+
+The preview in Retro Code renders this with react-native-web, which is how Expo
+renders for the web. Components that need a native module — camera, push
+notifications, the filesystem — have no web equivalent and will not show up
+there, but they are still in the project you export.
+
+To run it on your own machine:
+
+\`\`\`bash
+npm install
+npx expo start
+\`\`\`
+`,
+    },
+  },
   landing: {
     name: "Landing Page",
     description: "Product landing page with hero, features, and call to action",
