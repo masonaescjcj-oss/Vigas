@@ -266,14 +266,32 @@ try {
     check("the row is kept so the code is never reissued", !!row && !!row.revoked_at, row);
 
     // Publishing something too large must be refused with a size, not a stack.
+    //
+    // Two limits, and they have to be checked separately because they used to
+    // contradict each other: the JSON body parser's ceiling sat *below* the
+    // document limit this endpoint advertises, so a page just over 2 MB was
+    // rejected by the parser ("Request body exceeds 1048576 bytes") and the
+    // message naming the actual limit in KB was unreachable.
     const huge = await call(owner.token, {
       action: "create", projectId: ownerProject, html: "x".repeat(2_100_000),
     });
     const hugeBody = await huge.json().catch(() => ({}));
     check(
-      `an oversized page is refused (${huge.status} ${hugeBody?.error?.code})`,
+      `an oversized page is refused with its size (${huge.status} ${hugeBody?.error?.code})`,
       huge.status === 400 && /KB/.test(String(hugeBody?.error?.message ?? "")),
       hugeBody,
+    );
+
+    // And far past the body ceiling, the parser stops it before any of that —
+    // which is the point: it must not be read into memory to be refused.
+    const absurd = await call(owner.token, {
+      action: "create", projectId: ownerProject, html: "x".repeat(5_000_000),
+    });
+    const absurdBody = await absurd.json().catch(() => ({}));
+    check(
+      `a body past the parser ceiling is refused too (${absurd.status} ${absurdBody?.error?.code})`,
+      absurd.status === 413,
+      absurdBody,
     );
   }
 } catch (error) {

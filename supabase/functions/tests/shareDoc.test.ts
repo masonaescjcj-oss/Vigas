@@ -89,21 +89,58 @@ Deno.test("the reported size counts the injected badge, not just the input", () 
   assertEquals(result.bytes! > new TextEncoder().encode(html).length, true);
 });
 
+/** These two describe the fallback, so the override must be out of the way. */
+function withoutOverride<T>(body: () => T): T {
+  const previous = Deno.env.get("SHARE_BASE_URL");
+  Deno.env.delete("SHARE_BASE_URL");
+  try {
+    return body();
+  } finally {
+    if (previous !== undefined) Deno.env.set("SHARE_BASE_URL", previous);
+  }
+}
+
 Deno.test("the url points at the serving function, not a storage object", () => {
   // Storage serves text/html as text/plain, so a direct object link would show
   // someone's app as its own source code.
-  assertEquals(
-    shareUrl("https://x.supabase.co", "abcdefghj"),
-    "https://x.supabase.co/functions/v1/share-page/abcdefghj",
-  );
-  assertEquals(
-    shareUrl("https://x.supabase.co/", "abcdefghj"),
-    "https://x.supabase.co/functions/v1/share-page/abcdefghj",
-  );
+  withoutOverride(() => {
+    assertEquals(
+      shareUrl("https://x.supabase.co", "abcdefghj"),
+      "https://x.supabase.co/functions/v1/share-page/abcdefghj",
+    );
+    assertEquals(
+      shareUrl("https://x.supabase.co/", "abcdefghj"),
+      "https://x.supabase.co/functions/v1/share-page/abcdefghj",
+    );
+  });
 });
 
 Deno.test("the url carries nothing that could be mistaken for a storage path", () => {
-  const url = shareUrl("https://x.supabase.co", "abcdefghj");
+  const url = withoutOverride(() => shareUrl("https://x.supabase.co", "abcdefghj"));
   assertEquals(url.includes("/storage/"), false);
   assertEquals(url.endsWith(".html"), false);
+});
+
+Deno.test("SHARE_BASE_URL moves links off Supabase, which cannot serve html", () => {
+  // The reason this override exists: the identical function returns a real
+  // text/html from our own Deno server and text/plain through the Supabase
+  // gateway. So the host is the variable, and it has to be settable.
+  const previous = Deno.env.get("SHARE_BASE_URL");
+  try {
+    Deno.env.set("SHARE_BASE_URL", "https://apps.retrocode.pro");
+    assertEquals(
+      shareUrl("https://x.supabase.co", "abcdefghj"),
+      "https://apps.retrocode.pro/share-page/abcdefghj",
+    );
+
+    // A trailing slash on the override must not double up.
+    Deno.env.set("SHARE_BASE_URL", "https://apps.retrocode.pro/");
+    assertEquals(
+      shareUrl("https://x.supabase.co", "abcdefghj"),
+      "https://apps.retrocode.pro/share-page/abcdefghj",
+    );
+  } finally {
+    if (previous === undefined) Deno.env.delete("SHARE_BASE_URL");
+    else Deno.env.set("SHARE_BASE_URL", previous);
+  }
 });

@@ -29,11 +29,23 @@ import { assertProjectOwner } from "../shared/agentRuntime.ts";
 import {
   generateShareCode,
   isShareCode,
+  MAX_SHARE_BYTES,
   prepareShareDocument,
   shareUrl,
 } from "../shared/shareDoc.ts";
 
 const BUCKET = "shared-apps";
+
+/**
+ * Room for a MAX_SHARE_BYTES document *after* JSON encoding.
+ *
+ * parseJson defaults to 1 MB, which is below the 2 MB document limit this
+ * endpoint advertises — so a 1.5 MB page was refused by the body parser with
+ * "Request body exceeds 1048576 bytes" and prepareShareDocument's actual limit
+ * was unreachable. The 2× headroom covers JSON string escaping, which can
+ * double a document full of quotes and newlines.
+ */
+const MAX_BODY_BYTES = MAX_SHARE_BYTES * 2 + 64_000;
 
 /** How long a published page may be served from cache. */
 const CACHE_SECONDS = 300;
@@ -87,7 +99,7 @@ export async function handler(req: Request): Promise<Response> {
   try {
     assertMethod(req, ["POST"]);
     const { user } = await requireUser(req);
-    const input = await parseJson(req, ShareSchema);
+    const input = await parseJson(req, ShareSchema, MAX_BODY_BYTES);
     const service = createServiceClient();
 
     // Publishing writes to a public bucket, so it is limited far harder than

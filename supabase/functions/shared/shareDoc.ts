@@ -99,12 +99,20 @@ export function prepareShareDocument(html: string): PrepareResult {
 /**
  * The public URL a code resolves to.
  *
- * An edge function, not a Storage object URL. Measured, not assumed: Supabase
- * Storage serves `text/html` as `text/plain` — deliberately, so that
- * `*.supabase.co` cannot be used to host arbitrary pages — while every other
- * content type passes through. A direct object link would have shown someone's
- * app as its own source code. See functions/share-page.
+ * `SHARE_BASE_URL` exists because of a platform fact measured from two angles:
+ * **`*.supabase.co` will not serve `text/html`.** Storage rewrites it to
+ * `text/plain`, and so does the edge function gateway — the same function returns
+ * a real `text/html` when it runs on our own Deno server, so the code is right and
+ * only the host is wrong. Pointed at Supabase, a share link shows someone's app as
+ * its own source code.
+ *
+ * So: set SHARE_BASE_URL to wherever share-page is actually reachable (our own
+ * server, a Cloudflare Worker) and links work. Falling back to the Supabase URL
+ * keeps a single code path, but that fallback cannot render — which is why
+ * check-share asserts the content type rather than just the status.
  */
 export function shareUrl(supabaseUrl: string, code: string): string {
-  return `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/share-page/${code}`;
+  const base = (typeof Deno !== "undefined" ? Deno.env.get("SHARE_BASE_URL") : undefined)
+    ?? `${supabaseUrl.replace(/\/+$/, "")}/functions/v1`;
+  return `${base.replace(/\/+$/, "")}/share-page/${code}`;
 }
