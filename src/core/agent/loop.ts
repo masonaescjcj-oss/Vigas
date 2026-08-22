@@ -23,8 +23,18 @@ import type { AgentSession, ChatMessage, ToolCall } from "./session/sessionStore
 import type { PermissionDecision, PolicyEngine } from "./permissions/policyEngine.ts";
 import type { HookRunner } from "./hooks/hookRunner.ts";
 import { compactHistory, type Summarizer } from "./session/compact.ts";
+import type { ClarifyRequest } from "./clarify.ts";
 
 const STRICTNESS: Record<PermissionDecision, number> = { allow: 0, ask: 1, deny: 2 };
+
+/**
+ * Why the loop stopped.
+ *
+ * `awaiting-input` is not a failure and not completion: the agent asked the
+ * user something, so the turn is over but the work is not. Callers have to
+ * distinguish it — a session that stops this way must stay resumable.
+ */
+export type StopReason = "final" | "max-steps" | "awaiting-input";
 
 /* ---- Model interface ----------------------------------------------------- */
 
@@ -66,9 +76,23 @@ export interface RuntimeControlOptions {
 export class RuntimeControl implements AgentControl {
   planMode = false;
   todos: Array<{ subject: string; status: string }> = [];
+  /**
+   * Set when the agent has asked the user something and cannot go further.
+   *
+   * The loop reads it after each round of tool calls and stops. There is no
+   * pause-and-wait inside a run: the turn ends, the question is shown, and the
+   * user's answer starts the next turn on the same session. That reuses the
+   * transcript the session already keeps, instead of holding a queue worker and
+   * a sandbox open for however long someone takes to read three options.
+   */
+  pendingQuestion: ClarifyRequest | null = null;
   private readonly subagents = new Map<string, { id: string; summary: string }>();
 
   constructor(private readonly opts: RuntimeControlOptions) {}
+
+  async askUser(request: ClarifyRequest): Promise<void> {
+    this.pendingQuestion = request;
+  }
 
   async enterPlanMode(): Promise<void> {
     this.planMode = true;
@@ -108,7 +132,7 @@ export interface LoopDeps {
   root: string;
   now: () => number;
   idFactory: () => string;
-  control?: AgentControl & { planMode: boolean };
+  control?: AgentControl & { planMode: boolean; pendingQuestion?: ClarifyRequest | null };
   confirm?: ConfirmFn;
   /** When true, "ask" decisions auto-approve (trusted/autonomous mode). */
   autoApproveAsk?: boolean;
@@ -121,7 +145,9 @@ export interface LoopRunResult {
   finalText: string;
   session: AgentSession;
   steps: number;
-  stoppedReason: "final" | "max-steps";
+  stoppedReason: StopReason;
+  /** Set when stoppedReason is "awaiting-input": what to show the user. */
+  pendingQuestion?: ClarifyRequest | null;
 }
 
 /** Run the security pipeline for a single tool call and return the tool message. */
@@ -225,7 +251,7 @@ export async function runAgentLoop(
     .map((t) => ({ name: t.function.name, description: t.function.description, parameters: t.function.parameters }));
 
   let finalText = "";
-  let stoppedReason: "final" | "max-steps" = "max-steps";
+  let stoppedReason: StopReason = "max-steps";
   let step = 0;
 
   for (; step < maxSteps; step++) {
@@ -265,6 +291,14 @@ export async function runAgentLoop(
         const toolMsg = await executeToolCall(tc, deps, control, session);
         push(toolMsg);
       }
+      // Asked and cannot continue. Checked after the whole round rather than
+      // mid-round so tool calls issued alongside the question still complete
+      // and their results are in the transcript when the answer arrives.
+      if (control.pendingQuestion) {
+        stoppedReason = "awaiting-input";
+        step += 1;
+        break;
+      }
       continue;
     }
 
@@ -276,7 +310,7 @@ export async function runAgentLoop(
   }
 
   session.updatedAt = deps.now();
-  return { finalText, session, steps: step, stoppedReason };
+  return { finalText, session, steps: step, stoppedReason, pendingQuestion: control.pendingQuestion };
 }
 
 /* ---- Deterministic model for tests & the README demo --------------------- */

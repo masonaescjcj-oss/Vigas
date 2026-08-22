@@ -158,6 +158,10 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         usage: result.usage,
         checkpoint_id: checkpoint.id,
         checkpoint_note: checkpoint.note,
+        // Present when the agent asked the user something rather than
+        // finishing. The chat renders the options and sends the answer back as
+        // the next turn on this same session, so nothing here has to wait.
+        pending_question: result.pendingQuestion ?? null,
       });
       await notify(client, job, { succeeded: true, detail: result.finalText }, Date.now() - startedAt);
       return { processed: true, status: "completed", jobId: job.id };

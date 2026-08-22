@@ -50,6 +50,12 @@ import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
 import { fetchModelCatalog } from "../../services/modelCatalog";
 import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
+import { ClarifyCard } from "../../components/ClarifyCard";
+import {
+  type ClarifyAnswer,
+  type ClarifyRequest,
+  formatAnswers,
+} from "../../core/agent/clarify";
 import { SKILLS } from "../../core/agent/skills/catalog";
 import { deployProject } from "../../services/deployService";
 import { forgetDeployToken, loadDeployToken, saveDeployToken, tokenStorageIsSecure, type DeployProvider } from "../../services/deployToken";
@@ -718,6 +724,50 @@ export const AgentChatScreen = () => {
    * the current state before swapping, which is why the confirmation can
    * honestly say the rollback is itself undoable.
    */
+  /**
+   * Send the user's choices back as the next turn.
+   *
+   * Not a new mechanism: the agent's turn ended when it asked, so this is an
+   * ordinary run on the same session. The transcript already holds the question,
+   * and the answers arrive as a user message — which is why the agent treats
+   * them as instructions rather than as tool output it might argue with.
+   */
+  const handleClarifyAnswers = async (
+    messageId: string,
+    request: ClarifyRequest,
+    answers: ClarifyAnswer[],
+  ) => {
+    // Recorded on the message first, so the card switches to its answered state
+    // immediately rather than after the round trip.
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, clarifyAnswers: answers } : m)),
+    );
+    setIsExecuting(true);
+    try {
+      const projectId = await ensureProjectId();
+      runStartedAtRef.current = new Date().toISOString();
+      const res = await agentService.startAgentRun(projectId, formatAnswers(request, answers), {
+        sessionId: activeSessionId ?? undefined,
+        model: selectedModelId,
+        ...(activeSkills.length ? { skills: activeSkills } : {}),
+        ...(activeSkills.includes("supabase-backend") && backend ? { backend } : {}),
+      });
+      setActiveSessionId(res.session_id);
+    } catch (e) {
+      setIsExecuting(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_err_${Date.now()}`,
+          role: "assistant",
+          content: `⚠️ Could not send your answer: ${e instanceof Error ? e.message : String(e)}`,
+          isError: true,
+          createdAt: Date.now(),
+        },
+      ]);
+    }
+  };
+
   const handleRollback = async (checkpointId: string, description: string) => {
     if (restoringCheckpointId) return;
     const confirmed = await confirmAction(
@@ -1066,6 +1116,10 @@ export const AgentChatScreen = () => {
             checkpointId: touchedWorkspace
               ? (runRow.tool_output?.checkpoint_id ?? null)
               : null,
+            // The agent asked rather than guessed. The message carries the
+            // question so the card renders inline with the turn it belongs to,
+            // and stays in the transcript once answered.
+            pendingQuestion: (runRow.tool_output?.pending_question ?? null) as ClarifyRequest | null,
           },
         ]);
         setIsExecuting(false);
@@ -1774,6 +1828,17 @@ export const AgentChatScreen = () => {
                         </TouchableOpacity>
                       )}
                     </View>
+                  )}
+
+                  {/* The agent asked instead of guessing. Answering starts the
+                      next turn on this same session, so the run continues with
+                      the answers in its transcript. */}
+                  {msg.pendingQuestion && (
+                    <ClarifyCard
+                      request={msg.pendingQuestion}
+                      answers={msg.clarifyAnswers}
+                      onSubmit={(answers) => handleClarifyAnswers(msg.id, msg.pendingQuestion!, answers)}
+                    />
                   )}
 
                 </View>

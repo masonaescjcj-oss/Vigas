@@ -47,6 +47,8 @@ import {
   type UsageStats,
 } from "./session/sessionStore.ts";
 import { compactHistory, type Summarizer } from "./session/compact.ts";
+import type { ClarifyRequest } from "./clarify.ts";
+import type { StopReason } from "./loop.ts";
 import { forkSession as forkSessionOp, resumeSession as resumeSessionOp } from "./session/forkResume.ts";
 import { exportSession, exportSessionToJson, type ExportedSession } from "./session/exporter.ts";
 import {
@@ -147,7 +149,12 @@ export interface RunResult {
   sessionId: string;
   finalText: string;
   usage: UsageStats;
-  stoppedReason: "final" | "max-steps";
+  stoppedReason: StopReason;
+  /**
+   * Present when stoppedReason is "awaiting-input": the question to put to the
+   * user. The caller shows it and starts the next turn with their answer.
+   */
+  pendingQuestion?: ClarifyRequest | null;
   session: AgentSession;
 }
 
@@ -288,6 +295,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     const control = new RuntimeControl({ idFactory, subagentRunner });
     const result = await runAgentLoop(session, prompt, { ...buildLoopDeps(control), onMessage: push });
 
+    // "awaiting-input" is paused, not completed: the agent asked something and
+    // the session has to stay resumable so the answer can continue it.
     session.status = result.stoppedReason === "final" ? "completed" : "paused";
     session.updatedAt = now();
     await store.save(session);
@@ -298,6 +307,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       finalText: result.finalText,
       usage: session.usage,
       stoppedReason: result.stoppedReason,
+      pendingQuestion: result.pendingQuestion ?? null,
       session,
     };
   }

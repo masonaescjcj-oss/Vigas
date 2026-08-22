@@ -23,6 +23,13 @@
  * 1. Core types
  * ========================================================================= */
 import { bashTool } from "./tools/bash.ts";
+import {
+  type ClarifyRequest,
+  MAX_OPTIONS,
+  MAX_QUESTIONS,
+  MIN_OPTIONS,
+  parseClarifyRequest,
+} from "./clarify.ts";
 
 /** A JSON-Schema fragment describing a tool's parameters (draft-2020-12 subset). */
 export interface JSONSchema {
@@ -99,6 +106,11 @@ export interface AgentControl {
   enterPlanMode(): Promise<void>;
   exitPlanMode(plan: string): Promise<void>;
   setTodos(todos: Array<{ subject: string; status: TodoStatus }>): Promise<void>;
+  /**
+   * Put a question to the user and end the turn. The run cannot continue until
+   * they answer, so implementations record it rather than block.
+   */
+  askUser(request: ClarifyRequest): Promise<void>;
   /**
    * Spawn a subagent. Implementations SHOULD run each subagent in an isolated
    * worktree/checkpoint so parallel agents never clobber each other's edits,
@@ -572,6 +584,66 @@ const globTool: ToolDefinition<{ pattern: string }> = {
 
 /* ---- Control-flow tools: plan-first, todo, subagents -------------------- */
 
+const askUserTool: ToolDefinition<{ questions: unknown }> = {
+  name: "ask_user",
+  description:
+    "Ask the user to choose between options before you build. Use this when the " +
+    "request leaves a decision open that would be expensive to get wrong — what " +
+    "kind of app, which screens, what it should look like. Ask up to 3 questions " +
+    "at once, each with 2-4 concrete options; an 'in your own words' choice is " +
+    "added automatically, so never add one yourself. This ends your turn: the " +
+    "user's answers arrive as the next message. Ask once, early, then build — do " +
+    "not ask again for something you could reasonably decide.",
+  risk: "read",
+  mutatesWorkspace: false,
+  parameters: {
+    type: "object",
+    properties: {
+      questions: {
+        type: "array",
+        minItems: 1,
+        maxItems: MAX_QUESTIONS,
+        items: {
+          type: "object",
+          properties: {
+            header: { type: "string", description: "One or two words, e.g. \"Style\"." },
+            question: { type: "string" },
+            options: {
+              type: "array",
+              minItems: MIN_OPTIONS,
+              maxItems: MAX_OPTIONS,
+              items: {
+                type: "object",
+                properties: {
+                  label: { type: "string", description: "Short — it is a button." },
+                  description: { type: "string", description: "What choosing it means." },
+                },
+                required: ["label"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["header", "question", "options"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["questions"],
+    additionalProperties: false,
+  },
+  async handler(input, ctx) {
+    // A malformed call comes back as a correctable message rather than failing
+    // the run: the model can fix its own arguments, the user cannot.
+    const parsed = parseClarifyRequest(input);
+    if (!parsed.ok) return { content: `Could not ask that: ${parsed.reason}`, isError: true };
+    await ctx.control.askUser(parsed.request);
+    return ok(
+      `Asked the user ${parsed.request.questions.length} question(s). ` +
+        `Your turn ends here; their answers will arrive as the next message.`,
+    );
+  },
+};
+
 const enterPlanModeTool: ToolDefinition<Record<string, never>> = {
   name: "enter_plan_mode",
   description:
@@ -682,6 +754,7 @@ export const CORE_TOOLS: ToolDefinition[] = [
   // exec
   bashTool as ToolDefinition,
   // control flow
+  askUserTool as ToolDefinition,
   enterPlanModeTool as ToolDefinition,
   exitPlanModeTool as ToolDefinition,
   todoWriteTool as ToolDefinition,
