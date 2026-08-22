@@ -18,6 +18,7 @@ import { ThemeProvider } from "./src/theme/ThemeProvider";
 import { useAppFonts } from "./src/theme/useAppFonts";
 import { themeColors } from "./src/theme/theme";
 import { AppNavigator } from "./src/navigation/AppNavigator";
+import { AlertHost } from "./src/components/AlertHost";
 import "./global.css";
 
 // Configure NativeWind output for web
@@ -41,6 +42,12 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AppNavigator />
+          {/*
+            Inside ThemeProvider because it is themed, and after the navigator
+            so a dialog is never covered by a screen. Mounted once at the root:
+            notify() is called from services that have no view of their own.
+          */}
+          <AlertHost />
         </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

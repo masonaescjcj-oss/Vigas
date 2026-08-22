@@ -11,7 +11,8 @@
  */
 
 import React from "react";
-import { View, TouchableOpacity, Alert } from "react-native";
+import { View, TouchableOpacity } from "react-native";
+import { chooseAction } from "../services/notify";
 import { Icon } from "../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "./Typography";
@@ -78,16 +79,23 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
     else navigation.navigate("FileViewer", { projectId, filePath: node.path });
   };
 
-  const handleLongPress = () => {
+  const handleLongPress = async () => {
     // Folders are not objects in Storage, only prefixes, so there is nothing to
     // rename or delete for them.
     if (isDir || (!onRename && !onDelete)) return;
-    const actions: Array<{ text: string; style?: "cancel" | "destructive"; onPress?: () => void }> = [
-      { text: "Cancel", style: "cancel" },
-    ];
-    if (onRename) actions.push({ text: "Rename", onPress: () => onRename(node) });
-    if (onDelete) actions.push({ text: "Delete", style: "destructive", onPress: () => onDelete(node) });
-    Alert.alert(node.name, "What would you like to do with this file?", actions);
+
+    // Built as a list so the indices line up with the actions below whether or
+    // not both are available.
+    const actions: Array<{ label: string; destructive?: boolean; run: () => void }> = [];
+    if (onRename) actions.push({ label: "Rename", run: () => onRename(node) });
+    if (onDelete) actions.push({ label: "Delete", destructive: true, run: () => onDelete(node) });
+
+    const chosen = await chooseAction(
+      node.name,
+      "What would you like to do with this file?",
+      actions.map(({ label, destructive }) => ({ label, destructive })),
+    );
+    if (chosen !== null) actions[chosen].run();
   };
 
   return (

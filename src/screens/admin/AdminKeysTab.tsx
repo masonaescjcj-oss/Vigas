@@ -144,6 +144,7 @@ export const AdminKeysTab: React.FC = () => {
     const confirmed = await confirmAction(
       `Remove ${key.label}?`,
       "The stored key is deleted. Requests move to the next key in the pool.",
+      { destructive: true, confirmLabel: "Remove" },
     );
     if (!confirmed) return;
     setBusyId(key.id);

@@ -46,6 +46,7 @@ export const useFileActions = (projectId: string, onChanged: () => void) => {
     const confirmed = await confirmAction(
       `Delete ${node.name}?`,
       "This removes the file from the project. A restore point from before the last run may still contain it.",
+      { destructive: true, confirmLabel: "Delete" },
     );
     if (!confirmed) return;
 

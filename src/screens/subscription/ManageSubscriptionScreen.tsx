@@ -9,7 +9,8 @@
  */
 
 import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, Alert, Platform, SafeAreaView } from "react-native";
+import { View, ScrollView, TouchableOpacity, Platform, SafeAreaView } from "react-native";
+import { confirmAction, notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../types/navigation";
@@ -34,22 +35,18 @@ export const ManageSubscriptionScreen = () => {
   // this backend, so the list stays empty rather than showing invented charges.
   const [invoices] = useState<Invoice[]>([]);
 
-  const handleCancelSubscription = () => {
-    Alert.alert(
-      "Cancel Pro Subscription",
-      "According to Apple and Google policies, to cancel your subscription, you must do so from your App Store or Google Play account settings.",
-      [
-        { text: "Got it" },
-        {
-          text: "How",
-          onPress: () => Alert.alert(
-            "Where to cancel",
-            Platform.OS === "ios"
-              ? "Settings → your name → Subscriptions → Retro Code → Cancel."
-              : "Play Store → profile → Payments and subscriptions → Subscriptions → Retro Code → Cancel.",
-          ),
-        }
-      ]
+  const handleCancelSubscription = async () => {
+    const wantsSteps = await confirmAction(
+      "Cancel Pro subscription",
+      "Apple and Google require subscriptions to be cancelled from your App Store or Google Play account settings.",
+      { confirmLabel: "Show me how", cancelLabel: "Got it" },
+    );
+    if (!wantsSteps) return;
+    notify(
+      "Where to cancel",
+      Platform.OS === "ios"
+        ? "Settings → your name → Subscriptions → Retro Code → Cancel."
+        : "Play Store → profile → Payments and subscriptions → Subscriptions → Retro Code → Cancel.",
     );
   };
 

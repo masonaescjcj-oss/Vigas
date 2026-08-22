@@ -711,6 +711,7 @@ export const AgentChatScreen = () => {
     const confirmed = await confirmAction(
       "Roll back the project?",
       `Every file goes back to how it was ${description}. A restore point is saved first, so you can undo this too.`,
+      { destructive: true, confirmLabel: "Roll back" },
     );
     if (!confirmed) return;
 
@@ -1198,6 +1199,7 @@ export const AgentChatScreen = () => {
     const confirmed = await confirmAction(
       "Delete project",
       `Delete “${projectName}” and all of its files? This cannot be undone.`,
+      { destructive: true, confirmLabel: "Delete" },
     );
     if (confirmed) await run();
   };

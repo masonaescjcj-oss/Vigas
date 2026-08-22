@@ -64,6 +64,7 @@ export const SharedLinksScreen = () => {
     const confirmed = await confirmAction(
       "Take this link down?",
       "Anyone with the link stops being able to open the page. This cannot be undone — publishing again gives a new link.",
+      { destructive: true, confirmLabel: "Take down" },
     );
     if (!confirmed) return;
 

@@ -96,6 +96,7 @@ export const ProvidersScreen = () => {
     const confirmed = await confirmAction(
       `Remove ${provider.label}?`,
       "The stored key is deleted. Runs go back to the built-in provider.",
+      { destructive: true, confirmLabel: "Remove" },
     );
     if (!confirmed) return;
     setBusyId(provider.id);

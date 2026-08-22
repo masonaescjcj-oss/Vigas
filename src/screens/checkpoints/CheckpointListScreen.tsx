@@ -60,6 +60,7 @@ export const CheckpointListScreen = () => {
     const confirmed = await confirmAction(
       "Roll back the project?",
       `Every file goes back to how it was ${when}. A restore point is saved first, so you can undo this too.`,
+      { destructive: true, confirmLabel: "Roll back" },
     );
     if (!confirmed) return;
 

@@ -115,6 +115,7 @@ export const AdminModelsTab: React.FC = () => {
     const confirmed = await confirmAction(
       `Remove ${model.display_name}?`,
       "It disappears from the picker. Chats that already used it are unaffected.",
+      { destructive: true, confirmLabel: "Remove" },
     );
     if (!confirmed) return;
     setBusyId(model.id);
