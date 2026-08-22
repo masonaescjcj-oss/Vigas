@@ -50,7 +50,8 @@ function embeddedTitle(session: EmbeddedSession | undefined): string | null {
  */
 export async function getProjectCheckpoints(projectId: string): Promise<CheckpointRow[]> {
   if (IS_LOCAL_API) {
-    // Guest sessions have no real JWT, so an RLS read would return nothing.
+    // LOCAL_DEV_BYPASS authenticates without a real Supabase JWT, so an RLS
+    // read from the client would return nothing against the local gateway.
     const res = await fetch(`${API_ORIGIN}/api/projects/${projectId}/checkpoints`);
     if (!res.ok) throw new Error(`Loading checkpoints failed: ${res.status}`);
     return (await res.json()) as CheckpointRow[];

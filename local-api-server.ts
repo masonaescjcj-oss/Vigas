@@ -88,8 +88,9 @@ Deno.serve({ port: PORT }, async (req: Request) => {
     const projectBundleMatch = path.match(/^\/api\/projects\/([^/]+)\/bundle$/);
     const projectCheckpointsMatch = path.match(/^\/api\/projects\/([^/]+)\/checkpoints$/);
 
-    // Checkpoint history. Guests have no real JWT, so the RLS read the app uses
-    // in production returns nothing here — same shape, service client.
+    // Checkpoint history. LOCAL_DEV_BYPASS authenticates without a real
+    // Supabase JWT, so the RLS read the app uses in production returns nothing
+    // here — same shape, service client.
     if (!res && projectCheckpointsMatch && req.method === "GET") {
       const { createServiceClient } = await import("./supabase/functions/shared/supabase.ts");
       const service = createServiceClient();

@@ -25,7 +25,9 @@ type NavigationProp = NativeStackNavigationProp<ProfileStackParamList, "ProfileM
 export const ProfileMainScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { profile, signOut } = useAuthStore();
+  // user as well as profile: the profile row can lag the session by a moment,
+  // and showing an empty line where the email goes reads as "no email".
+  const { profile, user, signOut } = useAuthStore();
 
   const handleSignOut = async () => {
     const confirmed = await confirmAction(
@@ -53,7 +55,7 @@ export const ProfileMainScreen = () => {
             {profile?.display_name || "Your account"}
           </Text>
           <Text variant="caption" className="opacity-80 text-center mt-1">
-            {profile?.email || "Signed in as a guest"}
+            {profile?.email || user?.email || ""}
           </Text>
 
           {/* Subscription status badge */}

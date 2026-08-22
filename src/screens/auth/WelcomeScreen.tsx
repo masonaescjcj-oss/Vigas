@@ -5,23 +5,22 @@
  * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
  * ============================================================================
  * 
- * DEVELOPER LOGIC & FLOW:
- * 1. GUEST MODE AUTHENTICATION:
- *    Generates an instant anonymous session via `setSession` without requiring email.
- * 2. SKILLS.SH ECOSYSTEM BLUEPRINT:
- *    Highlights open-source agent skills, UI design rules, and test generators.
+ * Sign in or create an account — those are the only two ways in.
+ *
+ * There was a third, "Continue as Guest", built on supabase.auth.signInAnonymously().
+ * It was removed rather than fixed: it needs anonymous sign-ins enabled on the
+ * project, and an account that cannot receive a password reset or be reached by
+ * email is a dead end for the user's projects rather than a shortcut into them.
  * ============================================================================
  */
 
 import React from "react";
-import { View, SafeAreaView, TouchableOpacity, Alert, Platform } from "react-native";
+import { View, SafeAreaView, TouchableOpacity } from "react-native";
 import { Icon } from "../../components/Icon";
-import { confirmAction, notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { type AuthStackParamList } from "../../navigation/types";
-import { supabase } from "../../services/supabase";
 import { useThemeStore } from "../../theme/store";
 import { useTheme } from "../../theme/ThemeProvider";
 
@@ -40,27 +39,6 @@ export const WelcomeScreen = () => {
   const textPrimary = colors.inkPrimary;
   const textSecondary = colors.inkSecondary;
   const textMuted = colors.inkSecondary;
-
-  /**
-   * Real anonymous sign-in: Supabase issues a genuine JWT, so RLS reads and
-   * edge-function calls work exactly as they do for a signed-up user (a faked
-   * client-side session cannot do either). Requires "Allow anonymous sign-ins"
-   * to be enabled in Supabase → Authentication → Providers.
-   */
-  const runGuestLogin = async () => {
-    const { error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      notify("Guest mode unavailable", `${error.message}\n\nEnable "Allow anonymous sign-ins" in your Supabase Auth settings, or create an account.`,);
-    }
-  };
-
-  const handleGuestMode = async () => {
-    const confirmed = await confirmAction(
-      "Guest Mode",
-      "Continue as a guest? You can create an account later to keep your projects.",
-    );
-    if (confirmed) await runGuestLogin();
-  };
 
   return (
     <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1 justify-between px-6 py-8">
@@ -146,15 +124,6 @@ export const WelcomeScreen = () => {
           <Text style={{ color: textPrimary }} className="text-base font-semibold">Create New Account</Text>
         </TouchableOpacity>
 
-        {/* Guest Mode Option */}
-        <TouchableOpacity 
-          onPress={handleGuestMode}
-          className="items-center py-2"
-        >
-          <Text style={{ color: textSecondary }} className="text-xs font-semibold underline">
-            Continue as Guest (Instant IDE Access)
-          </Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

@@ -201,9 +201,10 @@ export const AgentChatScreen = () => {
   const runStartedAtRef = useRef<string | null>(null);
   const { projects, createProject, deleteProject } = useProjects();
   const { profile, user, signOut } = useAuthStore();
-  // Guests have no profile row and no email, so they are named as what
-  // they are rather than given someone else's placeholder name.
-  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Guest";
+  // Every account has an email now that guest mode is gone, so the last
+  // fallback only covers the moment before the profile arrives — it must not
+  // name a kind of user that no longer exists.
+  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Account";
 
   // On-device live preview state (Phase 2 killer feature)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -972,8 +973,9 @@ export const AgentChatScreen = () => {
   /**
    * Poll agent_tasks while a job is executing. Each tool call renders as a
    * live "tool_run" step; the terminal "agent-run" row carries the final text
-   * (or the error) and ends the run. Polling works in both local-guest mode
-   * (no RLS-visible rows for Realtime) and production.
+   * (or the error) and ends the run. Polling rather than Realtime because it
+   * works against the local gateway too, where LOCAL_DEV_BYPASS means there is
+   * no real JWT and so no RLS-visible rows for Realtime to push.
    */
   useEffect(() => {
     // Only a Build run produces agent_tasks rows; runStartedAtRef marks one.
@@ -3034,10 +3036,10 @@ export const AgentChatScreen = () => {
                     </View>
                     <View className="flex-1">
                       <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
-                        {profile?.display_name || user?.email?.split("@")[0] || "Guest"}
+                        {displayName}
                       </Text>
                       <Text style={{ color: textSecondary }} className="text-xs text-left" numberOfLines={1}>
-                        {user?.email ?? (user?.is_anonymous ? "Guest session (not saved)" : "Not signed in")}
+                        {user?.email ?? "Not signed in"}
                       </Text>
                     </View>
                   </View>

@@ -11,11 +11,10 @@ site_url = "https://issac.app"
 # Deep links: auth callback + the password-reset screen the emailed link opens.
 additional_redirect_urls = ["issac://auth-callback", "issac://reset-password"]
 
-# Guest mode ("Continue as Guest") uses supabase.auth.signInAnonymously(), which
-# needs this enabled. Without it the app shows an honest "Guest mode
-# unavailable" error instead of the fake local session it used to fabricate.
-# Enable it in Dashboard → Authentication → Providers → Anonymous sign-ins.
-enable_anonymous_sign_ins = true
+# Off deliberately. Guest mode was removed from the app, so nothing calls
+# signInAnonymously() — and leaving this on would let anyone mint accounts
+# against the project's quota with no email attached to any of them.
+enable_anonymous_sign_ins = false
 
 # --- Session management ---
 jwt_expiry = 3600                     # access-token lifetime: 1 hour

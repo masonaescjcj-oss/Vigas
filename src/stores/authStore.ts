@@ -23,6 +23,14 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  /**
+   * Whose profile has been fetched this session, whether or not a row came back.
+   *
+   * Needed because `profile` alone cannot tell "not looked up yet" from "looked
+   * up, no row" — and conflating them made every auth event refetch forever for
+   * any account without a row.
+   */
+  profileLoadedFor: string | null;
   initialized: boolean;
   /**
    * True while the user is here from a password-reset link.
@@ -48,6 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
   profile: null,
+  profileLoadedFor: null,
   initialized: false,
   passwordRecovery: false,
   recoveryError: null,
@@ -61,7 +70,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ session, user, initialized: true });
 
     if (!user) {
-      set({ profile: null });
+      set({ profile: null, profileLoadedFor: null });
       return;
     }
 
@@ -69,8 +78,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // token refresh and, on web, on every tab focus — and this used to refetch the
     // whole profile row each time. Measured in the running app: a full
     // `profiles?select=*` every six seconds alongside nothing else happening.
-    const sameUser = previous.profile?.id === user.id;
-    if (sameUser) return;
+    //
+    // Keyed on who was *looked up*, not on the row that came back: an account
+    // whose profile row is missing has no profile.id to compare, so keying on
+    // that refetched on every auth event forever — the very polling this guard
+    // exists to stop.
+    if (previous.profileLoadedFor === user.id) return;
 
     await get().loadProfile();
   },
@@ -80,15 +93,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!user) return;
 
     try {
+      // maybeSingle, not single: no row is a real state, not a failure. The
+      // handle_new_user trigger creates the profile, so there is a window right
+      // after signup where the session exists and the row does not — and
+      // single() turned that into a thrown PGRST116 that logged as if the app
+      // had broken, four times per sign-in, drowning out actual errors.
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      set({ profile: data as UserProfile });
+      // Left null when there is no row. The screens fall back to the session's
+      // own email, so the account still reads correctly while the row catches up.
+      set({ profile: (data as UserProfile | null) ?? null, profileLoadedFor: user.id });
     } catch (e) {
+      // Deliberately *not* marked as attempted. "No row" above is a definitive
+      // answer worth remembering; a thrown error is not — it may be a dropped
+      // connection, and remembering it would leave the account without its
+      // profile for the rest of the session. This retries on the next auth event.
       console.error("Failed to load user profile:", e);
     }
   },

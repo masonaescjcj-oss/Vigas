@@ -7,7 +7,8 @@
  *     directly via agent-ask, with no queue, worker or sandbox involved
  *   - reads (sessions / tasks) go through Supabase tables under RLS, or the
  *     local dev gateway's /api/* endpoints when EXPO_PUBLIC_API_URL points at
- *     localhost (guest mode has no real JWT, so RLS reads would return nothing)
+ *     localhost (LOCAL_DEV_BYPASS authenticates without a real Supabase JWT, so
+ *     an RLS read from the client would return nothing there)
  * Errors are surfaced to the caller — no mock fallbacks.
  * ---------------------------------------------------------------------------
  */
