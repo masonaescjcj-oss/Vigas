@@ -11,6 +11,7 @@
 import React from "react";
 import { View, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
 import { confirmAction } from "../../services/notify";
+import { describeSubscription } from "../../core/billing/subscriptionState";
 import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -28,6 +29,7 @@ export const ProfileMainScreen = () => {
   // user as well as profile: the profile row can lag the session by a moment,
   // and showing an empty line where the email goes reads as "no email".
   const { profile, user, signOut } = useAuthStore();
+  const plan = describeSubscription({ tier: profile?.subscription_tier });
 
   const handleSignOut = async () => {
     const confirmed = await confirmAction(
@@ -58,17 +60,40 @@ export const ProfileMainScreen = () => {
             {profile?.email || user?.email || ""}
           </Text>
 
-          {/* Subscription status badge */}
-          <TouchableOpacity 
+          {/* Subscription status. The raw tier used to be printed here, which
+              said the same thing to someone who never subscribed as to someone
+              whose plan lapsed yesterday — and offered neither of them a way
+              to fix it. */}
+          <TouchableOpacity
             onPress={() => navigation.getParent()?.navigate("Paywall", {})}
+            disabled={!plan.action}
             className="py-1 px-4 rounded-pill mt-4 flex-row items-center"
-            style={{ backgroundColor: `${colors.brandPrimary}15` }}
+            style={{
+              backgroundColor: plan.needsAttention
+                ? `${colors.warning}20`
+                : `${colors.brandPrimary}15`,
+            }}
           >
-            <Text variant="caption" className="font-uiMedium mr-1.5" style={{ color: colors.brandPrimary }}>
-              Current Plan: {profile?.subscription_tier?.toUpperCase() || "FREE"}
+            <Text
+              variant="caption"
+              className="font-uiMedium mr-1.5"
+              style={{ color: plan.needsAttention ? colors.warning : colors.brandPrimary }}
+            >
+              {plan.action ? `${plan.badge} · ${plan.action}` : `Current Plan: ${plan.badge}`}
             </Text>
-            <Icon name="chevron-right" size={12} color={colors.brandPrimary} />
+            {plan.action ? (
+              <Icon
+                name="chevron-right"
+                size={12}
+                color={plan.needsAttention ? colors.warning : colors.brandPrimary}
+              />
+            ) : null}
           </TouchableOpacity>
+          {plan.detail ? (
+            <Text variant="caption" className="opacity-70 text-center mt-1.5 text-[11px]">
+              {plan.detail}
+            </Text>
+          ) : null}
         </View>
 
         {/* Navigation Rows list */}

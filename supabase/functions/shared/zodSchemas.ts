@@ -188,6 +188,14 @@ export const PushRegisterSchema = z.object({
  * one in shareDoc (2 MB): this is only a parser guard, and the size refusal
  * belongs where it can explain itself in kilobytes.
  */
+/**
+ * Starting a web checkout. The plan is a key, never a price — the amount is
+ * looked up server-side, so a client cannot name what it intends to pay.
+ */
+export const CheckoutCreateSchema = z.object({
+  planId: z.string().trim().min(1).max(40),
+}).strict();
+
 export const ShareSchema = z.object({
   action: z.enum(["create", "list", "revoke"]),
   projectId: uuid.optional(),

@@ -17,6 +17,8 @@ import { handler as projectsUpdateHandler } from "./supabase/functions/projects-
 import { handler as projectFilesHandler } from "./supabase/functions/project-files/index.ts";
 import { handler as userDeleteHandler } from "./supabase/functions/user-delete/index.ts";
 import { handler as usageCheckHandler } from "./supabase/functions/usage-check/index.ts";
+import { handler as checkoutCreateHandler } from "./supabase/functions/checkout-create/index.ts";
+import { handler as cryptoWebhookHandler } from "./supabase/functions/crypto-webhook/index.ts";
 import { corsHeaders } from "./supabase/functions/shared/http.ts";
 
 // Overridable so a second instance can run alongside the one the dev stack
@@ -75,6 +77,10 @@ Deno.serve({ port: PORT }, async (req: Request) => {
       res = await projectsUpdateHandler(req);
     } else if (path === "/functions/v1/project-files") {
       res = await projectFilesHandler(req);
+    } else if (path === "/functions/v1/checkout-create") {
+      res = await checkoutCreateHandler(req);
+    } else if (path === "/functions/v1/crypto-webhook") {
+      res = await cryptoWebhookHandler(req);
     } else if (path === "/functions/v1/usage-check") {
       res = await usageCheckHandler(req);
     } else if (path === "/functions/v1/user-delete") {

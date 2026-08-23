@@ -52,6 +52,7 @@ import { fetchModelCatalog } from "../../services/modelCatalog";
 import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
 import { ClarifyCard } from "../../components/ClarifyCard";
 import { PlanCard, TodoChecklist, type TodoItem } from "../../components/RunProgress";
+import { describeSubscription } from "../../core/billing/subscriptionState";
 import {
   type ClarifyAnswer,
   type ClarifyRequest,
@@ -342,6 +343,7 @@ export const AgentChatScreen = () => {
   // The catalogue depends on the plan, so a subscription that changes mid-session
   // has to re-read it — otherwise a model just paid for stays locked.
   const tier = profile?.subscription_tier ?? "free";
+  const planDisplay = describeSubscription({ tier });
   useEffect(() => {
     let cancelled = false;
     fetchModelCatalog(tier).then((loaded) => {
@@ -3141,28 +3143,42 @@ export const AgentChatScreen = () => {
                     </View>
                   </View>
 
-                  <View style={{ backgroundColor: colors.inkPrimary }} className="px-3.5 py-1.5 rounded-full items-center justify-center">
+                  {/* Tapping the badge is the shortest route to fixing the
+                      plan, so it does that rather than being decoration. */}
+                  <TouchableOpacity
+                    onPress={() => planDisplay.action && goTo("Paywall", {})}
+                    disabled={!planDisplay.action}
+                    style={{
+                      backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary,
+                    }}
+                    className="px-3.5 py-1.5 rounded-full items-center justify-center"
+                  >
                     <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 12 }}>
-                      {(profile?.subscription_tier ?? "free").toUpperCase()}
+                      {planDisplay.badge}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
-                {/* Upgrade Card */}
+                {/* Upgrade Card. Hidden for a healthy plan and for Team —
+                    selling to someone who already bought is just noise. */}
+                {planDisplay.action ? (
                 <View style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }} className="p-5 rounded-2xl mb-6 shadow-sm border relative overflow-hidden">
-                  <Text style={{ color: textPrimary }} className="text-base font-bold text-left mb-1">Want more Retro Code?</Text>
+                  <Text style={{ color: textPrimary }} className="text-base font-bold text-left mb-1">
+                    {planDisplay.needsAttention ? "Your plan needs attention" : "Want more Retro Code?"}
+                  </Text>
                   <Text style={{ color: textSecondary }} className="text-xs text-left mb-4 leading-5">
-                    Upgrade for more usage and capabilities.
+                    {planDisplay.detail ?? "Upgrade for more usage and capabilities."}
                   </Text>
 
                   <TouchableOpacity
                     onPress={() => goTo("Paywall", {})}
-                    style={{ backgroundColor: colors.inkPrimary }}
+                    style={{ backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary }}
                     className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center"
                   >
-                    <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 13 }}>Upgrade</Text>
+                    <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 13 }}>{planDisplay.action}</Text>
                   </TouchableOpacity>
                 </View>
+                ) : null}
 
                 {/* Account & app screens (these live in the Profile stack) */}
                 <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">

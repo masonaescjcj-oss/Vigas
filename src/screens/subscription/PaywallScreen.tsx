@@ -19,6 +19,8 @@ import { PlanCard } from "../../components/PlanCard";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useSubscription } from "../../hooks/useSubscription";
 import { notify } from "../../services/notify";
+import { startCheckout } from "../../services/checkoutService";
+import { DISPLAY_PLANS } from "../../core/billing/plans";
 
 export const PaywallScreen = () => {
   const { colors } = useTheme();
@@ -33,7 +35,13 @@ export const PaywallScreen = () => {
   const requiredTier = route.params?.requiredTier ?? "pro";
   const requiredPlanName = requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1);
 
-  const [selectedPkgId, setSelectedPkgId] = useState("pkg_yearly"); // default selected
+  // Store packages when a store is connected, our own plans otherwise. Yearly
+  // first either way, so the default selection is the one people should take.
+  const plans = offerings.length > 0 ? offerings : DISPLAY_PLANS;
+  const [selectedPkgId, setSelectedPkgId] = useState(plans[0]?.id ?? "pro_yearly");
+  // Separate from the store hook's isLoading: this covers the web handoff,
+  // which has its own round trip before the browser opens.
+  const [starting, setStarting] = useState(false);
   // Close means close. This used to swallow the first dismissal to show a
   // discount that existed in no store — a fabricated price, and a screen you
   // could not leave on the first try.
@@ -41,13 +49,23 @@ export const PaywallScreen = () => {
 
   const handlePurchase = async () => {
     const pkg = offerings.find((o) => o.id === selectedPkgId);
-    // With no store connection there are no offerings, so this used to return
-    // silently and the button did nothing. Say what is happening instead.
+    // No store connection — which is the normal case now, because the plan is
+    // sold on the web rather than through Play Billing. Hand off to the
+    // browser: the URL carries a payment reference, not a session, so nothing
+    // that could reach the account travels with it.
     if (!pkg) {
-      notify(
-        "Purchases not available yet",
-        "This build has no store connection, so there is nothing to buy. Nothing was charged.",
-      );
+      setStarting(true);
+      try {
+        const reference = await startCheckout(selectedPkgId);
+        if (reference) {
+          notify(
+            "Finish in your browser",
+            "We opened the payment page. Your plan updates here as soon as the payment confirms — crypto can take a few minutes.",
+          );
+        }
+      } finally {
+        setStarting(false);
+      }
       return;
     }
     try {
@@ -104,12 +122,7 @@ export const PaywallScreen = () => {
 
         {/* Plan Cards list */}
         <View className="mb-6">
-          {offerings.length === 0 && (
-            <Text variant="caption" className="text-center opacity-60 leading-5 py-4">
-              Plans appear here once the app is connected to the App Store and Google Play.
-            </Text>
-          )}
-          {offerings.map((pkg) => (
+          {plans.map((pkg) => (
             <PlanCard
               key={pkg.id}
               title={pkg.title}
@@ -124,15 +137,19 @@ export const PaywallScreen = () => {
 
         {/* Main CTA */}
         <Button
-          label="Unlock Pro"
+          label={offerings.length > 0 ? "Unlock Pro" : "Continue in browser"}
           onPress={handlePurchase}
-          loading={isLoading}
+          loading={isLoading || starting}
           className="w-full mt-4 py-4"
         />
 
-        {/* Micro-copy disclaimer */}
+        {/* Micro-copy. Says where payment happens, because being sent out of
+            the app is surprising if it is not announced first — and Google's
+            link-out rules expect it to be disclosed. */}
         <Text variant="caption" className="text-center mt-4 opacity-60 leading-5">
-          No commitment • Cancel anytime from your store's subscription settings
+          {offerings.length > 0
+            ? "No commitment • Cancel anytime from your store's subscription settings"
+            : "Payment opens in your browser and is handled outside the app store. Crypto accepted."}
         </Text>
 
       </ScrollView>
