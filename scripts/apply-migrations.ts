@@ -38,10 +38,22 @@ if (!TOKEN || !REF) {
 
 const API = `https://api.supabase.com/v1/projects/${REF}`;
 
+/**
+ * Cloudflare sits in front of the Management API and refuses requests with no
+ * User-Agent — with a 403 whose body is Cloudflare's "error code: 1010", not an
+ * auth error. It looks exactly like a revoked token, and cost an afternoon of
+ * believing the token had been revoked when it had not.
+ */
+const AGENT = "retro-code-migrations/1.0";
+
 async function sql(query: string): Promise<{ ok: boolean; rows?: unknown[]; error?: string }> {
   const response = await fetch(`${API}/database/query`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/json",
+      "User-Agent": AGENT,
+    },
     body: JSON.stringify({ query }),
   });
   const text = await response.text();
@@ -62,7 +74,7 @@ async function sql(query: string): Promise<{ ok: boolean; rows?: unknown[]; erro
 
 // ── Say out loud which database is about to change, and what is already there.
 const project = await fetch(`https://api.supabase.com/v1/projects`, {
-  headers: { Authorization: `Bearer ${TOKEN}` },
+  headers: { Authorization: `Bearer ${TOKEN}`, "User-Agent": AGENT },
 }).then((r) => r.json()).catch(() => null);
 const match = Array.isArray(project) ? project.find((p: { id: string }) => p.id === REF) : null;
 if (!match) {
