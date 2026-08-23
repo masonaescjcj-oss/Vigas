@@ -51,6 +51,7 @@ import { directionStyleFor } from "../../theme/direction";
 import { fetchModelCatalog } from "../../services/modelCatalog";
 import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
 import { ClarifyCard } from "../../components/ClarifyCard";
+import { PlanCard, TodoChecklist, type TodoItem } from "../../components/RunProgress";
 import {
   type ClarifyAnswer,
   type ClarifyRequest,
@@ -1067,13 +1068,27 @@ export const AgentChatScreen = () => {
           error: t.tool_output?.error ?? undefined,
         }));
 
+      // The plan, and the checklist as it stands *now*. todo_write is called
+      // repeatedly and each call replaces the list, so only the last one is
+      // shown — rendering every version would stack five checklists for a
+      // five-item task.
+      const plan = fresh
+        .filter((t) => t.tool_input?.detail?.kind === "plan")
+        .map((t) => String(t.tool_input!.detail!.plan ?? ""))
+        .filter(Boolean)
+        .at(-1);
+      const todos = fresh
+        .filter((t) => t.tool_input?.detail?.kind === "todos")
+        .map((t) => t.tool_input!.detail!.todos as TodoItem[])
+        .at(-1);
+
       const execId = `exec_${since ?? activeSessionId}`;
       setMessages((prev) => {
         const withoutExec = prev.filter((m) => m.id !== execId);
         if (steps.length === 0) return withoutExec;
         return [
           ...withoutExec,
-          { id: execId, role: "assistant", content: "", createdAt: Date.now(), steps },
+          { id: execId, role: "assistant", content: "", createdAt: Date.now(), steps, plan, todos },
         ];
       });
 
@@ -1703,6 +1718,12 @@ export const AgentChatScreen = () => {
 
               return (
                 <View key={msg.id} className="mb-6">
+                  {/* What the agent decided to do, and how far through it is.
+                      Above the tool log because it is the summary the log is
+                      the detail of. */}
+                  {msg.plan ? <PlanCard plan={msg.plan} /> : null}
+                  {msg.todos?.length ? <TodoChecklist todos={msg.todos} /> : null}
+
                   {/* Terminal-style execution log: one panel per agent turn */}
                   {toolRunSteps.length > 0 && (
                     <ToolRunPanel isLight={isLight}>

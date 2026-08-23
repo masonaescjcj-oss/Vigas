@@ -36,6 +36,26 @@ export interface AuditEntry {
   target?: string;
   /** Small numeric result summary for the client UI (lines, +/-, matches). */
   metrics?: Record<string, number>;
+  /**
+   * Structured payload for the few tools whose whole point is something the
+   * user should read: the plan, the checklist.
+   *
+   * A `target` string cannot carry those — a plan is paragraphs and a checklist
+   * is a list with per-item state — and without them the run reads as a stack of
+   * opaque tool names. Agent-authored text only, never file contents, so audit
+   * rows stay free of user data.
+   */
+  detail?: PlanDetail | TodoDetail;
+}
+
+export interface PlanDetail {
+  kind: "plan";
+  plan: string;
+}
+
+export interface TodoDetail {
+  kind: "todos";
+  todos: Array<{ subject: string; status: string }>;
 }
 
 export interface AuditSink {
@@ -107,9 +127,55 @@ export function describeToolTarget(toolName: string, input: Record<string, unkno
       return str("path") ?? ".";
     case "task":
       return str("description") ? clip(str("description")!) : undefined;
+    // The control-flow tools had no case at all, so they rendered as a bare
+    // name with nothing beside it — the user watched "todo_write" happen four
+    // times and learned nothing from any of them.
+    case "enter_plan_mode":
+      return "working out the approach";
+    case "exit_plan_mode":
+      return "plan ready";
+    case "todo_write": {
+      const todos = Array.isArray(input.todos) ? input.todos : [];
+      const done = todos.filter((t) => (t as { status?: string })?.status === "completed").length;
+      return todos.length ? `${done}/${todos.length} done` : undefined;
+    }
+    case "ask_user": {
+      const questions = Array.isArray(input.questions) ? input.questions : [];
+      return questions.length
+        ? `${questions.length} question${questions.length === 1 ? "" : "s"}`
+        : undefined;
+    }
     default:
       return str("file_path") ?? str("path") ?? undefined;
   }
+}
+
+/**
+ * The readable payload behind a control-flow step, when there is one.
+ *
+ * Only two tools have it. Everything else is adequately described by its target,
+ * and attaching more would put file contents in audit rows.
+ */
+export function describeToolDetail(
+  toolName: string,
+  input: Record<string, unknown>,
+): PlanDetail | TodoDetail | undefined {
+  if (toolName === "exit_plan_mode") {
+    const plan = typeof input.plan === "string" ? input.plan.trim() : "";
+    return plan ? { kind: "plan", plan: plan.slice(0, 4000) } : undefined;
+  }
+  if (toolName === "todo_write") {
+    const raw = Array.isArray(input.todos) ? input.todos : [];
+    const todos = raw
+      .map((entry) => ({
+        subject: String((entry as { subject?: unknown })?.subject ?? "").slice(0, 200),
+        status: String((entry as { status?: unknown })?.status ?? "pending"),
+      }))
+      .filter((entry) => entry.subject);
+    // Capped: a runaway list would bloat every row of the transcript.
+    return todos.length ? { kind: "todos", todos: todos.slice(0, 30) } : undefined;
+  }
+  return undefined;
 }
 
 /** Numeric summary of a finished call: lines read/written, +/- on edits. */
@@ -166,6 +232,7 @@ export function createAuditHooks(sink: AuditSink, clock: Clock): {
       callIndex: ctx.callIndex,
       at: clock(),
       target: describeToolTarget(ctx.toolName, ctx.input),
+      detail: describeToolDetail(ctx.toolName, ctx.input),
     });
   };
   const post: PostToolUseHook = async (ctx: PostToolUseContext) => {
@@ -182,6 +249,9 @@ export function createAuditHooks(sink: AuditSink, clock: Clock): {
       at: clock(),
       target: describeToolTarget(ctx.toolName, ctx.input),
       metrics: failed ? undefined : describeToolMetrics(ctx.toolName, ctx.input, ctx.result.content ?? ""),
+      // Repeated on the end entry because that is the row the client reads back
+      // from the transcript; the start row is overwritten by it.
+      detail: describeToolDetail(ctx.toolName, ctx.input),
     });
   };
   return { pre, post };

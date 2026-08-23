@@ -11,7 +11,7 @@ import {
 import { OpenAIChatModel, resolveRequestedModel } from "../shared/agentRuntime.ts";
 import { AppError } from "../shared/errorHandler.ts";
 import { PROJECT_TEMPLATES, templateContentType } from "../shared/templates.ts";
-import { describeToolMetrics, describeToolTarget } from "../../../src/core/agent/hooks/defaultHooks.ts";
+import { describeToolDetail, describeToolMetrics, describeToolTarget } from "../../../src/core/agent/hooks/defaultHooks.ts";
 
 /**
  * Enough of the Supabase client for the catalogue lookup: `models` rows keyed by
@@ -234,4 +234,68 @@ Deno.test("an unreachable model provider is a 502 that says to try again", async
     if (originalKey === undefined) Deno.env.delete("OPENAI_API_KEY");
     else Deno.env.set("OPENAI_API_KEY", originalKey);
   }
+});
+
+Deno.test("the control-flow tools describe themselves", () => {
+  // These had no case at all, so a run that was in fact methodical — plan,
+  // list the work, tick items off — rendered as a stack of bare tool names
+  // with nothing beside them.
+  assertEquals(describeToolTarget("enter_plan_mode", {}), "working out the approach");
+  assertEquals(describeToolTarget("exit_plan_mode", { plan: "1. do it" }), "plan ready");
+  assertEquals(
+    describeToolTarget("todo_write", {
+      todos: [{ subject: "a", status: "completed" }, { subject: "b", status: "pending" }],
+    }),
+    "1/2 done",
+  );
+  assertEquals(
+    describeToolTarget("ask_user", { questions: [{ header: "H", question: "Q?", options: [] }] }),
+    "1 question",
+  );
+  // Plural, because "1 questions" is the kind of thing a user notices.
+  assertEquals(
+    describeToolTarget("ask_user", { questions: [{}, {}] }),
+    "2 questions",
+  );
+});
+
+Deno.test("only the plan and the checklist carry a readable payload", () => {
+  // Everything else is described adequately by its target, and attaching more
+  // would put file contents into audit rows.
+  assertEquals(describeToolDetail("read", { file_path: "a.ts" }), undefined);
+  assertEquals(describeToolDetail("bash", { command: "npm test" }), undefined);
+  assertEquals(describeToolDetail("write", { file_path: "a.ts", contents: "secret" }), undefined);
+
+  assertEquals(describeToolDetail("exit_plan_mode", { plan: "  1. do it  " }), {
+    kind: "plan",
+    plan: "1. do it",
+  });
+  assertEquals(describeToolDetail("todo_write", {
+    todos: [{ subject: "a", status: "completed" }],
+  }), { kind: "todos", todos: [{ subject: "a", status: "completed" }] });
+});
+
+Deno.test("a malformed or oversized payload cannot bloat a transcript row", () => {
+  // An empty plan is nothing to show, not an empty card.
+  assertEquals(describeToolDetail("exit_plan_mode", { plan: "   " }), undefined);
+  assertEquals(describeToolDetail("todo_write", { todos: [] }), undefined);
+  assertEquals(describeToolDetail("todo_write", { todos: "not an array" }), undefined);
+
+  // Items with no subject are dropped rather than rendered as blank rows.
+  assertEquals(describeToolDetail("todo_write", {
+    todos: [{ subject: "", status: "pending" }, { subject: "real", status: "pending" }],
+  }), { kind: "todos", todos: [{ subject: "real", status: "pending" }] });
+
+  // Every row of the transcript carries this, so both are capped.
+  const hugePlan = describeToolDetail("exit_plan_mode", { plan: "x".repeat(9000) });
+  assertEquals((hugePlan as { plan: string }).plan.length, 4000);
+  const manyTodos = describeToolDetail("todo_write", {
+    todos: Array.from({ length: 80 }, (_, i) => ({ subject: `step ${i}`, status: "pending" })),
+  });
+  assertEquals((manyTodos as { todos: unknown[] }).todos.length, 30);
+
+  // A status the UI does not know renders as not-started rather than throwing.
+  assertEquals(describeToolDetail("todo_write", {
+    todos: [{ subject: "a" }],
+  }), { kind: "todos", todos: [{ subject: "a", status: "pending" }] });
 });
