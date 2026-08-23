@@ -12,6 +12,7 @@ import React from "react";
 import { View, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
 import { confirmAction } from "../../services/notify";
 import { describeSubscription } from "../../core/billing/subscriptionState";
+import { PURCHASES } from "../../services/distributionChannel";
 import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -30,6 +31,9 @@ export const ProfileMainScreen = () => {
   // and showing an empty line where the email goes reads as "no email".
   const { profile, user, signOut } = useAuthStore();
   const plan = describeSubscription({ tier: profile?.subscription_tier });
+  // A Play build states the plan and stops. The tap is what Play regulates,
+  // not the sentence, so the badge stays and only the navigation goes.
+  const canBuy = PURCHASES.canLinkOut;
 
   const handleSignOut = async () => {
     const confirmed = await confirmAction(
@@ -66,7 +70,7 @@ export const ProfileMainScreen = () => {
               to fix it. */}
           <TouchableOpacity
             onPress={() => navigation.getParent()?.navigate("Paywall", {})}
-            disabled={!plan.action}
+            disabled={!plan.action || !canBuy}
             className="py-1 px-4 rounded-pill mt-4 flex-row items-center"
             style={{
               backgroundColor: plan.needsAttention
@@ -79,9 +83,9 @@ export const ProfileMainScreen = () => {
               className="font-uiMedium mr-1.5"
               style={{ color: plan.needsAttention ? colors.warning : colors.brandPrimary }}
             >
-              {plan.action ? `${plan.badge} · ${plan.action}` : `Current Plan: ${plan.badge}`}
+              {plan.action && canBuy ? `${plan.badge} · ${plan.action}` : `Current Plan: ${plan.badge}`}
             </Text>
-            {plan.action ? (
+            {plan.action && canBuy ? (
               <Icon
                 name="chevron-right"
                 size={12}

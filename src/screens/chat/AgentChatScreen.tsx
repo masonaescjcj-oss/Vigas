@@ -53,6 +53,7 @@ import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
 import { ClarifyCard } from "../../components/ClarifyCard";
 import { PlanCard, TodoChecklist, type TodoItem } from "../../components/RunProgress";
 import { describeSubscription } from "../../core/billing/subscriptionState";
+import { PURCHASES } from "../../services/distributionChannel";
 import {
   type ClarifyAnswer,
   type ClarifyRequest,
@@ -344,6 +345,9 @@ export const AgentChatScreen = () => {
   // has to re-read it — otherwise a model just paid for stays locked.
   const tier = profile?.subscription_tier ?? "free";
   const planDisplay = describeSubscription({ tier });
+  // A Play build may say a plan exists but must not tap through to buying
+  // one: the tap is the link-out Play regulates, not the sentence.
+  const canBuy = PURCHASES.canLinkOut;
   useEffect(() => {
     let cancelled = false;
     fetchModelCatalog(tier).then((loaded) => {
@@ -3146,8 +3150,8 @@ export const AgentChatScreen = () => {
                   {/* Tapping the badge is the shortest route to fixing the
                       plan, so it does that rather than being decoration. */}
                   <TouchableOpacity
-                    onPress={() => planDisplay.action && goTo("Paywall", {})}
-                    disabled={!planDisplay.action}
+                    onPress={() => planDisplay.action && canBuy && goTo("Paywall", {})}
+                    disabled={!planDisplay.action || !canBuy}
                     style={{
                       backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary,
                     }}
@@ -3170,13 +3174,22 @@ export const AgentChatScreen = () => {
                     {planDisplay.detail ?? "Upgrade for more usage and capabilities."}
                   </Text>
 
-                  <TouchableOpacity
-                    onPress={() => goTo("Paywall", {})}
-                    style={{ backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary }}
-                    className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center"
-                  >
-                    <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 13 }}>{planDisplay.action}</Text>
-                  </TouchableOpacity>
+                  {canBuy ? (
+                    <TouchableOpacity
+                      onPress={() => goTo("Paywall", {})}
+                      style={{ backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary }}
+                      className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center"
+                    >
+                      <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 13 }}>{planDisplay.action}</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    // No tap, so the sentence carries the whole answer. Saying
+                    // nothing would leave a limit with no explanation, which is
+                    // worse for the user than any rule requires.
+                    <Text style={{ color: textSecondary }} className="text-xs text-left leading-5">
+                      Paid plans are managed from your account on the Retro Code website.
+                    </Text>
+                  )}
                 </View>
                 ) : null}
 
@@ -3397,6 +3410,16 @@ export const AgentChatScreen = () => {
                     onPress={() => {
                       if (model.locked) {
                         setShowModelsModal(false);
+                        if (!canBuy) {
+                          // Naming the plan is allowed; tapping through to buy
+                          // it is the link-out. So say which plan it needs and
+                          // leave the user to it.
+                          notify(
+                            `${model.name} needs ${model.badge.toLowerCase()}`,
+                            "Paid plans are managed from your account on the Retro Code website.",
+                          );
+                          return;
+                        }
                         navigation.getParent()?.navigate("Paywall", {
                           lockedModel: model.name,
                           requiredTier: model.minTier ?? undefined,
