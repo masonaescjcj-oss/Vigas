@@ -104,7 +104,9 @@ export function periodEndAfter(
  * through a third party and a browser address bar. Unguessable, so a stranger
  * cannot claim someone else's paid invoice by quoting its reference.
  */
-const REFERENCE_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+// No i/l/1/0/o: a reference ends up in a URL that people paste, read off a
+// screen, and quote in a support message about a payment that did not land.
+const REFERENCE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 export const REFERENCE_LENGTH = 22;
 
 export function generateReference(random: () => number = Math.random): string {
