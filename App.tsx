@@ -19,6 +19,7 @@ import { useAppFonts } from "./src/theme/useAppFonts";
 import { themeColors } from "./src/theme/theme";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { AlertHost } from "./src/components/AlertHost";
+import { startAnalytics } from "./src/services/analytics";
 import "./global.css";
 
 // Configure NativeWind output for web
@@ -28,6 +29,10 @@ NativeWindStyleSheet.setOutput({
 });
 
 export default function App() {
+  // Flush queued events when the app is backgrounded — on a phone that is the
+  // last moment before the process may be frozen or killed.
+  React.useEffect(() => startAnalytics(), []);
+
   // Render nothing until the typefaces resolve — a frame in the system font
   // followed by a reflow into Inter is worse than a moment of the app's own
   // background. `ready` also turns true on failure, so a font that fails to

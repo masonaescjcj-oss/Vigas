@@ -20,11 +20,13 @@ import { AdminOverviewTab } from "./AdminOverviewTab";
 import { AdminKeysTab } from "./AdminKeysTab";
 import { AdminModelsTab } from "./AdminModelsTab";
 import { AdminPlansTab } from "./AdminPlansTab";
+import { AdminFunnelTab } from "./AdminFunnelTab";
 
 const TABS = [
   { key: "keys", label: "Keys" },
   { key: "models", label: "Models" },
   { key: "plans", label: "Plans" },
+  { key: "funnel", label: "Funnel" },
   { key: "overview", label: "Usage" },
 ] as const;
 
@@ -94,6 +96,7 @@ export const AdminScreen = () => {
         {tab === "models" ? <AdminModelsTab /> : null}
         {tab === "plans" ? <AdminPlansTab /> : null}
         {tab === "overview" ? <AdminOverviewTab /> : null}
+        {tab === "funnel" ? <AdminFunnelTab /> : null}
       </ScrollView>
     </SafeAreaView>
   );

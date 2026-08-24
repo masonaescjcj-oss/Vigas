@@ -16,10 +16,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // hoisted: vi.mock is lifted above the file's other statements, so plain consts
 // would not exist yet when the factory runs.
-const { maybeSingle, signOut } = vi.hoisted(() => ({
+const { maybeSingle, signOut, track, setAnalyticsUser } = vi.hoisted(() => ({
   maybeSingle: vi.fn(),
   signOut: vi.fn(),
+  track: vi.fn(),
+  setAnalyticsUser: vi.fn(),
 }));
+
+// analytics reaches react-native and expo-constants, whose Flow sources vitest
+// cannot parse. Mocked here rather than made lazy in the store: the store's job
+// is auth, and the shape it depends on is these two functions.
+vi.mock("../../services/analytics", () => ({ track, setAnalyticsUser }));
 
 vi.mock("../../services/supabase", () => ({
   supabase: {
@@ -40,6 +47,8 @@ function sessionFor(id: string, email = "dev@example.com") {
 beforeEach(() => {
   maybeSingle.mockReset();
   signOut.mockReset();
+  track.mockReset();
+  setAnalyticsUser.mockReset();
   useAuthStore.setState({
     user: null,
     session: null,
@@ -147,5 +156,33 @@ describe("the refetch guard", () => {
 
     await useAuthStore.getState().setSession(sessionFor("u1"));
     expect(maybeSingle).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("analytics identity", () => {
+  it("tells analytics who the user is, and forgets on sign-out", async () => {
+    maybeSingle.mockResolvedValue({ data: null, error: null });
+
+    await useAuthStore.getState().setSession(sessionFor("u1"));
+    expect(setAnalyticsUser).toHaveBeenLastCalledWith("u1");
+
+    await useAuthStore.getState().setSession(null);
+    // Null, not stale: an event fired after sign-out must not be attributed to
+    // the person who just left.
+    expect(setAnalyticsUser).toHaveBeenLastCalledWith(null);
+  });
+
+  it("records a sign-in once per user, not once per token refresh", async () => {
+    maybeSingle.mockResolvedValue({ data: null, error: null });
+
+    await useAuthStore.getState().setSession(sessionFor("u1"));
+    await useAuthStore.getState().setSession(sessionFor("u1"));
+    await useAuthStore.getState().setSession(sessionFor("u1"));
+    // supabase-js emits an auth event on every refresh and every tab focus.
+    // Counting those as sign-ins would make the funnel's first step meaningless.
+    expect(track.mock.calls.filter((c) => c[0] === "signed_in")).toHaveLength(1);
+
+    await useAuthStore.getState().setSession(sessionFor("u2", "b@example.com"));
+    expect(track.mock.calls.filter((c) => c[0] === "signed_in")).toHaveLength(2);
   });
 });

@@ -272,6 +272,72 @@ export async function handler(req: Request): Promise<Response> {
           revenue_note: "Amounts are held by the App Store, Google Play and RevenueCat.",
         }, 200, headers);
       }
+
+      /**
+       * The funnel: how many people reached each step in the last 30 days.
+       *
+       * Counted by distinct user rather than by event, because "builds started"
+       * and "people who started a build" answer different questions and only
+       * the second one is a funnel. Anonymous events have no user to count, so
+       * they are reported separately rather than silently folded in.
+       */
+      case "funnel": {
+        const since = new Date();
+        since.setUTCDate(since.getUTCDate() - 30);
+
+        const { data, error } = await service
+          .from("analytics_events")
+          .select("event,user_id,properties")
+          .gte("created_at", since.toISOString())
+          .limit(50_000);
+        if (error) {
+          if (error.code === "PGRST205" || error.code === "42P01") {
+            throw new AppError(
+              503,
+              "ANALYTICS_NOT_MIGRATED",
+              "Analytics needs a database migration that has not been applied yet (analytics_events).",
+            );
+          }
+          throw error;
+        }
+
+        const rows = (data ?? []) as Array<{
+          event: string;
+          user_id: string | null;
+          properties: Record<string, unknown> | null;
+        }>;
+
+        const people = new Map<string, Set<string>>();
+        const totals: Record<string, number> = {};
+        const outcomes: Record<string, number> = {};
+
+        for (const row of rows) {
+          totals[row.event] = (totals[row.event] ?? 0) + 1;
+          if (row.user_id) {
+            if (!people.has(row.event)) people.set(row.event, new Set());
+            people.get(row.event)!.add(row.user_id);
+          }
+          if (row.event === "build_finished") {
+            const outcome = String(row.properties?.outcome ?? "unknown");
+            outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
+          }
+        }
+
+        const users: Record<string, number> = {};
+        for (const [event, set] of people) users[event] = set.size;
+
+        return json({
+          since: since.toISOString(),
+          // Distinct people who reached each step.
+          users_by_event: users,
+          // Raw counts, for "how many builds" as opposed to "how many builders".
+          events_total: totals,
+          build_outcomes: outcomes,
+          events_recorded: rows.length,
+          // Says so out loud rather than quietly reporting a partial answer.
+          truncated: rows.length >= 50_000,
+        }, 200, headers);
+      }
     }
 
     throw new AppError(400, "UNKNOWN_ACTION", "That admin action is not recognised.");

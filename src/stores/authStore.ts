@@ -8,6 +8,7 @@
 import { create } from "zustand";
 import { type User, type Session } from "@supabase/supabase-js";
 import { supabase } from "../services/supabase";
+import { setAnalyticsUser, track } from "../services/analytics";
 
 export interface UserProfile {
   id: string;
@@ -70,9 +71,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ session, user, initialized: true });
 
     if (!user) {
+      setAnalyticsUser(null);
       set({ profile: null, profileLoadedFor: null });
       return;
     }
+    setAnalyticsUser(user.id);
+    // Only on a genuine change of user, not on every token refresh — the same
+    // guard the profile fetch uses, for the same reason.
+    if (previous.user?.id !== user.id) track("signed_in");
 
     // Only when it could have changed. supabase-js emits an auth event on every
     // token refresh and, on web, on every tab focus — and this used to refetch the

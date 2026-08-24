@@ -156,6 +156,24 @@ export const updatePlan = (
 
 export const fetchOverview = () => call<AdminOverview>({ action: "overview" });
 
+/**
+ * The funnel. Counts only — no event carries anything a user wrote, so there is
+ * nothing here to redact.
+ */
+export interface AdminFunnel {
+  since: string;
+  /** Distinct people who reached each step. */
+  users_by_event: Record<string, number>;
+  /** Raw event counts, for "how many builds" as opposed to "how many builders". */
+  events_total: Record<string, number>;
+  build_outcomes: Record<string, number>;
+  events_recorded: number;
+  /** True when the query hit its ceiling, so the numbers are a floor. */
+  truncated: boolean;
+}
+
+export const fetchFunnel = () => call<AdminFunnel>({ action: "funnel" });
+
 // Presentation helpers are pure and live in ./adminFormat so they can be
 // tested without a Supabase client.
 export { healthLabel, keyHealth, limitLabel, parseLimit, type KeyHealth } from "./adminFormat";

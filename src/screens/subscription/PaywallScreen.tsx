@@ -21,6 +21,7 @@ import { useSubscription } from "../../hooks/useSubscription";
 import { notify } from "../../services/notify";
 import { startCheckout } from "../../services/checkoutService";
 import { DISPLAY_PLANS } from "../../core/billing/plans";
+import { track } from "../../services/analytics";
 
 export const PaywallScreen = () => {
   const { colors } = useTheme();
@@ -42,6 +43,12 @@ export const PaywallScreen = () => {
   // Separate from the store hook's isLoading: this covers the web handoff,
   // which has its own round trip before the browser opens.
   const [starting, setStarting] = useState(false);
+
+  // Which pitch a user saw matters more than that they saw one: arriving from a
+  // locked model is a different intent from browsing to it.
+  React.useEffect(() => {
+    track("paywall_seen", { reason: lockedModel ? "locked_model" : "browsed" });
+  }, [lockedModel]);
   // Close means close. This used to swallow the first dismissal to show a
   // discount that existed in no store — a fabricated price, and a screen you
   // could not leave on the first try.
@@ -56,6 +63,7 @@ export const PaywallScreen = () => {
     if (!pkg) {
       setStarting(true);
       try {
+        track("checkout_started", { plan: selectedPkgId });
         const reference = await startCheckout(selectedPkgId);
         if (reference) {
           notify(

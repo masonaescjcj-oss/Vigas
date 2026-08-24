@@ -4,6 +4,8 @@ import { AppError, assertMethod, errorResponse, parseJson } from "../shared/erro
 import { corsHeaders, constantTimeEqual, json, preflight } from "../shared/http.ts";
 import { createServiceClient } from "../shared/supabase.ts";
 import { recordUsage } from "../shared/usage.ts";
+import { trackServer } from "../shared/analytics.ts";
+import { durationBucket } from "../../../src/core/analytics/events.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { retryDecision, type QueueJob } from "../shared/queue.ts";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
@@ -163,6 +165,15 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         // the next turn on this same session, so nothing here has to wait.
         pending_question: result.pendingQuestion ?? null,
       });
+      // Recorded here, not on the client: the app may be backgrounded or gone
+      // by now, and a funnel built from client-reported outcomes under-counts
+      // exactly the failures that also stopped the report.
+      await trackServer(client, job.user_id, "build_finished", {
+        outcome: result.pendingQuestion ? "asked_user" : "success",
+        duration_bucket: durationBucket(Date.now() - startedAt),
+        step_count: result.session?.usage?.steps ?? 0,
+        tool_count: result.session?.usage?.toolCalls ?? 0,
+      });
       await notify(client, job, { succeeded: true, detail: result.finalText }, Date.now() - startedAt);
       return { processed: true, status: "completed", jobId: job.id };
     } finally {
@@ -180,6 +191,13 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
     // phone four times for one run that is still, as far as the user is
     // concerned, in progress.
     if (decision.status === "failed") {
+      // Only the final give-up is a "failed build". Counting each retry would
+      // make one bad run look like four, which is the opposite of what a
+      // failure rate is for.
+      await trackServer(client, job.user_id, "build_finished", {
+        outcome: "failed",
+        duration_bucket: durationBucket(Date.now() - startedAt),
+      });
       await notify(client, job, { succeeded: false, detail: message }, Date.now() - startedAt);
     }
     return { processed: true, status: decision.status, jobId: job.id };

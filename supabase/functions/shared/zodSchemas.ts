@@ -220,7 +220,7 @@ export const AdminSchema = z.object({
     "keys.list", "keys.add", "keys.update", "keys.delete", "keys.test", "keys.testAll",
     "models.list", "models.upsert", "models.delete",
     "plans.list", "plans.update",
-    "overview",
+    "overview", "funnel",
   ]),
 
   // Key pool

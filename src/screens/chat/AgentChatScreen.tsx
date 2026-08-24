@@ -54,6 +54,8 @@ import { ClarifyCard } from "../../components/ClarifyCard";
 import { PlanCard, TodoChecklist, type TodoItem } from "../../components/RunProgress";
 import { describeSubscription } from "../../core/billing/subscriptionState";
 import { PURCHASES } from "../../services/distributionChannel";
+import { track } from "../../services/analytics";
+import { durationBucket } from "../../core/analytics/events";
 import {
   type ClarifyAnswer,
   type ClarifyRequest,
@@ -3409,6 +3411,7 @@ export const AgentChatScreen = () => {
                     // selected. Selecting it would only produce a refused run.
                     onPress={() => {
                       if (model.locked) {
+                        track("model_locked_tapped", { required_tier: model.minTier ?? "unknown" });
                         setShowModelsModal(false);
                         if (!canBuy) {
                           // Naming the plan is allowed; tapping through to buy
