@@ -47,6 +47,33 @@ const PERSIAN: Record<FontWeightName, string> = {
 export const MONO_FAMILY = "JetBrainsMono_400Regular";
 export const MONO_FAMILY_MEDIUM = "JetBrainsMono_500Medium";
 
+/**
+ * The display face, for headings only.
+ *
+ * Inter is the right choice for the interface — it was designed for dense UI at
+ * small sizes and nothing free beats it there. It is also on every SaaS
+ * dashboard, which is why an app set entirely in it reads as competent rather
+ * than as anything in particular.
+ *
+ * So the workhorse stays and a heavier face sits above it. Plus Jakarta Sans
+ * has a tall x-height, which is why it looks larger and more solid than Inter
+ * at the same point size — the thing being asked for when a heading is called
+ * unclear or weak. Both slots are deliberately heavy: 700 where the scale
+ * calls for medium, 800 where it calls for bold.
+ *
+ * Body text keeps Inter. Swapping a display face into dense UI trades
+ * legibility for personality, and the interface is where that trade goes
+ * worst.
+ *
+ * Latin only, deliberately: this face has no Arabic, so a Persian heading has
+ * to stay in Vazirmatn. displayFamilyFor handles that rather than leaving a
+ * Persian title to fall back to whatever the system picks.
+ */
+const DISPLAY: Record<"medium" | "bold", string> = {
+  medium: "PlusJakartaSans_700Bold",
+  bold: "PlusJakartaSans_800ExtraBold",
+};
+
 /** True when the text contains any Arabic-script character. */
 export function hasArabicScript(text: unknown): boolean {
   return typeof text === "string" && ARABIC_SCRIPT.test(text);
@@ -61,6 +88,18 @@ export function hasArabicScript(text: unknown): boolean {
  */
 export function fontFamilyFor(text: unknown, weight: FontWeightName = "regular"): string {
   return hasArabicScript(text) ? PERSIAN[weight] : LATIN[weight];
+}
+
+/**
+ * The family for a heading.
+ *
+ * Falls back to Vazirmatn for Arabic script, because the display face has no
+ * Arabic coverage at all — setting a Persian heading in it would render boxes
+ * or silently drop to a system font mid-interface.
+ */
+export function displayFamilyFor(text: unknown, weight: "medium" | "bold" = "bold"): string {
+  if (hasArabicScript(text)) return PERSIAN[weight === "bold" ? "bold" : "semibold"];
+  return DISPLAY[weight];
 }
 
 /**
@@ -82,6 +121,7 @@ export function textOf(children: unknown): string {
 export const ALL_FONT_FAMILIES = [
   ...Object.values(LATIN),
   ...Object.values(PERSIAN),
+  ...Object.values(DISPLAY),
   MONO_FAMILY,
   MONO_FAMILY_MEDIUM,
 ];

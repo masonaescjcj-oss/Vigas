@@ -19,6 +19,7 @@ import { Text as RNText, type TextProps } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
 import {
   MONO_FAMILY,
+  displayFamilyFor,
   fontFamilyFor,
   textOf,
   type FontWeightName,
@@ -94,9 +95,17 @@ export const Text: React.FC<TypographyProps> = ({
       break;
   }
 
+  const text = textOf(children);
+
   // Code keeps its monospace regardless of script: a file path in a Persian
-  // sentence is still a file path.
-  const family = variant === "code" ? MONO_FAMILY : fontFamilyFor(textOf(children), weight);
+  // sentence is still a file path. Headings get the display face — only h1 and
+  // h2, where type is large enough for character to read as character rather
+  // than as noise. h3 is a section label at body size and stays in Inter.
+  const family = variant === "code"
+    ? MONO_FAMILY
+    : variant === "h1" || variant === "h2"
+      ? displayFamilyFor(text, "bold")
+      : fontFamilyFor(text, weight);
 
   return (
     <RNText

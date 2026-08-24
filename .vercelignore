@@ -1,0 +1,23 @@
+# What must never be uploaded.
+#
+# The deploy only needs dist-web. Everything else is either irrelevant to a
+# static host or actively dangerous there: .env holds the service role key and
+# the provider key, and supabase/ holds the server code those keys belong to.
+#
+# Vercel honours .gitignore too, but this file is the one that says so on
+# purpose — a change to .gitignore should not be able to silently start
+# uploading secrets.
+
+.env
+.env.*
+!.env.example
+
+/supabase/
+/scripts/
+/src/
+/node_modules/
+/.expo/
+/.git/
+
+*.log
+*.tgz

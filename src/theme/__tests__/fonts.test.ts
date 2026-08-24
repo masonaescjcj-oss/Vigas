@@ -7,9 +7,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_FONT_FAMILIES,
+  MONO_FAMILY,
+  displayFamilyFor,
   fontFamilyFor,
   hasArabicScript,
-  MONO_FAMILY,
   textOf,
 } from "../fonts";
 
@@ -103,5 +104,40 @@ describe("ALL_FONT_FAMILIES", () => {
 
   it("has no duplicates", () => {
     expect(new Set(ALL_FONT_FAMILIES).size).toBe(ALL_FONT_FAMILIES.length);
+  });
+});
+
+describe("the display face", () => {
+  it("sets a Latin heading in the display face", () => {
+    expect(displayFamilyFor("Build something", "bold")).toBe("PlusJakartaSans_800ExtraBold");
+    expect(displayFamilyFor("Build something", "medium")).toBe("PlusJakartaSans_700Bold");
+  });
+
+  it("falls back to Vazirmatn for a Persian heading", () => {
+    // The display face has no Arabic coverage at all. Setting a Persian heading in
+    // it renders boxes, or drops to a system font in the middle of the
+    // interface — worse than simply not using the display face there.
+    expect(displayFamilyFor("یک اپ بساز", "bold")).toBe("Vazirmatn_700Bold");
+    expect(displayFamilyFor("یک اپ بساز", "medium")).toBe("Vazirmatn_600SemiBold");
+  });
+
+  it("treats a mixed heading as Persian", () => {
+    // Consistent with fontFamilyFor: one family across a line reads better
+    // than a typeface that changes mid-sentence.
+    expect(displayFamilyFor("فایل index.html را بساز")).toBe("Vazirmatn_700Bold");
+  });
+
+  it("uses the display face for non-string children", () => {
+    // A heading whose children are nodes rather than text — an icon plus a
+    // label — should still be a heading, not fall to the body face.
+    expect(displayFamilyFor(42)).toBe("PlusJakartaSans_800ExtraBold");
+    expect(displayFamilyFor(null)).toBe("PlusJakartaSans_800ExtraBold");
+  });
+
+  it("is listed among the families the app loads", () => {
+    // ALL_FONT_FAMILIES exists so the loader and this module cannot drift: a
+    // family used here but never registered renders as the system font.
+    expect(ALL_FONT_FAMILIES).toContain("PlusJakartaSans_800ExtraBold");
+    expect(ALL_FONT_FAMILIES).toContain("PlusJakartaSans_700Bold");
   });
 });
