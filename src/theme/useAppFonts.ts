@@ -11,7 +11,7 @@
  *
  * Three families, four weights each where it matters:
  *   Inter          Latin UI text — dense, legible at small sizes
- *   Plus Jakarta   headings only — tall x-height, so it reads large and solid
+ *   Inter 800      headings — the same face, carried by weight alone
  *   Vazirmatn      Persian and Arabic
  *   JetBrains Mono code, file paths, the run log
  *
@@ -42,9 +42,9 @@ import Vazirmatn_600SemiBold from "@expo-google-fonts/vazirmatn/600SemiBold/Vazi
 import Vazirmatn_700Bold from "@expo-google-fonts/vazirmatn/700Bold/Vazirmatn_700Bold.ttf";
 import JetBrainsMono_400Regular from "@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf";
 import JetBrainsMono_500Medium from "@expo-google-fonts/jetbrains-mono/500Medium/JetBrainsMono_500Medium.ttf";
-// The display face. Only the two weights headings use.
-import PlusJakartaSans_700Bold from "@expo-google-fonts/plus-jakarta-sans/700Bold/PlusJakartaSans_700Bold.ttf";
-import PlusJakartaSans_800ExtraBold from "@expo-google-fonts/plus-jakarta-sans/800ExtraBold/PlusJakartaSans_800ExtraBold.ttf";
+// Heading weights. Same family as the body — headings get weight, not a
+// different typeface.
+import Inter_800ExtraBold from "@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf";
 
 /**
  * However slow the network, the app appears within this. Waiting on fonts is
@@ -78,8 +78,7 @@ export function useAppFonts(): { ready: boolean; failed: boolean } {
     Vazirmatn_700Bold,
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Inter_800ExtraBold,
   });
 
   return { ready: loaded || !!error || timedOut, failed: !!error || (timedOut && !loaded) };

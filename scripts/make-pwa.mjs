@@ -20,7 +20,7 @@
  *   node scripts/make-pwa.mjs [dist-dir]
  * ---------------------------------------------------------------------------
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, copyFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const DIST = process.argv[2] ?? "dist-web";
@@ -168,6 +168,11 @@ for (const source of collectFonts(join(DIST, "assets"))) {
   copyFileSync(source, join(fontDir, file));
   faces.push({ family, file });
 }
+
+// The originals are dead weight: they live under assets/node_modules, which the
+// host refuses to serve, and every one of them has just been copied to /fonts.
+// Leaving them doubles the size of the deploy for files nothing can reach.
+for (const source of collectFonts(join(DIST, "assets"))) rmSync(source);
 
 const fontCss = faces
   .map(({ family, file }) =>

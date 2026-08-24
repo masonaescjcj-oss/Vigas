@@ -108,13 +108,13 @@ describe("ALL_FONT_FAMILIES", () => {
 });
 
 describe("the display face", () => {
-  it("sets a Latin heading in the display face", () => {
-    expect(displayFamilyFor("Build something", "bold")).toBe("PlusJakartaSans_800ExtraBold");
-    expect(displayFamilyFor("Build something", "medium")).toBe("PlusJakartaSans_700Bold");
+  it("sets a Latin heading in Inter at a heading weight", () => {
+    expect(displayFamilyFor("Build something", "bold")).toBe("Inter_800ExtraBold");
+    expect(displayFamilyFor("Build something", "medium")).toBe("Inter_700Bold");
   });
 
   it("falls back to Vazirmatn for a Persian heading", () => {
-    // The display face has no Arabic coverage at all. Setting a Persian heading in
+    // Inter has no Arabic coverage. Setting a Persian heading in
     // it renders boxes, or drops to a system font in the middle of the
     // interface — worse than simply not using the display face there.
     expect(displayFamilyFor("یک اپ بساز", "bold")).toBe("Vazirmatn_700Bold");
@@ -130,14 +130,14 @@ describe("the display face", () => {
   it("uses the display face for non-string children", () => {
     // A heading whose children are nodes rather than text — an icon plus a
     // label — should still be a heading, not fall to the body face.
-    expect(displayFamilyFor(42)).toBe("PlusJakartaSans_800ExtraBold");
-    expect(displayFamilyFor(null)).toBe("PlusJakartaSans_800ExtraBold");
+    expect(displayFamilyFor(42)).toBe("Inter_800ExtraBold");
+    expect(displayFamilyFor(null)).toBe("Inter_800ExtraBold");
   });
 
   it("is listed among the families the app loads", () => {
     // ALL_FONT_FAMILIES exists so the loader and this module cannot drift: a
     // family used here but never registered renders as the system font.
-    expect(ALL_FONT_FAMILIES).toContain("PlusJakartaSans_800ExtraBold");
-    expect(ALL_FONT_FAMILIES).toContain("PlusJakartaSans_700Bold");
+    expect(ALL_FONT_FAMILIES).toContain("Inter_800ExtraBold");
+    expect(ALL_FONT_FAMILIES).toContain("Inter_700Bold");
   });
 });

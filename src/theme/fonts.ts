@@ -55,23 +55,21 @@ export const MONO_FAMILY_MEDIUM = "JetBrainsMono_500Medium";
  * dashboard, which is why an app set entirely in it reads as competent rather
  * than as anything in particular.
  *
- * So the workhorse stays and a heavier face sits above it. Plus Jakarta Sans
- * has a tall x-height, which is why it looks larger and more solid than Inter
- * at the same point size — the thing being asked for when a heading is called
- * unclear or weak. Both slots are deliberately heavy: 700 where the scale
- * calls for medium, 800 where it calls for bold.
+ * Headings are the same typeface, carried by weight alone — Inter 800 where
+ * the scale calls for bold, 700 where it calls for medium.
  *
- * Body text keeps Inter. Swapping a display face into dense UI trades
- * legibility for personality, and the interface is where that trade goes
- * worst.
+ * A second face was tried here and removed. A display typeface gives an
+ * interface a voice, which is the last thing a dense tool wants: the letters
+ * start being noticed instead of read. Weight gives a heading all the
+ * separation it needs and nothing it does not.
  *
- * Latin only, deliberately: this face has no Arabic, so a Persian heading has
- * to stay in Vazirmatn. displayFamilyFor handles that rather than leaving a
- * Persian title to fall back to whatever the system picks.
+ * Vazirmatn covers Arabic script at matching weights, so displayFamilyFor
+ * still routes Persian headings there rather than to a face without the
+ * glyphs.
  */
 const DISPLAY: Record<"medium" | "bold", string> = {
-  medium: "PlusJakartaSans_700Bold",
-  bold: "PlusJakartaSans_800ExtraBold",
+  medium: "Inter_700Bold",
+  bold: "Inter_800ExtraBold",
 };
 
 /** True when the text contains any Arabic-script character. */
@@ -119,9 +117,15 @@ export function textOf(children: unknown): string {
 
 /** Every family the app loads, so the loader and this module cannot drift. */
 export const ALL_FONT_FAMILIES = [
-  ...Object.values(LATIN),
-  ...Object.values(PERSIAN),
-  ...Object.values(DISPLAY),
-  MONO_FAMILY,
-  MONO_FAMILY_MEDIUM,
+  // Deduplicated: now that headings are Inter at a heavier weight rather than a
+  // separate face, Inter_700Bold serves both body and display. The loader
+  // registers each family once, so listing it twice would only make the
+  // "everything used is loaded" check compare mismatched lengths.
+  ...new Set([
+    ...Object.values(LATIN),
+    ...Object.values(PERSIAN),
+    ...Object.values(DISPLAY),
+    MONO_FAMILY,
+    MONO_FAMILY_MEDIUM,
+  ]),
 ];
