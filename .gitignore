@@ -12,6 +12,8 @@ supabase/.temp/
 # Build & tooling output
 .expo/
 dist/
+# Production web export (expo export --platform web --output-dir dist-web).
+dist-web/
 build/
 coverage/
 *.log

@@ -92,6 +92,47 @@ deployed project instead. Two things to know:
 Don't pipe a long-running process through `tail` — it buffers until the pipe
 closes, so a server that never exits appears to produce no output at all.
 
+## Building the web app
+
+The app is React Native Web, so `expo export` produces a static site that any
+host can serve.
+
+```bash
+npx expo export --platform web --output-dir dist-web --clear
+```
+
+It needs a `.env.production`, because `expo export` runs with
+`NODE_ENV=production` and loads that file ahead of `.env`. Without it the local
+gateway URL from `.env` is compiled into the bundle, and every device that opens
+the build points at *its own* machine — the app loads, then fails on the first
+request. Measured, not theorised: the first export shipped
+`localhost:54321/functions/v1`.
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon / publishable key>
+EXPO_PUBLIC_API_URL=https://<ref>.supabase.co/functions/v1
+EXPO_PUBLIC_DISTRIBUTION=web
+```
+
+Everything in that file is readable in the shipped JS. The anon key is public by
+design; a service role key must never appear in an `EXPO_PUBLIC_` variable.
+
+Two things worth checking on every export, both of which have already gone
+wrong once:
+
+```bash
+# 1. The bundle must not carry the local gateway.
+grep -c "localhost:54321" dist-web/_expo/static/js/web/AppEntry-*.js
+
+# 2. No server-side secret may appear anywhere in the output.
+grep -rF "$(grep '^SUPABASE_SERVICE_ROLE_KEY=' .env | cut -d= -f2)" dist-web
+```
+
+`--clear` is not optional when the env has changed. Metro will otherwise return
+a cached bundle built with the old values, which looks exactly like the new file
+being ignored.
+
 ## Deploy and verify
 
 Apply migrations in order, then deploy the functions with the repository's
