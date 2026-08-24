@@ -22,13 +22,17 @@ import { View, TextInput, Alert, SafeAreaView, TouchableOpacity } from "react-na
 import { Icon } from "../../components/Icon";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { AuthStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { supabase } from "../../services/supabase";
 import { useTheme } from "../../theme/ThemeProvider";
 
 export const ForgotPasswordScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
+  // Typed, so a route name that does not exist is a compile error rather
+  // than a dead button.
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
 
   // --------------------------------------------------------------------------
   // STATE MANAGEMENT & FORM CONTROLLERS
@@ -50,14 +54,13 @@ export const ForgotPasswordScreen = () => {
 
     setLoading(true);
     try {
-      // Scheme must match the linking prefix registered in AppNavigator ("issac://").
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: "issac://reset-password",
-      });
+      // No redirectTo: the email carries a six-digit code now, not a link, so
+      // there is nowhere to come back to. The user types it on the next screen.
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
       if (error) throw error;
-      setSent(true);
+      navigation.navigate("VerifyCode", { email: email.trim(), purpose: "recovery" });
     } catch (e: any) {
-      notify("Could not send the link", e?.message ?? "Please check the address and try again.");
+      notify("Could not send the code", e?.message ?? "Please check the address and try again.");
     } finally {
       setLoading(false);
     }

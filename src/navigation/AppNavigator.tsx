@@ -30,6 +30,7 @@ import { SignUpScreen } from "../screens/auth/SignUpScreen";
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { ResetPasswordScreen } from "../screens/auth/ResetPasswordScreen";
 import { EmailVerificationPendingScreen } from "../screens/auth/EmailVerificationPendingScreen";
+import { VerifyCodeScreen } from "../screens/auth/VerifyCodeScreen";
 
 // Main AI Agent Screen & Projects Screens
 import { AgentChatScreen } from "../screens/chat/AgentChatScreen";
@@ -97,6 +98,7 @@ const AuthNavigator = ({ startAtReset = false }: { startAtReset?: boolean }) => 
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+      <AuthStack.Screen name="VerifyCode" component={VerifyCodeScreen} />
       <AuthStack.Screen name="EmailVerificationPending" component={EmailVerificationPendingScreen} />
     </AuthStack.Navigator>
   );

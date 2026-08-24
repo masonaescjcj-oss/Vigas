@@ -93,9 +93,13 @@ export const SignUpScreen = () => {
     try {
       const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
       if (error) throw error;
-      // With email confirmation on, there is no session yet — wait for the link.
-      // With it off, Supabase returns a session and the navigator switches itself.
-      if (!data.session) navigation.replace("EmailVerificationPending", { email: email.trim() });
+      // With email confirmation on there is no session yet, and the email now
+      // carries a six-digit code rather than a link — so the next step is a
+      // field, not a wait. With confirmation off Supabase returns a session and
+      // the navigator switches itself.
+      if (!data.session) {
+        navigation.replace("VerifyCode", { email: email.trim(), purpose: "signup" });
+      }
     } catch (e: any) {
       notify("Sign up failed", e?.message ?? "Could not create your account.");
     } finally {

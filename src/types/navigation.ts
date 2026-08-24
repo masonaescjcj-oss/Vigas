@@ -18,6 +18,12 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
   ResetPassword: { token?: string };
   EmailVerificationPending: { email: string };
+  /**
+   * Entering the code from the email. `purpose` decides which grant verifyOtp
+   * asks for and where the user lands afterwards — confirming an account and
+   * resetting a password are different grants, and the server enforces it.
+   */
+  VerifyCode: { email: string; purpose: "signup" | "recovery" };
 };
 
 // 2. Project Stack Param List
