@@ -61,3 +61,58 @@ Deno.test("commands still run and return output", async () => {
   const out = await runInSandbox("echo hello");
   assertEquals(out, "hello");
 });
+
+Deno.test("listFiles returns paths downloadFile can resolve", async () => {
+  // The round trip that failed in production. syncSandboxFiles lists the
+  // sandbox, strips the project prefix to get a storage key, and hands the
+  // *unstripped* path back to downloadFile. Relative paths made downloadFile
+  // resolve against the sandbox root, so the first file broke the sync:
+  //   No such file or directory: readfile '/var/lib/.../<sandbox>/.keep'
+  const provider = new LocalSandboxProvider();
+  const id = await provider.createSandbox("test");
+
+  await provider.uploadFile(id, "/home/user/project/.keep", "");
+  await provider.uploadFile(id, "/home/user/project/index.html", "<h1>hi</h1>");
+  await provider.uploadFile(id, "/home/user/project/src/app.js", "export {};");
+
+  const listed = await provider.listFiles(id, "/home/user/project");
+  assertEquals(listed.length, 3);
+
+  for (const path of listed) {
+    assertEquals(path.startsWith("/home/user/project/"), true, `not rooted: ${path}`);
+    // The real assertion: every listed path must be downloadable as-is.
+    await provider.downloadFile(id, path);
+  }
+
+  const html = new TextDecoder().decode(
+    await provider.downloadFile(id, "/home/user/project/index.html"),
+  );
+  assertEquals(html, "<h1>hi</h1>");
+
+  // Nested files keep their subdirectory, or the sync flattens the project.
+  assertEquals(listed.includes("/home/user/project/src/app.js"), true, listed.join(", "));
+
+  await provider.destroySandbox(id);
+});
+
+Deno.test("a file written by a command comes back in the listing", async () => {
+  // What the whole sandbox exists for: the agent runs something, and what it
+  // produced has to reach Storage.
+  const provider = new LocalSandboxProvider();
+  const id = await provider.createSandbox("test");
+  const connection = await provider.connect(id);
+
+  await (await connection.startCommand(
+    WINDOWS ? "echo built > out.txt" : "echo built > out.txt",
+    ".",
+  )).wait();
+
+  const listed = await provider.listFiles(id, "/home/user/project");
+  assertEquals(listed.includes("/home/user/project/out.txt"), true, listed.join(", "));
+  const body = new TextDecoder().decode(
+    await provider.downloadFile(id, "/home/user/project/out.txt"),
+  );
+  assertEquals(body.trim(), "built");
+
+  await provider.destroySandbox(id);
+});

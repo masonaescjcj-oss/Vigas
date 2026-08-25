@@ -18,6 +18,7 @@ import { buildSystemPrompt } from "../../../src/core/agent/systemPrompt.ts";
 import { PROJECT_FILES_BUCKET, StorageWorkspace } from "./storage.ts";
 import { SandboxManager } from "../../../src/infra/sandbox/sandboxManager.ts";
 import { LocalSandboxProvider } from "./localProvider.ts";
+import { SystemdSandboxProvider, systemdSandboxAvailable } from "./systemdProvider.ts";
 
 type SessionRow = Record<string, unknown>;
 
@@ -482,9 +483,22 @@ export interface RuntimeFactoryOptions {
 /** Builds the sandbox manager with the same provider selection the runtime uses
  * (E2B when configured, local temp-dir provider otherwise). Exposed so the
  * queue worker can destroy the session sandbox as soon as a job finishes. */
+/**
+ * Pick the strongest sandbox this host can offer.
+ *
+ *   E2B          a rented VM; nothing of ours is at risk.
+ *   systemd-run  a capped, unprivileged scope on our own machine. Chosen on a
+ *                Linux server, where an uncapped build would compete with
+ *                whatever else runs there.
+ *   local        a plain subprocess. Right on a developer's laptop, and the
+ *                only option on one.
+ */
 export function createEdgeSandboxManager(client: SupabaseClient): SandboxManager {
-  const sandboxProvider = Deno.env.get("E2B_API_KEY") ? undefined : new LocalSandboxProvider();
-  return new SandboxManager(client, sandboxProvider);
+  if (Deno.env.get("E2B_API_KEY")) return new SandboxManager(client, undefined);
+  const provider = systemdSandboxAvailable()
+    ? new SystemdSandboxProvider()
+    : new LocalSandboxProvider();
+  return new SandboxManager(client, provider);
 }
 
 /**
