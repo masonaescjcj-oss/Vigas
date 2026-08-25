@@ -7,7 +7,7 @@ import { recordUsage } from "../shared/usage.ts";
 import { trackServer } from "../shared/analytics.ts";
 import { durationBucket } from "../../../src/core/analytics/events.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
-import { retryDecision, type QueueJob } from "../shared/queue.ts";
+import { continuationPayload, retryDecision, type QueueJob } from "../shared/queue.ts";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 function workerSecret(): string {
@@ -102,6 +102,43 @@ async function notify(
   }
 }
 
+/**
+ * How many times a build may hand itself on when it runs out of steps.
+ *
+ * Total work available for one request is this times the per-turn step budget.
+ * The rule itself lives in shared/queue.ts; this is only the dial.
+ */
+const MAX_CONTINUATIONS = Number(Deno.env.get("AGENT_MAX_CONTINUATIONS") ?? 4);
+
+/**
+ * Queue the next leg of a build that ran out of steps.
+ *
+ * Only ever called after `complete_agent_job`: a partial unique index allows
+ * one pending-or-processing job per session, so inserting while this one is
+ * still `processing` would be rejected as a duplicate.
+ *
+ * Failing to enqueue is not failing the run. The work done so far is saved and
+ * the user was told it is unfinished, so the worst case is that they type
+ * "continue" themselves — which is where this started.
+ */
+async function continueRun(client: SupabaseClient, job: QueueJob): Promise<boolean> {
+  const payload = continuationPayload(job.payload as Record<string, unknown>, MAX_CONTINUATIONS);
+  if (!payload) return false;
+  try {
+    const { error } = await client.from("job_queue").insert({
+      user_id: job.user_id,
+      project_id: job.project_id,
+      session_id: job.session_id,
+      payload,
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    captureException(error, { function: "queue-worker", phase: "continue" });
+    return false;
+  }
+}
+
 export async function processNextJob(client: SupabaseClient, workerId: string): Promise<{ processed: boolean; status?: string; jobId?: string }> {
   const job = await claim(client, workerId);
   if (!job) return { processed: false };
@@ -153,10 +190,20 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
       await recordUsage(client, job.user_id, result.usage.inputTokens + result.usage.outputTokens);
       const { error } = await client.rpc("complete_agent_job", { p_job_id: job.id, p_result: { final_text: result.finalText, usage: result.usage, mode } });
       if (error) throw error;
+      // Out of steps, not out of work. Enqueued after the job above is closed,
+      // because one active job per session is a database constraint.
+      const truncated = result.stoppedReason === "max-steps";
+      const continued = truncated ? await continueRun(client, job) : false;
+      // The loop's own out-of-steps message asks the user to say "continue".
+      // If the next leg is already queued, that instruction is wrong and the
+      // user would be typing into a chat that is mid-run.
+      const finalText = continued
+        ? "That is as far as one turn goes — carrying on with the rest now."
+        : result.finalText;
       // checkpoint_id travels with the run's result so the chat can offer
       // "roll back to before this message" on the exact turn it belongs to.
       await setTask(client, job.session_id, "success", {
-        final_text: result.finalText,
+        final_text: finalText,
         usage: result.usage,
         checkpoint_id: checkpoint.id,
         checkpoint_note: checkpoint.note,
@@ -164,17 +211,30 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
         // finishing. The chat renders the options and sends the answer back as
         // the next turn on this same session, so nothing here has to wait.
         pending_question: result.pendingQuestion ?? null,
+        // A build that stopped early is not a build that finished. Recorded so
+        // the chat can say so, and so this is countable afterwards — silently
+        // truncated runs were invisible in the funnel as well as in the UI.
+        stopped_reason: result.stoppedReason,
+        continued,
       });
       // Recorded here, not on the client: the app may be backgrounded or gone
       // by now, and a funnel built from client-reported outcomes under-counts
       // exactly the failures that also stopped the report.
       await trackServer(client, job.user_id, "build_finished", {
-        outcome: result.pendingQuestion ? "asked_user" : "success",
+        outcome: result.pendingQuestion
+          ? "asked_user"
+          : continued
+            ? "continuing"
+            : truncated
+              ? "truncated"
+              : "success",
         duration_bucket: durationBucket(Date.now() - startedAt),
         step_count: result.session?.usage?.steps ?? 0,
         tool_count: result.session?.usage?.toolCalls ?? 0,
       });
-      await notify(client, job, { succeeded: true, detail: result.finalText }, Date.now() - startedAt);
+      // Not while it is still going: a push per leg of one build is three
+      // notifications for one thing the user asked for.
+      if (!continued) await notify(client, job, { succeeded: true, detail: finalText }, Date.now() - startedAt);
       return { processed: true, status: "completed", jobId: job.id };
     } finally {
       // Cost control: never leave a sandbox warm after the job — idle warm time

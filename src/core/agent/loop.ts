@@ -309,6 +309,19 @@ export async function runAgentLoop(
     break;
   }
 
+  // Running out of steps is not a failure and not completion — it is a build
+  // that got partway. Left empty, the caller records a success with no message
+  // and a half-finished project is indistinguishable from a finished one, which
+  // is what made large requests feel like they silently did not work.
+  //
+  // The session stays "paused" and agent-run continues an existing session, so
+  // saying "continue" genuinely resumes from here.
+  if (stoppedReason === "max-steps" && !finalText) {
+    finalText =
+      `I ran out of steps for this turn — the work so far is saved, but it is not finished. ` +
+      `Say **continue** and I will pick up where I stopped.`;
+  }
+
   session.updatedAt = deps.now();
   return { finalText, session, steps: step, stoppedReason, pendingQuestion: control.pendingQuestion };
 }

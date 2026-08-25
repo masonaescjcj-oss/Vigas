@@ -40,3 +40,46 @@ export async function processJobAttempt<T>(options: {
     return { status: decision.status };
   }
 }
+
+/**
+ * The prompt a continuation leg runs with.
+ *
+ * Deliberately not the user's original words: replaying "build me a shop" makes
+ * the agent start the shop again. It has to be told that the previous attempt
+ * is behind it and still there.
+ */
+export const CONTINUE_PROMPT =
+  "Continue the previous turn. The transcript and the files you already wrote " +
+  "are still there — carry on from where you stopped rather than starting over, " +
+  "and finish the remaining work.";
+
+/**
+ * Whether a run that stopped early may hand itself on, and with what payload.
+ *
+ * A large request — "a whole shop, front to back" — does not fit in one turn's
+ * step budget and should not have to. The session keeps the transcript and the
+ * sandbox keeps the files, so the next job can simply carry on.
+ *
+ * Bounded: an agent can always find one more improvement to make, and each leg
+ * costs tokens. Past the limit the run stops and the user decides whether to
+ * keep going — which is the right place for that judgement.
+ *
+ * Pure, so the rule is testable without a database. The caller does the insert.
+ */
+export function continuationPayload(
+  payload: Record<string, unknown>,
+  maxContinuations: number,
+): Record<string, unknown> | null {
+  const done = Number(payload.continuation ?? 0);
+  // NaN from a malformed payload must not read as "plenty left".
+  const soFar = Number.isFinite(done) ? Math.max(0, done) : maxContinuations;
+  if (!(maxContinuations > 0) || soFar >= maxContinuations) return null;
+  return {
+    ...payload,
+    // "resume" would re-run the previous turn. This is a new turn on the same
+    // session, which is what continuing actually is.
+    mode: "run",
+    prompt: CONTINUE_PROMPT,
+    continuation: soFar + 1,
+  };
+}

@@ -138,3 +138,78 @@ describe("createAgentRuntime end-to-end", () => {
     expect(fs.existsSync(path.join(root, "x.txt"))).toBe(false);
   });
 });
+
+describe("a run that outgrows its step budget", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "issac-steps-"));
+  });
+
+  /** A model that never finishes — always another file to write. */
+  function neverFinishes(count: number): ModelResponse[] {
+    return Array.from({ length: count }, (_, i) => ({
+      toolCalls: [tc(`s${i}`, "write", { file_path: `file${i}.txt`, contents: `${i}` })],
+      usage: { inputTokens: 5, outputTokens: 2 },
+    }));
+  }
+
+  it("says it ran out rather than returning nothing", async () => {
+    // The failure behind "it doesn't work for big apps": a build that hits the
+    // ceiling used to return an empty finalText, and the worker recorded it as
+    // a success. A truncated build looked exactly like a finished one — no
+    // message, no warning, just a run that stopped.
+    let n = 1000;
+    let idc = 0;
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel(neverFinishes(20)),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 5,
+    });
+
+    const res = await runtime.run("Build something enormous.");
+
+    expect(res.stoppedReason).toBe("max-steps");
+    // The part that matters to the person reading it.
+    expect(res.finalText.length).toBeGreaterThan(0);
+    expect(res.finalText.toLowerCase()).toContain("continue");
+  });
+
+  it("keeps the work it did manage", async () => {
+    // Running out is not a failure — the files written up to that point are
+    // real, and the next turn continues from them.
+    let n = 1000;
+    let idc = 0;
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel(neverFinishes(20)),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 4,
+    });
+
+    await runtime.run("Build something enormous.");
+    expect(fs.existsSync(path.join(root, "file0.txt"))).toBe(true);
+  });
+
+  it("leaves the session resumable, not completed", async () => {
+    let n = 1000;
+    let idc = 0;
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel(neverFinishes(20)),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 3,
+    });
+
+    const res = await runtime.run("Build something enormous.");
+    // "completed" would stop the user being able to carry on from here.
+    expect(res.session.status).toBe("paused");
+  });
+});

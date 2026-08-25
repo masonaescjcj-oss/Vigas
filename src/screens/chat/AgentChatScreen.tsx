@@ -206,6 +206,14 @@ export const AgentChatScreen = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const runStartedAtRef = useRef<string | null>(null);
+  /**
+   * agent-run rows whose closing message has already been shown.
+   *
+   * One request can span several jobs — a build too big for one turn queues its
+   * own continuation — so "the newest finished run row" is no longer a reliable
+   * once-only signal on its own.
+   */
+  const settledRunIdsRef = useRef<Set<string>>(new Set());
   const { projects, createProject, deleteProject } = useProjects();
   const { profile, user, signOut } = useAuthStore();
   // Every account has an email now that guest mode is gone, so the last
@@ -662,6 +670,7 @@ export const AgentChatScreen = () => {
     try {
       const projectId = await ensureProjectId();
       runStartedAtRef.current = new Date().toISOString();
+      settledRunIdsRef.current.clear();
       const res = await agentService.startAgentRun(projectId, userPromptText, {
         title: userPromptText.slice(0, 48),
         sessionId: activeSessionId ?? undefined,
@@ -756,6 +765,7 @@ export const AgentChatScreen = () => {
     try {
       const projectId = await ensureProjectId();
       runStartedAtRef.current = new Date().toISOString();
+      settledRunIdsRef.current.clear();
       const res = await agentService.startAgentRun(projectId, formatAnswers(request, answers), {
         sessionId: activeSessionId ?? undefined,
         model: selectedModelId,
@@ -1103,6 +1113,11 @@ export const AgentChatScreen = () => {
 
       const runRow = [...fresh].reverse().find((t) => t.tool_name === "agent-run");
       if (runRow && (runRow.status === "success" || runRow.status === "failed")) {
+        // Between one leg finishing and the next being claimed, this row is
+        // still the newest one — without a guard its message would be appended
+        // on every poll until the next leg starts.
+        if (settledRunIdsRef.current.has(runRow.id)) return;
+        settledRunIdsRef.current.add(runRow.id);
         if (runRow.status === "success") {
           // Last snapshot may still show steps as "running" — the run is over,
           // so settle every non-failed step to completed.
@@ -1146,9 +1161,21 @@ export const AgentChatScreen = () => {
             pendingQuestion: (runRow.tool_output?.pending_question ?? null) as ClarifyRequest | null,
           },
         ]);
-        setIsExecuting(false);
-        if (runRow.status === "success") successFeedback();
-        else errorFeedback();
+        // A big build does not fit in one turn. When the worker has already
+        // queued the next leg, this turn ending is not the run ending — so the
+        // spinner stays and the poller keeps watching, or the user would be
+        // left staring at a half-built project with nothing happening.
+        const continuing = runRow.status === "success" && runRow.tool_output?.continued === true;
+        if (continuing) {
+          // Deliberately not advancing runStartedAtRef: the next leg's own row
+          // can appear before the next poll, and a moved cut-off would hide it
+          // for good — a spinner that never stops. Leaving it means the steps
+          // accumulate into one list, which is what the build actually is.
+        } else {
+          setIsExecuting(false);
+          if (runRow.status === "success") successFeedback();
+          else errorFeedback();
+        }
         scrollViewRef.current?.scrollToEnd({ animated: true });
         void backfillTranscriptIndices(activeSessionId);
       }

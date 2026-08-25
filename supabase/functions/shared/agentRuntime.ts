@@ -568,7 +568,15 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
     // targets (e.g. list_dir "."). Textual containment still applies.
     followSymlinks: false,
     autoApproveAsk: true,
-    maxSteps: Number(Deno.env.get("AGENT_MAX_STEPS") ?? 12),
+    // Per turn, not per build. 12 was the ceiling a real "build me a shop"
+    // request hit at 11 — it fit only by producing six thin files and stopping.
+    //
+    // Not raised further because a turn also has to stay inside the queue's
+    // 10-minute lease, and one npm install can eat minutes of that. A build
+    // bigger than this budget continues in the next job instead (see
+    // AGENT_MAX_CONTINUATIONS in the worker), which is also what makes the
+    // progress visible rather than a single long silence.
+    maxSteps: Number(Deno.env.get("AGENT_MAX_STEPS") ?? 20),
     compaction: {
       maxTokens: Number(Deno.env.get("AGENT_COMPACT_MAX_TOKENS") ?? 48_000),
       keepRecent: Number(Deno.env.get("AGENT_COMPACT_KEEP_RECENT") ?? 8),

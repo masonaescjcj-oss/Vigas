@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { processJobAttempt, retryDecision, retryDelaySeconds } from "../shared/queue.ts";
+import { CONTINUE_PROMPT, continuationPayload, processJobAttempt, retryDecision, retryDelaySeconds } from "../shared/queue.ts";
 
 Deno.test("queue worker uses the required exponential backoff schedule", () => {
   assertEquals(retryDelaySeconds(1), 10);
@@ -28,4 +28,37 @@ Deno.test("queue worker completes a successful job and retries a failed attempt"
   });
   assertEquals(retry.status, "pending");
   assertEquals(events, ["completed:result", "retry:model unavailable:30"]);
+});
+
+Deno.test("a build that runs out of steps continues in the next job", () => {
+  const payload = { mode: "run", prompt: "build me a whole shop", model: "x", skills: ["a"] };
+  const next = continuationPayload(payload, 4);
+
+  // Everything the run needs to carry on is preserved...
+  assertEquals(next?.model, "x");
+  assertEquals(next?.skills, ["a"]);
+  // ...but it is a new turn, not a replay of the original request. Repeating
+  // "build me a whole shop" would make the agent start the shop over.
+  assertEquals(next?.mode, "run");
+  assertEquals(next?.prompt, CONTINUE_PROMPT);
+  assertEquals(next?.continuation, 1);
+});
+
+Deno.test("continuations stop at the limit rather than billing forever", () => {
+  // An agent can always find one more improvement to make. Each leg costs
+  // tokens, so the chain has to end somewhere and let the user decide.
+  let payload: Record<string, unknown> = { mode: "run", prompt: "big" };
+  for (let i = 1; i <= 4; i++) {
+    const next = continuationPayload(payload, 4);
+    assertEquals(next?.continuation, i);
+    payload = next!;
+  }
+  assertEquals(continuationPayload(payload, 4), null);
+});
+
+Deno.test("continuation can be switched off, and a broken counter fails closed", () => {
+  assertEquals(continuationPayload({ prompt: "x" }, 0), null);
+  // A payload whose counter is not a number must not read as "plenty left".
+  assertEquals(continuationPayload({ continuation: "lots" }, 4), null);
+  assertEquals(continuationPayload({ continuation: -5 }, 4)?.continuation, 1);
 });
