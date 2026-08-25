@@ -138,6 +138,118 @@ function globToRegExp(glob: string): RegExp {
 }
 
 /** Storage-backed Workspace used by Edge Functions; no service key reaches the model. */
+/**
+ * Paths that belong to the sandbox and not to the project.
+ *
+ * Without this, one `npm install` puts every file in node_modules into the
+ * user's project: tens of thousands of uploads, one HTTP request each, and a
+ * file list nobody can read afterwards. These are all rebuildable from the
+ * files that do get kept.
+ */
+const NOT_THE_PROJECT = [
+  "node_modules/",
+  ".git/",
+  ".next/",
+  ".expo/",
+  ".cache/",
+  ".turbo/",
+  "dist/",
+  "build/",
+  "coverage/",
+  "vendor/",
+  "__pycache__/",
+  ".venv/",
+  "target/debug/",
+  "target/release/",
+];
+
+/** True for a path the sandbox owns and the project should never see. */
+export function isSandboxOnly(relativePath: string): boolean {
+  const path = relativePath.replace(/^\/+/, "");
+  return (
+    NOT_THE_PROJECT.some((dir) => path === dir.slice(0, -1) || path.startsWith(dir) || path.includes(`/${dir}`)) ||
+    path.endsWith(".log") ||
+    path.endsWith(".pyc") ||
+    path === ".DS_Store" ||
+    path.endsWith("/.DS_Store")
+  );
+}
+
+/**
+ * Most files one project may hold.
+ *
+ * A guard against a listing that got away from us, not a product limit. Nothing
+ * a person writes by hand comes near it; anything that does is generated.
+ */
+const MAX_PROJECT_FILES = 2_000;
+
+export interface SandboxSyncPlan {
+  upload: string[];
+  remove: string[];
+  /** Set when the sync must not run. The reason is worth logging. */
+  abort?: string;
+  /** Paths left alone because they belong to the sandbox. */
+  skipped: number;
+}
+
+/**
+ * Decide what a sandbox-to-storage sync should actually do.
+ *
+ * The dangerous half is deletion. The sync mirrors the sandbox, so a file in
+ * Storage and not in the sandbox is treated as deleted — which is right when
+ * the agent removed it, and catastrophic when the listing is wrong.
+ *
+ * `listFiles` returns an empty array for a directory that does not exist. If a
+ * sandbox is reclaimed, a command is killed part-way, or the work directory is
+ * missing for any other reason, the sync would read "no files" as "the user
+ * deleted everything" and empty the project. There is no undo for that: the
+ * files are the product.
+ *
+ * So an empty listing against a non-empty project aborts. It is the one case
+ * where doing nothing is certainly better than doing what we were told.
+ *
+ * Pure, so both rules can be tested without a sandbox or a storage bucket.
+ */
+export function planSandboxSync(opts: {
+  /** Paths in the sandbox, relative to the project root. */
+  sandboxFiles: string[];
+  /** Paths already in Storage, relative to the project root. */
+  storageFiles: string[];
+}): SandboxSyncPlan {
+  const sandboxKept: string[] = [];
+  let skipped = 0;
+  for (const path of opts.sandboxFiles) {
+    if (isSandboxOnly(path)) skipped += 1;
+    else sandboxKept.push(path);
+  }
+
+  if (sandboxKept.length === 0 && opts.storageFiles.length > 0) {
+    return {
+      upload: [],
+      remove: [],
+      skipped,
+      abort: "the sandbox listed no project files while the project has some — refusing to treat that as a deletion",
+    };
+  }
+
+  if (sandboxKept.length > MAX_PROJECT_FILES) {
+    return {
+      upload: [],
+      remove: [],
+      skipped,
+      abort: `the sandbox listed ${sandboxKept.length} project files, over the ${MAX_PROJECT_FILES} limit`,
+    };
+  }
+
+  const inSandbox = new Set(sandboxKept);
+  return {
+    upload: sandboxKept,
+    // A path we would never have uploaded is not ours to delete either.
+    remove: opts.storageFiles.filter((path) => !inSandbox.has(path) && !isSandboxOnly(path)),
+    skipped,
+  };
+}
+
 export class StorageWorkspace implements Workspace {
   readonly root: string;
   private readonly base: string;
@@ -209,6 +321,10 @@ export class StorageWorkspace implements Workspace {
       const storageFiles = await storageFileMap(this.opts.client, this.opts.bucket, this.base);
       for (const file of storageFiles) {
         const relative = file.path.slice(this.base.length + 1);
+        // Storage should not be holding these, but a project written before the
+        // sync learned to skip them will be. Copying them back in would let the
+        // next sync treat them as the project's own.
+        if (isSandboxOnly(relative)) continue;
         await this.opts.sandboxManager.providerUploadFile(this.sandbox, `/home/user/project/${relative}`, new Uint8Array(await file.data.arrayBuffer()));
       }
       const result = await this.opts.sandboxManager.runCommand(this.sandbox, opts.command, { timeoutMs: opts.timeoutMs });
@@ -220,37 +336,36 @@ export class StorageWorkspace implements Workspace {
 
   private async syncSandboxFiles(): Promise<void> {
     if (!this.sandbox || !this.opts.sandboxManager) return;
-    
-    // 1. Get the list of files currently in the sandbox
-    const remoteFiles = await this.opts.sandboxManager.providerListFiles(this.sandbox, "/home/user/project");
-    const sandboxRelativeFiles = new Set(
-      remoteFiles
-        .map((p) => p.replace(/^\/home\/user\/project\//, ""))
-        .filter((r) => r && !r.includes(".."))
-    );
 
-    // 2. Get the list of files currently in Storage (relative to base)
-    const storagePaths = await this.files();
+    const root = "/home/user/project";
+    const strip = (path: string) => path.replace(new RegExp(`^${root}/`), "");
+
+    const sandboxFiles = (await this.opts.sandboxManager.providerListFiles(this.sandbox, root))
+      .map(strip)
+      .filter((relative) => relative && !relative.includes(".."));
+
     const basePrefixLength = this.base.length + 1;
-    const storageRelativeFiles = storagePaths.map((p) => p.slice(basePrefixLength));
+    const storageFiles = (await this.files()).map((path) => path.slice(basePrefixLength));
 
-    // 3. Delete files from Storage that were deleted in Sandbox
-    for (const relative of storageRelativeFiles) {
-      if (!sandboxRelativeFiles.has(relative)) {
-        try {
-          await this.deleteFile(relative);
-        } catch (error) {
-          // Log and continue if a deletion fails, so we don't block the rest of sync
-          console.error(`Failed to delete orphaned file ${relative} from Storage:`, error);
-        }
+    const plan = planSandboxSync({ sandboxFiles, storageFiles });
+    if (plan.abort) {
+      // Loud, because this is the sync declining to do what it was told and the
+      // user's files are what is at stake either way.
+      console.error(`[storage] sandbox sync aborted: ${plan.abort}`);
+      return;
+    }
+
+    for (const relative of plan.remove) {
+      try {
+        await this.deleteFile(relative);
+      } catch (error) {
+        // Keep going: one stuck deletion must not cost the uploads below.
+        console.error(`Failed to delete orphaned file ${relative} from Storage:`, error);
       }
     }
 
-    // 4. Download and upload all remote files to Storage
-    for (const remotePath of remoteFiles) {
-      const relative = remotePath.replace(/^\/home\/user\/project\//, "");
-      if (!relative || relative.includes("..")) continue;
-      const content = await this.opts.sandboxManager.providerDownloadFile(this.sandbox, remotePath);
+    for (const relative of plan.upload) {
+      const content = await this.opts.sandboxManager.providerDownloadFile(this.sandbox, `${root}/${relative}`);
       await uploadBlob(this.opts.client, this.opts.bucket, this.full(relative), content);
     }
   }
