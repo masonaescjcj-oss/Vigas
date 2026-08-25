@@ -13,14 +13,25 @@
  * ---------------------------------------------------------------------------
  */
 
-/** Words revealed per second. Comfortably faster than reading speed. */
-export const WORDS_PER_SECOND = 28;
+/**
+ * Words revealed per second.
+ *
+ * Around reading pace rather than well above it. Faster than this and the eye
+ * registers the text as already-there — the animation runs, but the effect it
+ * exists for does not land.
+ */
+export const WORDS_PER_SECOND = 14;
 
 /**
- * However long the text, the reveal ends within this. A 900-word answer should
- * not hold the reader hostage for half a minute.
+ * However long the text, the reveal ends within this.
+ *
+ * Raised from 2.6s, which capped every answer long enough to matter at roughly
+ * 17ms a word — fast enough to read as instant, which is the thing the reveal
+ * is meant to avoid. Seven seconds is long enough to feel deliberate on the
+ * answers that deserve it and still short enough that nobody is held hostage:
+ * the whole text is one tap away throughout.
  */
-export const MAX_REVEAL_MS = 2_600;
+export const MAX_REVEAL_MS = 7_000;
 
 /** Below this there is nothing to animate; showing it at once reads as instant. */
 export const MIN_WORDS_TO_ANIMATE = 4;

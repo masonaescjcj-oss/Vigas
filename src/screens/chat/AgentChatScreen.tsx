@@ -80,6 +80,7 @@ import { createShare } from "../../services/shareService";
 import { exportProject, openDownload, readableSize } from "../../services/exportService";
 import { shareLink } from "../../services/shareSheet";
 import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
+import { RunLog } from "../../components/RunLog";
 import { AgentMessageText } from "../../components/AgentMessageText";
 import { ThinkingIndicator } from "../../components/ThinkingIndicator";
 import { AnimatedAgentText } from "../../components/AnimatedAgentText";
@@ -1733,13 +1734,10 @@ export const AgentChatScreen = () => {
                   {msg.todos?.length ? <TodoChecklist todos={msg.todos} /> : null}
 
                   {/* Terminal-style execution log: one panel per agent turn */}
-                  {toolRunSteps.length > 0 && (
-                    <ToolRunPanel isLight={isLight}>
-                      {toolRunSteps.map((step, sIdx) => (
-                        <ToolRunRow key={sIdx} step={step} isLight={isLight} />
-                      ))}
-                    </ToolRunPanel>
-                  )}
+                  {/* animate follows the same rule as the text reveal: only a
+                      run that arrived while mounted. Scrolling back through an
+                      old conversation must not replay it. */}
+                  <RunLog steps={toolRunSteps} isLight={isLight} animate={msg.animate === true} />
 
                   {msg.content ? (
                     <AnimatedAgentText

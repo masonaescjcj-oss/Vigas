@@ -97,3 +97,30 @@ describe("revealedText", () => {
     expect(MIN_WORDS_TO_ANIMATE).toBeGreaterThan(1);
   });
 });
+
+describe("the reveal is slow enough to be seen", () => {
+  it("paces a long answer over seconds, not milliseconds", () => {
+    // The bug this fixes: the cap was 2.6s, so a 150-word answer revealed at
+    // roughly 17ms a word. The animation ran and the eye read it as instant,
+    // which is exactly what the reveal exists to avoid.
+    const words = 150;
+    const plan = planReveal(Array.from({ length: words }, (_, i) => `w${i}`).join(" "));
+    const totalMs = Math.ceil(plan.totalWords / plan.wordsPerStep) * plan.stepMs;
+
+    expect(totalMs).toBeGreaterThan(3_000);
+    const msPerWord = totalMs / plan.totalWords;
+    expect(msPerWord).toBeGreaterThan(25);
+  });
+
+  it("still refuses to hold a very long answer hostage", () => {
+    const plan = planReveal(Array.from({ length: 4_000 }, (_, i) => `w${i}`).join(" "));
+    const totalMs = Math.ceil(plan.totalWords / plan.wordsPerStep) * plan.stepMs;
+    // An answer is information first; the cap is what keeps that true.
+    expect(totalMs).toBeLessThanOrEqual(MAX_REVEAL_MS + plan.stepMs);
+  });
+
+  it("shows a one-line answer at once", () => {
+    // "Done." animating is theatre, not feedback.
+    expect(planReveal("Done.").instant).toBe(true);
+  });
+});

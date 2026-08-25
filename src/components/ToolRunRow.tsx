@@ -56,12 +56,23 @@ function formatDuration(ms?: number | null): string | null {
 }
 
 /** Container that makes stacked rows read as one terminal block. */
+/**
+ * The run log.
+ *
+ * `reveal` shows its rows one at a time. A run's steps are read in a single
+ * poll, so without it a minute of work appears in one frame and reads as a
+ * page that finished loading rather than as something that happened. Pass 0 to
+ * show everything at once — restored history should not replay.
+ */
 export const ToolRunPanel = ({
   isLight,
   children,
+  reveal = 0,
 }: {
   isLight: boolean;
   children: React.ReactNode;
+  /** Rows to show. 0 means all of them. */
+  reveal?: number;
 }) => {
   const { colors } = useTheme();
   const c = palette(colors);
@@ -78,7 +89,7 @@ export const ToolRunPanel = ({
         overflow: "hidden",
       }}
     >
-      {children}
+      {reveal > 0 ? React.Children.toArray(children).slice(0, reveal) : children}
     </View>
   );
 };

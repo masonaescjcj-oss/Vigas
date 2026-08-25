@@ -19,6 +19,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { planReveal, revealedText } from "../services/typewriter";
+import { tapFeedback } from "../services/haptics";
+
+/**
+ * Words between haptic ticks.
+ *
+ * Not every word: a 200-word answer would be 200 vibrations, which reads as a
+ * fault rather than feedback and costs real battery. Every twelfth is enough to
+ * feel like something is arriving without becoming the thing you notice.
+ */
+const HAPTIC_EVERY_WORDS = 12;
 
 /** Ids already revealed, so a remount does not replay them. */
 const finished = new Set<string>();
@@ -67,6 +77,8 @@ export function useTypewriter(id: string, text: string, animate: boolean): {
     const startedAt = Date.now();
     setWords(0);
 
+    let lastHapticAt = 0;
+
     timer.current = setInterval(() => {
       const progress = (Date.now() - startedAt) / totalMs;
       if (progress >= 1) {
@@ -75,7 +87,15 @@ export function useTypewriter(id: string, text: string, animate: boolean): {
         setWords(Infinity);
         return;
       }
-      setWords(Math.max(1, Math.floor(progress * plan.totalWords)));
+      const revealed = Math.max(1, Math.floor(progress * plan.totalWords));
+      // Keyed on how many words have appeared, not on tick count: the timer
+      // rate varies (a backgrounded tab throttles it), and tying the haptics
+      // to ticks would make them speed up and slow down with it.
+      if (revealed - lastHapticAt >= HAPTIC_EVERY_WORDS) {
+        lastHapticAt = revealed;
+        tapFeedback();
+      }
+      setWords(revealed);
     }, plan.stepMs);
 
     return () => {
