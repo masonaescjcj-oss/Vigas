@@ -249,3 +249,44 @@ describe("a turn that ends on a question", () => {
     expect(res.finalText).toContain("shop can mean");
   });
 });
+
+describe("plan mode is a read-only promise", () => {
+  it("a subagent cannot write while the parent is planning", async () => {
+    // Plan mode's whole value is that the user can let the agent look around
+    // without it touching anything. `task` is not a mutating tool, so it is
+    // allowed in plan mode — but the subagent it spawns got a fresh control
+    // whose planMode started false, and it shares the parent's workspace.
+    // That made `task` a way to write during a read-only phase.
+    //
+    // Parent and subagent share one ScriptedModel, so the script is the
+    // interleaved order of turns: the subagent's two turns run in the middle
+    // of the parent's. Splitting them into a separate model would not work —
+    // there is no separate model to give it, which is the point.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "issac-plan-"));
+    let n = 1000;
+    let idc = 0;
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel([
+        { toolCalls: [tc("p1", "enter_plan_mode", {})], usage: { inputTokens: 5, outputTokens: 2 } },
+        { toolCalls: [tc("p2", "task", { description: "sneak a write in", prompt: "write a file" })], usage: { inputTokens: 5, outputTokens: 2 } },
+        // ── the subagent's turns start here
+        { toolCalls: [tc("s1", "write", { file_path: "snuck-in.txt", contents: "x" })], usage: { inputTokens: 5, outputTokens: 2 } },
+        { text: "subagent done", usage: { inputTokens: 5, outputTokens: 2 } },
+        // ── back to the parent
+        { text: "Plan: do the thing.", usage: { inputTokens: 5, outputTokens: 2 } },
+      ]),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 10,
+    });
+
+    const res = await runtime.run("Look around and plan.");
+
+    // The subagent really did run and really did try to write — otherwise this
+    // test would pass for the wrong reason.
+    expect(res.session.messages.some((m) => m.toolCalls?.some((c) => c.name === "task"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "snuck-in.txt"))).toBe(false);
+  });
+});

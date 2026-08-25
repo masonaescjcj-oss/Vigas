@@ -268,6 +268,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     onMessage: options.onMessage,
   });
 
+  // The control of whichever run is currently in flight. subagentRunner is
+  // defined before that run exists, so it reads this at call time rather than
+  // closing over a control that is not built yet.
+  let activeControl: RuntimeControl | null = null;
+
   // A subagent runs a nested loop wrapped in a checkpoint so a failed branch is
   // recoverable. In production, point each subagent at its own sandbox root for
   // true parallel isolation.
@@ -275,6 +280,14 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     const checkpoint = await checkpoints.create(`subagent:${opts.description}`);
     const sub = newSession(profileName, now(), idFactory(), `subagent:${opts.description}`);
     const control = new RuntimeControl({ idFactory });
+    // Plan mode is inherited, not reset.
+    //
+    // `task` does not mutate the workspace, so it is allowed while planning.
+    // The subagent it spawns shares the parent's workspace, and starting it
+    // with planMode false let it write during a phase whose entire promise is
+    // that nothing is touched. Delegating work is not a way to acquire
+    // permissions the delegator does not have.
+    control.planMode = activeControl?.planMode ?? false;
     try {
       const res = await runAgentLoop(sub, opts.prompt, { ...buildLoopDeps(control), maxSteps: options.maxSteps ?? 6 });
       return res.finalText || `Subagent "${opts.description}" finished.`;
@@ -301,6 +314,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     };
 
     const control = new RuntimeControl({ idFactory, subagentRunner });
+    activeControl = control;
     const result = await runAgentLoop(session, prompt, { ...buildLoopDeps(control), onMessage: push });
 
     // "awaiting-input" is paused, not completed: the agent asked something and

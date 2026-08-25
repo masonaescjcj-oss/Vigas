@@ -109,7 +109,8 @@ Available tools: ${tools}.
 - Reserve \`bash\` for real system operations (builds, tests, installs, git).
 - \`edit\` requires an exact, unique anchor; add more surrounding context if it is not unique.
 - For coordinated multi-file changes, use \`apply_patch\` with the \`*** Begin Patch\` / \`*** End Patch\` envelope.
-- Delegate independent, parallelizable work to subagents via \`task\`.
+- Delegate wide reading and searching to subagents via \`task\`. They share your
+  workspace and run one at a time, so keep edits in your own hands.
 - Never use \`echo\` or shell commands to talk to the user; put all communication in your response text.
 - Keep the task list current with \`todo_write\`; keep exactly one item \`in_progress\`.
 

@@ -715,10 +715,16 @@ const todoWriteTool: ToolDefinition<{
 const taskTool: ToolDefinition<{ description: string; prompt: string; role?: string }> = {
   name: "task",
   description:
-    "Delegate a self-contained unit of work to a subagent. The subagent runs in " +
-    "an isolated worktree/checkpoint so parallel subagents never conflict, and " +
-    "returns a summary that is folded back into your context. Use for broad " +
-    "searches or independent workstreams that can run in parallel.",
+    // Was: "runs in an isolated worktree/checkpoint so parallel subagents never
+    // conflict". That is true of the plan-executor path, which nothing in
+    // production calls. On the path this tool actually takes, the subagent
+    // shares this workspace and runs to completion before you continue — so a
+    // model told otherwise would happily fan out overlapping edits.
+    "Delegate a self-contained unit of work to a subagent, which returns a " +
+    "summary folded back into your context. Best for reading and searching " +
+    "widely without filling your own context. The subagent shares this " +
+    "workspace and runs one at a time, so do not use it for edits that could " +
+    "overlap with your own or with another subagent's.",
   risk: "local",
   mutatesWorkspace: false,
   parameters: {
