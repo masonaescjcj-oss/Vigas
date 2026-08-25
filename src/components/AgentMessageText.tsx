@@ -10,14 +10,15 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
-/** The loaded monospace. A CSS stack would only ever work on web. */
-const MONO = MONO_FAMILY;
-
 import { parseBlocks } from "./markdown";
 import { CopyButton } from "./CopyButton";
 import { useTheme } from "../theme/ThemeProvider";
-import { MONO_FAMILY, fontFamilyFor } from "../theme/fonts";
+import { fontFamilyFor } from "../theme/fonts";
+import { MONO_FAMILY } from "../theme/mono";
 import { directionStyleFor } from "../theme/direction";
+
+/** The platform's own monospace — code must not be set proportionally. */
+const MONO = MONO_FAMILY;
 
 /** Inline `code` and **bold** inside a prose block. */
 const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color: string; codeBg: string; codeColor: string }) => {

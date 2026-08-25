@@ -1,13 +1,17 @@
 /**
- * React Native takes one family per Text, so this rule decides whether Persian
- * renders in a typeface designed for it or in whatever the system substitutes.
- * Getting the detection wrong is not subtle: Persian set in Inter falls back to
- * a system face mid-sentence.
+ * The app sets no typeface: text inherits whichever face the device uses, which
+ * is also how Persian gets a Persian face without any detection.
+ *
+ * What is still worth testing is that the module keeps saying so. A family
+ * accidentally reintroduced here would apply to Latin and leave Arabic script
+ * falling back mid-sentence, which is the failure this file used to guard
+ * against from the other direction.
+ *
+ * hasArabicScript stays because direction and alignment still depend on it.
  */
 import { describe, expect, it } from "vitest";
 import {
   ALL_FONT_FAMILIES,
-  MONO_FAMILY,
   displayFamilyFor,
   fontFamilyFor,
   hasArabicScript,
@@ -43,29 +47,6 @@ describe("hasArabicScript", () => {
   });
 });
 
-describe("fontFamilyFor", () => {
-  it("sets Latin in Inter", () => {
-    expect(fontFamilyFor("Hello")).toBe("Inter_400Regular");
-    expect(fontFamilyFor("Hello", "semibold")).toBe("Inter_600SemiBold");
-  });
-
-  it("sets Persian in Vazirmatn", () => {
-    expect(fontFamilyFor("سلام")).toBe("Vazirmatn_400Regular");
-    expect(fontFamilyFor("سلام", "bold")).toBe("Vazirmatn_700Bold");
-  });
-
-  it("keeps a mixed string in one family rather than switching mid-line", () => {
-    expect(fontFamilyFor("the فایل")).toBe("Vazirmatn_400Regular");
-  });
-
-  it("honours every weight in both scripts", () => {
-    for (const weight of ["regular", "medium", "semibold", "bold"] as const) {
-      expect(fontFamilyFor("a", weight)).toContain("Inter_");
-      expect(fontFamilyFor("ا", weight)).toContain("Vazirmatn_");
-    }
-  });
-});
-
 describe("textOf", () => {
   it("reads a plain string or number", () => {
     expect(textOf("hi")).toBe("hi");
@@ -89,55 +70,26 @@ describe("textOf", () => {
   });
 });
 
-describe("ALL_FONT_FAMILIES", () => {
-  it("lists every family the picker can return, so the loader cannot drift", () => {
-    const picked = new Set<string>();
+describe("no family is set", () => {
+  it("returns undefined for every weight and script", () => {
+    // undefined means "inherit" to both React Native and react-native-web, so
+    // the device picks — including its Arabic-script face.
     for (const weight of ["regular", "medium", "semibold", "bold"] as const) {
-      picked.add(fontFamilyFor("a", weight));
-      picked.add(fontFamilyFor("ا", weight));
+      expect(fontFamilyFor("a", weight)).toBeUndefined();
+      expect(fontFamilyFor("ا", weight)).toBeUndefined();
     }
-    picked.add(MONO_FAMILY);
-    for (const family of picked) {
-      expect(ALL_FONT_FAMILIES).toContain(family);
-    }
+    expect(fontFamilyFor()).toBeUndefined();
   });
 
-  it("has no duplicates", () => {
-    expect(new Set(ALL_FONT_FAMILIES).size).toBe(ALL_FONT_FAMILIES.length);
+  it("headings inherit too — size and weight separate them", () => {
+    expect(displayFamilyFor("Build something", "bold")).toBeUndefined();
+    expect(displayFamilyFor("بساز", "medium")).toBeUndefined();
+  });
+
+  it("loads nothing", () => {
+    // The loader reads this list. Anything in it would be downloaded, which is
+    // the 2.4 MB this change removed.
+    expect(ALL_FONT_FAMILIES).toEqual([]);
   });
 });
 
-describe("the display face", () => {
-  it("sets a Latin heading in Inter at a heading weight", () => {
-    expect(displayFamilyFor("Build something", "bold")).toBe("Inter_800ExtraBold");
-    expect(displayFamilyFor("Build something", "medium")).toBe("Inter_700Bold");
-  });
-
-  it("falls back to Vazirmatn for a Persian heading", () => {
-    // Inter has no Arabic coverage. Setting a Persian heading in
-    // it renders boxes, or drops to a system font in the middle of the
-    // interface — worse than simply not using the display face there.
-    expect(displayFamilyFor("یک اپ بساز", "bold")).toBe("Vazirmatn_700Bold");
-    expect(displayFamilyFor("یک اپ بساز", "medium")).toBe("Vazirmatn_600SemiBold");
-  });
-
-  it("treats a mixed heading as Persian", () => {
-    // Consistent with fontFamilyFor: one family across a line reads better
-    // than a typeface that changes mid-sentence.
-    expect(displayFamilyFor("فایل index.html را بساز")).toBe("Vazirmatn_700Bold");
-  });
-
-  it("uses the display face for non-string children", () => {
-    // A heading whose children are nodes rather than text — an icon plus a
-    // label — should still be a heading, not fall to the body face.
-    expect(displayFamilyFor(42)).toBe("Inter_800ExtraBold");
-    expect(displayFamilyFor(null)).toBe("Inter_800ExtraBold");
-  });
-
-  it("is listed among the families the app loads", () => {
-    // ALL_FONT_FAMILIES exists so the loader and this module cannot drift: a
-    // family used here but never registered renders as the system font.
-    expect(ALL_FONT_FAMILIES).toContain("Inter_800ExtraBold");
-    expect(ALL_FONT_FAMILIES).toContain("Inter_700Bold");
-  });
-});

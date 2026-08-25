@@ -15,7 +15,7 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
-import { MONO_FAMILY } from "../theme/fonts";
+import { MONO_FAMILY } from "../theme/mono";
 import { type ColorTokens } from "../theme/theme";
 
 export type ToolRunStatus = "running" | "completed" | "failed";

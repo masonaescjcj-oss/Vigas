@@ -18,12 +18,12 @@ import React from "react";
 import { Text as RNText, type TextProps } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
 import {
-  MONO_FAMILY,
+  
   displayFamilyFor,
   fontFamilyFor,
   textOf,
-  type FontWeightName,
-} from "../theme/fonts";
+  type FontWeightName } from "../theme/fonts";
+import { MONO_FAMILY } from "../theme/mono";
 
 export type TypographyVariant =
   | "h1"

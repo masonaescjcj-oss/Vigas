@@ -20,7 +20,7 @@
  *   node scripts/make-pwa.mjs [dist-dir]
  * ---------------------------------------------------------------------------
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const DIST = process.argv[2] ?? "dist-web";
@@ -136,52 +136,9 @@ writeFileSync(join(DIST, "sw.js"), sw);
 
 /* ---- fonts --------------------------------------------------------------- */
 
-// Expo writes fonts to assets/node_modules/@expo-google-fonts/..., and Vercel
-// drops any path containing node_modules wherever it appears in the tree. The
-// result is silent: the app renders in the system typeface, which reads as a
-// font that failed to load rather than one that was never uploaded. Measured
-// on two deploys — all four families 404.
-//
-// So they are copied to /fonts and declared with @font-face. react-native-web
-// emits `font-family: Inter_400Regular` directly, so a declaration under the
-// same name is all it takes; the bundle is untouched.
-function collectFonts(dir, found = []) {
-  if (!existsSync(dir)) return found;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) collectFonts(full, found);
-    else if (entry.name.endsWith(".ttf")) found.push(full);
-  }
-  return found;
-}
-
-const fontDir = join(DIST, "fonts");
-mkdirSync(fontDir, { recursive: true });
-
-const faces = [];
-for (const source of collectFonts(join(DIST, "assets"))) {
-  // Split on both separators: this runs on Windows, where join() produces
-  // backslashes and a forward-slash-only split returns the whole path.
-  const file = source.split(/[\\/]/).pop();
-  // "Inter_400Regular.<hash>.ttf" -> the family name the app asks for.
-  const family = file.split(".")[0];
-  copyFileSync(source, join(fontDir, file));
-  faces.push({ family, file });
-}
-
-// The originals are dead weight: they live under assets/node_modules, which the
-// host refuses to serve, and every one of them has just been copied to /fonts.
-// Leaving them doubles the size of the deploy for files nothing can reach.
-for (const source of collectFonts(join(DIST, "assets"))) rmSync(source);
-
-const fontCss = faces
-  .map(({ family, file }) =>
-    `@font-face{font-family:"${family}";src:url("/fonts/${file}") format("truetype");` +
-    // swap, so text is readable immediately in a fallback and reflows once the
-    // real face arrives — rather than being invisible while it downloads.
-    `font-display:swap;font-weight:normal;font-style:normal}`)
-  .join("\n");
-writeFileSync(join(DIST, "fonts.css"), fontCss);
+// None. The app sets no typeface, so there is nothing to copy or declare — see
+// src/theme/fonts.ts. This block used to move ~2.4 MB of TTFs out of
+// assets/node_modules, which Vercel refuses to serve, into /fonts.
 
 /* ---- html --------------------------------------------------------------- */
 
@@ -189,7 +146,6 @@ let html = readFileSync(join(DIST, "index.html"), "utf8");
 
 if (!html.includes("manifest.webmanifest")) {
   const head = `
-    <link rel="stylesheet" href="/fonts.css">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="${THEME}">
     <meta name="mobile-web-app-capable" content="yes">
@@ -286,4 +242,3 @@ writeFileSync(
 
 console.log(`PWA files written to ${DIST}/ (cache ${VERSION})`);
 console.log(`  manifest.webmanifest, sw.js, vercel.json, index.html tags`);
-console.log(`  ${faces.length} fonts copied to /fonts with @font-face`);
