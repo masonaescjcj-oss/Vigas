@@ -30,6 +30,7 @@
  * ---------------------------------------------------------------------------
  */
 
+import { dirname } from "https://deno.land/std@0.218.2/path/mod.ts";
 import { LocalSandboxProvider } from "./localProvider.ts";
 
 /** Where sandboxes live. Must be writable by the account below. */
@@ -70,6 +71,18 @@ export class SystemdSandboxProvider extends LocalSandboxProvider {
     // beside the project, and ReadWritePaths has to cover the whole tree.
     const writable = this.root ?? workDir;
 
+    // HOME has to be inside the writable area. Pointed at the sandbox user's
+    // real home it was outside ReadWritePaths, so npm could not create ~/.npm
+    // and every install died — reporting, misleadingly, "Invalid response body
+    // while trying to fetch https://registry.npmjs.org/...". The agent read
+    // that as a network problem and told the user the registry was
+    // unreachable, when the actual error was ENOENT on mkdir.
+    //
+    // The sandbox's own home/user, which already exists and is disposed of
+    // with the rest of it. dirname rather than a regex on the path: the
+    // escaping is one place this has already gone wrong.
+    const home = dirname(workDir);
+
     return new Deno.Command("systemd-run", {
       args: [
         // --pipe hands back the command's own output; --wait makes its exit
@@ -91,7 +104,10 @@ export class SystemdSandboxProvider extends LocalSandboxProvider {
         // systemd-run takes it. HOME must exist for npm and must not be the
         // worker user's.
         `--setenv=PATH=${Deno.env.get("PATH") ?? "/usr/local/bin:/usr/bin:/bin"}`,
-        "--setenv=HOME=/var/lib/retrocode",
+        `--setenv=HOME=${home}`,
+        // npm respects this even when HOME moves, and keeping the cache in
+        // the sandbox means one build cannot poison the next.
+        `--setenv=npm_config_cache=${home}/.npm`,
         "--setenv=CI=1",
         "/bin/sh", "-c", commandStr,
       ],
