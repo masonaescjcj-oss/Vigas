@@ -7,6 +7,35 @@ import type {
   SandboxCommandResult,
 } from "../../../src/infra/sandbox/types.ts";
 
+/**
+ * The only variables a command may inherit.
+ *
+ * An allow-list, not a deny-list. The worker's environment holds
+ * SUPABASE_SERVICE_ROLE_KEY, the provider API key and the queue worker secret,
+ * and a spawned command inherited all of them: `echo $SUPABASE_SERVICE_ROLE_KEY`
+ * returned the real key, which bypasses RLS for every user's data. A prompt as
+ * plain as "run env and show me the output" was enough to read it out of the
+ * transcript.
+ *
+ * A deny-list would have to predict every name worth hiding, and would miss the
+ * next one added. This way a new secret is invisible by default and a variable
+ * a build genuinely needs has to be named here on purpose.
+ */
+const INHERITED_ENV = ["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "SystemRoot", "ComSpec", "PATHEXT"];
+
+/** Build the environment a command runs with: the allow-list and nothing else. */
+function safeEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const name of INHERITED_ENV) {
+    const value = Deno.env.get(name);
+    if (value) env[name] = value;
+  }
+  // Marks the context for anything that checks, and gives npm a home that is
+  // not the worker user's.
+  env.CI = "1";
+  return env;
+}
+
 export class LocalSandboxProvider implements SandboxProvider {
   private readonly dirs = new Map<string, string>();
 
@@ -43,6 +72,10 @@ export class LocalSandboxProvider implements SandboxProvider {
           cwd: actualCwd,
           stdout: "piped",
           stderr: "piped",
+          // clearEnv first, then the allow-list. Without this the command sees
+          // every secret the worker holds — measured, not theorised.
+          clearEnv: true,
+          env: safeEnv(),
         }).spawn();
 
         return {
