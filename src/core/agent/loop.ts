@@ -251,6 +251,7 @@ export async function runAgentLoop(
     .map((t) => ({ name: t.function.name, description: t.function.description, parameters: t.function.parameters }));
 
   let finalText = "";
+  let lastToolTurnText = "";
   let stoppedReason: StopReason = "max-steps";
   let step = 0;
 
@@ -280,6 +281,10 @@ export async function runAgentLoop(
     }
 
     if (resp.toolCalls && resp.toolCalls.length > 0) {
+      // Kept for the stop reasons that are not "final". A model usually says
+      // what it is about to do before it does it, and those words are the best
+      // thing to show when the turn ends without a closing answer.
+      if (resp.text?.trim()) lastToolTurnText = resp.text.trim();
       push({
         id: deps.idFactory(),
         role: "assistant",
@@ -320,6 +325,14 @@ export async function runAgentLoop(
     finalText =
       `I ran out of steps for this turn — the work so far is saved, but it is not finished. ` +
       `Say **continue** and I will pick up where I stopped.`;
+  }
+
+  // Same failure, different cause: a turn that ends on a question also never
+  // reaches the final-answer branch, so it too came back with nothing to show.
+  // The question is rendered as its own card, but an empty message above it
+  // reads as the agent having said nothing at all.
+  if (stoppedReason === "awaiting-input" && !finalText) {
+    finalText = lastToolTurnText || "Before I build this, one thing I would rather not guess at:";
   }
 
   session.updatedAt = deps.now();

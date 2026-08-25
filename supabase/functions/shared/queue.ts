@@ -16,8 +16,58 @@ export function retryDelaySeconds(attempts: number): number | null {
   return attempts === 1 ? 10 : attempts === 2 ? 30 : 60;
 }
 
-export function retryDecision(attempts: number): { status: "pending" | "failed"; delaySeconds: number | null } {
-  const delaySeconds = retryDelaySeconds(attempts);
+/**
+ * Whether the error is the model provider refusing work rather than the run
+ * being wrong.
+ *
+ * These read as failures but are not: the same request a minute later succeeds.
+ * A gateway under load answers "system cpu overloaded (current: 100.0%,
+ * threshold: 90%)" — measured against the configured provider, where a build
+ * that spanned several turns lost a whole leg to it while single requests kept
+ * returning 200. Four tries inside 100 seconds is not long enough to outlast a
+ * busy upstream, and giving up there throws away a build that was working.
+ *
+ * Matched on shape, not on one vendor's wording, because the provider is
+ * configurable and every gateway phrases this differently. Anything unrecognised
+ * keeps the short schedule — retrying a genuine error for ten minutes is its own
+ * kind of broken.
+ */
+export function isUpstreamOverloaded(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    /(429|500|502|503|504)/.test(m) ||
+    m.includes("overload") ||
+    m.includes("rate limit") ||
+    m.includes("rate_limit") ||
+    m.includes("too many requests") ||
+    m.includes("capacity") ||
+    m.includes("try again") ||
+    m.includes("temporarily unavailable") ||
+    m.includes("service unavailable") ||
+    m.includes("timeout") ||
+    m.includes("timed out")
+  );
+}
+
+/**
+ * Backoff for an upstream that is shedding load.
+ *
+ * Longer and more patient than the general schedule: the useful response to
+ * "come back later" is to actually come back later. Nine tries over roughly
+ * twenty minutes, against four over one hundred seconds.
+ */
+export function overloadedDelaySeconds(attempts: number): number | null {
+  if (attempts >= 9) return null;
+  return Math.min(30 * 2 ** (attempts - 1), 300);
+}
+
+export function retryDecision(
+  attempts: number,
+  errorMessage?: string,
+): { status: "pending" | "failed"; delaySeconds: number | null } {
+  const delaySeconds = errorMessage && isUpstreamOverloaded(errorMessage)
+    ? overloadedDelaySeconds(attempts)
+    : retryDelaySeconds(attempts);
   return delaySeconds === null ? { status: "failed", delaySeconds: null } : { status: "pending", delaySeconds };
 }
 
@@ -34,7 +84,7 @@ export async function processJobAttempt<T>(options: {
     return { status: "completed", result };
   } catch (caught) {
     const error = caught instanceof Error ? caught : new Error(String(caught));
-    const decision = retryDecision(options.attempts);
+    const decision = retryDecision(options.attempts, error.message);
     if (decision.status === "failed") await options.fail(error);
     else await options.retry(error, decision.delaySeconds!);
     return { status: decision.status };

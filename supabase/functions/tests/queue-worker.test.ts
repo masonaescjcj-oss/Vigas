@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { CONTINUE_PROMPT, continuationPayload, processJobAttempt, retryDecision, retryDelaySeconds } from "../shared/queue.ts";
+import { CONTINUE_PROMPT, continuationPayload, isUpstreamOverloaded, processJobAttempt, retryDecision, retryDelaySeconds } from "../shared/queue.ts";
 
 Deno.test("queue worker uses the required exponential backoff schedule", () => {
   assertEquals(retryDelaySeconds(1), 10);
@@ -61,4 +61,39 @@ Deno.test("continuation can be switched off, and a broken counter fails closed",
   // A payload whose counter is not a number must not read as "plenty left".
   assertEquals(continuationPayload({ continuation: "lots" }, 4), null);
   assertEquals(continuationPayload({ continuation: -5 }, 4)?.continuation, 1);
+});
+
+Deno.test("a provider refusing work is retried patiently, not given up on", () => {
+  // Measured against the configured gateway: "system cpu overloaded" four
+  // times inside 100 seconds killed a build that was going fine. The next
+  // attempt would have worked.
+  const overload = "system cpu overloaded (current: 100.0%, threshold: 90%)";
+  assertEquals(isUpstreamOverloaded(overload), true);
+  assertEquals(retryDecision(4, overload), { status: "pending", delaySeconds: 240 });
+  // Where the ordinary schedule would already have given up.
+  assertEquals(retryDecision(4), { status: "failed", delaySeconds: null });
+  // It does still end.
+  assertEquals(retryDecision(9, overload), { status: "failed", delaySeconds: null });
+});
+
+Deno.test("only transient upstream errors get the long schedule", () => {
+  // Retrying these for twenty minutes would be its own kind of broken.
+  for (const message of [
+    "invalid api key",
+    "the model refused to answer",
+    "TypeError: cannot read property 'x' of undefined",
+  ]) {
+    assertEquals(isUpstreamOverloaded(message), false, message);
+    assertEquals(retryDecision(4, message).status, "failed");
+  }
+  // Recognised on shape rather than one vendor's wording — the provider is
+  // configurable and every gateway phrases this differently.
+  for (const message of [
+    "503 Service Unavailable",
+    "Rate limit exceeded, please try again later",
+    "upstream request timed out",
+    "The engine is currently overloaded",
+  ]) {
+    assertEquals(isUpstreamOverloaded(message), true, message);
+  }
 });

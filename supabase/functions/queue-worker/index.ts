@@ -243,8 +243,15 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const decision = retryDecision(job.attempts);
-    const { error: failError } = await client.rpc("fail_agent_job", { p_job_id: job.id, p_error: message });
+    // The worker decides how long to wait — it is the only side that can see
+    // whether this was a broken run or a provider briefly refusing work — and
+    // the database schedules it. 0 means give up.
+    const decision = retryDecision(job.attempts, message);
+    const { error: failError } = await client.rpc("fail_agent_job", {
+      p_job_id: job.id,
+      p_error: message,
+      p_retry_in_seconds: decision.delaySeconds ?? 0,
+    });
     if (failError) throw failError;
     await setTask(client, job.session_id, decision.status === "failed" ? "failed" : "running", { error: message, retry_in_seconds: decision.delaySeconds, attempts: job.attempts });
     // Only once it has genuinely given up. Notifying on each retry would buzz a

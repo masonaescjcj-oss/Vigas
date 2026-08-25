@@ -213,3 +213,39 @@ describe("a run that outgrows its step budget", () => {
     expect(res.session.status).toBe("paused");
   });
 });
+
+describe("a turn that ends on a question", () => {
+  it("still has something to show above the question card", async () => {
+    // Same shape of bug as running out of steps: this branch never reaches the
+    // final-answer assignment, so the turn came back with an empty message and
+    // the chat rendered a blank bubble.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "issac-ask-"));
+    let n = 1000;
+    let idc = 0;
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel([
+        {
+          text: "A shop can mean a few different things — let me check one thing first.",
+          toolCalls: [tc("q1", "ask_user", {
+            questions: [{
+              header: "Goods",
+              question: "What are you selling?",
+              options: [{ label: "Clothes" }, { label: "Food" }],
+            }],
+          })],
+          usage: { inputTokens: 5, outputTokens: 2 },
+        },
+      ]),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 10,
+    });
+
+    const res = await runtime.run("Build me a shop.");
+
+    expect(res.stoppedReason).toBe("awaiting-input");
+    expect(res.finalText).toContain("shop can mean");
+  });
+});
