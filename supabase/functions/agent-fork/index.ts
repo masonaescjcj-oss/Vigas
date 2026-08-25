@@ -23,7 +23,7 @@ export async function handler(req: Request): Promise<Response> {
     const project = await assertProjectOwner(service, user.id, String(source.project_id));
     const messages = Array.isArray(source.transcript) ? source.transcript : [];
     if (input.atMessageIndex >= messages.length) throw new AppError(400, "MESSAGE_INDEX_OUT_OF_RANGE", `atMessageIndex must be between 0 and ${Math.max(0, messages.length - 1)}.`);
-    const runtime = createEdgeAgentRuntime({ client: service, user, projectId: String(source.project_id), sandboxPath: project.sandbox_path, profile: source.profile === "readonly" ? "readonly" : "standard" });
+    const runtime = await createEdgeAgentRuntime({ client: service, user, projectId: String(source.project_id), sandboxPath: project.sandbox_path, profile: source.profile === "readonly" ? "readonly" : "standard" });
     const forked = await runtime.forkSession(input.sessionId, input.atMessageIndex);
     return json({ session: forked }, 201, headers);
   } catch (error) {

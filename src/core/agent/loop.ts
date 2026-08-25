@@ -24,6 +24,7 @@ import type { PermissionDecision, PolicyEngine } from "./permissions/policyEngin
 import type { HookRunner } from "./hooks/hookRunner.ts";
 import { compactHistory, type Summarizer } from "./session/compact.ts";
 import type { ClarifyRequest } from "./clarify.ts";
+import { planToolBatches } from "./toolBatching.ts";
 
 const STRICTNESS: Record<PermissionDecision, number> = { allow: 0, ask: 1, deny: 2 };
 
@@ -156,10 +157,13 @@ async function executeToolCall(
   deps: LoopDeps,
   control: AgentControl & { planMode: boolean },
   session: AgentSession,
+  // Passed in rather than read off the session: calls in a batch run
+  // concurrently, and reading-then-incrementing a shared counter would hand
+  // several of them the same index.
+  callIndex: number,
 ): Promise<ChatMessage> {
   const tool = deps.registry.get(tc.name);
   const risk: ToolRisk = tool?.risk ?? "exec";
-  const callIndex = session.usage.toolCalls;
 
   const preCtx = {
     sessionId: session.id,
@@ -217,7 +221,6 @@ async function executeToolCall(
 
   const durationMs = deps.now() - start;
   await deps.hooks.runPost({ ...preCtx, decision, result, error, durationMs });
-  session.usage.toolCalls += 1;
 
   return {
     id: deps.idFactory(),
@@ -292,9 +295,18 @@ export async function runAgentLoop(
         toolCalls: resp.toolCalls,
         createdAt: deps.now(),
       });
-      for (const tc of resp.toolCalls) {
-        const toolMsg = await executeToolCall(tc, deps, control, session);
-        push(toolMsg);
+      // Independent calls run together; conflicting ones stay in order. The
+      // messages are still pushed in the order the model asked for them —
+      // finishing order is an implementation detail, and a transcript that
+      // reordered itself by luck would be unreadable and unreplayable.
+      let callIndex = session.usage.toolCalls;
+      session.usage.toolCalls += resp.toolCalls.length;
+      for (const batch of planToolBatches(resp.toolCalls)) {
+        const messages = await Promise.all(
+          batch.map((tc, i) => executeToolCall(tc, deps, control, session, callIndex + i)),
+        );
+        callIndex += batch.length;
+        for (const toolMsg of messages) push(toolMsg);
       }
       // Asked and cannot continue. Checked after the whole round rather than
       // mid-round so tool calls issued alongside the question still complete

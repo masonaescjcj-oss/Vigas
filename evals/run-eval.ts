@@ -89,7 +89,7 @@ for (const scenario of scenarios) {
   let pass = false, reason: string | undefined, tokens = 0, steps = 0;
   try {
     await resetWorkspace(prefix, scenario.seed);
-    const runtime = createEdgeAgentRuntime({
+    const runtime = await createEdgeAgentRuntime({
       client,
       user: { id: userId } as never,
       projectId,

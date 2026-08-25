@@ -290,3 +290,147 @@ describe("plan mode is a read-only promise", () => {
     expect(fs.existsSync(path.join(root, "snuck-in.txt"))).toBe(false);
   });
 });
+
+describe("independent work in one round does not queue up", () => {
+  it("writes several files concurrently and keeps the transcript in order", async () => {
+    // The loop used to `await` each call before starting the next, so six
+    // independent files cost six round trips of latency. With a step budget
+    // per turn, that latency was a large part of why big builds ran out.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "issac-par-"));
+    let n = 1000;
+    let idc = 0;
+
+    const names = ["a", "b", "c", "d", "e", "f"];
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel([
+        {
+          toolCalls: names.map((name) =>
+            tc(`w-${name}`, "write", { file_path: `${name}.txt`, contents: name })),
+          usage: { inputTokens: 5, outputTokens: 2 },
+        },
+        { text: "All six written.", usage: { inputTokens: 5, outputTokens: 2 } },
+      ]),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 10,
+    });
+
+    const res = await runtime.run("Write six files.");
+
+    // Every file landed...
+    for (const name of names) {
+      expect(fs.readFileSync(path.join(root, `${name}.txt`), "utf8")).toBe(name);
+    }
+
+    // ...and the tool results are in the order the model asked for them, not
+    // whichever finished first. A transcript reordered by luck cannot be
+    // replayed, and the provider pairs results to calls by position.
+    const toolMessages = res.session.messages.filter((m) => m.role === "tool");
+    expect(toolMessages.length).toBe(6);
+    expect(toolMessages.map((m) => m.toolCallId)).toEqual(names.map((n2) => `w-${n2}`));
+  });
+
+  it("gives every call in a round a distinct index", async () => {
+    // The index came off a shared counter that was read and then incremented.
+    // Run concurrently, several calls would have read the same value.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "issac-idx-"));
+    let n = 1000;
+    let idc = 0;
+    const audit = new InMemoryAuditSink();
+
+    const runtime = createAgentRuntime({
+      sandboxRoot: root,
+      model: new ScriptedModel([
+        {
+          toolCalls: ["a", "b", "c"].map((name) =>
+            tc(`w-${name}`, "write", { file_path: `${name}.txt`, contents: name })),
+          usage: { inputTokens: 5, outputTokens: 2 },
+        },
+        { text: "done", usage: { inputTokens: 5, outputTokens: 2 } },
+      ]),
+      profile: "standard",
+      auditSink: audit,
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 10,
+    });
+
+    const res = await runtime.run("Write three files.");
+    expect(res.session.usage.toolCalls).toBe(3);
+  });
+});
+
+describe("the calls really do overlap", () => {
+  it("six writes are in flight at the same time, and a conflicting pair is not", async () => {
+    // The tests above prove the files land and the transcript stays ordered.
+    // Neither would fail if the loop were still sequential — so this one
+    // measures the thing actually being claimed.
+    //
+    // A pre-tool hook holds each call open briefly and records how many are
+    // inside at once. Sequential execution can never exceed 1.
+    const measure = () => {
+      let inFlight = 0;
+      let peak = 0;
+      return {
+        peak: () => peak,
+        hook: async () => {
+          inFlight += 1;
+          peak = Math.max(peak, inFlight);
+          await new Promise((r) => setTimeout(r, 20));
+          inFlight -= 1;
+          return undefined;
+        },
+      };
+    };
+
+    const independent = measure();
+    let n = 1000;
+    let idc = 0;
+    const names = ["a", "b", "c", "d", "e", "f"];
+    await createAgentRuntime({
+      sandboxRoot: fs.mkdtempSync(path.join(os.tmpdir(), "issac-ovl-")),
+      model: new ScriptedModel([
+        {
+          toolCalls: names.map((name) => tc(`w-${name}`, "write", { file_path: `${name}.txt`, contents: name })),
+          usage: { inputTokens: 5, outputTokens: 2 },
+        },
+        { text: "done", usage: { inputTokens: 5, outputTokens: 2 } },
+      ]),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 10,
+      extraHooks: { preToolUse: [independent.hook] },
+    }).run("Write six files.");
+
+    expect(independent.peak()).toBe(6);
+
+    // And the safety half: two writes to one file must never overlap, however
+    // much faster it would be.
+    const conflicting = measure();
+    n = 1000;
+    idc = 0;
+    await createAgentRuntime({
+      sandboxRoot: fs.mkdtempSync(path.join(os.tmpdir(), "issac-cfl-")),
+      model: new ScriptedModel([
+        {
+          toolCalls: [
+            tc("w1", "write", { file_path: "index.html", contents: "first" }),
+            tc("w2", "write", { file_path: "index.html", contents: "second" }),
+          ],
+          usage: { inputTokens: 5, outputTokens: 2 },
+        },
+        { text: "done", usage: { inputTokens: 5, outputTokens: 2 } },
+      ]),
+      profile: "standard",
+      now: () => ++n,
+      idFactory: () => `id${++idc}`,
+      maxSteps: 10,
+      extraHooks: { preToolUse: [conflicting.hook] },
+    }).run("Write the same file twice.");
+
+    expect(conflicting.peak()).toBe(1);
+  });
+});

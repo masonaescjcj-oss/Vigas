@@ -13,6 +13,7 @@ import {
 import type { AuditEntry } from "../../../src/core/agent/hooks/defaultHooks.ts";
 import { AppError, asAppError } from "./errorHandler.ts";
 import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
+import { loadProjectInstructions } from "../../../src/core/agent/projectInstructions.ts";
 import { backendContextFor } from "../../../src/core/agent/backendContext.ts";
 import { buildSystemPrompt } from "../../../src/core/agent/systemPrompt.ts";
 import { PROJECT_FILES_BUCKET, StorageWorkspace } from "./storage.ts";
@@ -529,13 +530,19 @@ export function canRunCommands(): boolean {
   }
 }
 
-export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRuntime {
+// Async because it reads the project's conventions file before the first
+// message. One storage read at the start of a run, against a prompt that is
+// then reused for every step of it.
+export async function createEdgeAgentRuntime(options: RuntimeFactoryOptions): Promise<AgentRuntime> {
   const prefix = options.sandboxPath ?? `users/${options.user.id}/projects/${options.projectId}`;
   const sandboxManager = options.sandboxManager ?? createEdgeSandboxManager(options.client);
   const workspace = new StorageWorkspace({ client: options.client, bucket: PROJECT_FILES_BUCKET, prefix, projectId: options.projectId, userId: options.user.id, sessionId: options.sessionId, sandboxManager });
   // Appended, not replaced: the base prompt is what makes the tools work at all,
   // and a skill is guidance layered on top of it.
   const extra = [
+    // The project's own conventions, if it has any. First, so a skill or the
+    // backend context can still be the last word on a specific point.
+    await loadProjectInstructions(workspace).catch(() => ""),
     skillPromptFor(options.skills),
     // Last, so it is the closest thing to the request — and it ends on the Row
     // Level Security instruction, which is what decides whether the built app is

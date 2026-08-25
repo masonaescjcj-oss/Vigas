@@ -102,10 +102,14 @@ and let it widen, not the reverse.
 that is how it gets published.
 
 - index.html at the root. Relative paths only — a leading "/" breaks on a subpath.
-- No build step, no bundler, no server. If a library is genuinely needed, load it
-  from a CDN with a pinned version.
-- No environment variables and no server-side code. Anything secret cannot live here,
-  so do not put a key in the page and do not pretend one is hidden.
+- No build step and no bundler. If a library is genuinely needed, load it from a
+  CDN with a pinned version.
+- Nothing that needs a process running. Data that has to outlive the tab belongs
+  in a hosted backend the page calls — Supabase from the browser — not in a
+  server you would have to keep up.
+- No environment variables and no secrets in the page. A publishable key like a
+  Supabase anon key is fine and is meant to be public; anything else is not, so
+  do not put it here and do not pretend it is hidden.
 - Keep it to a handful of files. Inline small CSS and JS rather than scattering them.
 - It must open correctly from a file:// URL as well as over http.`,
   },

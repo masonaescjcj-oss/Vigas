@@ -169,7 +169,7 @@ export async function processNextJob(client: SupabaseClient, workerId: string): 
 
     const sandboxManager = createEdgeSandboxManager(client);
     try {
-      const runtime = createEdgeAgentRuntime({
+      const runtime = await createEdgeAgentRuntime({
         client,
         user: { id: job.user_id } as User,
         projectId: job.project_id,
