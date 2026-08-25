@@ -104,6 +104,14 @@ export interface AgentRuntimeOptions {
   /** False when the workspace is virtual (Storage-backed) — see PolicyEngineConfig. */
   followSymlinks?: boolean;
   extraTools?: ToolDefinition[];
+  /**
+   * Tools to leave out of this runtime.
+   *
+   * Set when the environment cannot honour one — an Edge Function cannot spawn
+   * a process, so `bash` there is a tool that always fails. The model plans
+   * around the names it is given, so the name has to go.
+   */
+  excludeTools?: readonly string[];
   extraHooks?: HookSet;
   confirm?: ConfirmFn;
   autoApproveAsk?: boolean;
@@ -207,7 +215,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const profile = getProfile(profileName);
 
   const workspace: Workspace = options.workspace ?? new SandboxFs({ sandboxRoot: options.sandboxRoot });
-  const registry = createToolRegistry(options.extraTools ?? []);
+  const registry = createToolRegistry(options.extraTools ?? [], options.excludeTools ?? []);
   const store = options.store ?? new InMemorySessionStore();
   const auditSink = options.auditSink ?? new InMemoryAuditSink();
   const notifier = options.notifier ?? new InMemoryNotifier();

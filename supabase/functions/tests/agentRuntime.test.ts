@@ -10,6 +10,7 @@ import {
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { OpenAIChatModel, resolveRequestedModel } from "../shared/agentRuntime.ts";
 import { AppError } from "../shared/errorHandler.ts";
+import { createToolRegistry } from "../../../src/core/agent/toolRegistry.ts";
 import { PROJECT_TEMPLATES, templateContentType } from "../shared/templates.ts";
 import { describeToolDetail, describeToolMetrics, describeToolTarget } from "../../../src/core/agent/hooks/defaultHooks.ts";
 
@@ -298,4 +299,38 @@ Deno.test("a malformed or oversized payload cannot bloat a transcript row", () =
   assertEquals(describeToolDetail("todo_write", {
     todos: [{ subject: "a" }],
   }), { kind: "todos", todos: [{ subject: "a", status: "pending" }] });
+});
+
+Deno.test("a tool the environment cannot run is withheld, not offered", async () => {
+  // The behaviour this guards: given `bash`, the model plans a typecheck or an
+  // install, calls it, gets "Deno.makeTempDirSync is blocklisted", and carries
+  // on with a plan whose middle step never happened. Measured on the deployed
+  // worker before this existed — the run "succeeded" having verified nothing.
+  const { createToolRegistry } = await import("../../../src/core/agent/toolRegistry.ts");
+
+  const full = createToolRegistry().list().map((t) => t.name);
+  assertEquals(full.includes("bash"), true, "bash is a core tool");
+
+  const limited = createToolRegistry([], ["bash"]).list().map((t) => t.name);
+  assertEquals(limited.includes("bash"), false, "bash must be absent, not just failing");
+
+  // Everything else survives: the file tools never touch a sandbox, which is
+  // why building an app works without one at all.
+  for (const name of ["read", "write", "edit", "apply_patch", "glob", "grep_files", "list_dir"]) {
+    assertEquals(limited.includes(name), true, `${name} should still be offered`);
+  }
+  assertEquals(limited.length, full.length - 1);
+});
+
+Deno.test("excluding nothing leaves the registry untouched", () => {
+  // The E2B path passes an empty list, and it must not quietly drop anything.
+  const full = createToolRegistry().list().map((t) => t.name).sort();
+  const same = createToolRegistry([], []).list().map((t) => t.name).sort();
+  assertEquals(same, full);
+});
+
+Deno.test("an unknown name in the exclude list is harmless", () => {
+  // A typo should not silently remove a different tool or throw mid-run.
+  const full = createToolRegistry().list().length;
+  assertEquals(createToolRegistry([], ["nonexistent_tool"]).list().length, full);
 });

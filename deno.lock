@@ -1527,9 +1527,6 @@
     "packageJson": {
       "dependencies": [
         "npm:@babel/core@^7.20.0",
-        "npm:@expo-google-fonts/inter@~0.4.2",
-        "npm:@expo-google-fonts/jetbrains-mono@~0.4.1",
-        "npm:@expo-google-fonts/vazirmatn@~0.4.1",
         "npm:@expo/metro-runtime@~3.2.3",
         "npm:@opentelemetry/api@^1.9.1",
         "npm:@react-native-async-storage/async-storage@1.23.1",

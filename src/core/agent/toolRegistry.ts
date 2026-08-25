@@ -813,6 +813,23 @@ export class ToolRegistry {
   }
 }
 
-export function createToolRegistry(extra: ToolDefinition[] = []): ToolRegistry {
-  return new ToolRegistry([...CORE_TOOLS, ...extra]);
+/**
+ * Build the registry.
+ *
+ * @param extra   Tools beyond the core set.
+ * @param exclude Names to leave out entirely.
+ *
+ * `exclude` exists because a tool the environment cannot run is worse than a
+ * missing one. The model plans around what it is offered: given `bash` it will
+ * decide to typecheck or install a dependency, call it, get an error it cannot
+ * act on, and carry on with a plan whose middle step never happened. Removing
+ * the name is the only way to tell it the truth — a description saying "this
+ * may fail" is advice, not a constraint.
+ */
+export function createToolRegistry(
+  extra: ToolDefinition[] = [],
+  exclude: readonly string[] = [],
+): ToolRegistry {
+  const omit = new Set(exclude);
+  return new ToolRegistry([...CORE_TOOLS, ...extra].filter((tool) => !omit.has(tool.name)));
 }

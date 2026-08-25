@@ -487,6 +487,34 @@ export function createEdgeSandboxManager(client: SupabaseClient): SandboxManager
   return new SandboxManager(client, sandboxProvider);
 }
 
+/**
+ * Whether this process can actually run a command.
+ *
+ * Two things have to be true, and only one of them is a setting:
+ *
+ *   - With E2B_API_KEY the command runs in a rented VM, which always works.
+ *   - Without it the fallback is LocalSandboxProvider, which spawns a real
+ *     process — fine on a developer's machine, impossible inside an Edge
+ *     Function. Supabase blocklists Deno.makeTempDirSync and Deno.Command
+ *     there, so the very first call fails with a runtime error rather than a
+ *     tidy "not supported".
+ *
+ * Detected rather than assumed: the same worker code runs both places, and a
+ * constant would be wrong in one of them. `makeTempDirSync` is what the local
+ * provider reaches for first, so probing it asks exactly the question that
+ * matters.
+ */
+export function canRunCommands(): boolean {
+  if (Deno.env.get("E2B_API_KEY")) return true;
+  try {
+    const probe = Deno.makeTempDirSync({ prefix: "issac-probe-" });
+    Deno.removeSync(probe, { recursive: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRuntime {
   const prefix = options.sandboxPath ?? `users/${options.user.id}/projects/${options.projectId}`;
   const sandboxManager = options.sandboxManager ?? createEdgeSandboxManager(options.client);
@@ -504,6 +532,11 @@ export function createEdgeAgentRuntime(options: RuntimeFactoryOptions): AgentRun
 
   return createAgentRuntime({
     sandboxRoot: workspace.root,
+    // A tool that cannot work is worse than one that is missing: offered
+    // `bash`, the model plans a typecheck or an install, calls it, gets an
+    // error it cannot act on, and continues with a plan whose middle step
+    // never happened. Withholding the name is the only honest signal.
+    excludeTools: canRunCommands() ? [] : ["bash"],
     ...(systemPrompt ? { systemPrompt } : {}),
     workspace,
     store: new EdgeSessionStore(options.client, options.user.id, options.projectId),
