@@ -87,9 +87,7 @@ export const PreferencesScreen = () => {
   // Must stay in sync with the agent-run allow-list (ALLOWED_MODELS).
   const modelOptions: Array<{ key: ModelPreference; label: string }> = [
     { key: "auto", label: "Auto (server default)" },
-    { key: "gpt-5.6-luna", label: "GPT-5.6 Luna" },
-    { key: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
-    { key: "deepseek-reasoner", label: "DeepSeek Reasoner" },
+    { key: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
   ];
 
   const themeOptions: Array<{ key: typeof mode; label: string }> = [

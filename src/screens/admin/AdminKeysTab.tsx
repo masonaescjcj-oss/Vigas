@@ -253,7 +253,7 @@ export const AdminKeysTab: React.FC = () => {
         hint="The base URL, usually ending in /v1."
       />
       <Field label="API key" value={apiKey} onChangeText={setApiKey} placeholder="sk-..." secureTextEntry />
-      <Field label="Default model (optional)" value={model} onChangeText={setModel} placeholder="gpt-5.6-luna" />
+      <Field label="Default model (optional)" value={model} onChangeText={setModel} placeholder="gpt-5.6-terra" />
       <Field
         label="Priority"
         value={priority}

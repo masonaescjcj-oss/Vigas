@@ -14,7 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-export type ModelPreference = "auto" | "gpt-5.6-luna" | "deepseek-v4-flash" | "deepseek-reasoner";
+export type ModelPreference = "auto" | "gpt-5.6-terra";
 
 interface SettingsState {
   /** Model pre-selected in the chat composer. */

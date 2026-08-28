@@ -191,7 +191,7 @@ export class AnthropicChatModel implements ChatModel {
  * "nobody can pick anything".
  */
 export const FALLBACK_MODELS: readonly string[] = (
-  Deno.env.get("ALLOWED_MODELS") ?? "gpt-5.6-luna,deepseek-v4-flash,deepseek-chat,deepseek-reasoner"
+  Deno.env.get("ALLOWED_MODELS") ?? "gpt-5.6-terra"
 )
   .split(",")
   .map((entry) => entry.trim())
