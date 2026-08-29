@@ -339,3 +339,55 @@ describe("a bundled project, the shape the agent now builds", () => {
     expect(html).not.toMatch(/src=["']\/src\/main\.jsx["']/);
   });
 });
+
+describe("a project that is not a website", () => {
+  // Someone asks for a Python trading bot and gets one. Preview cannot run it,
+  // and used to say "ask the agent to create a web page and it will show up
+  // here" — advice to abandon the thing they actually wanted.
+  const bot = {
+    "bot.py": "def main():\n    pass\n",
+    "strategy.py": "def crossover(fast, slow):\n    return fast > slow\n",
+    "requirements.txt": "ccxt==4.2.0\n",
+    "README.md": "# Trading bot",
+  };
+
+  it("does not tell the user their project is missing a web page", () => {
+    const html = buildPreviewHtml(bot);
+    expect(html).not.toMatch(/ask the agent to create a web page/i);
+  });
+
+  it("names the language and says why there is nothing to render", () => {
+    const html = buildPreviewHtml(bot);
+    expect(html).toContain("Python");
+    // The limitation is the viewer's, and saying so is the difference between
+    // "your project is wrong" and "this pane cannot show it".
+    expect(html).toMatch(/viewer.s limit|only renders web pages/i);
+  });
+
+  it("gives the command that actually runs it", () => {
+    const html = buildPreviewHtml(bot);
+    expect(html).toContain("pip install -r requirements.txt");
+    expect(html).toContain("python bot.py");
+  });
+
+  it("still lists the files and shows the README", () => {
+    const html = buildPreviewHtml(bot);
+    expect(html).toContain("strategy.py");
+    expect(html).toContain("Trading bot");
+  });
+
+  it("recognises other ecosystems too", () => {
+    expect(buildPreviewHtml({ "go.mod": "module x", "main.go": "package main" })).toContain("go run .");
+    expect(buildPreviewHtml({ "Cargo.toml": "[package]", "src/lib.rs": "" })).toContain("cargo run");
+  });
+
+  it("says something sensible when it cannot tell what the project is", () => {
+    const html = buildPreviewHtml({ "notes.txt": "hello" });
+    expect(html).toMatch(/no page to render/i);
+    expect(html).toContain("notes.txt");
+  });
+
+  it("an empty project is still an invitation, not an error", () => {
+    expect(buildPreviewHtml({})).toMatch(/no files yet/i);
+  });
+});

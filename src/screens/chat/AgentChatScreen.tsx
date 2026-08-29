@@ -420,7 +420,18 @@ export const AgentChatScreen = () => {
       setActiveProjectName(existing.name);
       return existing.id;
     }
-    const created = await createProject({ name: activeProjectName || "My First App", template: "landing" });
+    // Blank, not "landing".
+    //
+    // This runs when someone just starts typing without picking a project, so
+    // it is the common path. Seeding a static landing page here decided what
+    // the app was before reading the request: someone asking for a Python
+    // trading bot got a project already containing index.html and styles.css,
+    // and the agent — reasonably — built onto the web project it found.
+    //
+    // Measured both ways against the deployed stack: from a blank project the
+    // same request produces crypto_bot.py, a test and a README, and no HTML at
+    // all. The bias was here, not in the model.
+    const created = await createProject({ name: activeProjectName || "My First App", template: "blank" });
     setActiveProjectId(created.id);
     setActiveProjectName(created.name);
     return created.id;

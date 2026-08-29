@@ -197,13 +197,68 @@ ${isReactish ? AUTO_MOUNT : ""}
 });</script>`;
 }
 
-/** Fallback page when the project has no index.html yet. */
+/**
+ * What kind of project this is, when it has no page to render.
+ *
+ * Not everything built here is a website. Someone asks for a Python trading bot
+ * and gets one — and then Preview told them "ask the agent to create a web page
+ * and it will show up here", which is advice to abandon what they wanted.
+ *
+ * Preview cannot run a bot, and should not pretend the project is unfinished
+ * because of it. Naming the language and giving the command that does run it is
+ * the honest version, and it is the same information they would have got from a
+ * README.
+ */
+const PROJECT_KINDS: Array<{
+  label: string;
+  test: (names: string[]) => boolean;
+  run: (names: string[]) => string;
+}> = [
+  {
+    label: "Python",
+    test: (n) => n.some((f) => f.endsWith(".py")),
+    run: (n) => {
+      const entry = ["main.py", "bot.py", "app.py", "run.py"].find((f) => n.includes(f))
+        ?? n.find((f) => f.endsWith(".py"))!;
+      const deps = n.some((f) => f.endsWith("requirements.txt"))
+        ? "pip install -r requirements.txt\n"
+        : "";
+      return `${deps}python ${entry}`;
+    },
+  },
+  {
+    label: "Node",
+    test: (n) => n.includes("package.json"),
+    run: () => "npm install\nnpm start",
+  },
+  {
+    label: "Go",
+    test: (n) => n.includes("go.mod"),
+    run: () => "go run .",
+  },
+  {
+    label: "Rust",
+    test: (n) => n.includes("Cargo.toml"),
+    run: () => "cargo run",
+  },
+];
+
+/** Fallback page when the project has nothing Preview can render. */
 function fallbackDocument(files: Record<string, string>): string {
   const names = Object.keys(files).sort();
   const readme = files["readme.md"] ?? files["README.md"];
   const list = names.length
     ? names.map((n) => `<li><code>${escapeHtml(n)}</code></li>`).join("")
     : "<li class='muted'>No files yet — ask the agent to build something!</li>";
+
+  const kind = names.length ? PROJECT_KINDS.find((k) => k.test(names)) : undefined;
+  const explanation = kind
+    ? `<p class="muted">This is a ${escapeHtml(kind.label)} project. Preview only renders web pages, ` +
+      `so there is nothing to show here — that is the viewer's limit, not a problem with your project. ` +
+      `Use <b>Download as zip</b> to get the source, then run it:</p>` +
+      `<pre>${escapeHtml(kind.run(names))}</pre>`
+    : `<p class="muted">This project has no <code>index.html</code>, so there is no page to render. ` +
+      `If it is meant to be a website, ask for one; otherwise use <b>Download as zip</b> to get the source.</p>`;
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -213,7 +268,7 @@ ul{list-style:none;padding:0} li{margin:8px 0} .muted{color:#9ca3af}
 pre{background:#181b22;border-radius:12px;padding:16px;white-space:pre-wrap;margin-top:24px}
 </style></head><body>
 <h1>Project files</h1>
-<p class="muted">This project has no <code>index.html</code> yet. Ask the agent to create a web page and it will show up here.</p>
+${explanation}
 <ul>${list}</ul>
 ${readme ? `<pre>${escapeHtml(readme)}</pre>` : ""}
 </body></html>`;
