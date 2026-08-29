@@ -286,3 +286,56 @@ export default function App() {
     expect(compiled).not.toContain("React.createElement");
   });
 });
+
+describe("a bundled project, the shape the agent now builds", () => {
+  // The agent no longer writes one flat HTML file. Asked for a shop with a
+  // backend it scaffolds Vite: an index.html whose only script is a module
+  // under src/, imports resolved by a bundler, and libraries from npm.
+  //
+  // If Preview cannot render that, the user gets a blank screen and reports
+  // that the app "does not open" — which is exactly what was reported.
+  const viteProject = {
+    "index.html": [
+      "<!doctype html>",
+      '<html><head><link rel="stylesheet" href="/src/styles.css"></head>',
+      '<body><div id="root"></div>',
+      '<script type="module" src="/src/main.jsx"></script>',
+      "</body></html>",
+    ].join("\n"),
+    "src/main.jsx": [
+      'import { mount } from "./shop.js";',
+      'mount(document.getElementById("root"));',
+    ].join("\n"),
+    "src/shop.js": [
+      "export function mount(el) {",
+      '  el.textContent = "Atelier";',
+      "}",
+    ].join("\n"),
+    "src/styles.css": "body { background: #111; }",
+    "package.json": '{"name":"shop","type":"module"}',
+    "vite.config.js": 'export default {};',
+  };
+
+  it("renders rather than coming back empty", () => {
+    const html = buildPreviewHtml(viteProject);
+    expect(html.length).toBeGreaterThan(0);
+    expect(html).not.toMatch(/no .?index\.html.? yet/i);
+  });
+
+  it("inlines the stylesheet the page asked for, leading slash and all", () => {
+    // A Vite entry writes "/src/styles.css". Treated as an absolute URL that
+    // would 404 inside the sandboxed frame and the page would render unstyled.
+    const html = buildPreviewHtml(viteProject);
+    expect(html).toContain("background: #111");
+  });
+
+  it("bundles the entry module and what it imports", () => {
+    const html = buildPreviewHtml(viteProject);
+    expect(html).toContain("Atelier");
+  });
+
+  it("does not leave a bare src= pointing at a file the frame cannot fetch", () => {
+    const html = buildPreviewHtml(viteProject);
+    expect(html).not.toMatch(/src=["']\/src\/main\.jsx["']/);
+  });
+});

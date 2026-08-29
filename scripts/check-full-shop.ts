@@ -170,8 +170,37 @@ try {
   }
 
   // ── What actually came out.
-  const after = await (await call("project-files", { projectId })).json().catch(() => ({}));
-  const files: Record<string, string> = after?.files ?? {};
+  //
+  // Read from storage rather than project-files. The endpoint returns the top
+  // level only, so supabase/schema.sql was invisible and the RLS check reported
+  // a false negative against a build that had in fact written the policies.
+  const { data: projectRow } = await admin
+    .from("projects").select("sandbox_path").eq("id", projectId).maybeSingle();
+
+  async function walk(prefix: string, depth = 0): Promise<string[]> {
+    const { data } = await admin.storage.from("project-files").list(prefix, { limit: 200 });
+    const out: string[] = [];
+    for (const entry of data ?? []) {
+      const full = `${prefix}/${entry.name}`;
+      // A folder comes back with a null id in Supabase's listing.
+      if (entry.id === null) {
+        if (depth < 4) out.push(...await walk(full, depth + 1));
+      } else {
+        out.push(full);
+      }
+    }
+    return out;
+  }
+
+  const base = (projectRow?.sandbox_path ?? "").length + 1;
+  const paths = projectRow ? await walk(projectRow.sandbox_path) : [];
+  const files: Record<string, string> = {};
+  for (const path of paths) {
+    const rel = path.slice(base);
+    if (rel === ".keep") continue;
+    const { data: blob } = await admin.storage.from("project-files").download(path);
+    files[rel] = blob ? await blob.text() : "";
+  }
   const names = Object.keys(files).sort();
   const all = Object.values(files).join("\n");
 
@@ -180,7 +209,9 @@ try {
   console.log("");
 
   check(`it produced files (${names.length})`, names.length > 0, "nothing was written");
-  check("there is an index.html to open", names.includes("index.html"), names);
+  // Not necessarily at the root: a bundled project keeps its entry beside the
+  // config, and the preview resolves it from there.
+  check("there is an index.html to open", names.some((n) => n.endsWith("index.html")), names);
 
   // ── Is it actually a backend, or localStorage wearing a hat?
   const usesSupabase = /supabase/i.test(all);
@@ -204,15 +235,34 @@ try {
 
   // ── Would it open? The preview inlines local refs, so a page whose script
   //    and stylesheet are missing is a blank screen for the user.
-  const html = files["index.html"] ?? "";
+  const html = files[names.find((n) => n.endsWith("index.html")) ?? ""] ?? "";
   const refs = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
     .map((m) => m[1])
     .filter((r) => !/^(https?:)?\/\//.test(r) && !r.startsWith("data:") && !r.startsWith("#"));
-  const missing = refs.filter((r) => !(r.replace(/^\.?\//, "") in files));
+  const missing = refs.filter((r) => {
+    const rel = r.replace(/^\.?\//, "");
+    return !(rel in files) && !names.some((n) => n === rel || n.endsWith(`/${rel}`));
+  });
   check(
     `every local file index.html references exists${missing.length ? "" : ` (${refs.length} refs)`}`,
     missing.length === 0,
     { missing, have: names },
+  );
+
+  // ── The failure this run exists to catch. A `npm run dev` used to sit there
+  //    forever, and the whole build froze behind it with nothing to show.
+  const { data: bashRows } = await admin
+    .from("agent_tasks").select("tool_input,tool_output,duration_ms")
+    .eq("session_id", sessionId).eq("tool_name", "bash");
+  const killed = (bashRows ?? []).filter((r) => /killed after/i.test(JSON.stringify(r.tool_output ?? {})));
+  const slowest = Math.max(0, ...(bashRows ?? []).map((r) => Number(r.duration_ms ?? 0)));
+  console.log(`      bash commands     : ${(bashRows ?? []).length}`);
+  console.log(`      killed for hanging: ${killed.length}`);
+  console.log(`      slowest command   : ${Math.round(slowest / 1000)}s`);
+  check(
+    "no command had to be killed for never exiting",
+    killed.length === 0,
+    killed.map((k) => (k.tool_input as Record<string, unknown>)?.target ?? k.tool_input),
   );
 
   const secretLeak = /service_role|SUPABASE_SERVICE_ROLE|sk-[A-Za-z0-9]{20,}/.test(all);
