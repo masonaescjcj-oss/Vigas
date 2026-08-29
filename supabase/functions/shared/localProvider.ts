@@ -21,6 +21,21 @@ import type {
  * next one added. This way a new secret is invisible by default and a variable
  * a build genuinely needs has to be named here on purpose.
  */
+/**
+ * Longest a single command may run.
+ *
+ * Generous, because `npm install` on a small box genuinely takes minutes; the
+ * point is not to be tight, it is that there is a ceiling at all.
+ */
+export const DEFAULT_COMMAND_TIMEOUT_MS = Number(Deno.env.get("SANDBOX_COMMAND_TIMEOUT_MS") ?? 240_000);
+export const MAX_COMMAND_TIMEOUT_MS = 600_000;
+
+/** A caller may ask for less, and may not ask for more or for none. */
+export function clampTimeout(requested?: number): number {
+  if (!requested || !Number.isFinite(requested) || requested <= 0) return DEFAULT_COMMAND_TIMEOUT_MS;
+  return Math.min(requested, MAX_COMMAND_TIMEOUT_MS);
+}
+
 const INHERITED_ENV = ["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "LC_ALL", "SystemRoot", "ComSpec", "PATHEXT"];
 
 /** Build the environment a command runs with: the allow-list and nothing else. */
@@ -70,10 +85,27 @@ export class LocalSandboxProvider implements SandboxProvider {
    * The seam the systemd provider replaces: everything about *where* a sandbox
    * lives is shared, and only *how* the command is launched differs.
    */
-  protected buildCommand(commandStr: string, workDir: string): Deno.Command {
+  protected buildCommand(commandStr: string, workDir: string, timeoutMs?: number): Deno.Command {
     const isWindows = Deno.build.os === "windows";
-    return new Deno.Command(isWindows ? "cmd.exe" : "sh", {
-      args: isWindows ? ["/c", commandStr] : ["-c", commandStr],
+
+    // The deadline belongs to the operating system, not to us.
+    //
+    // Killing the shell we spawned does not kill what it started: `sh -c "npm
+    // run dev"` leaves node running, holding the pipes open, so `output()`
+    // never resolves and the timeout we thought we had does nothing. Measured
+    // — a `sleep 60` given a 1.5s timeout ran the full minute.
+    //
+    // `timeout(1)` sends the signal to the child directly and then SIGKILLs it
+    // if it ignores that, so the pipes close and we get control back. Windows
+    // has no equivalent; it is the development path only, and the JS-side race
+    // in runCommand is what covers it.
+    const seconds = Math.max(1, Math.ceil((timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS) / 1000));
+    const [program, args] = isWindows
+      ? ["cmd.exe", ["/c", commandStr]]
+      : ["timeout", ["--kill-after=5s", `${seconds}s`, "sh", "-c", commandStr]];
+
+    return new Deno.Command(program, {
+      args: args as string[],
       cwd: workDir,
       stdout: "piped",
       stderr: "piped",
@@ -136,14 +168,59 @@ export class LocalSandboxProvider implements SandboxProvider {
       : projectDir;
 
     const start = Date.now();
+    const timeoutMs = clampTimeout(options.timeoutMs);
     try {
       // Through the same seam as startCommand. This path had neither clearEnv
       // nor an allow-list of its own, so the leak was reachable from here too.
-      const { code, stdout, stderr } = await this.buildCommand(commandStr, actualCwd).output();
+      const child = this.buildCommand(commandStr, actualCwd, timeoutMs).spawn();
+
+      // The timeout used to be accepted and ignored — `.output()` waits for as
+      // long as the command runs. An agent that types `npm run dev` starts a
+      // server that never exits, and the whole build froze there: no output, no
+      // error, the job holding its lease until something else killed it. It is
+      // an easy mistake for a model to make and there was nothing behind it.
+      // Backstop for the operating system's own deadline above: a little later,
+      // and it stops waiting rather than only signalling, because a grandchild
+      // holding the pipes open can keep output() pending forever.
+      let timedOut = false;
+      let release: () => void;
+      const abandoned = new Promise<null>((resolve) => { release = () => resolve(null); });
+      const timer = setTimeout(() => {
+        timedOut = true;
+        try { child.kill("SIGKILL"); } catch { /* already gone */ }
+        release();
+      }, timeoutMs + 8_000);
+
+      const finished = await Promise.race([child.output(), abandoned]);
+      clearTimeout(timer);
+
+      const decoded = finished
+        ? {
+            stdout: new TextDecoder().decode(finished.stdout),
+            stderr: new TextDecoder().decode(finished.stderr),
+          }
+        : { stdout: "", stderr: "" };
+
+      // 124 is what timeout(1) returns when it fires, so the wrapper reports
+      // the same thing the backstop does.
+      if (timedOut || finished?.code === 124) {
+        // Said plainly, because the model has to be able to act on it. Killed
+        // output is still useful — a server that printed its port before being
+        // killed proves it starts.
+        return {
+          stdout: decoded.stdout,
+          stderr: `${decoded.stderr}
+[killed after ${Math.round(timeoutMs / 1000)}s — this command does not exit on its own. ` +
+            `Long-running processes like dev servers cannot be run in the foreground here; ` +
+            `check the build with a command that finishes, such as a build or a test.]`,
+          exitCode: 124, // what `timeout(1)` uses, and what scripts expect
+          durationMs: Date.now() - start,
+          peakMemoryBytes: 0,
+        };
+      }
       return {
-        stdout: new TextDecoder().decode(stdout),
-        stderr: new TextDecoder().decode(stderr),
-        exitCode: code,
+        ...decoded,
+        exitCode: finished!.code,
         durationMs: Date.now() - start,
         peakMemoryBytes: 0,
       };

@@ -120,7 +120,11 @@ Deno.test("an unreadable catalogue degrades to the fallback list", async () => {
   // Before the models table is migrated, or during a transient failure: the
   // usual models must keep working rather than every run refusing.
   const service = fakeService(CATALOGUE, undefined, "models");
-  assertEquals(await resolveRequestedModel(service, "gpt-5.6-luna", "free"), "gpt-5.6-luna");
+  // The fallback is ALLOWED_MODELS, which is the shipped model — terra.
+  assertEquals(await resolveRequestedModel(service, "gpt-5.6-terra", "free"), "gpt-5.6-terra");
+  // A model that was retired from the catalogue must not come back through the
+  // fallback, or deactivating one would be cosmetic.
+  assertEquals(await resolveRequestedModel(service, "gpt-5.6-luna", "free"), undefined);
   assertEquals(await resolveRequestedModel(service, "never-heard-of-it", "free"), undefined);
 });
 

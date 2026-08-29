@@ -31,7 +31,7 @@
  */
 
 import { dirname } from "https://deno.land/std@0.218.2/path/mod.ts";
-import { LocalSandboxProvider } from "./localProvider.ts";
+import { LocalSandboxProvider, MAX_COMMAND_TIMEOUT_MS } from "./localProvider.ts";
 
 /** Where sandboxes live. Must be writable by the account below. */
 const ROOT = Deno.env.get("SANDBOX_ROOT") ?? "/var/lib/retrocode/work";
@@ -66,7 +66,24 @@ export class SystemdSandboxProvider extends LocalSandboxProvider {
     new Deno.Command("chmod", { args: ["-R", "u+rwX", dir] }).outputSync();
   }
 
-  protected override buildCommand(commandStr: string, workDir: string): Deno.Command {
+  /**
+   * The launcher is not the process.
+   *
+   * `systemd-run --wait` runs the command inside a transient unit. Killing the
+   * launcher on a timeout leaves that unit running — measured on the server: a
+   * `npm run dev` survived its parent and had to be stopped with `systemctl
+   * stop`. So systemd is given the deadline too, and enforces it on the unit
+   * itself.
+   *
+   * Slightly longer than the caller's timeout so the ordinary path stays the
+   * one that reports; this is the backstop for what the backstop misses.
+   */
+  private runtimeMaxSec(timeoutMs?: number): number {
+    const requested = timeoutMs && timeoutMs > 0 ? timeoutMs : MAX_COMMAND_TIMEOUT_MS;
+    return Math.ceil(requested / 1000) + 15;
+  }
+
+  protected override buildCommand(commandStr: string, workDir: string, timeoutMs?: number): Deno.Command {
     // The sandbox root, not the working directory: a build writes to node_modules
     // beside the project, and ReadWritePaths has to cover the whole tree.
     const writable = this.root ?? workDir;
@@ -92,6 +109,9 @@ export class SystemdSandboxProvider extends LocalSandboxProvider {
         `--property=MemoryMax=${MEMORY_MAX}`,
         `--property=CPUQuota=${CPU_QUOTA}`,
         "--property=TasksMax=128",
+        // A command that never exits cannot outlive this, whatever happens to
+        // the process that launched it.
+        `--property=RuntimeMaxSec=${this.runtimeMaxSec(timeoutMs)}`,
         "--property=PrivateTmp=yes",
         "--property=ProtectHome=yes",
         "--property=ProtectSystem=strict",
@@ -109,6 +129,10 @@ export class SystemdSandboxProvider extends LocalSandboxProvider {
         // the sandbox means one build cannot poison the next.
         `--setenv=npm_config_cache=${home}/.npm`,
         "--setenv=CI=1",
+        // Same reason as the local provider: killing the launcher does not
+        // kill what it started, and this closes the pipes so the worker gets
+        // control back promptly. RuntimeMaxSec above is the outer backstop.
+        "/usr/bin/timeout", "--kill-after=5s", `${Math.max(1, Math.ceil((timeoutMs ?? MAX_COMMAND_TIMEOUT_MS) / 1000))}s`,
         "/bin/sh", "-c", commandStr,
       ],
       stdout: "piped",

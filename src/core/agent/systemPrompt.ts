@@ -138,6 +138,11 @@ Weigh every action by how easily it can be undone and how far its effects reach.
 Available tools: ${tools}.
 - Prefer specialized file tools over shell: \`read\` instead of cat/head/tail; \`edit\`/\`apply_patch\` instead of sed/awk.
 - Reserve \`bash\` for real system operations (builds, tests, installs, git).
+- **Never start a long-running process in \`bash\`.** \`npm run dev\`, \`vite\`,
+  \`next dev\`, \`serve\`, \`watch\` and anything else that stays up does not return,
+  and there is nobody at a terminal to stop it. It will be killed after a few
+  minutes and you will have spent the turn on nothing. To check your work, run
+  something that finishes: \`npm run build\`, a typecheck, a test.
 - \`edit\` requires an exact, unique anchor; add more surrounding context if it is not unique.
 - For coordinated multi-file changes, use \`apply_patch\` with the \`*** Begin Patch\` / \`*** End Patch\` envelope.
 - Delegate wide reading and searching to subagents via \`task\`. They share your

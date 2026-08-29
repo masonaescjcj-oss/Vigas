@@ -14,7 +14,7 @@ export const bashTool: ToolDefinition<{
   mutatesWorkspace: true,
   parameters: {
     type: "object",
-    properties: { command: { type: "string" }, timeout_ms: { type: "integer", minimum: 1, maximum: 60_000 }, background: { type: "boolean" } },
+    properties: { command: { type: "string" }, timeout_ms: { type: "integer", minimum: 1, maximum: 600_000, description: "Milliseconds. Defaults to a few minutes; the command is killed past it." }, background: { type: "boolean" } },
     required: ["command"],
     additionalProperties: false,
   },
