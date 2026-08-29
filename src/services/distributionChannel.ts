@@ -23,8 +23,13 @@ import {
   type PurchaseAffordance,
   purchaseAffordance,
 } from "../core/billing/distribution";
+import { BILLING_ENABLED } from "../config/billing";
 
 export const CHANNEL = normaliseChannel(process.env.EXPO_PUBLIC_DISTRIBUTION);
 
 /** What this build may do about selling. Constant for the life of the process. */
-export const PURCHASES: PurchaseAffordance = purchaseAffordance(Platform.OS, CHANNEL);
+export const PURCHASES: PurchaseAffordance = purchaseAffordance(
+  Platform.OS,
+  CHANNEL,
+  BILLING_ENABLED,
+);

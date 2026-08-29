@@ -38,20 +38,35 @@ export interface PurchaseAffordance {
   /**
    * May the app say that plans exist and where they are managed?
    *
-   * Always true. Play's settlement explicitly stopped prohibiting developers
-   * from communicating about other payment methods, and refusing to explain
-   * why a limit was hit would be worse for the user than any rule requires.
+   * True wherever there is something to buy. Play's settlement explicitly
+   * stopped prohibiting developers from communicating about other payment
+   * methods, and refusing to explain why a limit was hit would be worse for the
+   * user than any rule requires.
+   *
+   * False only while the product sells nothing at all — mentioning a plan that
+   * does not exist yet is not a policy problem, it is a lie.
    */
-  canMentionPlans: true;
+  canMentionPlans: boolean;
 }
 
 /**
  * Decide what the purchase UI is allowed to do.
  *
- * @param platform React Native's Platform.OS.
- * @param channel  The build channel, from EXPO_PUBLIC_DISTRIBUTION.
+ * @param platform       React Native's Platform.OS.
+ * @param channel        The build channel, from EXPO_PUBLIC_DISTRIBUTION.
+ * @param billingEnabled Whether this build sells anything at all.
  */
-export function purchaseAffordance(platform: string, channel: Channel): PurchaseAffordance {
+export function purchaseAffordance(
+  platform: string,
+  channel: Channel,
+  billingEnabled = true,
+): PurchaseAffordance {
+  // Nothing is for sale, so there is nothing to link to and nothing to mention.
+  // This is checked before the platform rules on purpose: it is a product
+  // decision, and no channel may talk its way past it. Web in particular would
+  // otherwise still show a paywall.
+  if (!billingEnabled) return { canLinkOut: false, canMentionPlans: false };
+
   // Web is not distributed by a store and has no such rules, whatever the
   // channel string happens to say.
   if (platform === "web") return { canLinkOut: true, canMentionPlans: true };
@@ -77,6 +92,16 @@ export function limitMessage(
       action: "Update subscription",
     };
   }
+  if (!affordance.canMentionPlans) {
+    // Nothing is for sale, so the limit is simply the limit. Dangling an
+    // upgrade that does not exist would be worse than the wait.
+    return {
+      title: "You have used today's builds",
+      body: `Your allowance resets at ${resetHint}.`,
+      action: null,
+    };
+  }
+
   return {
     title: "You have used today's builds",
     // No tap, so the sentence has to carry the whole answer — including where

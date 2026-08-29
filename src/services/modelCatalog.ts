@@ -21,6 +21,7 @@ import {
   type ModelRow,
   type PlanRow,
 } from "../core/models/tiering";
+import { BILLING_ENABLED } from "../config/billing";
 
 /**
  * The catalogue as this account sees it, Auto first.
@@ -43,6 +44,7 @@ export async function fetchModelCatalog(tier: string): Promise<CatalogModel[]> {
       (models.data ?? []) as ModelRow[],
       (plans.data ?? []) as PlanRow[],
       tier,
+      BILLING_ENABLED,
     );
   } catch (e) {
     console.error("Failed to load the model catalogue:", e);

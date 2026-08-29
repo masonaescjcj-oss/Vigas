@@ -3194,7 +3194,12 @@ export const AgentChatScreen = () => {
                   </View>
 
                   {/* Tapping the badge is the shortest route to fixing the
-                      plan, so it does that rather than being decoration. */}
+                      plan, so it does that rather than being decoration.
+
+                      Gone entirely while nothing is for sale: a solid "FREE"
+                      chip beside someone's name reads as a downgrade, and there
+                      is no upgrade to offer them. */}
+                  {PURCHASES.canMentionPlans ? (
                   <TouchableOpacity
                     onPress={() => planDisplay.action && canBuy && goTo("Paywall", {})}
                     disabled={!planDisplay.action || !canBuy}
@@ -3207,11 +3212,13 @@ export const AgentChatScreen = () => {
                       {planDisplay.badge}
                     </Text>
                   </TouchableOpacity>
+                  ) : null}
                 </View>
 
                 {/* Upgrade Card. Hidden for a healthy plan and for Team —
-                    selling to someone who already bought is just noise. */}
-                {planDisplay.action ? (
+                    selling to someone who already bought is just noise — and
+                    for every plan while there is nothing to sell. */}
+                {PURCHASES.canMentionPlans && planDisplay.action ? (
                 <View style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }} className="p-5 rounded-2xl mb-6 shadow-sm border relative overflow-hidden">
                   <Text style={{ color: textPrimary }} className="text-base font-bold text-left mb-1">
                     {planDisplay.needsAttention ? "Your plan needs attention" : "Want more Retro Code?"}
@@ -3252,7 +3259,12 @@ export const AgentChatScreen = () => {
                     { label: "Your AI providers", icon: "cpu", target: "Providers", root: false },
                     { label: "Shared links", icon: "link", target: "SharedLinks", root: false },
                     { label: "Security", icon: "lock", target: "SecuritySettings", root: false },
-                    { label: "Subscription", icon: "zap", target: "ManageSubscription", root: true },
+                    // Subscription is about buying, so it goes when nothing is
+                    // for sale. Token usage stays: knowing how much you have
+                    // used is useful whether or not there is a plan to buy.
+                    ...(PURCHASES.canMentionPlans
+                      ? [{ label: "Subscription", icon: "zap", target: "ManageSubscription", root: true } as const]
+                      : []),
                     { label: "Token usage", icon: "chart", target: "TokenUsage", root: true },
                     { label: "Help & Support", icon: "info", target: "HelpSupport", root: false },
                     { label: "About", icon: "info", target: "About", root: false },
@@ -3279,8 +3291,18 @@ export const AgentChatScreen = () => {
                     className="flex-row items-center justify-between p-4 active:opacity-80"
                   >
                     <View className="flex-row items-center">
-                      <VectorIcon name="card" size={16} color={colors.inkSecondary} style={{ marginRight: 12 }} />
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">Usage & Billing</Text>
+                      {/* A card icon and the word "billing" both promise an
+                          invoice. There is none, and the screen behind this
+                          only shows how much has been used. */}
+                      <VectorIcon
+                        name={PURCHASES.canMentionPlans ? "card" : "chart"}
+                        size={16}
+                        color={colors.inkSecondary}
+                        style={{ marginRight: 12 }}
+                      />
+                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">
+                        {PURCHASES.canMentionPlans ? "Usage & Billing" : "Usage"}
+                      </Text>
                     </View>
                     <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
                   </TouchableOpacity>
@@ -3523,6 +3545,9 @@ export const AgentChatScreen = () => {
                           {/* Solid, not a 15%-opacity wash: at this size a tint
                               reads as a smudge. Small and filled is legible;
                               large and faint is only large. */}
+                          {/* No badge at all when nothing is for sale — see
+                              decorateModels, which leaves it empty. */}
+                          {model.badge ? (
                           <View
                             className="rounded-full mr-1"
                             style={{
@@ -3544,6 +3569,7 @@ export const AgentChatScreen = () => {
                               {model.badge}
                             </Text>
                           </View>
+                          ) : null}
 
                           {/* Secondary information, so an outline rather than a
                               second solid block competing with the first. */}

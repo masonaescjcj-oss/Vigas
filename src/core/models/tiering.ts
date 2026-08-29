@@ -110,10 +110,17 @@ export function requiredRank(plans: PlanRow[], key: string | null | undefined): 
  *
  * @param tier The viewer's plan key, e.g. "free".
  */
+/**
+ * @param billingEnabled When false nothing is for sale, so nothing is gated and
+ *                       no tier is named. A padlock the user cannot unlock is a
+ *                       dead end, and "FREE" on every row only means something
+ *                       when some row is not.
+ */
 export function decorateModels(
   models: ModelRow[],
   plans: PlanRow[],
   tier: string,
+  billingEnabled = true,
 ): CatalogModel[] {
   const held = heldRank(plans, tier);
 
@@ -121,10 +128,10 @@ export function decorateModels(
     .filter((row) => row.is_active !== false)
     .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
     .map((row) => {
-      const minTier = row.min_tier ?? null;
+      const minTier = billingEnabled ? (row.min_tier ?? null) : null;
       const required = requiredRank(plans, minTier);
       // Compared by rank, not equality, so Ultra also gets everything Pro has.
-      const locked = required > held;
+      const locked = billingEnabled && required > held;
       const planName = plans.find((entry) => entry.key === minTier)?.display_name;
       return {
         id: row.id,
@@ -136,10 +143,14 @@ export function decorateModels(
         minTier,
         locked,
         // A gated model with no matching plan row still reads as gated: falling
-        // back to the key is ugly, but calling it FREE would be a lie.
-        badge: minTier ? (planName ?? minTier).toUpperCase() : "FREE",
+        // back to the key is ugly, but calling it FREE would be a lie. With
+        // nothing for sale there is no distinction to draw, so no badge.
+        badge: !billingEnabled ? "" : minTier ? (planName ?? minTier).toUpperCase() : "FREE",
       };
     });
 
-  return [AUTO_MODEL, ...decorated];
+  return [
+    billingEnabled ? AUTO_MODEL : { ...AUTO_MODEL, badge: "" },
+    ...decorated,
+  ];
 }

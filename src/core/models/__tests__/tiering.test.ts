@@ -127,3 +127,41 @@ describe("the two ranks fail closed in opposite directions", () => {
     expect(requiredRank(PLANS, "pro")).toBe(1);
   });
 });
+
+describe("when the product sells nothing", () => {
+  const PLANS = [
+    { key: "pro", display_name: "Pro", sort_order: 1 },
+    { key: "ultra", display_name: "Ultra", sort_order: 2 },
+  ];
+  const MODELS = [
+    { id: "free-one", display_name: "Free One", min_tier: null, is_default: true, sort_order: 0, tone: "success" },
+    { id: "gated", display_name: "Gated", min_tier: "pro", is_default: false, sort_order: 1, tone: "warning" },
+  ];
+
+  it("locks nothing, because there is no way to unlock it", () => {
+    // A padlock the user cannot open is a dead end. With billing off, a model
+    // that would be gated is simply available.
+    const models = decorateModels(MODELS as never, PLANS as never, "free", false);
+    expect(models.every((m) => !m.locked)).toBe(true);
+    expect(models.find((m) => m.id === "gated")?.minTier).toBe(null);
+  });
+
+  it("shows no tier badge, since every row would say the same thing", () => {
+    const models = decorateModels(MODELS as never, PLANS as never, "free", false);
+    expect(models.map((m) => m.badge)).toEqual(["", "", ""]);
+  });
+
+  it("still gates correctly when billing is on", () => {
+    // The default has to stay what it was, or turning billing back on is a
+    // migration rather than a flag.
+    const models = decorateModels(MODELS as never, PLANS as never, "free", true);
+    expect(models.find((m) => m.id === "gated")?.locked).toBe(true);
+    expect(models.find((m) => m.id === "gated")?.badge).toBe("PRO");
+    expect(models.find((m) => m.id === "free-one")?.badge).toBe("FREE");
+  });
+
+  it("a paid account still sees what it paid for", () => {
+    const models = decorateModels(MODELS as never, PLANS as never, "pro", true);
+    expect(models.find((m) => m.id === "gated")?.locked).toBe(false);
+  });
+});

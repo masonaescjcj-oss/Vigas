@@ -67,7 +67,12 @@ export const ProfileMainScreen = () => {
           {/* Subscription status. The raw tier used to be printed here, which
               said the same thing to someone who never subscribed as to someone
               whose plan lapsed yesterday — and offered neither of them a way
-              to fix it. */}
+              to fix it.
+
+              Hidden entirely while nothing is for sale: "Current Plan: FREE"
+              only means something against a paid alternative, and without one
+              it is a label that raises a question the app cannot answer. */}
+          {PURCHASES.canMentionPlans ? (
           <TouchableOpacity
             onPress={() => navigation.getParent()?.navigate("Paywall", {})}
             disabled={!plan.action || !canBuy}
@@ -93,7 +98,8 @@ export const ProfileMainScreen = () => {
               />
             ) : null}
           </TouchableOpacity>
-          {plan.detail ? (
+          ) : null}
+          {PURCHASES.canMentionPlans && plan.detail ? (
             <Text variant="caption" className="opacity-70 text-center mt-1.5 text-[11px]">
               {plan.detail}
             </Text>

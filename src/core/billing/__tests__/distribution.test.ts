@@ -99,3 +99,36 @@ describe("what a user who ran out is told", () => {
       .toContain("9am Tehran time");
   });
 });
+
+describe("when the product sells nothing", () => {
+  // Launching free: the checkout, plans and tier gating all still exist and are
+  // still tested, but no surface may offer them. This is the switch that does
+  // it, and it is checked before the platform rules on purpose.
+  it("closes the purchase route on every platform, web included", () => {
+    for (const platform of ["android", "ios", "web"]) {
+      for (const channel of ["play", "direct", "web", "ios-app-store", "unknown"] as const) {
+        const affordance = purchaseAffordance(platform, channel, false);
+        expect(affordance.canLinkOut, `${platform}/${channel}`).toBe(false);
+        expect(affordance.canMentionPlans, `${platform}/${channel}`).toBe(false);
+      }
+    }
+  });
+
+  it("does not dangle an upgrade that does not exist", () => {
+    const message = limitMessage(purchaseAffordance("web", "web", false), "midnight UTC");
+    expect(message.action).toBe(null);
+    expect(message.body).toContain("midnight UTC");
+    // The limit is simply the limit. Mentioning a plan nobody can buy is worse
+    // than the wait itself.
+    expect(message.body).not.toMatch(/plan|upgrade|subscri/i);
+  });
+
+  it("leaves the paid behaviour untouched when billing is on", () => {
+    // The default must stay what it was, or turning billing back on later is a
+    // second migration rather than a flag.
+    expect(purchaseAffordance("web", "web").canLinkOut).toBe(true);
+    expect(purchaseAffordance("android", "direct").canLinkOut).toBe(true);
+    expect(purchaseAffordance("android", "play").canLinkOut).toBe(false);
+    expect(purchaseAffordance("android", "play").canMentionPlans).toBe(true);
+  });
+});
