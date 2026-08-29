@@ -3,16 +3,27 @@
  * ---------------------------------------------------------------------------
  * Which credentials a run or a question should use.
  *
- * A user who has added their own provider pays for their own tokens, so theirs
- * wins. Everyone else gets the server's. The key is decrypted here, at the
- * moment of use, and returned to the caller — it is never written into a job
- * payload, a session row, or a log line, because those are all readable by
- * anything holding the service role.
+ * Three sources, in this order:
+ *
+ *   1. the user's own provider — they pay for their own tokens, so theirs wins
+ *   2. the platform key pool the admin panel manages
+ *   3. the server's environment
+ *
+ * Step 2 was missing. The admin panel wrote keys to `platform_providers` and
+ * poolClient.ts knew how to read them, but nothing connected the two: adding or
+ * changing a key in the panel had no effect on a build, which kept using
+ * OPENAI_API_KEY from the worker's environment. The panel looked like it worked
+ * and did nothing, which is worse than not having it.
+ *
+ * The key is decrypted here, at the moment of use, and returned to the caller —
+ * it is never written into a job payload, a session row, or a log line, because
+ * those are all readable by anything holding the service role.
  * ---------------------------------------------------------------------------
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { openSecret } from "./secretBox.ts";
+import { poolCandidates } from "./poolClient.ts";
 
 export interface ResolvedProvider {
   /** Absent means "use the server's configured provider". */
@@ -45,7 +56,7 @@ export async function resolveProvider(
   }
 
   const { data, error } = await query.order("created_at", { ascending: true }).limit(1);
-  if (error || !data || data.length === 0) return {};
+  if (error || !data || data.length === 0) return await resolvePlatformProvider(service);
 
   const row = data[0];
   try {
@@ -58,6 +69,35 @@ export async function resolveProvider(
   } catch {
     // Undecryptable (the encryption secret was rotated). Fall back rather than
     // stop the user working; provider-keys will report it when they next test.
+    return await resolvePlatformProvider(service);
+  }
+}
+
+/**
+ * The operator's own key, from the pool the admin panel manages.
+ *
+ * Highest-priority healthy key wins; `orderKeys` has already put exhausted and
+ * failing ones last. Only the first is returned because this is the resolution
+ * step — mid-request failover across the rest of the pool is poolClient's job
+ * and belongs where the request is actually made.
+ *
+ * An empty pool is the normal case for a fresh install, so it is not an error:
+ * the caller falls through to the environment.
+ */
+async function resolvePlatformProvider(service: SupabaseClient): Promise<ResolvedProvider> {
+  try {
+    const candidates = await poolCandidates(service);
+    const best = candidates[0];
+    if (!best) return {};
+    return {
+      apiKey: best.apiKey,
+      baseUrl: best.baseUrl,
+      model: best.model,
+      label: best.label,
+    };
+  } catch {
+    // The pool is a convenience over the environment key, never a reason to
+    // fail a run the user asked for.
     return {};
   }
 }
