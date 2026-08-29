@@ -45,7 +45,20 @@ export function isUpstreamOverloaded(message: string): boolean {
     m.includes("temporarily unavailable") ||
     m.includes("service unavailable") ||
     m.includes("timeout") ||
-    m.includes("timed out")
+    m.includes("timed out") ||
+    // Measured, and counter-intuitive: the configured gateway answers a
+    // momentary refusal with "insufficient_user_quota" and "剩余额度: ＄0.000000"
+    // — literally "remaining balance zero" — on an account with $98 left. The
+    // same key returns 200 seconds later.
+    //
+    // A genuine empty balance is not transient and no amount of retrying fixes
+    // it. But the cost of being wrong in that direction is bounded: a real
+    // out-of-credit fails after twenty minutes instead of one hundred seconds,
+    // while a spurious one recovers instead of killing a build that was going
+    // fine. The message cannot be trusted to tell the two apart, so the cheap
+    // mistake is the one to make.
+    m.includes("quota") ||
+    m.includes("额度")
   );
 }
 

@@ -97,3 +97,21 @@ Deno.test("only transient upstream errors get the long schedule", () => {
     assertEquals(isUpstreamOverloaded(message), true, message);
   }
 });
+
+Deno.test("the gateway's misleading quota error is retried, not believed", () => {
+  // Measured: the configured gateway answers a momentary refusal with
+  // "insufficient_user_quota" and a balance of $0.000000 on an account holding
+  // $98, and the same key returns 200 seconds later. Taking that at its word
+  // failed builds permanently on a transient condition.
+  const spurious = "用户额度不足, 剩余额度: ＄0.000000 (request id: 2026...)";
+  assertEquals(isUpstreamOverloaded(spurious), true, spurious);
+  assertEquals(isUpstreamOverloaded("insufficient_user_quota"), true);
+  assertEquals(retryDecision(4, spurious), { status: "pending", delaySeconds: 240 });
+
+  // Still ends, so a genuinely empty account fails in twenty minutes rather
+  // than never.
+  assertEquals(retryDecision(9, spurious), { status: "failed", delaySeconds: null });
+
+  // And a real mistake on our side is still not retried for twenty minutes.
+  assertEquals(retryDecision(4, "invalid api key").status, "failed");
+});
