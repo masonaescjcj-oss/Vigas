@@ -1665,43 +1665,51 @@ export const AgentChatScreen = () => {
           ) : (
             /* PURE WHITE LIGHT MODE WATERMARK CANVAS */
             <View className="flex-1 items-center justify-center select-none px-4 pb-28">
-              <View className="flex-row items-baseline justify-center mb-2">
-                <Text 
-                  style={{ 
-                    fontSize: 28, 
-                    fontWeight: isLight ? "600" : "300", 
-                    color: colors.inkMuted, 
-                    fontFamily: themeFonts.uiBold,
-                    letterSpacing: -1
+              {/* One wordmark, not a logo and a badge.
+                  "pro" was brand turquoise at a different weight and size, so it
+                  read as a sticker attached to the name and pulled the eye to
+                  the loudest thing on an otherwise empty screen. It is a tier
+                  label: same size, same weight, one step lighter in colour, and
+                  it recedes into the mark the way it should. */}
+              <View className="flex-row items-baseline justify-center">
+                <Text
+                  style={{
+                    fontSize: 30,
+                    fontWeight: "400",
+                    color: colors.inkSecondary,
+                    fontFamily: themeFonts.uiRegular,
+                    letterSpacing: -0.6,
                   } as any}
                 >
                   retro code
                 </Text>
-                <Text 
-                  style={{ 
-                    fontSize: 22, 
-                    fontWeight: isLight ? "700" : "400", 
-                    color: colors.brandPrimary, 
-                    fontFamily: themeFonts.uiBold,
-                    marginLeft: 6
+                <Text
+                  style={{
+                    fontSize: 30,
+                    fontWeight: "400",
+                    color: colors.inkMuted,
+                    fontFamily: themeFonts.uiRegular,
+                    letterSpacing: -0.6,
+                    marginLeft: 8,
                   } as any}
                 >
                   pro
                 </Text>
               </View>
 
-              <Text 
-                style={{ 
-                  fontSize: 10, 
-                  fontWeight: "600", 
-                  color: colors.inkMuted, 
-                  fontFamily: themeFonts.mono,
-                  letterSpacing: 3,
-                  textTransform: "uppercase",
-                  opacity: 0.8
+              {/* The strapline was letterspaced monospace caps — three
+                  competing signals for a line nobody reads twice. Only the
+                  mode is worth saying, and only quietly. */}
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: colors.inkMuted,
+                  fontFamily: themeFonts.ui,
+                  marginTop: 10,
+                  opacity: 0.7,
                 } as any}
               >
-                {activeMode === "build" ? "AI AGENT CODING & BUILDER SPACE" : "ASK ABOUT CODE — NO FILES TOUCHED"}
+                {activeMode === "build" ? "Describe what to build" : "Ask about your code"}
               </Text>
             </View>
           )
@@ -3421,17 +3429,22 @@ export const AgentChatScreen = () => {
             </View>
 
             {/* Header Row */}
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-baseline">
-                <Text style={{ color: textPrimary }} className="text-lg font-bold mr-2">Models</Text>
-                <Text style={{ color: textSecondary }} className="text-xs font-medium">Best AI Engines</Text>
+            <View className="flex-row items-center justify-between mb-3">
+              <View>
+                <Text style={{ color: textPrimary }} className="text-lg font-bold">Model</Text>
+                {/* Was "Best AI Engines" beside the title, which is marketing
+                    and says nothing. This is the one thing a person needs to
+                    know before choosing. */}
+                <Text style={{ color: textSecondary }} className="text-xs mt-0.5">
+                  Used for every build in this chat
+                </Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowModelsModal(false)}
-                style={{ backgroundColor: colors.surfaceMuted }}
-                className="w-7 h-7 rounded-full items-center justify-center border border-slate-200/50"
+                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
+                className="w-8 h-8 rounded-full items-center justify-center border"
               >
-                <VectorIcon name="x" size={13} color={colors.inkSecondary} />
+                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -3470,54 +3483,100 @@ export const AgentChatScreen = () => {
                     activeOpacity={0.9}
                     style={{
                       backgroundColor: colors.surfaceMuted,
-                      borderColor: isSelected ? colors.borderHairline : colors.surfaceMuted,
+                      // Selection was a hairline the same weight as the unselected
+                      // border, so the chosen row looked like the others. The
+                      // brand colour is the only thing that reads at a glance.
+                      borderColor: isSelected ? colors.brandPrimary : "transparent",
+                      opacity: model.locked ? 0.65 : 1,
                     }}
-                    className="mb-2 p-3 rounded-2xl transition-all border"
+                    className="mb-2 px-3 py-2.5 rounded-2xl border"
                   >
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center flex-1 mr-2">
+                    <View className="flex-row items-center">
+                      {/* The icon carries the row. Loose on the background it
+                          read as decoration; in a tinted tile it anchors the
+                          line and gives the name something to sit against. */}
+                      <View
+                        className="w-8 h-8 rounded-xl items-center justify-center mr-3"
+                        style={{
+                          backgroundColor: model.locked
+                            ? colors.surfaceStrong
+                            : `${colors[model.tone]}1F`,
+                        }}
+                      >
                         <VectorIcon
                           name={model.locked ? "lock" : model.icon}
                           size={15}
-                          color={model.locked ? colors.inkSecondary : colors[model.tone]}
-                          style={{ marginRight: 8 }}
+                          color={model.locked ? colors.inkMuted : colors[model.tone]}
                         />
-                        <Text
-                          style={{ color: model.locked ? textSecondary : textPrimary }}
-                          className="text-sm font-semibold mr-2"
-                          numberOfLines={1}
-                        >
-                          {model.name}
-                        </Text>
+                      </View>
 
-                        {/* Free or the plan it needs — the admin's min_tier, in words. */}
-                        <View
-                          className="px-1.5 py-0.5 rounded mr-1"
-                          style={{
-                            backgroundColor: model.minTier
-                              ? `${colors.warning}26`
-                              : `${colors.success}26`,
-                          }}
-                        >
+                      <View className="flex-1 mr-2">
+                        <View className="flex-row items-center">
                           <Text
-                            style={{ color: model.minTier ? colors.warning : colors.success }}
-                            className="text-[9px] font-mono uppercase"
+                            style={{ color: model.locked ? textSecondary : textPrimary }}
+                            className="text-sm font-semibold mr-2"
+                            numberOfLines={1}
                           >
-                            {model.badge}
+                            {model.name}
                           </Text>
-                        </View>
 
-                        {model.isDefault && (
-                          <View className="bg-sky-500/20 px-1.5 py-0.5 rounded">
-                            <Text style={{ color: colors.brandPrimary }} className="text-[9px] font-mono uppercase">
-                              default
+                          {/* Solid, not a 15%-opacity wash: at this size a tint
+                              reads as a smudge. Small and filled is legible;
+                              large and faint is only large. */}
+                          <View
+                            className="rounded-full mr-1"
+                            style={{
+                              backgroundColor: model.minTier ? colors.warning : colors.success,
+                              // Explicit rather than a padding class: the badge
+                              // is meant to be the smallest legible thing on the
+                              // row, and Tailwind's steps are too coarse there.
+                              paddingHorizontal: 4,
+                              paddingVertical: 1,
+                            }}
+                          >
+                            <Text
+                              // Solid accent behind it, so the text takes the
+                              // canvas colour rather than the accent. No letter
+                              // spacing — at 8px it only makes the pill wider.
+                              style={{ color: colors.canvasBase }}
+                              className="text-[8px] font-uiSemiBold uppercase"
+                            >
+                              {model.badge}
                             </Text>
                           </View>
-                        )}
+
+                          {/* Secondary information, so an outline rather than a
+                              second solid block competing with the first. */}
+                          {model.isDefault && (
+                            <View
+                              className="rounded-full border"
+                              style={{
+                                borderColor: colors.borderHairline,
+                                paddingHorizontal: 4,
+                                paddingVertical: 1,
+                              }}
+                            >
+                              <Text
+                                style={{ color: colors.inkMuted }}
+                                className="text-[8px] font-uiSemiBold uppercase"
+                              >
+                                default
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Text
+                          style={{ color: textSecondary }}
+                          className="text-xs mt-0.5 text-left"
+                          numberOfLines={1}
+                        >
+                          {model.description}
+                        </Text>
                       </View>
 
                       {isSelected && !model.locked && (
-                        <VectorIcon name="check" size={15} color={colors.brandPrimary} />
+                        <VectorIcon name="check" size={16} color={colors.brandPrimary} />
                       )}
                       {model.locked && (
                         <Text style={{ color: colors.warning }} className="text-[10px] font-uiSemiBold">
@@ -3526,9 +3585,6 @@ export const AgentChatScreen = () => {
                       )}
                     </View>
 
-                    <Text style={{ color: textSecondary }} className="text-xs mt-1 pl-6 opacity-90 text-left">
-                      {model.description}
-                    </Text>
                   </TouchableOpacity>
                 );
               })}
