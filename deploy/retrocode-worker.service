@@ -1,0 +1,45 @@
+[Unit]
+Description=Retro Code agent queue worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/retrocode
+EnvironmentFile=/opt/retrocode/.env
+# Runs as root because it uses systemd-run to drop to the sandbox user, and
+# chowns each sandbox directory over to it. The commands themselves never run
+# as root - see systemdProvider.ts.
+# --min-dep-age=0 because deno.lock is the stronger control here. The age
+# policy guards against pulling a freshly published - possibly compromised -
+# version during resolution; the lockfile pins exact versions with integrity
+# hashes, so nothing is being resolved. With both on they contradict: the lock
+# asks for a version the policy hides, and startup fails outright.
+ExecStart=/opt/deno/bin/deno run --allow-all --min-dep-age=0 --env-file=/opt/retrocode/.env /opt/retrocode/server-worker.ts
+
+# The worker itself is capped too. This box has 1.9G and three other backends
+# on it; a leak here must not be what takes them down.
+MemoryMax=400M
+CPUQuota=80%
+
+Restart=always
+RestartSec=5
+# Long enough to finish the job in hand. A killed run leaves the job locked
+# until the stale-lease sweep releases it, and the user sees a build that
+# stopped for no reason.
+#
+# Was 120. A real build was measured at 263s, so every deploy killed whatever
+# was running: systemd waited two minutes, gave up, and SIGKILLed the worker
+# mid-job. Observed in the journal as "Failed with result 'timeout'".
+#
+# 600 because that is the queue's stale-lease window. Waiting longer buys
+# nothing - past it the job is reclaimable anyway.
+TimeoutStopSec=600
+KillSignal=SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=retrocode-worker
+
+[Install]
+WantedBy=multi-user.target

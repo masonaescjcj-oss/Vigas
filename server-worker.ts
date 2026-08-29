@@ -44,8 +44,14 @@ function log(message: string): void {
  * Stop taking work, then wait for the current job.
  *
  * A killed run leaves a job locked until the stale-lease sweep releases it, and
- * the user sees a build that stopped for no reason. Finishing takes seconds;
- * systemd's TimeoutStopSec is set well above that.
+ * the user sees a build that stopped for no reason.
+ *
+ * "Finishing takes seconds" is what this comment used to say, and it was wrong
+ * by an order of magnitude: a real build was measured at 263 seconds. With
+ * TimeoutStopSec at 120, every deploy killed whatever was running — systemd
+ * waited, gave up, and SIGKILLed the worker mid-job. It is 600 now, matching
+ * the queue's stale-lease window, and the unit lives in deploy/ rather than
+ * only on the server.
  */
 function shutdown(signal: string): void {
   if (!running) return;
