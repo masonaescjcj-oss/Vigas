@@ -27,6 +27,7 @@ import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
+import { enforceQuota, planQuota, recordQuotaEvent } from "../shared/quota.ts";
 import { OpenAIChatModel, assertProjectOwner, resolveRequestedModel } from "../shared/agentRuntime.ts";
 import { recordUsage, tierOf } from "../shared/usage.ts";
 import { resolveProvider } from "../shared/resolveProvider.ts";
@@ -173,8 +174,15 @@ export async function handler(req: Request): Promise<Response> {
     const input = await parseJson(req, AgentAskSchema);
     const service = createServiceClient();
     await enforceRateLimit(service, "agent-ask", user.id, 20, 60);
-    // Questions are unmetered on purpose: they cost tokens and nothing else,
-    // and a chat that stops mid-thought is a worse product than a cheap one.
+
+    // Questions used to be unmetered — they cost tokens and nothing else, and a
+    // chat that stops mid-thought is a worse product than a cheap one. That
+    // holds right up until the app is public and the tokens are on one key
+    // anybody can spend. The burst limit above stops a fast script; it does
+    // nothing about a patient one.
+    const tier = await tierOf(service, user.id);
+    const quota = await planQuota(service, tier);
+    await enforceQuota(service, user.id, "chat", quota);
 
     const stored = !!input.projectId;
     let sessionId: string | null = null;
@@ -198,7 +206,7 @@ export async function handler(req: Request): Promise<Response> {
     const credentials = await resolveProvider(service, user.id);
     // Chat is unlimited but not un-gated: a premium model costs the same here as
     // it does in Build, so the same catalogue check applies.
-    const chosen = await resolveRequestedModel(service, input.model, await tierOf(service, user.id));
+    const chosen = await resolveRequestedModel(service, input.model, tier);
     const model = new OpenAIChatModel(chosen, credentials);
     const result = await model.generate({
       systemPrompt: [
@@ -222,6 +230,10 @@ export async function handler(req: Request): Promise<Response> {
     const { text, followUps } = splitFollowUps(result.text ?? "");
 
     if (sessionId) await appendTurns(service, sessionId, input.prompt, text);
+
+    // Charged for an answer, not for an attempt: a question the model failed
+    // to answer should not use up part of the allowance.
+    await recordQuotaEvent(service, user.id, "chat");
 
     // Token counts are aggregate numbers, not conversation content — metering
     // them keeps quotas honest without recording anything that was said.

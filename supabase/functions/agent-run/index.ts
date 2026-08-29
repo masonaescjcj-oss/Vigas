@@ -5,7 +5,8 @@ import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { assertProjectOwner, ensureSession, resolveRequestedModel } from "../shared/agentRuntime.ts";
-import { checkBuildQuota } from "../shared/usage.ts";
+import { tierOf } from "../shared/usage.ts";
+import { enforceQuota, planQuota, recordQuotaEvent } from "../shared/quota.ts";
 
 export async function handler(req: Request): Promise<Response> {
   const requestId = crypto.randomUUID();
@@ -19,9 +20,15 @@ export async function handler(req: Request): Promise<Response> {
     const service = createServiceClient();
     await enforceRateLimit(service, "agent-run", user.id, 5, 60);
     const project = await assertProjectOwner(service, user.id, input.projectId);
-    // Build occupies a worker and a sandbox, which we pay for however the
+    // A build occupies a worker and a sandbox, which we pay for however the
     // model was billed — so this limit applies even with the user's own key.
-    const tier = await checkBuildQuota(service, user.id);
+    //
+    // Counted here rather than from job_queue because a large build hands
+    // itself on to continuation jobs: counting rows would charge someone four
+    // builds for asking once. This endpoint is only ever called by a person.
+    const tier = await tierOf(service, user.id);
+    const quota = await planQuota(service, tier);
+    await enforceQuota(service, user.id, "build", quota);
     // Resolved here, not in the worker: a model the caller may not use has to
     // be refused while there is still a request to answer, so the app can send
     // them to the paywall instead of surfacing a failed run minutes later.
@@ -67,6 +74,12 @@ export async function handler(req: Request): Promise<Response> {
       throw new AppError(409, "AGENT_BUSY", "This chat already has a run in progress — wait for it to finish.");
     }
     if (error || !job) throw error ?? new Error("Unable to enqueue agent job.");
+
+    // After the job is safely queued, so a run that was refused — for a busy
+    // chat, a bad project, anything above — is not charged to the allowance
+    // that refused it.
+    await recordQuotaEvent(service, user.id, "build");
+
     return json({ accepted: true, session_id: sessionId, job_id: job.id, status: job.status, created_at: job.created_at }, 202, headers);
   } catch (error) {
     return errorResponse(error, requestId, headers);
