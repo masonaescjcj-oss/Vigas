@@ -8,7 +8,9 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://qnrsiukutehcqjhmpuze.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://jasgepmskcsyvqoesocc.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_m-HAN3dCgDJpgQ_L3WO1hQ_y1CWihK9",
+        "EXPO_PUBLIC_DISTRIBUTION": "direct"
       }
     },
     "preview": {
@@ -17,7 +19,9 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://qnrsiukutehcqjhmpuze.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://jasgepmskcsyvqoesocc.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_m-HAN3dCgDJpgQ_L3WO1hQ_y1CWihK9",
+        "EXPO_PUBLIC_DISTRIBUTION": "direct"
       }
     },
     "production": {
@@ -26,7 +30,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://qnrsiukutehcqjhmpuze.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://jasgepmskcsyvqoesocc.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_m-HAN3dCgDJpgQ_L3WO1hQ_y1CWihK9",
+        "EXPO_PUBLIC_DISTRIBUTION": "play"
       }
     }
   },
