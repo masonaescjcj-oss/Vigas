@@ -144,3 +144,37 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     },
   ],
 };
+
+/** One piece of a line: plain text, or text that should be emphasised. */
+export interface RichSpan {
+  text: string;
+  bold: boolean;
+}
+
+/**
+ * Split a document line into spans.
+ *
+ * `**bold**` is the only markup these documents use, and it is interpreted in
+ * three places — the in-app screen, the generated HTML, and any future export.
+ * One definition, so they cannot disagree about what a line means.
+ */
+export function splitRich(line: string): RichSpan[] {
+  return line
+    .split(/(\*\*[^*]+\*\*)/g)
+    .filter((part) => part.length > 0)
+    .map((part) =>
+      part.startsWith("**") && part.endsWith("**") && part.length > 4
+        ? { text: part.slice(2, -2), bold: true }
+        : { text: part, bold: false },
+    );
+}
+
+/** True for a line the reader should see as a bullet. */
+export function isBullet(line: string): boolean {
+  return line.startsWith("- ");
+}
+
+/** A bullet line without its marker; any other line unchanged. */
+export function bulletText(line: string): string {
+  return isBullet(line) ? line.slice(2) : line;
+}

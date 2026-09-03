@@ -15,20 +15,26 @@ import { View, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
-import type { LegalDocument } from "../../core/legal/documents";
+import { bulletText, isBullet, splitRich, type LegalDocument } from "../../core/legal/documents";
 
-/** Renders **bold** spans, which is the only markup the documents use. */
+/**
+ * Renders one line's spans.
+ *
+ * The splitting itself lives in core/legal/documents, because the same markup
+ * is interpreted by the static-page generator too — and two readings of
+ * "**bold**" that disagree would put different text in the published policy
+ * and the one users see in the app.
+ */
 function RichLine({ line }: { line: string }) {
-  const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
   return (
     <Text variant="body" className="text-left leading-6">
-      {parts.map((part, i) =>
-        part.startsWith("**") && part.endsWith("**") ? (
+      {splitRich(line).map((span, i) =>
+        span.bold ? (
           <Text key={i} variant="body" className="font-uiSemiBold leading-6">
-            {part.slice(2, -2)}
+            {span.text}
           </Text>
         ) : (
-          part
+          span.text
         )
       )}
     </Text>
@@ -67,12 +73,12 @@ export function LegalDocumentScreen({ document }: { document: LegalDocument }) {
               {section.heading}
             </Text>
             {section.body.map((line, i) => (
-              <View key={i} className={line.startsWith("- ") ? "flex-row mt-1.5" : "mt-1.5"}>
-                {line.startsWith("- ") ? (
+              <View key={i} className={isBullet(line) ? "flex-row mt-1.5" : "mt-1.5"}>
+                {isBullet(line) ? (
                   <>
                     <Text variant="body" className="leading-6 mr-2">•</Text>
                     <View className="flex-1">
-                      <RichLine line={line.slice(2)} />
+                      <RichLine line={bulletText(line)} />
                     </View>
                   </>
                 ) : (
