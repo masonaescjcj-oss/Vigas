@@ -49,7 +49,9 @@ export const PRIVACY_POLICY: LegalDocument = {
         "- **Your account.** An email address and a password you choose. The password is stored hashed by our authentication provider; we never see it.",
         "- **Your projects.** The files the agent writes for you, and the conversation that produced them.",
         "- **Usage counts.** How many builds and messages you have sent, and roughly how many tokens they cost. Counts only — never the content of a message.",
-        "- **Crash and error reports.** Technical details of a failure, so it can be fixed.",
+        "- **Which features you use.** The name of an action you took — a build started, a project exported — with your account, your platform and the app version. The list of what may be recorded is fixed in the app; a value that is not on it is discarded rather than sent.",
+        "- **A notification token,** if you turn notifications on. It identifies the device, not you, and it is removed when you turn them off or delete your account.",
+        "- **Server error reports.** When something fails on our side, the failure and the request that caused it are recorded so it can be fixed. The app itself does not send crash reports.",
       ],
     },
     {
@@ -72,7 +74,8 @@ export const PRIVACY_POLICY: LegalDocument = {
       heading: "How long we keep it",
       body: [
         "Projects and conversations are kept until you delete them or delete your account.",
-        "Usage counts are pruned after seven days; they exist only to enforce the daily allowance.",
+        "Usage counts are pruned after seven days; they exist only to enforce the allowance.",
+        "Feature-use records and server error reports are kept while they are still useful for finding problems, and are not used to build a profile of you.",
       ],
     },
     {
