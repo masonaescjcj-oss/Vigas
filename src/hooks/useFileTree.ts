@@ -14,7 +14,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProjectFiles } from "../services/fileService";
-import { buildFileTree } from "../services/fileTree";
+import { buildFileTree, type FileNode } from "../services/fileTree";
 
 export type { FileNode } from "../services/fileTree";
 
@@ -46,7 +46,11 @@ export const useFileTree = (projectId: string) => {
   };
 
   return {
-    tree: fileTreeQuery.data || [],
+    // Annotated rather than inferred: the type survives a round trip through
+    // react-query's generics on some TypeScript versions and not others, and
+    // when it does not, every caller's `.map((node) => …)` silently becomes
+    // `any`. Saying it here fixes both screens at the source.
+    tree: (fileTreeQuery.data ?? []) as FileNode[],
     isLoading: fileTreeQuery.isLoading,
     error: fileTreeQuery.error,
     expandedFolders,

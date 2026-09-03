@@ -35,12 +35,12 @@
     "nativewind": "^2.0.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-native": "0.74.1",
-    "react-native-safe-area-context": "4.10.1",
+    "react-native": "0.74.5",
+    "react-native-safe-area-context": "4.10.5",
     "react-native-screens": "3.31.1",
-    "react-native-svg": "^15.15.5",
+    "react-native-svg": "15.2.0",
     "react-native-web": "~0.19.10",
-    "react-native-webview": "^14.0.1",
+    "react-native-webview": "13.8.6",
     "sucrase": "^3.35.1",
     "zod": "^3.24.2",
     "zustand": "^4.5.2"
@@ -52,7 +52,7 @@
     "autoprefixer": "^10.5.4",
     "deno": "^2.9.3",
     "tailwindcss": "3.3.2",
-    "typescript": "^5.6.0",
+    "typescript": "~5.3.3",
     "vitest": "^2.1.0"
   }
 }
