@@ -22,6 +22,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const DIST = process.argv[2] ?? "dist-web";
 
@@ -188,7 +189,12 @@ const vercel = {
       // Double backslashes: this is a JS string literal, so "\\." puts a real
       // \. in the emitted JSON. Written "\." it collapses to a bare dot, which
       // matches any character — harmless here, but not what it claims.
-      source: "/((?!_expo/|assets/|icons/|fonts/|fonts\\.css|manifest\\.webmanifest|sw\\.js|favicon\\.ico|metadata\\.json).*)",
+      //
+      // privacy and terms are excluded because they are real static files, not
+      // routes. Left in, the fallback served index.html and the router — which
+      // has no such screen — dropped the visitor on onboarding. Google Play
+      // requires a policy URL that opens the policy, so that was a blocker.
+      source: "/((?!_expo/|assets/|icons/|fonts/|fonts\\.css|manifest\\.webmanifest|sw\\.js|favicon\\.ico|metadata\\.json|privacy|terms).*)",
       destination: "/index.html",
     },
   ],
@@ -218,6 +224,11 @@ const vercel = {
   ],
 };
 writeFileSync(join(DIST, "vercel.json"), JSON.stringify(vercel, null, 2));
+
+// The store listing needs a privacy policy at a URL that opens the policy, and
+// this is the step that already runs after every web export — so it happens
+// here rather than in a second command somebody has to remember.
+execFileSync(process.execPath, ["scripts/make-legal-pages.mjs", DIST], { stdio: "inherit" });
 
 // An empty ignore file, and it has to exist.
 //
