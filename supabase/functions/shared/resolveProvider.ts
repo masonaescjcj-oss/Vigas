@@ -86,7 +86,12 @@ export async function resolveProvider(
  */
 async function resolvePlatformProvider(service: SupabaseClient): Promise<ResolvedProvider> {
   try {
-    const candidates = await poolCandidates(service);
+    // restedOnly: a run takes the first candidate and never revisits the pool,
+    // so a key inside its cool-down must be skipped rather than ranked last.
+    // Otherwise one bad key an operator pasted in becomes the only key, and
+    // every user is stuck behind it until somebody notices. Falling through to
+    // the server's own key is the whole point of having one.
+    const candidates = await poolCandidates(service, true);
     const best = candidates[0];
     if (!best) return {};
     return {

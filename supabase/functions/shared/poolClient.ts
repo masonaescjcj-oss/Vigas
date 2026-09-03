@@ -15,7 +15,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { classifyFailure, nextHealth, orderKeys, type PoolKey } from "./keyPool.ts";
+import { classifyFailure, isRested, nextHealth, orderKeys, type PoolKey } from "./keyPool.ts";
 import { openSecret } from "./secretBox.ts";
 import { AppError } from "./errorHandler.ts";
 
@@ -31,7 +31,20 @@ const POOL_COLUMNS =
   "id,label,base_url,key_cipher,model,priority,is_active,last_used_at,exhausted_at,failure_count";
 
 /** The keys to try, best first. Empty when the pool is empty or unusable. */
-export async function poolCandidates(service: SupabaseClient): Promise<PoolCredentials[]> {
+/**
+ * @param restedOnly Drop keys still inside their cool-down instead of merely
+ *                   ranking them last. For a caller that will try every
+ *                   candidate in turn, a tired key at the back of the queue
+ *                   costs one failed attempt. For a caller that takes only the
+ *                   first — which is how a run picks its credentials — it is
+ *                   the difference between falling back to the server's own key
+ *                   and stranding every user behind one bad key an operator
+ *                   pasted in.
+ */
+export async function poolCandidates(
+  service: SupabaseClient,
+  restedOnly = false,
+): Promise<PoolCredentials[]> {
   const { data, error } = await service
     .from("platform_providers")
     .select(POOL_COLUMNS)
@@ -40,9 +53,11 @@ export async function poolCandidates(service: SupabaseClient): Promise<PoolCrede
   // caller falls back to the environment's key.
   if (error || !data?.length) return [];
 
-  const ordered = orderKeys(data as unknown as PoolKey[], Date.now());
+  const now = Date.now();
+  const ordered = orderKeys(data as unknown as PoolKey[], now);
   const usable: PoolCredentials[] = [];
   for (const row of ordered) {
+    if (restedOnly && !isRested(row, now)) continue;
     try {
       usable.push({
         apiKey: await openSecret(String(row.key_cipher)),

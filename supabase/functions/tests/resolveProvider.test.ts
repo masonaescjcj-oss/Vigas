@@ -125,3 +125,74 @@ Deno.test("an undecryptable pool key does not take the run down with it", async 
   const resolved = await resolveProvider(client, "nobody");
   assertEquals(resolved.apiKey, undefined);
 });
+
+Deno.test("a broken key in the panel does not strand every user", async () => {
+  // The failure this closes: an operator pastes a key that does not work. The
+  // probe marks it exhausted, but ranking it last is no help when it is the
+  // only one — a run takes the first candidate and never looks again. Falling
+  // through to the server's own key is the entire reason there is one.
+  const { client } = fakeService({
+    user_providers: [],
+    platform_providers: [{
+      id: "pool-dead",
+      label: "Typo'd key",
+      base_url: "https://api.example.com/v1",
+      key_cipher: await sealSecret("sk-does-not-work"),
+      model: null,
+      priority: 100,
+      is_active: true,
+      last_used_at: null,
+      // Marked bad a moment ago, so still inside its cool-down.
+      exhausted_at: new Date().toISOString(),
+      failure_count: 3,
+    }],
+  });
+
+  const resolved = await resolveProvider(client, "some-user");
+  assertEquals(resolved.apiKey, undefined, "should fall through to the environment");
+});
+
+Deno.test("a key that has rested is tried again", async () => {
+  // Exhausted is a cool-down, not a tombstone: an operator who tops up should
+  // not have to touch the panel for the key to come back.
+  const { client } = fakeService({
+    user_providers: [],
+    platform_providers: [{
+      id: "pool-recovered",
+      label: "Topped up",
+      base_url: "https://api.example.com/v1",
+      key_cipher: await sealSecret("sk-works-again"),
+      model: null,
+      priority: 100,
+      is_active: true,
+      last_used_at: null,
+      exhausted_at: new Date(Date.now() - 24 * 3600_000).toISOString(),
+      failure_count: 1,
+    }],
+  });
+
+  const resolved = await resolveProvider(client, "some-user");
+  assertEquals(resolved.apiKey, "sk-works-again");
+});
+
+Deno.test("a deactivated key is never used", async () => {
+  // The operator switched it off. That is not a cool-down.
+  const { client } = fakeService({
+    user_providers: [],
+    platform_providers: [{
+      id: "pool-off",
+      label: "Switched off",
+      base_url: "https://api.example.com/v1",
+      key_cipher: await sealSecret("sk-disabled"),
+      model: null,
+      priority: 100,
+      is_active: false,
+      last_used_at: null,
+      exhausted_at: null,
+      failure_count: 0,
+    }],
+  });
+
+  const resolved = await resolveProvider(client, "some-user");
+  assertEquals(resolved.apiKey, undefined);
+});
