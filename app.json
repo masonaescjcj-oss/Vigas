@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "app.retrocode.pro",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0E0F0F"

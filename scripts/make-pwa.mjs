@@ -171,6 +171,24 @@ if (!html.includes("manifest.webmanifest")) {
   writeFileSync(join(DIST, "index.html"), html);
 }
 
+// From the environment if the caller exported it, otherwise from .env, which
+// is where it lives for every other command in this project. Reading it here
+// rather than demanding it means `node scripts/make-pwa.mjs` keeps working the
+// way it always has.
+function supabaseUrl() {
+  if (process.env.EXPO_PUBLIC_SUPABASE_URL) return process.env.EXPO_PUBLIC_SUPABASE_URL;
+  try {
+    const line = readFileSync(".env", "utf8")
+      .split(/\r?\n/)
+      .find((l) => l.startsWith("EXPO_PUBLIC_SUPABASE_URL="));
+    return line ? line.slice("EXPO_PUBLIC_SUPABASE_URL=".length).trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+const SUPABASE_URL = supabaseUrl();
+
 /* ---- host config --------------------------------------------------------- */
 
 // Written into the output rather than the repo root, because the deployable
@@ -180,6 +198,12 @@ if (!html.includes("manifest.webmanifest")) {
 const vercel = {
   $schema: "https://openapi.vercel.sh/vercel.json",
   rewrites: [
+    // Ahead of the fallback, because the first match wins. shareUrl() builds
+    // /share-page/<code>, so that is the path a link already carries — this
+    // sends it to the proxy rather than to the app shell.
+    ...(SUPABASE_URL
+      ? [{ source: "/share-page/:code", destination: "/api/share?code=:code" }]
+      : []),
     {
       // React Navigation writes real paths (/Onboarding, /AgentTab), but this
       // is one index.html. Without the fallback every refresh and every shared
@@ -194,7 +218,7 @@ const vercel = {
       // routes. Left in, the fallback served index.html and the router — which
       // has no such screen — dropped the visitor on onboarding. Google Play
       // requires a policy URL that opens the policy, so that was a blocker.
-      source: "/((?!_expo/|assets/|icons/|fonts/|fonts\\.css|manifest\\.webmanifest|sw\\.js|favicon\\.ico|metadata\\.json|privacy|terms).*)",
+      source: "/((?!_expo/|assets/|icons/|fonts/|fonts\\.css|manifest\\.webmanifest|sw\\.js|favicon\\.ico|metadata\\.json|privacy|terms|api/|share-page/).*)",
       destination: "/index.html",
     },
   ],
@@ -241,13 +265,19 @@ execFileSync(process.execPath, ["scripts/make-legal-pages.mjs", DIST], { stdio: 
 // forwards to the function. It is a proxy on purpose: the share content, its
 // expiry and its revocation all stay in one place, and this only fixes what
 // Supabase will not let that place say about itself.
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-if (!SUPABASE_URL) {
-  console.error("EXPO_PUBLIC_SUPABASE_URL is not set — the share proxy would forward nowhere.");
-  process.exit(1);
-}
 
-mkdirSync(join(DIST, "api"), { recursive: true });
+
+// Skipped rather than fatal: the manifest, the service worker and the legal
+// pages are what this script exists for, and a build should not die because an
+// optional proxy has nowhere to point. Loud, though — a silent skip would mean
+// share links stay broken with nobody the wiser.
+if (!SUPABASE_URL) {
+  console.warn(
+    "! EXPO_PUBLIC_SUPABASE_URL not found — share proxy not generated.\n" +
+      "  Share links will keep serving text/plain from Supabase and render as source.",
+  );
+} else {
+  mkdirSync(join(DIST, "api"), { recursive: true });
 writeFileSync(
   join(DIST, "api", "share.mjs"),
   `/*
@@ -288,6 +318,7 @@ export default async function handler(request, response) {
 }
 `,
 );
+}
 
 // An empty ignore file, and it has to exist.
 //
