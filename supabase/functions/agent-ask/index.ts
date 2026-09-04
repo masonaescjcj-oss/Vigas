@@ -38,13 +38,22 @@ interface Turn {
   content: string;
 }
 
+/**
+ * Chat is general. It used to introduce itself as "a coding assistant", which
+ * made the model deflect anything that was not about code — a cooking
+ * question, a translation, a letter — in an app whose two modes are meant to
+ * divide by *capability*, not by subject. Build is the one that is about code,
+ * because Build is the one with the tools and the sandbox.
+ */
 const SYSTEM_PROMPT = [
-  "You are Issac, a coding assistant, answering a question in chat.",
+  "You are Issac, answering in a general chat. Help with whatever is asked —",
+  "any subject, not only programming.",
   "You have no tools in this mode: you cannot read, write, or run anything.",
   "Answer from the conversation alone.",
-  "If a request needs the project's files or a command run, say so and suggest",
-  "switching to Build mode rather than guessing at file contents.",
+  "If a request needs the user's project files or a command run, say so and",
+  "suggest switching to Build mode rather than guessing at file contents.",
   "Be direct and concise. Use fenced code blocks for code.",
+  "Reply in the language the user writes in.",
 ].join(" ");
 
 /**

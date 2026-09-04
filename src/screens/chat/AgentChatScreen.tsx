@@ -188,7 +188,10 @@ export const AgentChatScreen = () => {
   // --------------------------------------------------------------------------
   
   // Active Workspace Mode: 'chat' (General Q&A) vs 'build' (AI Agent IDE Workspace)
-  const [activeMode, setActiveMode] = useState<"chat" | "build">("build");
+  // Chat is the default: it answers anything and costs one call, where Build
+  // queues an agent run against a project. Opening on the heavier of the two
+  // asked every user to step down to the lighter one.
+  const [activeMode, setActiveMode] = useState<"chat" | "build">("chat");
   
   // Anonymous / Incognito Mode: When true, sessions are not logged or saved to database
   const [isIncognito, setIsIncognito] = useState(false);
@@ -1634,35 +1637,21 @@ export const AgentChatScreen = () => {
           ) : (
             /* PURE WHITE LIGHT MODE WATERMARK CANVAS */
             <View className="flex-1 items-center justify-center select-none px-4 pb-28">
-              {/* One wordmark, not a logo and a badge.
-                  "pro" was brand turquoise at a different weight and size, so it
-                  read as a sticker attached to the name and pulled the eye to
-                  the loudest thing on an otherwise empty screen. It is a tier
-                  label: same size, same weight, one step lighter in colour, and
-                  it recedes into the mark the way it should. */}
-              <View className="flex-row items-baseline justify-center">
-                <Text
-                  style={{
-                    fontSize: 30,
-                    fontWeight: "500",
-                    color: colors.inkPrimary,
-                    letterSpacing: -0.6,
-                  } as any}
-                >
-                  retro code
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 30,
-                    fontWeight: "500",
-                    color: colors.inkMuted,
-                    letterSpacing: -0.6,
-                    marginLeft: 8,
-                  } as any}
-                >
-                  pro
-                </Text>
-              </View>
+              {/* A watermark, not a headline. It names which of the two modes
+                  you are in — "retro" for chat, "retro build" for the agent —
+                  and it is set one step off the canvas so it sits behind the
+                  screen rather than on it. An empty screen's loudest element
+                  should not be the app telling you its own name. */}
+              <Text
+                style={{
+                  fontSize: 30,
+                  fontWeight: "500",
+                  color: colors.surfaceStrong,
+                  letterSpacing: -0.6,
+                } as any}
+              >
+                {activeMode === "build" ? "retro build" : "retro"}
+              </Text>
 
               {/* The strapline was letterspaced monospace caps — three
                   competing signals for a line nobody reads twice. Only the
@@ -1675,7 +1664,7 @@ export const AgentChatScreen = () => {
                   opacity: 0.7,
                 } as any}
               >
-                {activeMode === "build" ? "Describe what to build" : "Ask about your code"}
+                {activeMode === "build" ? "Describe what to build" : "Ask anything"}
               </Text>
 
               {activeMode === "build" ? (
@@ -2001,7 +1990,7 @@ export const AgentChatScreen = () => {
             value={inputText}
             onChangeText={handleInputChange}
             onSubmitEditing={() => void handleSend()}
-            placeholder={isIncognito ? "Ask in Incognito — nothing is saved..." : (activeMode === "build" ? "Ask or build... (Type @ for files, / for commands)" : "Ask a question — answers come straight back...")}
+            placeholder={isIncognito ? "Ask in Incognito — nothing is saved…" : (activeMode === "build" ? "Ask or build… (Type @ for files, / for commands)" : "Ask anything…")}
             placeholderTextColor={colors.inkMuted}
             className="w-full bg-transparent px-2 py-1 text-sm mb-3"
             style={{
