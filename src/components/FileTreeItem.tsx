@@ -31,9 +31,14 @@ interface FileTreeItemProps {
   level?: number;
 }
 
-/** Monochrome lucide names — the icon map has no emoji. */
-function iconFor(node: FileNode, isExpanded: boolean): string {
-  if (node.isDir) return isExpanded ? "chevron-down" : "chevron-right";
+/**
+ * Monochrome lucide names — the icon map has no emoji.
+ *
+ * A folder was drawn as a bare chevron, which says "this opens" but not "this
+ * is a folder"; the chevron is now a separate mark beside a folder icon.
+ */
+function iconFor(node: FileNode): string {
+  if (node.isDir) return "folder";
   switch (node.name.split(".").pop()?.toLowerCase()) {
     case "ts":
     case "tsx":
@@ -104,18 +109,20 @@ export const FileTreeItem: React.FC<FileTreeItemProps> = ({
         onPress={handlePress}
         onLongPress={handleLongPress}
         activeOpacity={0.7}
-        className="flex-row items-center py-2.5 px-4 border-b border-borderHairline/10"
+        className="flex-row items-center py-2.5 pr-4"
         style={{
           paddingLeft: 16 + level * 16, // Indent nested folder levels
+          borderBottomWidth: 1,
           borderBottomColor: colors.borderHairline,
         }}
       >
-        <View className="mr-2.5">
-          <Icon name={iconFor(node, isExpanded)} size={15} color={isDir ? colors.warning : colors.inkSecondary} />
-        </View>
-        <Text variant="body" className="flex-1 text-left font-uiRegular text-sm" numberOfLines={1}>
+        <Icon name={iconFor(node)} size={15} color={colors.inkSecondary} style={{ marginRight: 10 }} />
+        <Text variant="body" className="flex-1 text-left text-sm" numberOfLines={1}>
           {node.name}
         </Text>
+        {isDir ? (
+          <Icon name={isExpanded ? "chevron-down" : "chevron-right"} size={14} color={colors.inkMuted} />
+        ) : null}
       </TouchableOpacity>
 
       {/* Recursive children list */}

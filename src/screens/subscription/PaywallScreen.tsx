@@ -1,27 +1,39 @@
 /**
  * frontend/src/screens/subscription/PaywallScreen.tsx
  * ---------------------------------------------------------------------------
- * High-converting Paywall Screen:
- *   - Introduces value props (unlimited tokens, advanced model access).
- *   - Monthly/Yearly selection with highlighted savings.
- *   - Default pre-selected Yearly card (industry best practice).
+ * The plans, and the way to buy one.
+ *
+ * Nothing is for sale in this build — PURCHASES.canMentionPlans is false and
+ * nothing navigates here — but the route is registered, so it should look like
+ * the same app if a stale link reaches it.
+ *
+ * The pitch was a 52px brand sparkle over an "Access all Pro features"
+ * headline, a checklist with green ✓ characters, and an "X" letter in a circle
+ * for close. It is now a title, three lines, the plans as rows, one button.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, TouchableOpacity, ScrollView, SafeAreaView } from "react-native";
-import { Icon } from "../../components/Icon";
+import { View, ScrollView, SafeAreaView } from "react-native";
 import { type RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { RootStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
 import { PlanCard } from "../../components/PlanCard";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useSubscription } from "../../hooks/useSubscription";
 import { notify } from "../../services/notify";
 import { startCheckout } from "../../services/checkoutService";
 import { DISPLAY_PLANS } from "../../core/billing/plans";
 import { track } from "../../services/analytics";
+
+const INCLUDED = [
+  "No daily token cap",
+  "Every model in the picker, including the reasoning models",
+  "Longer agent runs before they are cut short",
+];
 
 export const PaywallScreen = () => {
   const { colors } = useTheme();
@@ -49,10 +61,6 @@ export const PaywallScreen = () => {
   React.useEffect(() => {
     track("paywall_seen", { reason: lockedModel ? "locked_model" : "browsed" });
   }, [lockedModel]);
-  // Close means close. This used to swallow the first dismissal to show a
-  // discount that existed in no store — a fabricated price, and a screen you
-  // could not leave on the first try.
-  const handleClose = () => navigation.goBack();
 
   const handlePurchase = async () => {
     const pkg = offerings.find((o) => o.id === selectedPkgId);
@@ -88,81 +96,63 @@ export const PaywallScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
-        
-        {/* Header Close button */}
-        <View className="flex-row justify-between items-center mb-6">
-          <TouchableOpacity onPress={handleClose} className="p-2 w-8 h-8 rounded-full items-center justify-center bg-surfaceRaised border border-borderHairline" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-            <Text variant="caption" className="font-uiSemiBold text-[12px]">X</Text>
-          </TouchableOpacity>
-          <Text variant="h3" className="font-uiSemiBold">Upgrade</Text>
-        </View>
-
-        {/* Visual Header */}
-        <View className="items-center mb-8">
-          <Icon name="sparkles" size={52} color={colors.brandPrimary} style={{ marginBottom: 16 }} />
-          <Text variant="h2" className="font-uiSemiBold text-center">
-            {/* Named when a specific model sent them here: someone who tapped
-                "DeepSeek Reasoner" is owed an answer about that model, not a
+      {/* Close means close. This used to swallow the first dismissal to show a
+          discount that existed in no store — a fabricated price, and a screen
+          you could not leave on the first try. */}
+      <ScreenHeader title="" divider={false} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40 }}>
+        <View className="mb-7 mt-2">
+          <Text variant="h1" className="font-uiSemiBold">
+            {/* Named when a specific model sent them here: someone who tapped a
+                reasoning model is owed an answer about that model, not a
                 generic pitch they have to translate. */}
-            {lockedModel ? `${lockedModel} needs ${requiredPlanName}` : "Access all Pro features"}
+            {lockedModel ? `${lockedModel} needs ${requiredPlanName}` : "Remove the limits"}
           </Text>
-          <Text variant="caption" className="text-center mt-2 opacity-80 leading-5 px-6">
+          <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
             {lockedModel
-              ? `Your plan does not include it yet. ${requiredPlanName} unlocks it along with everything below.`
-              : "Remove limits and code at the fastest speed."}
+              ? `Your plan does not include it yet. ${requiredPlanName} unlocks it, along with everything below.`
+              : "A paid plan lifts the daily cap and opens every model."}
           </Text>
         </View>
 
-        {/* Value features checklists */}
-        <View className="bg-surfaceRaised p-5 rounded-card border border-borderHairline mb-6 space-y-3" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-          {[
-            "No daily token cap",
-            "Every model in the picker, including the reasoning models",
-            "Longer agent runs before they are cut short",
-          ].map((feature) => (
-            <View key={feature} className="flex-row justify-start items-center mt-2">
-              <Text className="text-base text-green-500 mr-3">✓</Text>
-              <Text variant="body" className="font-uiMedium text-left flex-1">{feature}</Text>
+        <View className="mb-7">
+          {INCLUDED.map((feature) => (
+            <View key={feature} className="flex-row items-start mb-2.5">
+              <Icon name="check" size={16} color={colors.success} style={{ marginTop: 3, marginRight: 12 }} />
+              <Text variant="body" className="flex-1" style={{ lineHeight: 22 }}>{feature}</Text>
             </View>
           ))}
         </View>
 
-        {/* Plan Cards list */}
-        <View className="mb-6">
-          {plans.map((pkg) => (
-            <PlanCard
-              key={pkg.id}
-              title={pkg.title}
-              price={pkg.priceString}
-              period={pkg.period}
-              savings={pkg.savings}
-              isSelected={selectedPkgId === pkg.id}
-              onSelect={() => setSelectedPkgId(pkg.id)}
-            />
-          ))}
-        </View>
+        {plans.map((pkg) => (
+          <PlanCard
+            key={pkg.id}
+            title={pkg.title}
+            price={pkg.priceString}
+            period={pkg.period}
+            savings={pkg.savings}
+            isSelected={selectedPkgId === pkg.id}
+            onSelect={() => setSelectedPkgId(pkg.id)}
+          />
+        ))}
 
-        {/* Main CTA */}
         <Button
-          label={offerings.length > 0 ? "Unlock Pro" : "Continue in browser"}
-          onPress={handlePurchase}
+          label={offerings.length > 0 ? "Subscribe" : "Continue in your browser"}
+          block
+          className="mt-5"
           loading={isLoading || starting}
-          className="w-full mt-4 py-4"
+          onPress={() => void handlePurchase()}
         />
 
-        {/* Micro-copy. Says where payment happens, because being sent out of
-            the app is surprising if it is not announced first — and Google's
-            link-out rules expect it to be disclosed. */}
-        <Text variant="caption" className="text-center mt-4 opacity-60 leading-5">
+        {/* Says where payment happens, because being sent out of the app is
+            surprising if it is not announced first — and Google's link-out
+            rules expect it to be disclosed. */}
+        <Text variant="caption" className="text-center mt-4" style={{ color: colors.inkMuted, lineHeight: 18 }}>
           {offerings.length > 0
-            ? "No commitment • Cancel anytime from your store's subscription settings"
+            ? "Cancel any time from your store's subscription settings."
             : "Payment opens in your browser and is handled outside the app store. Crypto accepted."}
         </Text>
-
       </ScrollView>
-
-
     </SafeAreaView>
   );
 };

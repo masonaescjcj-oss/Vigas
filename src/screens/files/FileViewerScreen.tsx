@@ -1,22 +1,29 @@
 /**
  * frontend/src/screens/files/FileViewerScreen.tsx
  * ---------------------------------------------------------------------------
- * Screen to view and edit one file:
- *   - Reads and writes through the project-files function. Storage is private
- *     and its RLS grants the client nothing, so the old direct download came
- *     back denied and the save was silently rejected — this screen could not
- *     open a file, let alone save one.
- *   - Diff Viewer showing added (green) and removed (red) lines when changes occur.
+ * One file: read it, edit it, see what you changed.
+ *
+ * Reads and writes go through the project-files function. Storage is private
+ * and its RLS grants the client nothing, so a direct download came back denied
+ * and the save was silently rejected — this screen could not open a file, let
+ * alone save one.
+ *
+ * The header held three pill buttons on the left ("Edit ✏️", "Diff", Save),
+ * the file name in the middle and "← Back" on the right. Now: back and the
+ * file name where every screen puts them, one primary action, and the Diff
+ * toggle appearing only once there is a difference to look at.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useEffect, useState } from "react";
-import { View, TextInput, ScrollView, TouchableOpacity, Alert, SafeAreaView, ActivityIndicator } from "react-native";
+import { View, TextInput, ScrollView, SafeAreaView, ActivityIndicator } from "react-native";
 import { notify } from "../../services/notify";
-import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
+import { useRoute, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
+import { MONO_FAMILY } from "../../theme/mono";
 import { getProjectFiles, writeProjectFile } from "../../services/fileService";
 import { type ProjectStackParamList } from "../../navigation/types";
 
@@ -25,7 +32,6 @@ type RouteProps = RouteProp<ProjectStackParamList, "FileViewer">;
 export const FileViewerScreen = () => {
   const { colors } = useTheme();
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation();
   const { projectId, filePath } = route.params;
 
   const [content, setContent] = useState("");
@@ -35,7 +41,9 @@ export const FileViewerScreen = () => {
   const [showDiff, setShowDiff] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const fileTitle = filePath.split("/").pop() || "File";
+  const fileName = filePath.split("/").pop() || "File";
+  const folder = filePath.split("/").slice(0, -1).join("/");
+  const dirty = editedContent !== content;
 
   useEffect(() => {
     let cancelled = false;
@@ -46,13 +54,13 @@ export const FileViewerScreen = () => {
         const text = files[filePath];
         if (cancelled) return;
         if (text === undefined) {
-          notify("File not available", `${filePath} is not a text file this editor can open.`);
+          notify("Cannot open this file", `${filePath} is not a text file this editor can show.`);
           return;
         }
         setContent(text);
         setEditedContent(text);
       } catch (e: any) {
-        if (!cancelled) notify("Load Error", e.message || "Failed to read file.");
+        if (!cancelled) notify("Could not open the file", e.message || "Failed to read it.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -67,18 +75,21 @@ export const FileViewerScreen = () => {
       await writeProjectFile(projectId, filePath, editedContent);
       setContent(editedContent);
       setIsEditing(false);
+      setShowDiff(false);
       notify("Saved", "The file was updated in your project.");
     } catch (e: any) {
-      notify("Save Error", e.message || "Failed to save file.");
+      notify("Could not save", e.message || "Failed to save the file.");
     } finally {
       setSaving(false);
     }
   };
 
+  const code = { fontFamily: MONO_FAMILY, fontSize: 12, lineHeight: 19 };
+
   /**
-   * Unsaved-changes diff: compares the buffer being edited against the version
-   * loaded from Storage. (A checkpoint-to-checkpoint diff needs a backend
-   * endpoint that does not exist yet.)
+   * Unsaved-changes diff: the buffer being edited against the version loaded
+   * from Storage. (A checkpoint-to-checkpoint diff needs a backend endpoint
+   * that does not exist yet.)
    */
   const renderDiffLines = () => {
     const originalLines = content.split("\n");
@@ -92,97 +103,91 @@ export const FileViewerScreen = () => {
       if (before === after) {
         if (before !== undefined) {
           rows.push(
-            <View key={`ctx-${i}`} className="px-2 py-0.5">
-              <Text variant="code" className="text-xs">{before}</Text>
-            </View>,
+            <Text key={`ctx-${i}`} style={{ ...code, color: colors.inkSecondary, paddingHorizontal: 12 }}>
+              {"  "}{before}
+            </Text>,
           );
         }
         continue;
       }
       if (before !== undefined) {
         rows.push(
-          <View key={`del-${i}`} className="px-2 py-0.5 border-l-2" style={{ backgroundColor: `${colors.failed}15`, borderLeftColor: colors.failed }}>
-            <Text variant="code" className="text-xs" style={{ color: colors.failed }}>- {before}</Text>
-          </View>,
+          <Text
+            key={`del-${i}`}
+            style={{ ...code, color: colors.failed, backgroundColor: colors.failedSoft, paddingHorizontal: 12 }}
+          >
+            {"- "}{before}
+          </Text>,
         );
       }
       if (after !== undefined) {
         rows.push(
-          <View key={`add-${i}`} className="px-2 py-0.5 border-l-2" style={{ backgroundColor: `${colors.success}15`, borderLeftColor: colors.success }}>
-            <Text variant="code" className="text-xs" style={{ color: colors.success }}>+ {after}</Text>
-          </View>,
+          <Text
+            key={`add-${i}`}
+            style={{ ...code, color: colors.success, backgroundColor: colors.successSoft, paddingHorizontal: 12 }}
+          >
+            {"+ "}{after}
+          </Text>,
         );
       }
-    }
-
-    if (rows.length === 0 || content === editedContent) {
-      return (
-        <View className="py-8 items-center">
-          <Text variant="caption" className="opacity-70">No unsaved changes.</Text>
-        </View>
-      );
     }
     return rows;
   };
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      
-      {/* Header bar */}
-      <View 
-        className="flex-row items-center justify-between px-6 py-4 border-b border-borderHairline"
-        style={{ borderBottomColor: colors.borderHairline, backgroundColor: colors.canvasBase }}
-      >
-        <View className="flex-row space-x-2">
-          {isEditing ? (
-            <TouchableOpacity onPress={handleSave} className="p-2 bg-brandPrimary/10 border border-brandPrimary/20 rounded-pill mr-2" style={{ backgroundColor: `${colors.brandPrimary}15`, borderColor: `${colors.brandPrimary}30` }}>
-              {saving ? <ActivityIndicator size="small" color={colors.brandPrimary} /> : <Text variant="caption" className="font-uiMedium text-[10px] text-brandPrimary" style={{ color: colors.brandPrimary }}>Save</Text>}
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={() => setIsEditing(true)} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill mr-2" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-              <Text variant="caption" className="font-uiMedium text-[10px]">Edit ✏️</Text>
-            </TouchableOpacity>
-          )}
+      <ScreenHeader
+        title={fileName}
+        subtitle={folder || undefined}
+        action={
+          isEditing
+            ? { label: saving ? "Saving…" : "Save", onPress: () => void handleSave() }
+            : { label: "Edit", onPress: () => setIsEditing(true) }
+        }
+      />
 
-          <TouchableOpacity onPress={() => setShowDiff(!showDiff)} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill ml-2" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-            <Text variant="caption" className="font-uiMedium text-[10px]">{showDiff ? "Viewer" : "Diff"}</Text>
-          </TouchableOpacity>
+      {/* Only offered once there is something to compare. */}
+      {dirty ? (
+        <View className="flex-row items-center px-4 py-2">
+          <Button
+            label={showDiff ? "Show the file" : "Show what changed"}
+            tone="neutral"
+            size="sm"
+            onPress={() => setShowDiff((v) => !v)}
+          />
+          <Text variant="caption" className="ml-3" style={{ color: colors.inkMuted }}>Unsaved changes</Text>
         </View>
+      ) : null}
 
-        <Text variant="h3" className="font-uiSemiBold">{fileTitle}</Text>
-
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-          <Text variant="body" className="font-uiMedium">← Back</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Main content body */}
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="small" color={colors.brandPrimary} />
-        </View>
+        <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginTop: 32 }} />
       ) : showDiff ? (
-        <ScrollView className="flex-1 p-4 bg-surfaceCode" style={{ backgroundColor: colors.surfaceCode }}>
+        <ScrollView className="flex-1" style={{ backgroundColor: colors.surfaceCode }} contentContainerStyle={{ paddingVertical: 12 }}>
           {renderDiffLines()}
         </ScrollView>
       ) : isEditing ? (
-        <View className="flex-1 p-4 bg-surfaceCode" style={{ backgroundColor: colors.surfaceCode }}>
+        <View className="flex-1" style={{ backgroundColor: colors.surfaceCode }}>
           <TextInput
             value={editedContent}
             onChangeText={setEditedContent}
             multiline
-            className="flex-grow font-mono text-xs text-left"
-            style={{ color: colors.inkPrimary, textAlignVertical: "top" }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="flex-1 px-3 py-3"
+            style={{ ...code, color: colors.inkPrimary, textAlignVertical: "top", outlineStyle: "none", outlineWidth: 0 } as object}
           />
         </View>
       ) : (
-        <ScrollView className="flex-1 p-4 bg-surfaceCode" style={{ backgroundColor: colors.surfaceCode }}>
-          <Text variant="code" className="text-xs">
-            {content || "File is empty."}
-          </Text>
+        <ScrollView
+          className="flex-1"
+          style={{ backgroundColor: colors.surfaceCode }}
+          contentContainerStyle={{ padding: 12 }}
+        >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <Text style={{ ...code, color: colors.inkPrimary }}>{content || "This file is empty."}</Text>
+          </ScrollView>
         </ScrollView>
       )}
-
     </SafeAreaView>
   );
 };

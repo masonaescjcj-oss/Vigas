@@ -45,10 +45,10 @@ export const TextPromptModal: React.FC<TextPromptModalProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View className="flex-1 items-center justify-center bg-black/70 px-8">
+      <View className="flex-1 items-center justify-center px-8" style={{ backgroundColor: colors.scrim }}>
         <View
-          className="w-full max-w-md rounded-2xl border p-5"
-          style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
+          className="w-full max-w-md rounded-card p-5"
+          style={{ backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline }}
         >
           <Text variant="body" className="font-uiSemiBold text-left mb-1">{title}</Text>
           {description ? (
@@ -62,12 +62,16 @@ export const TextPromptModal: React.FC<TextPromptModalProps> = ({
             autoCapitalize="none"
             autoCorrect={false}
             onSubmitEditing={() => trimmed && onConfirm(trimmed)}
-            className="rounded-xl border px-3 py-2.5 text-sm"
+            className="rounded-input px-3 text-sm"
             style={{
-              backgroundColor: colors.canvasBase,
+              minHeight: 44,
+              backgroundColor: colors.surfaceMuted,
+              borderWidth: 1,
               borderColor: colors.borderHairline,
               color: colors.inkPrimary,
-            }}
+              outlineStyle: "none",
+              outlineWidth: 0,
+            } as object}
           />
 
           <View className="flex-row justify-end mt-4">

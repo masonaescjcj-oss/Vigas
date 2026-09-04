@@ -1,18 +1,23 @@
 /**
  * frontend/src/screens/projects/ProjectSettingsScreen.tsx
  * ---------------------------------------------------------------------------
- * Project Settings Screen:
- *   - Edit project metadata (name, description).
- *   - Delete project (with name confirmation verification).
+ * The project's name, its description, and the way to delete it.
+ *
+ * Same shape as Account settings: sections with quiet titles, the app's own
+ * fields, and the destructive action last in the danger tone rather than as a
+ * solid red block inside a double-bordered box. The typed-name gate stays —
+ * deleting a project takes its sandbox and its files with it.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { ScrollView, SafeAreaView, KeyboardAvoidingView, Platform } from "react-native";
 import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
-import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { Input } from "../../components/ui/Input";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useProjects } from "../../hooks/useProjects";
 import { type ProjectStackParamList, type ProjectNavigationProp } from "../../navigation/types";
@@ -36,20 +41,16 @@ export const ProjectSettingsScreen = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      notify("Error", "Project name cannot be empty.");
+      notify("Missing name", "A project needs a name.");
       return;
     }
-
     setSaving(true);
     try {
-      await updateProject({
-        id: projectId,
-        updates: { name, description: desc },
-      });
-      notify("Success", "Project settings updated successfully.");
+      await updateProject({ id: projectId, updates: { name, description: desc } });
+      notify("Saved", "The project has been updated.");
       navigation.goBack();
     } catch (e: any) {
-      notify("Error", e.message || "An error occurred.");
+      notify("Could not save", e.message || "An error occurred.");
     } finally {
       setSaving(false);
     }
@@ -57,17 +58,16 @@ export const ProjectSettingsScreen = () => {
 
   const handleDelete = async () => {
     if (deleteConfirmText !== project?.name) {
-      notify("Error", "To confirm deletion, please type the project name exactly.");
+      notify("Not deleted", "Type the project's name exactly to confirm.");
       return;
     }
-
     setDeleting(true);
     try {
       await deleteProject(projectId);
-      notify("Deleted successfully", "Project and its sandbox were successfully deleted.");
-      navigation.popToTop(); // Go back to Project list screen
+      notify("Deleted", "The project and its sandbox are gone.");
+      navigation.popToTop();
     } catch (e: any) {
-      notify("Delete Error", e.message || "Failed to delete project.");
+      notify("Could not delete", e.message || "Failed to delete the project.");
     } finally {
       setDeleting(false);
     }
@@ -75,81 +75,39 @@ export const ProjectSettingsScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
-        
-        {/* Header */}
-        <View className="mb-6 items-start">
-          <Text variant="h2" className="font-uiSemiBold">
-            Project Settings
-          </Text>
-        </View>
-
-        {/* Metadata section */}
-        <View className="space-y-4 mb-6">
-          <View>
-            <Text variant="caption" className="mb-1.5 font-uiMedium text-left">Project Name</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              className="w-full bg-surfaceRaised p-3.5 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
-              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
-            />
-          </View>
-
-          <View className="mt-3">
-            <Text variant="caption" className="mb-1.5 font-uiMedium text-left">Short Description</Text>
-            <TextInput
-              value={desc}
-              onChangeText={setDesc}
-              className="w-full bg-surfaceRaised p-3.5 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
-              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
-            />
-          </View>
-
-          <Button
-            label="Save Changes"
-            onPress={handleSave}
-            loading={saving}
-            className="w-full mt-4"
+      <ScreenHeader title="Project settings" divider={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          <SectionTitle first>Details</SectionTitle>
+          <Input label="Name" value={name} onChangeText={setName} placeholder="Project name" autoCapitalize="sentences" />
+          <Input
+            label="Description"
+            hint="Optional — a line about what this is"
+            value={desc}
+            onChangeText={setDesc}
+            placeholder="A coffee roastery landing page"
+            autoCapitalize="sentences"
           />
-        </View>
+          <Button label="Save" size="sm" tone="neutral" loading={saving} disabled={!name.trim()} onPress={() => void handleSave()} />
 
-        {/* Divider */}
-        <View className="h-[1px] bg-borderHairline my-6" style={{ backgroundColor: colors.borderHairline }} />
-
-        {/* Divider */}
-        <View className="h-[1px] bg-borderHairline my-6" style={{ backgroundColor: colors.borderHairline }} />
-
-        {/* Danger zone */}
-        <View 
-          className="p-5 rounded-card border-2"
-          style={{ borderColor: `${colors.failed}30`, backgroundColor: `${colors.failed}05` }}
-        >
-          <Text variant="h3" className="font-uiSemiBold text-red-500 text-left mb-2" style={{ color: colors.failed }}>
-            Danger Zone
-          </Text>
-          
-          <Text variant="caption" className="text-left mb-2 opacity-90">
-            To delete completely, type the exact project name ({project?.name}):
-          </Text>
-          <TextInput
+          <SectionTitle hint="The project, its chats, its restore points and its sandbox files are erased and cannot be recovered.">
+            Delete project
+          </SectionTitle>
+          <Input
             value={deleteConfirmText}
             onChangeText={setDeleteConfirmText}
-            placeholder="Type project name..."
-            placeholderTextColor={colors.inkSecondary}
-            className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left mb-4"
-            style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
+            placeholder={`Type “${project?.name ?? "the name"}” to confirm`}
           />
           <Button
-            label="Delete Project"
-            onPress={handleDelete}
+            label="Delete this project"
+            tone="danger"
+            block
             loading={deleting}
-            className="w-full bg-red-600"
-            style={{ backgroundColor: colors.failed }}
+            disabled={!project || deleteConfirmText !== project.name}
+            onPress={() => void handleDelete()}
           />
-        </View>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

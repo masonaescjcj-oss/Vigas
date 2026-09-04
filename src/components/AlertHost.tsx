@@ -66,10 +66,12 @@ export const AlertHost: React.FC = () => {
       // this guards deletes.
       onRequestClose={dismiss}
     >
-      <View className="flex-1 items-center justify-center bg-black/70 px-8">
+      {/* The scrim is a palette token, so it is right on all three themes —
+          a fixed black/70 sat far too heavy over the light canvas. */}
+      <View className="flex-1 items-center justify-center px-8" style={{ backgroundColor: colors.scrim }}>
         <View
-          className="w-full max-w-md rounded-2xl border p-5"
-          style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
+          className="w-full max-w-md rounded-card p-5"
+          style={{ backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline }}
           accessibilityViewIsModal
           accessibilityRole="alert"
         >

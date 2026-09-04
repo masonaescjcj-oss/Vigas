@@ -1,43 +1,37 @@
 /**
  * frontend/src/screens/subscription/ManageSubscriptionScreen.tsx
  * ---------------------------------------------------------------------------
- * Screen to review, upgrade, or cancel active billing accounts.
- * Shows the tier recorded on the profile. Receipts and renewal dates live
- * with Apple/Google/RevenueCat — there is no invoice endpoint here, so none
- * are listed.
+ * The plan on the profile, and where to change it.
+ *
+ * Receipts and renewal dates live with Apple, Google or the web checkout —
+ * there is no invoice endpoint in this backend, so none are listed. The screen
+ * carried an "Invoices & Payment History" heading over an array that is always
+ * empty; a heading with nothing under it reads as a page that failed to load.
  * ---------------------------------------------------------------------------
  */
 
-import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, Platform, SafeAreaView } from "react-native";
+import React from "react";
+import { View, ScrollView, Platform, SafeAreaView } from "react-native";
 import { confirmAction, notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/ui/Card";
+import { Pill } from "../../components/ui/Pill";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
-
-interface Invoice {
-  id: string;
-  amount: string;
-  date: string;
-  status: "paid" | "failed";
-}
 
 export const ManageSubscriptionScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile } = useAuthStore();
 
-  // Receipts live with Apple/Google/RevenueCat; there is no invoice endpoint in
-  // this backend, so the list stays empty rather than showing invented charges.
-  const [invoices] = useState<Invoice[]>([]);
-
   const handleCancelSubscription = async () => {
     const wantsSteps = await confirmAction(
-      "Cancel Pro subscription",
+      "Cancel your subscription",
       "Apple and Google require subscriptions to be cancelled from your App Store or Google Play account settings.",
       { confirmLabel: "Show me how", cancelLabel: "Got it" },
     );
@@ -54,81 +48,33 @@ export const ManageSubscriptionScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
-        
-        {/* Header Header */}
-        <View className="mb-6 flex-row justify-between items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-            <Text variant="body" className="font-uiMedium">← Back</Text>
-          </TouchableOpacity>
-          <Text variant="h2" className="font-uiSemiBold">Manage Subscription</Text>
-          <View className="w-10" />
-        </View>
-
-        {/* Current Plan Card */}
-        <View 
-          className="bg-surfaceRaised p-5 rounded-card border border-borderHairline mb-6"
-          style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-        >
-          <Text variant="label" className="text-left">Active Account</Text>
-          <Text variant="h2" className="font-uiSemiBold text-left mt-2 text-brandPrimary" style={{ color: colors.brandPrimary }}>
-            {isPro ? "Pro Account" : "Free Plan"}
-          </Text>
-          {isPro ? (
-            <React.Fragment>
-              <Text variant="caption" className="text-left opacity-80 mt-1">
-                Your renewal date and payment method are held by the store you
-                subscribed through — check them there.
-              </Text>
-              <Button
-                label="Cancel Subscription"
-                variant="secondary"
-                onPress={handleCancelSubscription}
-                className="mt-6 border-red-500/20"
-                style={{ borderColor: `${colors.failed}30` }}
-              />
-            </React.Fragment>
-          ) : (
-            <React.Fragment>
-              <Text variant="caption" className="text-left opacity-80 mt-1">
-                A daily token allowance, with the standard models.
-              </Text>
-              <Button
-                label="Upgrade to Pro"
-                onPress={() => navigation.navigate("Paywall", {})}
-                className="mt-6 w-full"
-              />
-            </React.Fragment>
-          )}
-        </View>
-
-        {/* Invoice list */}
-        {isPro && (
-          <View className="mt-4">
-            <Text variant="label" className="text-left mb-4">Invoices & Payment History</Text>
-            {invoices.map((inv) => (
-              <View 
-                key={inv.id}
-                className="bg-surfaceRaised p-4 rounded-card border border-borderHairline mb-3 flex-row justify-between items-center"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-              >
-                <View className="items-start">
-                  <Text variant="body" className="font-uiMedium">
-                    {inv.amount} • {inv.id}
-                  </Text>
-                  <Text variant="caption" className="opacity-70 mt-0.5">
-                    Transaction Date: {inv.date}
-                  </Text>
-                </View>
-
-                <Text variant="caption" className="text-green-600 font-uiMedium" style={{ color: colors.success }}>
-                  ✓ Paid
-                </Text>
-              </View>
-            ))}
+      <ScreenHeader title="Subscription" divider={false} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+        <Card className="mt-2">
+          <View className="flex-row items-center">
+            <Text variant="h3" className="font-uiSemiBold flex-1">
+              {isPro ? "Paid plan" : "Free plan"}
+            </Text>
+            <Pill tone={isPro ? "success" : "muted"}>{profile?.subscription_tier ?? "free"}</Pill>
           </View>
-        )}
 
+          <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
+            {isPro
+              ? "Your renewal date and payment method are held by the store you subscribed through — check them there."
+              : "A daily token allowance, with the standard models."}
+          </Text>
+
+          {isPro ? (
+            <Button label="How to cancel" tone="neutral" size="sm" className="mt-4" onPress={() => void handleCancelSubscription()} />
+          ) : (
+            <Button label="See plans" size="sm" className="mt-4" onPress={() => navigation.navigate("Paywall", {})} />
+          )}
+        </Card>
+
+        <Text variant="caption" className="px-1 mt-6" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+          Receipts are issued by whoever took the payment — the App Store, Google Play, or the web
+          checkout. This app does not hold them.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

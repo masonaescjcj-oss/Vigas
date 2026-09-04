@@ -1,13 +1,17 @@
 /**
  * frontend/src/screens/subscription/TokenUsageScreen.tsx
  * ---------------------------------------------------------------------------
- * Detailed Token Usage Screen.
- * Renders daily consumption using UsageChart.
+ * How much has been used, and how much is left.
+ *
+ * The headline is the number, not a label above it. A meter is only drawn when
+ * there is a limit to measure against — a zero limit used to produce
+ * `width: "NaN%"`, which renders as a full bar: the worst possible lie for a
+ * usage meter.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
+import { View, ScrollView, SafeAreaView, ActivityIndicator } from "react-native";
 import { notify } from "../../services/notify";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -15,17 +19,19 @@ import type { RootStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { UsageChart } from "../../components/UsageChart";
+import { Card } from "../../components/ui/Card";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
-import { useAuthStore } from "../../stores/authStore";
+import { PURCHASES } from "../../services/distributionChannel";
 import { supabase } from "../../services/supabase";
 
 export const TokenUsageScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { profile } = useAuthStore();
 
   const [tokensUsed, setTokensUsed] = useState(0);
-  const [tokensLimit, setTokensLimit] = useState(100000);
+  const [tokensLimit, setTokensLimit] = useState(0);
   const [loading, setLoading] = useState(false);
 
   // Real per-period history from usage_metering (one row per period).
@@ -67,99 +73,85 @@ export const TokenUsageScreen = () => {
   }, []);
 
   // A missing or zero plan limit is normal (no metering row yet, or an
-  // unmetered plan). Dividing by it produced NaN, and `width: "NaN%"` renders
-  // as a full-width bar — the worst possible lie for a usage meter.
+  // unmetered plan), and there is nothing to draw a meter against.
   const hasLimit = tokensLimit > 0;
   const usagePercent = hasLimit ? Math.min((tokensUsed / tokensLimit) * 100, 100) : 0;
   const isCloseToLimit = hasLimit && usagePercent >= 75;
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
-        
-        {/* Header Header */}
-        <View className="mb-6 flex-row justify-between items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-            <Text variant="body" className="font-uiMedium">← Back</Text>
-          </TouchableOpacity>
-          <Text variant="h2" className="font-uiSemiBold">Token Usage</Text>
-          <View className="w-10" />
-        </View>
-
-        {/* Total Summary */}
-        <View 
-          className="bg-surfaceRaised p-5 rounded-card border border-borderHairline mb-6"
-          style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-        >
-          <Text variant="label" className="text-left">Total Tokens Used</Text>
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.brandPrimary} className="mt-4" />
-          ) : (
-            <View className="mt-3">
-              <Text variant="h2" className="font-uiSemiBold text-left">
-                {hasLimit
-                  ? `${tokensUsed.toLocaleString("en-US")} / ${tokensLimit.toLocaleString("en-US")} tokens`
-                  : `${tokensUsed.toLocaleString("en-US")} tokens`}
+      <ScreenHeader title="Usage" divider={false} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginTop: 32 }} />
+        ) : (
+          <>
+            <Card className="mt-2">
+              <Text
+                style={{
+                  color: colors.inkPrimary,
+                  fontSize: 30,
+                  fontWeight: "600",
+                  letterSpacing: -0.5,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {tokensUsed.toLocaleString("en-US")}
+              </Text>
+              <Text variant="caption" style={{ color: colors.inkMuted }}>
+                {hasLimit ? `of ${tokensLimit.toLocaleString("en-US")} tokens this period` : "tokens this period"}
               </Text>
 
-              {/* Progress bar container — only meaningful against a limit. */}
               {hasLimit ? (
-                <View className="h-2.5 w-full bg-surfaceCode rounded-full mt-4 overflow-hidden" style={{ backgroundColor: colors.surfaceCode }}>
+                <>
                   <View
-                     className="h-full bg-brandPrimary rounded-full"
-                     style={{
-                       backgroundColor: isCloseToLimit ? colors.failed : colors.brandPrimary,
-                       width: `${usagePercent}%`
-                     }}
-                  />
-                </View>
+                    className="rounded-pill mt-4 overflow-hidden"
+                    style={{ height: 6, backgroundColor: colors.surfaceMuted }}
+                  >
+                    <View
+                      className="h-full rounded-pill"
+                      style={{
+                        width: `${usagePercent}%`,
+                        backgroundColor: isCloseToLimit ? colors.warning : colors.brandPrimary,
+                      }}
+                    />
+                  </View>
+                  <Text
+                    variant="caption"
+                    className="mt-2"
+                    style={{ color: isCloseToLimit ? colors.warning : colors.inkMuted }}
+                  >
+                    {isCloseToLimit
+                      ? `${Math.round(100 - usagePercent)}% left before runs are blocked`
+                      : `${(tokensLimit - tokensUsed).toLocaleString("en-US")} left`}
+                  </Text>
+                </>
               ) : (
-                <Text variant="caption" className="opacity-60 text-left mt-3">
+                <Text variant="caption" className="mt-3" style={{ color: colors.inkMuted, lineHeight: 18 }}>
                   No token limit is set on this plan.
                 </Text>
               )}
+            </Card>
 
-              {isCloseToLimit && (
-                <Text variant="caption" className="text-red-500 text-left mt-3 font-uiMedium" style={{ color: colors.failed }}>
-                  ⚠️ You have used more than 75% of your token limit.
+            {usageHistory.length > 1 ? (
+              <>
+                <SectionTitle>History</SectionTitle>
+                <UsageChart data={usageHistory} title="Tokens per period" />
+              </>
+            ) : null}
+
+            {/* Only where there is something to upgrade to. */}
+            {isCloseToLimit && PURCHASES.canMentionPlans ? (
+              <Card className="mt-4">
+                <Text variant="body" className="font-uiMedium">Running out</Text>
+                <Text variant="caption" className="mt-1" style={{ color: colors.inkSecondary, lineHeight: 18 }}>
+                  A paid plan removes the token cap, so a long build does not stop halfway.
                 </Text>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* 2. Usage chart — real per-period history */}
-        {usageHistory.length > 0 ? (
-          <UsageChart
-            data={usageHistory}
-            maxVal={Math.max(1, ...usageHistory.map((point) => point.value))}
-          />
-        ) : (
-          <View className="py-8 items-center">
-            <Text variant="caption" className="opacity-70">No usage history yet.</Text>
-          </View>
+                <Button label="See plans" size="sm" className="mt-3" onPress={() => navigation.navigate("Paywall", {})} />
+              </Card>
+            ) : null}
+          </>
         )}
-
-        {/* 3. Upgrade callout */}
-        {isCloseToLimit && (
-          <View 
-            className="p-5 rounded-card border-2 mt-6 items-start"
-            style={{ borderColor: colors.brandPrimary, backgroundColor: `${colors.brandPrimary}08` }}
-          >
-            <Text variant="h3" className="font-uiSemiBold text-brandPrimary" style={{ color: colors.brandPrimary }}>
-              Increase Token Limit
-            </Text>
-            <Text variant="caption" className="text-left mt-1.5 opacity-90 leading-5">
-              Pro removes the daily token cap, so a long build does not stop halfway.
-            </Text>
-            <Button
-              label="View Packages"
-              onPress={() => navigation.navigate("Paywall", {})}
-              className="mt-4 w-full"
-            />
-          </View>
-        )}
-
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,18 +1,26 @@
 /**
  * frontend/src/screens/chat/SessionHistoryScreen.tsx
  * ---------------------------------------------------------------------------
- * Lists past agent sessions of a project, enabling the user to Resume
- * an old chat or Fork a new session from previous steps.
+ * Past chats in this project, newest first. Tapping one reopens it.
+ *
+ * Each was a card with a "Resume" button in its corner, which asked the user
+ * to aim at a small target inside a large one that did nothing. The row is the
+ * button now. The title comes from the session, falling back to its first
+ * message — a session titled by the agent is more use than "Empty Session".
  * ---------------------------------------------------------------------------
  */
 
 import React, { useEffect, useState } from "react";
-import { View, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
+import { View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
 import { notify } from "../../services/notify";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
-import { Button } from "../../components/Button";
+import { Card } from "../../components/ui/Card";
+import { Pill } from "../../components/ui/Pill";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
+import { directionStyleFor } from "../../theme/direction";
+import { relativeTime } from "../../services/formatting";
 import { agentService, type AgentSessionData } from "../../services/agentService";
 import { type ProjectStackParamList, type ProjectNavigationProp } from "../../navigation/types";
 
@@ -31,8 +39,7 @@ export const SessionHistoryScreen = () => {
     const fetchSessions = async () => {
       setLoading(true);
       try {
-        const data = await agentService.getProjectSessions(projectId);
-        setSessions(data);
+        setSessions(await agentService.getProjectSessions(projectId));
       } catch (e: any) {
         setSessions([]);
         notify("Could not load chat history", e?.message ?? "Please try again.");
@@ -43,74 +50,60 @@ export const SessionHistoryScreen = () => {
     void fetchSessions();
   }, [projectId]);
 
-  const handleResume = (id: string) => {
-    navigation.navigate("AgentChat", { projectId, sessionId: id });
-  };
-
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      
-      {/* Header bar */}
-      <View 
-        className="flex-row items-center justify-between px-6 py-4 border-b border-borderHairline"
-        style={{ borderBottomColor: colors.borderHairline, backgroundColor: colors.canvasBase }}
-      >
-        <View className="w-10" />
-        <Text variant="h2" className="font-uiSemiBold text-center">Chat History</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-          <Text variant="body" className="font-uiMedium">← Back</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Chat history"
+        subtitle={sessions.length ? `${sessions.length} chat${sessions.length === 1 ? "" : "s"}` : undefined}
+        divider={false}
+      />
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="small" color={colors.brandPrimary} />
-        </View>
+        <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginTop: 32 }} />
       ) : sessions.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-8">
-          <Text variant="caption">No active sessions found.</Text>
+        <View className="px-4 pt-2">
+          <Card>
+            <Text variant="caption" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+              No chats in this project yet.
+            </Text>
+          </Card>
         </View>
       ) : (
-        <FlatList
-          data={sessions}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16 }}
-          renderItem={({ item }) => {
-            const firstMsg = item.transcript?.[0]?.content || "Empty Session";
-            const formattedDate = new Date(item.updated_at).toLocaleDateString("en-US");
-            
-            return (
-              <View 
-                className="bg-surfaceRaised p-5 rounded-card border border-borderHairline mb-3"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-              >
-                <Text variant="body" className="font-uiMedium text-left" numberOfLines={1}>
-                  {firstMsg}
-                </Text>
-                
-                <View className="flex-row justify-between mt-2">
-                  <Text variant="caption" className="opacity-60 text-[10px]">
-                    Usage: {item.token_usage_total.toLocaleString("en-US")} tokens
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+          <Card flush className="mt-2">
+            {sessions.map((item, index) => {
+              const title = item.title || item.transcript?.[0]?.content || "Untitled chat";
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => navigation.navigate("AgentChat", { projectId, sessionId: item.id })}
+                  className="px-4 py-3"
+                  style={{
+                    borderBottomWidth: index === sessions.length - 1 ? 0 : 1,
+                    borderBottomColor: colors.borderHairline,
+                  }}
+                  activeOpacity={0.6}
+                >
+                  <View className="flex-row items-center">
+                    <Text
+                      style={{ color: colors.inkPrimary, ...directionStyleFor(title) }}
+                      className="text-sm flex-1 mr-2"
+                      numberOfLines={1}
+                    >
+                      {title}
+                    </Text>
+                    {item.status === "failed" ? <Pill tone="failed">Failed</Pill> : null}
+                  </View>
+                  <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }}>
+                    {relativeTime(item.updated_at)}
+                    {item.token_usage_total ? ` · ${item.token_usage_total.toLocaleString("en-US")} tokens` : ""}
                   </Text>
-                  <Text variant="caption" className="opacity-60 text-[10px]">
-                    Last activity: {formattedDate}
-                  </Text>
-                </View>
-
-                {/* Actions */}
-                <View className="flex-row justify-end space-x-2 mt-4">
-                  <Button
-                    label="Resume"
-                    onPress={() => handleResume(item.id)}
-                    className="py-1.5 px-4"
-                  />
-                </View>
-              </View>
-            );
-          }}
-        />
+                </TouchableOpacity>
+              );
+            })}
+          </Card>
+        </ScrollView>
       )}
-
     </SafeAreaView>
   );
 };

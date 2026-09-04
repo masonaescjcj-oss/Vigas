@@ -1,24 +1,29 @@
 /**
  * frontend/src/screens/search/GlobalSearchScreen.tsx
  * ---------------------------------------------------------------------------
- * Global search workspace screen:
- *   - Auto-focuses query input.
- *   - Matches projects locally and chats server-side (by title, under RLS).
- *     File contents are not searched: that needs a full-text index, and
- *     downloading every project to grep it on the phone is not that.
- *   - Recent searches persist on the device.
- *   - EmptyState preset hook if nothing found.
+ * Search across projects and chats.
+ *
+ * Projects match locally; chats are matched server-side by title, scoped to
+ * the caller by RLS. File contents are not searched — that needs a full-text
+ * index, and downloading every project to grep it on the phone is not that.
+ * Recent searches persist on the device.
+ *
+ * The field is the whole header now, with the focus ring the rest of the app
+ * uses, and results are rows in two labelled groups rather than a flat list of
+ * cards each ending in an uppercase category word.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useState, useEffect } from "react";
-import { View, TextInput, ScrollView, TouchableOpacity, FlatList, SafeAreaView } from "react-native";
+import { View, TextInput, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
 import { Icon } from "../../components/Icon";
 import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
-import { EmptyState } from "../../components/EmptyState";
+import { Card } from "../../components/ui/Card";
+import { SectionTitle } from "../../components/ui/SectionTitle";
 import { useTheme } from "../../theme/ThemeProvider";
 import { directionStyleFor } from "../../theme/direction";
+import { selectionFeedback } from "../../services/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useProjects } from "../../hooks/useProjects";
 import { agentService } from "../../services/agentService";
@@ -41,6 +46,7 @@ export const GlobalSearchScreen = () => {
   const { projects } = useProjects();
 
   const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   // Seeded with two invented phrases before; recents are the user's own now,
   // and survive a restart.
@@ -56,29 +62,24 @@ export const GlobalSearchScreen = () => {
     });
   }, []);
 
-  // Handle query changes and search matching items
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
       return;
     }
-
     const lowerQuery = query.toLowerCase();
     const matches: SearchResult[] = [];
-
-    // Search Projects
     projects.forEach((p) => {
       if (p.name.toLowerCase().includes(lowerQuery) || p.description?.toLowerCase().includes(lowerQuery)) {
         matches.push({
           id: p.id,
           title: p.name,
-          subtitle: p.description || "Active Project",
+          subtitle: p.description || "Project",
           category: "projects",
-          targetId: p.id
+          targetId: p.id,
         });
       }
     });
-
     setResults(matches);
   }, [query, projects]);
 
@@ -96,7 +97,7 @@ export const GlobalSearchScreen = () => {
           ...sessions.map((s) => ({
             id: `chat_${s.id}`,
             title: s.title || "Untitled chat",
-            subtitle: `Chat · ${relativeTime(s.updated_at)}`,
+            subtitle: relativeTime(s.updated_at),
             category: "chats" as const,
             targetId: s.project_id,
           })),
@@ -113,106 +114,127 @@ export const GlobalSearchScreen = () => {
       setRecentSearches(next);
       void AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(next));
     }
-
     // Both kinds resolve to a project; a chat result carries its project id.
     navigation.navigate("ProjectDetail", { projectId: res.targetId });
   };
 
-  const handleSelectRecent = (q: string) => {
-    setQuery(q);
-  };
+  const projectHits = results.filter((r) => r.category === "projects");
+  const chatHits = results.filter((r) => r.category === "chats");
+
+  const group = (title: string, items: SearchResult[], icon: string, first?: boolean) =>
+    items.length === 0 ? null : (
+      <View>
+        <SectionTitle first={first}>{title}</SectionTitle>
+        <Card flush>
+          {items.map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => handleSelectResult(item)}
+              className="flex-row items-center px-4 py-3"
+              style={{
+                borderBottomWidth: index === items.length - 1 ? 0 : 1,
+                borderBottomColor: colors.borderHairline,
+              }}
+              activeOpacity={0.6}
+            >
+              <Icon name={icon} size={16} color={colors.inkSecondary} style={{ marginRight: 12 }} />
+              <View className="flex-1 mr-2">
+                <Text style={{ color: colors.inkPrimary, ...directionStyleFor(item.title) }} className="text-sm" numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text
+                  variant="caption"
+                  className="mt-0.5"
+                  style={{ color: colors.inkMuted, ...directionStyleFor(item.subtitle) }}
+                  numberOfLines={1}
+                >
+                  {item.subtitle}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={14} color={colors.inkMuted} />
+            </TouchableOpacity>
+          ))}
+        </Card>
+      </View>
+    );
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      
-      {/* Top Search bar */}
-      <View 
-        className="flex-row items-center px-4 py-3 border-b border-borderHairline"
-        style={{ borderBottomColor: colors.borderHairline, backgroundColor: colors.canvasBase }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 mr-2">
-          <Text variant="body" className="font-uiMedium">Cancel</Text>
-        </TouchableOpacity>
-        
-        {/* Input box */}
-        <View className="flex-1 bg-surfaceRaised px-3 py-1.5 rounded-pill border border-borderHairline flex-row items-center justify-between" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-          <Icon name="search" size={15} color={colors.inkSecondary} />
+      <View className="flex-row items-center px-4" style={{ height: 60 }}>
+        <View
+          className="flex-1 flex-row items-center rounded-input px-3 mr-2"
+          style={{
+            backgroundColor: colors.surfaceMuted,
+            borderWidth: 1,
+            borderColor: focused ? colors.brandPrimary : colors.borderHairline,
+            minHeight: 44,
+          }}
+        >
+          <Icon name="search" size={15} color={colors.inkMuted} style={{ marginRight: 8 }} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search your projects and chats..."
-            placeholderTextColor={colors.inkSecondary}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Projects and chats"
+            placeholderTextColor={colors.inkMuted}
             autoFocus
-            className="flex-grow font-uiRegular text-sm text-left pl-2"
-            style={{ color: colors.inkPrimary, textAlign: "left" }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            className="flex-1 text-sm"
+            style={{ color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as object}
           />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery("")} accessibilityLabel="Clear search" className="p-1">
+              <Icon name="x" size={13} color={colors.inkSecondary} />
+            </TouchableOpacity>
+          )}
         </View>
+        <TouchableOpacity onPress={() => navigation.goBack()} className="px-1 py-2" activeOpacity={0.6}>
+          <Text variant="body" style={{ color: colors.brandPrimary }}>Cancel</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Contents */}
-      {!query.trim() ? (
-        // Recent searches list
-        <View className="p-6">
-          <Text variant="label" className="text-left mb-4">
-            {recentSearches.length ? "Recent searches" : "Search your projects and chats"}
-          </Text>
-          {recentSearches.map((q, idx) => (
-            <TouchableOpacity
-              key={idx}
-              onPress={() => handleSelectRecent(q)}
-              className="py-3 border-b border-borderHairline/10 flex-row justify-between items-center"
-              style={{ borderBottomColor: colors.borderHairline }}
-            >
-              <Text variant="body" className="opacity-90">{q}</Text>
-              <Text className="opacity-40">➔</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : results.length === 0 ? (
-        // EmptyState hook
-        <EmptyState
-          title="No Results Found"
-          description={`Nothing in your projects or chats matches "${query}".`}
-          emoji="search"
-        />
-      ) : (
-        // Results list grouped
-        <FlatList
-          data={results}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16 }}
-          renderItem={({ item }) => {
-            const categoryIcon = item.category === "projects" ? "folder" : "inbox";
-            return (
-              <TouchableOpacity
-                onPress={() => handleSelectResult(item)}
-                className="bg-surfaceRaised p-4 rounded-card border border-borderHairline mb-3 flex-row justify-between items-center"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-                activeOpacity={0.8}
-              >
-                <View className="items-start flex-1 pl-4">
-                  <Text variant="body" className="font-uiMedium" style={directionStyleFor(item.title)}>
-                    {item.title}
-                  </Text>
-                  <Text
-                    variant="caption"
-                    className="opacity-70 mt-0.5"
-                    style={directionStyleFor(item.subtitle)}
-                    numberOfLines={1}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {!query.trim() ? (
+          recentSearches.length === 0 ? (
+            <Text variant="caption" className="px-1 pt-4" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+              Search matches project names, descriptions and chat titles.
+            </Text>
+          ) : (
+            <View>
+              <SectionTitle first>Recent</SectionTitle>
+              <Card flush>
+                {recentSearches.map((q, index) => (
+                  <TouchableOpacity
+                    key={q}
+                    onPress={() => { selectionFeedback(); setQuery(q); }}
+                    className="flex-row items-center px-4 py-3"
+                    style={{
+                      borderBottomWidth: index === recentSearches.length - 1 ? 0 : 1,
+                      borderBottomColor: colors.borderHairline,
+                    }}
+                    activeOpacity={0.6}
                   >
-                    {item.subtitle}
-                  </Text>
-                </View>
-
-                <Text variant="caption" className="opacity-60 text-[10px] uppercase font-uiMedium">
-                  {item.category} 
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
-
+                    <Text style={{ color: colors.inkPrimary }} className="text-sm flex-1">{q}</Text>
+                    <Icon name="arrow-up" size={14} color={colors.inkMuted} style={{ transform: [{ rotate: "-45deg" }] }} />
+                  </TouchableOpacity>
+                ))}
+              </Card>
+            </View>
+          )
+        ) : results.length === 0 ? (
+          <Text variant="caption" className="px-1 pt-6 text-center" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+            Nothing matches “{query}”.
+          </Text>
+        ) : (
+          <>
+            {group("Projects", projectHits, "folder", true)}
+            {group("Chats", chatHits, "inbox", projectHits.length === 0)}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };

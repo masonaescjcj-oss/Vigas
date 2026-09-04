@@ -1261,7 +1261,16 @@ export const AgentChatScreen = () => {
    * 20-odd built screens were unreachable.
    */
   const goTo = (screen: string, params?: object) => {
+    // Every sheet this screen owns, not just the drawer. Leaving one open put
+    // it over the screen we just navigated to — the Projects sheet in
+    // particular, since its rows are how you reach the project screens.
     setShowDrawerModal(false);
+    setShowProjectsModal(false);
+    setShowAddToChatModal(false);
+    setShowModelsModal(false);
+    setShowFileModal(false);
+    setShowCheckpointsModal(false);
+    setShowSkillsModal(false);
     (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate(screen, params);
   };
 

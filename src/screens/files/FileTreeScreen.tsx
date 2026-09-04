@@ -1,28 +1,31 @@
 /**
  * frontend/src/screens/files/FileTreeScreen.tsx
  * ---------------------------------------------------------------------------
- * Screen representing the file tree explorer list of the project.
- * Uses useFileTree hook to fetch files recursively from the Sandbox.
+ * The project's files, as they sit in the sandbox.
+ *
+ * The header had Refresh on the left, the title in the middle and "← Back" on
+ * the right — back on the side every other screen puts the primary action.
  * ---------------------------------------------------------------------------
  */
 
 import React from "react";
-import { View, ScrollView, TouchableOpacity, ActivityIndicator, SafeAreaView } from "react-native";
-import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
+import { View, ScrollView, ActivityIndicator, SafeAreaView } from "react-native";
+import { useRoute, type RouteProp } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { FileTreeItem } from "../../components/FileTreeItem";
 import { TextPromptModal } from "../../components/TextPromptModal";
+import { Card } from "../../components/ui/Card";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useFileTree } from "../../hooks/useFileTree";
 import { useFileActions } from "../../hooks/useFileActions";
-import { type ProjectStackParamList, type ProjectNavigationProp } from "../../navigation/types";
+import { type ProjectStackParamList } from "../../navigation/types";
 
 type RouteProps = RouteProp<ProjectStackParamList, "FileTree">;
 
 export const FileTreeScreen = () => {
   const { colors } = useTheme();
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation<ProjectNavigationProp>();
   const { projectId } = route.params;
 
   const { tree, isLoading, refresh, toggleFolder, expandedFolders } = useFileTree(projectId);
@@ -30,45 +33,38 @@ export const FileTreeScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      
-      {/* Header bar */}
-      <View 
-        className="flex-row items-center justify-between px-6 py-4 border-b border-borderHairline"
-        style={{ borderBottomColor: colors.borderHairline, backgroundColor: colors.canvasBase }}
-      >
-        <TouchableOpacity onPress={refresh} className="p-2 bg-surfaceRaised border border-borderHairline rounded-pill" style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}>
-          <Text variant="caption" className="font-uiMedium text-[10px]">Refresh</Text>
-        </TouchableOpacity>
-        
-        <Text variant="h3" className="font-uiSemiBold">File Explorer</Text>
+      <ScreenHeader
+        title="Files"
+        subtitle={isLoading ? undefined : `${tree.length} at the top level`}
+        divider={false}
+        action={{ icon: "rotate-ccw", onPress: refresh }}
+      />
 
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-          <Text variant="body" className="font-uiMedium">← Back</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Explorer Tree */}
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="small" color={colors.brandPrimary} />
-        </View>
+        <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginTop: 32 }} />
       ) : tree.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-6">
-          <Text variant="caption">This project has no files yet.</Text>
+        <View className="px-4 pt-2">
+          <Card>
+            <Text variant="caption" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+              This project has no files yet.
+            </Text>
+          </Card>
         </View>
       ) : (
-        <ScrollView className="flex-1">
-          {tree.map((node) => (
-            <FileTreeItem
-              key={node.path}
-              node={node}
-              projectId={projectId}
-              expandedFolders={expandedFolders}
-              onToggle={toggleFolder}
-              onRename={fileActions.requestRename}
-              onDelete={fileActions.requestDelete}
-            />
-          ))}
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+          <Card flush className="mt-2">
+            {tree.map((node) => (
+              <FileTreeItem
+                key={node.path}
+                node={node}
+                projectId={projectId}
+                expandedFolders={expandedFolders}
+                onToggle={toggleFolder}
+                onRename={fileActions.requestRename}
+                onDelete={fileActions.requestDelete}
+              />
+            ))}
+          </Card>
         </ScrollView>
       )}
 
@@ -81,7 +77,6 @@ export const FileTreeScreen = () => {
         onCancel={fileActions.cancelRename}
         onConfirm={fileActions.confirmRename}
       />
-
     </SafeAreaView>
   );
 };

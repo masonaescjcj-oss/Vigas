@@ -7,13 +7,17 @@
  * needs the policy at a public URL as well, so a second copy was going to exist
  * either way — and two copies of a legal document drift without anyone noticing
  * which one is true.
+ *
+ * It is a long read, so the measure is the point: generous line height, real
+ * space between sections, and the back control where every other screen has it
+ * rather than a "Close →" on the right.
  * ---------------------------------------------------------------------------
  */
 
 import React from "react";
-import { View, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { View, ScrollView, SafeAreaView } from "react-native";
 import { Text } from "../../components/Typography";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { bulletText, isBullet, splitRich, type LegalDocument } from "../../core/legal/documents";
 
@@ -27,10 +31,10 @@ import { bulletText, isBullet, splitRich, type LegalDocument } from "../../core/
  */
 function RichLine({ line }: { line: string }) {
   return (
-    <Text variant="body" className="text-left leading-6">
+    <Text variant="body" className="text-left" style={{ lineHeight: 23 }}>
       {splitRich(line).map((span, i) =>
         span.bold ? (
-          <Text key={i} variant="body" className="font-uiSemiBold leading-6">
+          <Text key={i} variant="body" className="font-uiSemiBold" style={{ lineHeight: 23 }}>
             {span.text}
           </Text>
         ) : (
@@ -43,40 +47,26 @@ function RichLine({ line }: { line: string }) {
 
 export function LegalDocumentScreen({ document }: { document: LegalDocument }) {
   const { colors } = useTheme();
-  const navigation = useNavigation();
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <View
-        className="flex-row items-center justify-between px-6 py-4 border-b"
-        style={{ borderBottomColor: colors.borderHairline, backgroundColor: colors.canvasBase }}
-      >
-        <View className="w-10" />
-        <Text variant="h3" className="font-uiSemiBold">{document.title}</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-          <Text variant="body" className="font-uiMedium">Close →</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title={document.title} subtitle={`Updated ${document.updated}`} divider={false} />
 
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }}>
-        <Text variant="caption" className="text-left opacity-60">
-          Last updated {document.updated}
-        </Text>
-
-        <Text variant="body" className="text-left leading-6 mt-4">
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48 }}>
+        <Text variant="body" className="text-left mt-2" style={{ color: colors.inkSecondary, lineHeight: 23 }}>
           {document.intro}
         </Text>
 
         {document.sections.map((section) => (
-          <View key={section.heading} className="mt-7">
-            <Text variant="h3" className="font-uiSemiBold text-left mb-2">
+          <View key={section.heading} className="mt-8">
+            <Text variant="h3" className="font-uiSemiBold text-left mb-2.5">
               {section.heading}
             </Text>
             {section.body.map((line, i) => (
-              <View key={i} className={isBullet(line) ? "flex-row mt-1.5" : "mt-1.5"}>
+              <View key={i} className={isBullet(line) ? "flex-row mt-2" : "mt-2"}>
                 {isBullet(line) ? (
                   <>
-                    <Text variant="body" className="leading-6 mr-2">•</Text>
+                    <Text variant="body" style={{ lineHeight: 23, color: colors.inkMuted, marginRight: 10 }}>•</Text>
                     <View className="flex-1">
                       <RichLine line={bulletText(line)} />
                     </View>
