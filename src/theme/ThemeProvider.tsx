@@ -26,21 +26,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { mode, setMode } = useThemeStore();
   const colors = themeColors[mode];
 
-  // Auto-detect system light/dark mode on startup & listen for OS theme changes
+  // Follow the system theme only until the user picks one. Before this, the
+  // listener overrode a saved choice on every launch and on every OS theme
+  // change — someone who chose dark got light back the next morning, with no
+  // way to make it stick. A choice, once made, is theirs.
   useEffect(() => {
-    const systemScheme = Appearance.getColorScheme();
-    if (systemScheme === "light") {
-      setMode("light");
-    }
+    if (useThemeStore.getState().chosen) return;
 
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (colorScheme === "light") {
-        setMode("light");
-      } else if (colorScheme === "dark") {
-        setMode("darkest");
-      }
-    });
+    const follow = (scheme: string | null | undefined) => {
+      // Re-read at event time: the user may have chosen since we subscribed.
+      if (useThemeStore.getState().chosen) return;
+      if (scheme === "light") useThemeStore.setState({ mode: "light" });
+      else if (scheme === "dark") useThemeStore.setState({ mode: "darkest" });
+    };
 
+    follow(Appearance.getColorScheme());
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => follow(colorScheme));
     return () => subscription.remove();
   }, []);
 
@@ -57,14 +58,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     "--canvasBase": colors.canvasBase,
     "--surfaceRaised": colors.surfaceRaised,
     "--surfaceCode": colors.surfaceCode,
+    "--surfaceMuted": colors.surfaceMuted,
+    "--surfaceStrong": colors.surfaceStrong,
     "--inkPrimary": colors.inkPrimary,
     "--inkSecondary": colors.inkSecondary,
+    "--inkMuted": colors.inkMuted,
     "--brandPrimary": colors.brandPrimary,
+    "--brandSoft": colors.brandSoft,
     "--accentTeal": colors.accentTeal,
+    "--bubbleUser": colors.bubbleUser,
     "--borderHairline": colors.borderHairline,
     "--success": colors.success,
+    "--successSoft": colors.successSoft,
     "--failed": colors.failed,
+    "--failedSoft": colors.failedSoft,
+    "--warning": colors.warning,
+    "--warningSoft": colors.warningSoft,
     "--running": colors.running,
+    "--incognito": colors.incognito,
+    "--incognitoSoft": colors.incognitoSoft,
+    "--scrim": colors.scrim,
   };
 
   const value: ThemeContextType = {

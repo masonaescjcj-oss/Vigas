@@ -17,12 +17,7 @@
 import React from "react";
 import { Text as RNText, type TextProps } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
-import {
-  
-  displayFamilyFor,
-  fontFamilyFor,
-  textOf,
-  type FontWeightName } from "../theme/fonts";
+import { fontFamilyFor, textOf, type FontWeightName } from "../theme/fonts";
 import { MONO_FAMILY } from "../theme/mono";
 
 export type TypographyVariant =
@@ -30,8 +25,6 @@ export type TypographyVariant =
   | "h2"
   | "h3"
   | "body"
-  | "bodySerif"
-  | "bodySerifItalic"
   | "label"
   | "code"
   | "caption";
@@ -74,17 +67,12 @@ export const Text: React.FC<TypographyProps> = ({
       // Standard UI clean text
       variantClass = "font-uiRegular text-sm text-inkPrimary leading-5";
       break;
-    case "bodySerif":
-      // Editorial response font (Source Serif Pro) - key feature
-      variantClass = "font-editorial text-base text-inkPrimary leading-6";
-      break;
-    case "bodySerifItalic":
-      variantClass = "font-editorialItalic text-base text-inkPrimary leading-6";
-      break;
     case "label":
       weight = "medium";
-      // Clean UI label, medium, size 12px
-      variantClass = "font-uiMedium text-xs text-inkSecondary uppercase tracking-wider";
+      // A section heading that does not shout: small and one step dimmer than
+      // body. It was uppercase with letter-spacing, which made every settings
+      // page read as a form.
+      variantClass = "font-uiMedium text-xs text-inkSecondary";
       break;
     case "code":
       // Monospace JetBrains Mono for code blocks
@@ -98,14 +86,9 @@ export const Text: React.FC<TypographyProps> = ({
   const text = textOf(children);
 
   // Code keeps its monospace regardless of script: a file path in a Persian
-  // sentence is still a file path. Headings get the display face — only h1 and
-  // h2, where type is large enough for character to read as character rather
-  // than as noise. h3 is a section label at body size and stays in Inter.
-  const family = variant === "code"
-    ? MONO_FAMILY
-    : variant === "h1" || variant === "h2"
-      ? displayFamilyFor(text, "bold")
-      : fontFamilyFor(text, weight);
+  // sentence is still a file path. Everything else is the UI face, chosen per
+  // string so Persian gets Vazirmatn.
+  const family = variant === "code" ? MONO_FAMILY : fontFamilyFor(text, weight);
 
   return (
     <RNText

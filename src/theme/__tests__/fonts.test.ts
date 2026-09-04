@@ -12,7 +12,6 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_FONT_FAMILIES,
-  displayFamilyFor,
   fontFamilyFor,
   hasArabicScript,
   textOf,
@@ -79,11 +78,6 @@ describe("no family is set", () => {
       expect(fontFamilyFor("ا", weight)).toBeUndefined();
     }
     expect(fontFamilyFor()).toBeUndefined();
-  });
-
-  it("headings inherit too — size and weight separate them", () => {
-    expect(displayFamilyFor("Build something", "bold")).toBeUndefined();
-    expect(displayFamilyFor("بساز", "medium")).toBeUndefined();
   });
 
   it("loads nothing", () => {

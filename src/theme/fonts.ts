@@ -63,13 +63,6 @@ export function fontFamilyFor(
   return undefined;
 }
 
-/** Headings use the same face. Size and weight already separate them. */
-export function displayFamilyFor(
-  _text?: unknown,
-  _weight: "medium" | "bold" = "bold",
-): string | undefined {
-  return undefined;
-}
 
 /**
  * Flatten a React children prop to the text it will render, so a component can

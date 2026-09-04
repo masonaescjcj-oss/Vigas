@@ -1,121 +1,38 @@
 /**
  * frontend/src/screens/admin/adminUi.tsx
  * ---------------------------------------------------------------------------
- * The handful of shapes every admin tab needs: a card, a labelled field, a
- * status pill, a button.
+ * The shapes the admin tabs are built from.
  *
- * Kept here so the four tabs cannot drift into four slightly different looks —
- * which is exactly how the rest of the app ended up with seventy hand-picked
- * colour pairs before the palette sweep.
+ * These used to be defined here, and only here — so the admin panel was the one
+ * part of the app with a consistent card, field and pill while every other
+ * screen hand-rolled its own. The definitions now live in components/ui and
+ * serve the whole app; this file keeps the names the tabs import and adapts the
+ * two whose props differed, so the four tabs did not have to change.
  * ---------------------------------------------------------------------------
  */
 
 import React from "react";
-import { View, TextInput, TouchableOpacity, ActivityIndicator, type TextInputProps } from "react-native";
+import { View, ActivityIndicator, type TextInputProps } from "react-native";
 import { Text } from "../../components/Typography";
-import { Icon } from "../../components/Icon";
 import { useTheme } from "../../theme/ThemeProvider";
-import { tapFeedback } from "../../services/haptics";
+import { Button, Card as UiCard, Input, Pill, SectionTitle } from "../../components/ui";
 
-export const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({
-  children,
-  className = "",
-}) => {
-  const { colors } = useTheme();
-  return (
-    <View
-      className={`p-4 rounded-2xl border mb-3 ${className}`}
-      style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-    >
-      {children}
-    </View>
-  );
-};
+export { Pill, SectionTitle };
 
-export const SectionTitle: React.FC<{ children: React.ReactNode; hint?: string }> = ({
-  children,
-  hint,
-}) => {
-  const { colors } = useTheme();
-  return (
-    <View className="mb-3 mt-1">
-      <Text variant="label" className="text-left">{children}</Text>
-      {hint ? (
-        <Text
-          variant="caption"
-          className="text-left leading-5 mt-1.5 text-[11px]"
-          style={{ color: colors.inkMuted }}
-        >
-          {hint}
-        </Text>
-      ) : null}
-    </View>
-  );
-};
+/** Admin cards stack with a gap; the shared Card leaves spacing to the caller. */
+export const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
+  <UiCard className={`mb-3 ${className}`}>{children}</UiCard>
+);
 
 interface FieldProps extends TextInputProps {
   label: string;
   hint?: string;
 }
 
-export const Field: React.FC<FieldProps> = ({ label, hint, style, ...props }) => {
-  const { colors } = useTheme();
-  return (
-    <View className="mb-3">
-      <Text
-        variant="caption"
-        className="text-left mb-1.5 text-[11px]"
-        style={{ color: colors.inkMuted }}
-      >
-        {label}
-      </Text>
-      <TextInput
-        placeholderTextColor={colors.inkMuted}
-        autoCapitalize="none"
-        autoCorrect={false}
-        className="rounded-xl border px-3 py-2.5 text-sm"
-        style={[
-          {
-            backgroundColor: colors.surfaceMuted,
-            borderColor: colors.borderHairline,
-            color: colors.inkPrimary,
-          },
-          style,
-        ]}
-        {...props}
-      />
-      {hint ? (
-        <Text
-          variant="caption"
-          className="text-left mt-1 text-[10px] leading-4"
-          style={{ color: colors.inkMuted }}
-        >
-          {hint}
-        </Text>
-      ) : null}
-    </View>
-  );
-};
-
-export const Pill: React.FC<{ tone: "success" | "warning" | "failed" | "muted"; children: React.ReactNode }> = ({
-  tone,
-  children,
-}) => {
-  const { colors } = useTheme();
-  const map = {
-    success: { bg: colors.successSoft, fg: colors.success },
-    warning: { bg: colors.warningSoft, fg: colors.warning },
-    failed: { bg: colors.failedSoft, fg: colors.failed },
-    muted: { bg: colors.surfaceMuted, fg: colors.inkMuted },
-  }[tone];
-  return (
-    <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: map.bg }}>
-      <Text variant="caption" className="text-[10px] font-uiMedium" style={{ color: map.fg }}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+/** The admin's labelled field is the app's Input. */
+export const Field: React.FC<FieldProps> = ({ label, hint, ...props }) => (
+  <Input label={label} hint={hint} {...props} />
+);
 
 interface ActionProps {
   label: string;
@@ -127,65 +44,19 @@ interface ActionProps {
   className?: string;
 }
 
-export const Action: React.FC<ActionProps> = ({
-  label,
-  onPress,
-  tone = "neutral",
-  busy = false,
-  disabled = false,
-  icon,
-  className = "",
-}) => {
-  const { colors } = useTheme();
-  const map = {
-    primary: { bg: colors.brandPrimary, fg: colors.canvasBase },
-    neutral: { bg: colors.surfaceMuted, fg: colors.inkPrimary },
-    danger: { bg: colors.failedSoft, fg: colors.failed },
-  }[tone];
-
-  return (
-    <TouchableOpacity
-      onPress={() => {
-        if (disabled || busy) return;
-        tapFeedback();
-        onPress();
-      }}
-      disabled={disabled || busy}
-      className={`px-3.5 py-2 rounded-xl flex-row items-center justify-center ${className}`}
-      style={{ backgroundColor: map.bg, opacity: disabled ? 0.4 : 1 }}
-      activeOpacity={0.8}
-    >
-      {busy ? (
-        <ActivityIndicator size="small" color={map.fg} />
-      ) : (
-        <>
-          {icon ? <Icon name={icon} size={12} color={map.fg} style={{ marginRight: 6 }} /> : null}
-          <Text variant="caption" className="text-[12px] font-uiSemiBold" style={{ color: map.fg }}>
-            {label}
-          </Text>
-        </>
-      )}
-    </TouchableOpacity>
-  );
-};
+/** The admin's small action is the app's Button at the small size. */
+export const Action: React.FC<ActionProps> = ({ busy = false, ...props }) => (
+  <Button size="sm" loading={busy} {...props} />
+);
 
 /** A labelled number, for the overview. */
 export const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => {
   const { colors } = useTheme();
   return (
-    <View
-      className="flex-1 p-3.5 rounded-2xl border mr-2"
-      style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-    >
-      <Text variant="h3" className="text-left font-uiSemiBold">{value}</Text>
-      <Text
-        variant="caption"
-        className="text-left mt-0.5 text-[10px]"
-        style={{ color: colors.inkMuted }}
-      >
-        {label}
-      </Text>
-    </View>
+    <UiCard className="flex-1 mr-2" style={{ padding: 14 }}>
+      <Text variant="h3" className="font-uiSemiBold">{value}</Text>
+      <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }}>{label}</Text>
+    </UiCard>
   );
 };
 
@@ -198,17 +69,17 @@ export const TabState: React.FC<{ loading: boolean; empty: boolean; emptyText: s
   const { colors } = useTheme();
   if (loading) {
     return (
-      <View className="py-10 items-center">
+      <View className="py-12 items-center">
         <ActivityIndicator size="small" color={colors.brandPrimary} />
       </View>
     );
   }
-  if (!empty) return null;
-  return (
-    <Card>
-      <Text variant="caption" className="text-left leading-5" style={{ color: colors.inkMuted }}>
-        {emptyText}
-      </Text>
-    </Card>
-  );
+  if (empty) {
+    return (
+      <View className="py-12 items-center px-6">
+        <Text variant="caption" className="text-center" style={{ color: colors.inkMuted }}>{emptyText}</Text>
+      </View>
+    );
+  }
+  return null;
 };

@@ -54,6 +54,12 @@ export interface ColorTokens {
   /** Incognito's own hue, so it reads as a different mode at a glance. */
   incognito: string;
   incognitoSoft: string;
+
+  /**
+   * Behind a sheet or dialog. Nine places reached for Tailwind's bg-black/80
+   * because nothing here had a name for it.
+   */
+  scrim: string;
 }
 
 export const themeColors: Record<ThemeMode, ColorTokens> = {
@@ -86,6 +92,8 @@ export const themeColors: Record<ThemeMode, ColorTokens> = {
 
     incognito: "#6B4FA8",
     incognitoSoft: "rgba(107, 79, 168, 0.10)",
+
+    scrim: "rgba(19, 52, 59, 0.45)",
   },
 
   dark: {
@@ -117,6 +125,8 @@ export const themeColors: Record<ThemeMode, ColorTokens> = {
 
     incognito: "#A78BFA",
     incognitoSoft: "rgba(167, 139, 250, 0.14)",
+
+    scrim: "rgba(0, 0, 0, 0.72)",
   },
 
   darkest: {
@@ -148,6 +158,8 @@ export const themeColors: Record<ThemeMode, ColorTokens> = {
 
     incognito: "#A78BFA",
     incognitoSoft: "rgba(167, 139, 250, 0.13)",
+
+    scrim: "rgba(0, 0, 0, 0.78)",
   },
 };
 
