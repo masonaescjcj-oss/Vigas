@@ -1,23 +1,31 @@
 /**
  * frontend/src/screens/settings/ProfileMainScreen.tsx
  * ---------------------------------------------------------------------------
- * Main Profile Screen:
- *   - Avatar uploader alert.
- *   - Account details and subscription manager shortcuts.
- *   - List of SettingsRows navigating to sub-preferences screens.
+ * Who is signed in, and the list of things they can change.
+ *
+ * The avatar circle with a brand-coloured silhouette in it is gone — nobody
+ * uploads an avatar here, so it was a picture of a feature. The name and
+ * email are the identity. Below them, rows grouped by what they are about:
+ * the account, the tools, help. Sign out is the last row, in red, not a
+ * lone pill floating under the list.
+ *
+ * Providers and Shared links used to be reachable only from the chat's menu.
+ * They are settings; they belong here too.
  * ---------------------------------------------------------------------------
  */
 
 import React from "react";
 import { View, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { confirmAction } from "../../services/notify";
 import { describeSubscription } from "../../core/billing/subscriptionState";
 import { PURCHASES } from "../../services/distributionChannel";
-import { Icon } from "../../components/Icon";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { SettingsRow } from "../../components/SettingsRow";
+import { Card } from "../../components/ui/Card";
+import { Pill } from "../../components/ui/Pill";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
 import { type ProfileStackParamList } from "../../types/navigation";
@@ -44,110 +52,70 @@ export const ProfileMainScreen = () => {
     if (confirmed) await signOut();
   };
 
+  const email = profile?.email || user?.email || "";
+
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        
-        {/* User Card with Avatar */}
-        <View className="items-center py-8 border-b border-borderHairline/20" style={{ borderBottomColor: colors.borderHairline }}>
-          <View
-            className="w-20 h-20 rounded-full items-center justify-center bg-surfaceRaised border border-borderHairline mb-4"
-            style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-          >
-            <Icon name="user" size={30} color={colors.brandPrimary} />
-          </View>
-
-          <Text variant="h2" className="font-uiSemiBold text-center">
+      <ScreenHeader title="Account" noBack divider={false} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+        {/* Identity. The name is the heading; the email is the line under it. */}
+        <View className="px-1 pt-1 pb-6">
+          <Text variant="h2" className="font-uiSemiBold" numberOfLines={1}>
             {profile?.display_name || "Your account"}
           </Text>
-          <Text variant="caption" className="opacity-80 text-center mt-1">
-            {profile?.email || user?.email || ""}
-          </Text>
-
-          {/* Subscription status. The raw tier used to be printed here, which
-              said the same thing to someone who never subscribed as to someone
-              whose plan lapsed yesterday — and offered neither of them a way
-              to fix it.
-
-              Hidden entirely while nothing is for sale: "Current Plan: FREE"
-              only means something against a paid alternative, and without one
-              it is a label that raises a question the app cannot answer. */}
-          {PURCHASES.canMentionPlans ? (
-          <TouchableOpacity
-            onPress={() => navigation.getParent()?.navigate("Paywall", {})}
-            disabled={!plan.action || !canBuy}
-            className="py-1 px-4 rounded-pill mt-4 flex-row items-center"
-            style={{
-              backgroundColor: plan.needsAttention
-                ? `${colors.warning}20`
-                : `${colors.brandPrimary}15`,
-            }}
-          >
-            <Text
-              variant="caption"
-              className="font-uiMedium mr-1.5"
-              style={{ color: plan.needsAttention ? colors.warning : colors.brandPrimary }}
-            >
-              {plan.action && canBuy ? `${plan.badge} · ${plan.action}` : `Current Plan: ${plan.badge}`}
+          {email ? (
+            <Text variant="body" className="mt-1" style={{ color: colors.inkSecondary }} numberOfLines={1}>
+              {email}
             </Text>
-            {plan.action && canBuy ? (
-              <Icon
-                name="chevron-right"
-                size={12}
-                color={plan.needsAttention ? colors.warning : colors.brandPrimary}
-              />
-            ) : null}
-          </TouchableOpacity>
+          ) : null}
+
+          {/* Subscription state, only while there is a paid alternative to
+              measure it against. "Free" on its own raises a question the app
+              cannot answer. */}
+          {PURCHASES.canMentionPlans ? (
+            <TouchableOpacity
+              onPress={() => navigation.getParent()?.navigate("Paywall", {})}
+              disabled={!plan.action || !canBuy}
+              className="flex-row items-center mt-3 self-start"
+              activeOpacity={0.6}
+            >
+              <Pill tone={plan.needsAttention ? "warning" : "brand"}>{plan.badge}</Pill>
+              {plan.action && canBuy ? (
+                <Text variant="caption" className="ml-2 font-uiMedium" style={{ color: colors.brandPrimary }}>
+                  {plan.action}
+                </Text>
+              ) : null}
+            </TouchableOpacity>
           ) : null}
           {PURCHASES.canMentionPlans && plan.detail ? (
-            <Text variant="caption" className="opacity-70 text-center mt-1.5 text-[11px]">
-              {plan.detail}
-            </Text>
+            <Text variant="caption" className="mt-1.5" style={{ color: colors.inkMuted }}>{plan.detail}</Text>
           ) : null}
         </View>
 
-        {/* Navigation Rows list */}
-        <View className="mt-4">
-          <SettingsRow
-            label="Account Settings"
-            icon="user"
-            onPress={() => navigation.navigate("AccountSettings")}
-          />
-          <SettingsRow
-            label="Preferences"
-            icon="settings"
-            onPress={() => navigation.navigate("Preferences")}
-          />
-          <SettingsRow
-            label="Security"
-            icon="lock"
-            onPress={() => navigation.navigate("SecuritySettings")}
-          />
-          <SettingsRow
-            label="Help & Support"
-            icon="info"
-            onPress={() => navigation.navigate("HelpSupport")}
-          />
-          <SettingsRow
-            label="About"
-            icon="info"
-            onPress={() => navigation.navigate("About")}
-          />
-        </View>
+        <Card flush>
+          <SettingsRow label="Account" icon="user" hint="Name, password, delete" onPress={() => navigation.navigate("AccountSettings")} />
+          <SettingsRow label="Preferences" icon="settings" hint="Theme, model, notifications" onPress={() => navigation.navigate("Preferences")} />
+          <SettingsRow label="Security" icon="lock" onPress={() => navigation.navigate("SecuritySettings")} last />
+        </Card>
 
-        {/* Exit row */}
-        <View className="mt-8 px-4">
-          <TouchableOpacity
-            onPress={handleSignOut}
-            className="w-full bg-red-500/10 border border-red-500/20 py-3.5 rounded-pill items-center justify-center"
-            style={{ backgroundColor: `${colors.failed}10`, borderColor: `${colors.failed}30` }}
-          >
-            <Text variant="body" className="font-uiMedium text-red-500" style={{ color: colors.failed }}>
-              Sign Out
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <Card flush className="mt-4">
+          <SettingsRow label="Your AI providers" icon="cpu" hint="Bring your own key" onPress={() => navigation.navigate("Providers")} />
+          <SettingsRow label="Shared links" icon="link" hint="Pages you have published" onPress={() => navigation.navigate("SharedLinks")} />
+          {/* Lives on the root stack, above the tabs. */}
+          <SettingsRow label="Usage" icon="chart" hint="Builds and messages this window" onPress={() => navigation.getParent()?.navigate("TokenUsage")} last />
+        </Card>
 
+        <Card flush className="mt-4">
+          <SettingsRow label="Help" icon="info" onPress={() => navigation.navigate("HelpSupport")} />
+          <SettingsRow label="About" icon="file-text" onPress={() => navigation.navigate("About")} last={!profile?.is_admin} />
+          {profile?.is_admin ? (
+            <SettingsRow label="Admin" icon="shield" onPress={() => navigation.navigate("Admin")} last />
+          ) : null}
+        </Card>
+
+        <Card flush className="mt-4">
+          <SettingsRow label="Sign out" destructive onPress={() => void handleSignOut()} last />
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );

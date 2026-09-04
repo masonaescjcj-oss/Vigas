@@ -12,14 +12,16 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { View, ScrollView, SafeAreaView, ActivityIndicator } from "react-native";
 import { Text } from "../../components/Typography";
-import { Icon } from "../../components/Icon";
+import { Button } from "../../components/Button";
+import { Card } from "../../components/ui/Card";
+import { Pill } from "../../components/ui/Pill";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { directionStyleFor } from "../../theme/direction";
 import { confirmAction, notify } from "../../services/notify";
-import { errorFeedback, successFeedback, tapFeedback } from "../../services/haptics";
+import { errorFeedback, successFeedback } from "../../services/haptics";
 import { listShares, revokeShare, type ShareRecord } from "../../services/shareService";
 import { shareLink } from "../../services/shareSheet";
 import { relativeTime } from "../../services/formatting";
@@ -33,7 +35,6 @@ function readableSize(bytes: number): string {
 
 export const SharedLinksScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
 
   const [shares, setShares] = useState<ShareRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,7 +55,6 @@ export const SharedLinksScreen = () => {
 
   const handleShare = async (share: ShareRecord) => {
     if (!share.url) return;
-    tapFeedback();
     const outcome = await shareLink(share.url, share.title ?? "My app");
     if (outcome === "copied") notify("Link copied", share.url);
     else if (outcome === "manual") notify("Your link", share.url);
@@ -91,112 +91,60 @@ export const SharedLinksScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <View
-        className="flex-row items-center justify-between px-6 py-4 border-b"
-        style={{ borderBottomColor: colors.borderHairline }}
-      >
-        <View className="w-16" />
-        <Text variant="h3" className="font-uiSemiBold">Shared links</Text>
-        <TouchableOpacity onPress={() => { tapFeedback(); navigation.goBack(); }} className="p-2 w-16 items-end">
-          <Text variant="body" className="font-uiMedium">Done</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-        <Text variant="caption" className="text-left leading-5 mb-5" style={{ color: colors.inkSecondary }}>
-          {live.length === 0
-            ? "Pages you publish from the preview appear here. Anyone with the link can open them — no account needed."
-            : `${live.length} page${live.length === 1 ? "" : "s"} you have published. Anyone with the link can open ${live.length === 1 ? "it" : "them"} — no account needed.`}
+      <ScreenHeader
+        title="Shared links"
+        subtitle={live.length ? `${live.length} live` : undefined}
+        divider={false}
+      />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48 }}>
+        <Text variant="body" className="px-1 pt-1 pb-5" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
+          Pages you publish from the preview. Anyone with the link can open them — no account needed.
         </Text>
 
         {loading ? (
-          <ActivityIndicator size="small" color={colors.brandPrimary} />
+          <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginVertical: 16 }} />
         ) : shares.length === 0 ? (
-          <View
-            className="p-4 rounded-2xl border"
-            style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-          >
-            <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left leading-5">
+          <Card>
+            <Text variant="caption" style={{ color: colors.inkMuted, lineHeight: 18 }}>
               Nothing published yet. Open a project's preview and press Share.
             </Text>
-          </View>
+          </Card>
         ) : (
           shares.map((share) => {
             const revoked = !!share.revoked_at;
             return (
-              <View
-                key={share.code}
-                className="p-4 rounded-2xl border mb-3"
-                style={{
-                  backgroundColor: colors.surfaceRaised,
-                  borderColor: colors.borderHairline,
-                  // A taken-down link is history, not an option. Dimming it says
-                  // so without hiding the record.
-                  opacity: revoked ? 0.55 : 1,
-                }}
-              >
-                <View className="flex-row items-center mb-1">
-                  <Icon
-                    name={revoked ? "x" : "globe"}
-                    size={13}
-                    color={revoked ? colors.inkMuted : colors.success}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text
-                    variant="body"
-                    className="font-uiMedium flex-1"
-                    style={directionStyleFor(share.title)}
-                    numberOfLines={1}
-                  >
+              // A taken-down link is history, not an option. Dimming it says
+              // so without hiding the record.
+              <Card key={share.code} className="mb-3" style={{ opacity: revoked ? 0.55 : 1 }}>
+                <View className="flex-row items-center">
+                  <Text variant="body" className="font-uiMedium flex-1 mr-2" style={directionStyleFor(share.title)} numberOfLines={1}>
                     {share.title ?? "Untitled page"}
                   </Text>
-                  <Text variant="caption" style={{ color: colors.inkMuted }} className="text-[10px]">
-                    {readableSize(share.size_bytes)}
-                  </Text>
+                  <Pill tone={revoked ? "muted" : "success"}>{revoked ? "Taken down" : "Live"}</Pill>
                 </View>
 
-                <Text
-                  variant="caption"
-                  style={{ color: revoked ? colors.inkMuted : colors.inkSecondary }}
-                  className="text-left text-[11px]"
-                  numberOfLines={1}
-                >
+                <Text variant="caption" className="mt-1.5" style={{ color: revoked ? colors.inkMuted : colors.inkSecondary }} numberOfLines={1}>
                   {share.url ?? `Taken down ${relativeTime(share.revoked_at!)}`}
                 </Text>
-                <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left text-[11px] mt-0.5">
-                  Published {relativeTime(share.created_at)}
+                <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }}>
+                  Published {relativeTime(share.created_at)} · {readableSize(share.size_bytes)}
                 </Text>
 
                 {!revoked && (
-                  <View className="flex-row justify-end mt-3">
-                    <TouchableOpacity
-                      onPress={() => handleShare(share)}
+                  <View className="flex-row mt-3">
+                    <Button label="Send link" tone="neutral" size="sm" disabled={busyCode !== null} onPress={() => void handleShare(share)} />
+                    <View style={{ width: 8 }} />
+                    <Button
+                      label="Take down"
+                      tone="ghost"
+                      size="sm"
+                      loading={busyCode === share.code}
                       disabled={busyCode !== null}
-                      className="px-3 py-1.5 rounded-lg mr-2"
-                      style={{ backgroundColor: colors.surfaceMuted }}
-                    >
-                      <Text variant="caption" className="text-[11px] font-uiMedium" style={{ color: colors.brandPrimary }}>
-                        Send link
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => handleRevoke(share)}
-                      disabled={busyCode !== null}
-                      className="px-3 py-1.5 rounded-lg"
-                      style={{ backgroundColor: colors.surfaceMuted }}
-                    >
-                      {busyCode === share.code ? (
-                        <ActivityIndicator size="small" color={colors.failed} />
-                      ) : (
-                        <Text variant="caption" className="text-[11px] font-uiMedium" style={{ color: colors.failed }}>
-                          Take down
-                        </Text>
-                      )}
-                    </TouchableOpacity>
+                      onPress={() => void handleRevoke(share)}
+                    />
                   </View>
                 )}
-              </View>
+              </Card>
             );
           })
         )}

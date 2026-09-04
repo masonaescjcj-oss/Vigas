@@ -1,8 +1,14 @@
 /**
  * frontend/src/screens/settings/PreferencesScreen.tsx
  * ---------------------------------------------------------------------------
- * Screen to edit general preferences: theme mode, the default model, and
- * whether the app may come and find you when a build finishes.
+ * Theme, default model, and whether the app may come and find you when a
+ * build finishes.
+ *
+ * Choices are rows in a group with a check on the chosen one — the way every
+ * phone's own settings do it — instead of three separate cards each with a
+ * radio dot and a two-pixel brand border when selected. The theme names lose
+ * their parentheses: "Light Mode (Perplexity Beige)" was a note to the
+ * designer, not to the user.
  *
  * Notifications register themselves silently on sign-in, which means a user who
  * declined the permission would otherwise never learn why nothing arrives. This
@@ -12,13 +18,16 @@
 
 import React, { useEffect, useState } from "react";
 import { View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator, Linking, Platform } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
-import { SettingsRow } from "../../components/SettingsRow";
+import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
+import { Card } from "../../components/ui/Card";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useSettingsStore, type ModelPreference } from "../../stores/settingsStore";
 import { registerForPush, type PushStatus } from "../../services/pushService";
-import { tapFeedback } from "../../services/haptics";
+import { selectionFeedback } from "../../services/haptics";
 
 /**
  * What each outcome means for the person reading it, and whether there is
@@ -58,10 +67,41 @@ const PUSH_COPY: Record<PushStatus, { title: string; detail: string; action: "re
   },
 };
 
+/** One choice in a group. The check is the only mark of selection. */
+const OptionRow = ({
+  label,
+  hint,
+  selected,
+  last,
+  onPress,
+}: {
+  label: string;
+  hint?: string;
+  selected: boolean;
+  last?: boolean;
+  onPress: () => void;
+}) => {
+  const { colors } = useTheme();
+  return (
+    <TouchableOpacity
+      onPress={() => { selectionFeedback(); onPress(); }}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      activeOpacity={0.6}
+      className="flex-row items-center px-4"
+      style={{ minHeight: 52, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.borderHairline }}
+    >
+      <View className="flex-1 py-3">
+        <Text variant="body">{label}</Text>
+        {hint ? <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }}>{hint}</Text> : null}
+      </View>
+      {selected ? <Icon name="check" size={18} color={colors.brandPrimary} /> : null}
+    </TouchableOpacity>
+  );
+};
+
 export const PreferencesScreen = () => {
   const { colors, mode, setMode } = useTheme();
-  const navigation = useNavigation();
-
   const { defaultModel, setDefaultModel } = useSettingsStore();
 
   // Null while unknown. Read by asking, not from a stored flag: the user can
@@ -85,154 +125,85 @@ export const PreferencesScreen = () => {
   useEffect(() => { void checkPush(); }, []);
 
   // Must stay in sync with the agent-run allow-list (ALLOWED_MODELS).
-  const modelOptions: Array<{ key: ModelPreference; label: string }> = [
-    { key: "auto", label: "Auto (server default)" },
+  const modelOptions: Array<{ key: ModelPreference; label: string; hint?: string }> = [
+    { key: "auto", label: "Automatic", hint: "The server picks the current default" },
     { key: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
   ];
 
   const themeOptions: Array<{ key: typeof mode; label: string }> = [
-    { key: "light", label: "Light Mode (Perplexity Beige)" },
-    { key: "dark", label: "Dark Mode (Claude Khaki)" },
-    { key: "darkest", label: "Darkest Mode (Grok Black)" },
+    { key: "light", label: "Light" },
+    { key: "dark", label: "Dark" },
+    { key: "darkest", label: "Black" },
   ];
+
+  const push = PUSH_COPY[pushStatus ?? "failed"];
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        
-        {/* Header Header */}
-        <View className="px-6 py-4 flex-row justify-between items-center border-b border-borderHairline/20" style={{ borderBottomColor: colors.borderHairline }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-            <Text variant="body" className="font-uiMedium">← Back</Text>
-          </TouchableOpacity>
-          <Text variant="h2" className="font-uiSemiBold">Preferences</Text>
-        </View>
+      <ScreenHeader title="Preferences" divider={false} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+        <SectionTitle first>Appearance</SectionTitle>
+        <Card flush>
+          {themeOptions.map((opt, i) => (
+            <OptionRow
+              key={opt.key}
+              label={opt.label}
+              selected={mode === opt.key}
+              last={i === themeOptions.length - 1}
+              onPress={() => setMode(opt.key)}
+            />
+          ))}
+        </Card>
 
-        {/* Theme select section */}
-        <View className="p-6">
-          <Text variant="label" className="text-left mb-4">Application Theme</Text>
-          {themeOptions.map((opt) => {
-            const isSelected = mode === opt.key;
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                onPress={() => setMode(opt.key)}
-                className="flex-row items-center justify-between p-4 bg-surfaceRaised rounded-card border mb-3"
-                style={{
-                  backgroundColor: colors.surfaceRaised,
-                  borderColor: isSelected ? colors.brandPrimary : colors.borderHairline,
-                  borderWidth: isSelected ? 2 : 1,
-                }}
-                activeOpacity={0.8}
-              >
-                <View 
-                  className="w-4 h-4 rounded-full border items-center justify-center"
-                  style={{ borderColor: isSelected ? colors.brandPrimary : colors.inkSecondary }}
-                >
-                  {isSelected && (
-                    <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.brandPrimary }} />
-                  )}
-                </View>
-                <Text variant="body" className="font-uiMedium text-left">{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <SectionTitle hint="Pre-selected in every new chat. You can still change it per message.">Default model</SectionTitle>
+        <Card flush>
+          {modelOptions.map((opt, i) => (
+            <OptionRow
+              key={opt.key}
+              label={opt.label}
+              hint={opt.hint}
+              selected={defaultModel === opt.key}
+              last={i === modelOptions.length - 1}
+              onPress={() => setDefaultModel(opt.key)}
+            />
+          ))}
+        </Card>
 
-        {/* Default model — remembered across launches and pre-selected in chat */}
-        <View className="px-6 pb-6">
-          <Text variant="label" className="text-left mb-4">Default AI Model</Text>
-          {modelOptions.map((opt) => {
-            const isSelected = defaultModel === opt.key;
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                onPress={() => setDefaultModel(opt.key)}
-                className="flex-row items-center justify-between p-4 rounded-card border mb-3"
-                style={{
-                  backgroundColor: colors.surfaceRaised,
-                  borderColor: isSelected ? colors.brandPrimary : colors.borderHairline,
-                  borderWidth: isSelected ? 2 : 1,
-                }}
-                activeOpacity={0.8}
-              >
+        <SectionTitle>Build notifications</SectionTitle>
+        <Card>
+          {pushBusy && pushStatus === null ? (
+            <ActivityIndicator size="small" color={colors.inkMuted} />
+          ) : (
+            <>
+              <View className="flex-row items-center">
                 <View
-                  className="w-4 h-4 rounded-full border items-center justify-center"
-                  style={{ borderColor: isSelected ? colors.brandPrimary : colors.inkSecondary }}
-                >
-                  {isSelected && (
-                    <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.brandPrimary }} />
-                  )}
-                </View>
-                <Text variant="body" className="font-uiMedium text-left">{opt.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  className="w-2 h-2 rounded-full mr-2.5"
+                  style={{ backgroundColor: pushStatus === "registered" ? colors.success : colors.inkMuted }}
+                />
+                <Text variant="body" className="font-uiMedium flex-1">{push.title}</Text>
+              </View>
+              <Text variant="caption" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 18 }}>
+                {push.detail}
+              </Text>
+              {/* The underlying message, when there is one worth showing. */}
+              {pushDetail && pushStatus !== "registered" && pushStatus !== "unsupported" ? (
+                <Text variant="caption" className="mt-1" style={{ color: colors.inkMuted }}>{pushDetail}</Text>
+              ) : null}
 
-        {/* Build notifications — real state, asked fresh each time */}
-        <View className="px-6 pb-6">
-          <Text variant="label" className="text-left mb-4">Build Notifications</Text>
-          <View
-            className="p-4 rounded-card border"
-            style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-          >
-            {pushBusy && pushStatus === null ? (
-              <ActivityIndicator size="small" color={colors.brandPrimary} />
-            ) : (
-              <>
-                <View className="flex-row items-center">
-                  <View
-                    className="w-2 h-2 rounded-full mr-2.5"
-                    style={{
-                      backgroundColor: pushStatus === "registered" ? colors.success : colors.inkMuted,
-                    }}
-                  />
-                  <Text variant="body" className="font-uiMedium text-left flex-1">
-                    {PUSH_COPY[pushStatus ?? "failed"].title}
-                  </Text>
-                </View>
-                <Text variant="caption" className="text-left mt-2 leading-5" style={{ color: colors.inkSecondary }}>
-                  {PUSH_COPY[pushStatus ?? "failed"].detail}
-                </Text>
-                {/* The underlying message, when there is one worth showing. */}
-                {pushDetail && pushStatus !== "registered" && pushStatus !== "unsupported" ? (
-                  <Text variant="caption" className="text-left mt-1 text-[11px]" style={{ color: colors.inkMuted }}>
-                    {pushDetail}
-                  </Text>
-                ) : null}
-
-                {PUSH_COPY[pushStatus ?? "failed"].action === "settings" ? (
-                  <TouchableOpacity
-                    onPress={() => { tapFeedback(); void Linking.openSettings(); }}
-                    className="mt-3 self-start px-3 py-1.5 rounded-lg"
-                    style={{ backgroundColor: colors.surfaceMuted }}
-                  >
-                    <Text variant="caption" className="text-[11px] font-uiMedium" style={{ color: colors.brandPrimary }}>
-                      {Platform.OS === "ios" ? "Open iOS Settings" : "Open app settings"}
-                    </Text>
-                  </TouchableOpacity>
-                ) : PUSH_COPY[pushStatus ?? "failed"].action === "retry" ? (
-                  <TouchableOpacity
-                    onPress={() => { tapFeedback(); void checkPush(); }}
-                    disabled={pushBusy}
-                    className="mt-3 self-start px-3 py-1.5 rounded-lg"
-                    style={{ backgroundColor: colors.surfaceMuted }}
-                  >
-                    {pushBusy ? (
-                      <ActivityIndicator size="small" color={colors.brandPrimary} />
-                    ) : (
-                      <Text variant="caption" className="text-[11px] font-uiMedium" style={{ color: colors.brandPrimary }}>
-                        Try again
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ) : null}
-              </>
-            )}
-          </View>
-        </View>
-
+              {push.action === "settings" ? (
+                <Button
+                  label={Platform.OS === "ios" ? "Open iOS Settings" : "Open app settings"}
+                  tone="neutral"
+                  size="sm"
+                  className="mt-3"
+                  onPress={() => void Linking.openSettings()}
+                />
+              ) : push.action === "retry" ? (
+                <Button label="Try again" tone="neutral" size="sm" className="mt-3" loading={pushBusy} onPress={() => void checkPush()} />
+              ) : null}
+            </>
+          )}
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,168 +1,131 @@
 /**
  * frontend/src/screens/settings/HelpSupportScreen.tsx
  * ---------------------------------------------------------------------------
- * Help & Support Screen:
- *   - FAQ Accordion items.
- *   - Support request handed off to the device's mail client.
+ * Four answers and a way to ask a fifth.
+ *
+ * The FAQ is one group of rows that open in place, not four separate cards
+ * with "▲"/"▼" text characters for arrows. The message form hands off to the
+ * device's mail client — there is no ticketing backend, and pretending a
+ * message was "submitted" and discarding it would be worse than saying so.
+ *
+ * The address comes from core/legal/documents, the same one the privacy
+ * policy prints. This screen had its own copy, at a different domain.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, TextInput, Alert, SafeAreaView, Linking } from "react-native";
+import { View, ScrollView, TouchableOpacity, SafeAreaView, Linking, KeyboardAvoidingView, Platform } from "react-native";
 import { notify } from "../../services/notify";
-import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
+import { Input } from "../../components/ui/Input";
+import { Card } from "../../components/ui/Card";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
-
-const SUPPORT_EMAIL = "support@retrocode.app";
+import { selectionFeedback } from "../../services/haptics";
+import { SUPPORT_EMAIL } from "../../core/legal/documents";
 
 interface FaqItem {
   q: string;
   a: string;
 }
 
+const FAQS: FaqItem[] = [
+  { q: "How does the agent write code?", a: "It reads your project's files, plans a change, writes and edits files, and runs commands in an isolated sandbox — then tells you what it changed. A restore point is saved before every run that can touch your files." },
+  { q: "Can I undo what the agent did?", a: "Yes. A restore point is saved before every run that can change files. Open Restore points from the + menu, or tap 'Undo this change' under the message. Rolling back saves a restore point first, so it can be undone too." },
+  { q: "Is there a limit on how much I can build?", a: "Yes, a rolling one: a number of builds and chat messages per 12 hours. The app tells you when you reach it and when it resets." },
+  { q: "Can I use my own AI provider?", a: "Yes. Add a key from any OpenAI-compatible endpoint under Your AI providers. Your runs then use it and the tokens are billed to you." },
+];
+
 export const HelpSupportScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
 
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
-  
-  // Support ticket form inputs
-  const [ticketSubject, setTicketSubject] = useState("");
-  const [ticketMsg, setTicketMsg] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
-  const faqs: FaqItem[] = [
-    { q: "How does the agent write code?", a: "It reads your project's files, plans a change, writes and edits files, and runs commands in an isolated sandbox — then tells you what it changed. A restore point is saved before every run that can touch your files." },
-    { q: "How can I cancel my subscription?", a: "From your Google Play or App Store subscription settings. Manage Subscription in the app shows you where to look, but the store handles the cancellation itself." },
-    { q: "What is the difference between the free and pro plans?", a: "Free has a daily token allowance. Pro removes that cap and allows longer agent runs. Both use the same models." },
-    { q: "Can I undo what the agent did?", a: "Yes. A restore point is saved before every run that can change files. Open Restore points from the + menu, or tap 'Undo this change' under the message. Rolling back saves a restore point first, so it can be undone too." },
-  ];
-
-  const handleSendTicket = async () => {
-    if (!ticketSubject || !ticketMsg) {
-      notify("Error", "Please fill in the subject and message of the support ticket.");
+  const handleSend = async () => {
+    if (!subject || !message) {
+      notify("Missing details", "Add a subject and a message.");
       return;
     }
-
-    // There is no ticketing backend, so hand the message to the user's mail
-    // client instead of pretending it was submitted and discarding it.
     setSending(true);
     try {
       const url =
-        `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(ticketSubject)}` +
-        `&body=${encodeURIComponent(ticketMsg)}`;
+        `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}` +
+        `&body=${encodeURIComponent(message)}`;
       const canOpen = await Linking.canOpenURL(url);
       if (!canOpen) throw new Error("No mail app is available on this device.");
       await Linking.openURL(url);
-      setTicketMsg("");
-      setTicketSubject("");
-    } catch (e: any) {
-      notify(
-        "Could not open your mail app",
-        `Please email us directly at ${SUPPORT_EMAIL}.`,
-      );
+      setMessage("");
+      setSubject("");
+    } catch {
+      notify("Could not open your mail app", `Email us directly at ${SUPPORT_EMAIL}.`);
     } finally {
       setSending(false);
     }
   };
 
-  const toggleFaq = (idx: number) => {
-    setExpandedIdx(expandedIdx === idx ? null : idx);
-  };
-
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        
-        {/* Header Header */}
-        <View className="px-6 py-4 flex-row justify-between items-center border-b border-borderHairline/20" style={{ borderBottomColor: colors.borderHairline }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-            <Text variant="body" className="font-uiMedium">← Back</Text>
-          </TouchableOpacity>
-          <Text variant="h2" className="font-uiSemiBold">Help & Support</Text>
-        </View>
-
-        {/* FAQ Accordion */}
-        <View className="p-6">
-          <Text variant="label" className="text-left mb-4">Frequently Asked Questions (FAQ)</Text>
-          
-          {faqs.map((faq, idx) => {
-            const isExpanded = expandedIdx === idx;
-            return (
-              <View 
-                key={idx}
-                className="bg-surfaceRaised rounded-card border border-borderHairline mb-3 overflow-hidden"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-              >
-                <TouchableOpacity
-                  onPress={() => toggleFaq(idx)}
-                  className="p-4 flex-row justify-between items-center"
-                  activeOpacity={0.8}
+      <ScreenHeader title="Help" divider={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          <SectionTitle first>Common questions</SectionTitle>
+          <Card flush>
+            {FAQS.map((faq, idx) => {
+              const open = expandedIdx === idx;
+              const last = idx === FAQS.length - 1;
+              return (
+                <View
+                  key={faq.q}
+                  style={{ borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.borderHairline }}
                 >
-                  <Text variant="body" className="font-uiMedium text-left flex-1 pr-3">
-                    {faq.q}
-                  </Text>
-                  <Text variant="caption" className="opacity-60">{isExpanded ? "▲" : "▼"}</Text>
-                </TouchableOpacity>
-                
-                {isExpanded && (
-                  <View className="px-4 pb-4 border-t border-borderHairline/10 pt-2" style={{ borderTopColor: colors.borderHairline }}>
-                    <Text variant="caption" className="text-left leading-5 opacity-90">
+                  <TouchableOpacity
+                    onPress={() => { selectionFeedback(); setExpandedIdx(open ? null : idx); }}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: open }}
+                    className="flex-row items-center px-4 py-3.5"
+                    activeOpacity={0.6}
+                  >
+                    <Text variant="body" className="flex-1 pr-3">{faq.q}</Text>
+                    <Icon
+                      name="chevron-down"
+                      size={16}
+                      color={colors.inkMuted}
+                      style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}
+                    />
+                  </TouchableOpacity>
+                  {open ? (
+                    <Text variant="caption" className="px-4 pb-4" style={{ color: colors.inkSecondary, lineHeight: 19 }}>
                       {faq.a}
                     </Text>
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </Card>
 
-        {/* Divider */}
-        <View className="h-[1px] bg-borderHairline mx-6 my-2" style={{ backgroundColor: colors.borderHairline }} />
-
-        {/* Support ticket submission form */}
-        <View className="p-6">
-          <Text variant="label" className="text-left mb-4">Submit Support Ticket</Text>
-          
-          <View className="space-y-4">
-            <View>
-              <Text variant="caption" className="mb-1 font-uiMedium text-left">Subject</Text>
-              <TextInput
-                value={ticketSubject}
-                onChangeText={setTicketSubject}
-                placeholder="e.g.: Error in Pro upgrade transaction"
-                placeholderTextColor={colors.inkSecondary}
-                className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
-              />
-            </View>
-
-            <View className="mt-3">
-              <Text variant="caption" className="mb-1 font-uiMedium text-left">Message</Text>
-              <TextInput
-                value={ticketMsg}
-                onChangeText={setTicketMsg}
-                placeholder="Enter message details..."
-                placeholderTextColor={colors.inkSecondary}
-                multiline
-                numberOfLines={4}
-                className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left h-24"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary, textAlignVertical: "top" }}
-              />
-            </View>
-
-            <Button
-              label="Send Support Message"
-              onPress={handleSendTicket}
-              loading={sending}
-              className="mt-6"
+          <SectionTitle hint={`Opens your mail app with a message to ${SUPPORT_EMAIL}.`}>Write to us</SectionTitle>
+          <View className="px-1">
+            <Input label="Subject" value={subject} onChangeText={setSubject} placeholder="What is this about?" autoCapitalize="sentences" />
+            <Input
+              label="Message"
+              value={message}
+              onChangeText={setMessage}
+              placeholder="What happened, and what you expected"
+              multiline
+              numberOfLines={5}
+              autoCapitalize="sentences"
+              style={{ minHeight: 120, paddingTop: 12, textAlignVertical: "top" }}
             />
+            <Button label="Send" loading={sending} onPress={() => void handleSend()} />
           </View>
-        </View>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

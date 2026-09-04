@@ -8,17 +8,25 @@
  * about the two things a user needs to know: their key is stored encrypted and
  * cannot be read back, and it is checked against the provider before it is
  * saved so a typo fails here rather than mid-build.
+ *
+ * Layout: the header's back control is on the left like every other pushed
+ * screen (it had a "Done" on the right, alone). Each provider is a card with a
+ * status pill; the form under them uses the app's fields.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { View, ScrollView, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { View, ScrollView, SafeAreaView, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { Text } from "../../components/Typography";
-import { Icon } from "../../components/Icon";
+import { Button } from "../../components/Button";
+import { Input } from "../../components/ui/Input";
+import { Card } from "../../components/ui/Card";
+import { Pill } from "../../components/ui/Pill";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { confirmAction, notify } from "../../services/notify";
-import { errorFeedback, successFeedback, tapFeedback } from "../../services/haptics";
+import { errorFeedback, successFeedback } from "../../services/haptics";
 import {
   addProvider,
   deleteProvider,
@@ -30,7 +38,6 @@ import { relativeTime } from "../../services/formatting";
 
 export const ProvidersScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
 
   const [providers, setProviders] = useState<UserProvider[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +62,7 @@ export const ProvidersScreen = () => {
 
   useEffect(() => { void load(); }, [load]);
 
-  const canSave = label.trim() && baseUrl.trim() && apiKey.trim() && !saving;
+  const canSave = !!(label.trim() && baseUrl.trim() && apiKey.trim()) && !saving;
 
   const handleAdd = async () => {
     if (!canSave) return;
@@ -110,190 +117,94 @@ export const ProvidersScreen = () => {
     }
   };
 
-  const field = {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.borderHairline,
-    color: colors.inkPrimary,
-  };
-
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <View
-        className="flex-row items-center justify-between px-6 py-4 border-b"
-        style={{ borderBottomColor: colors.borderHairline }}
-      >
-        <View className="w-16" />
-        <Text variant="h3" className="font-uiSemiBold">Your AI providers</Text>
-        <TouchableOpacity onPress={() => { tapFeedback(); navigation.goBack(); }} className="p-2 w-16 items-end">
-          <Text variant="body" className="font-uiMedium">Done</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader title="Your AI providers" divider={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+          <Text variant="body" className="px-1 pt-1 pb-5" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
+            Add a key from any OpenAI-compatible provider and your runs use it, so the tokens are billed to you.
+            The key is encrypted before it is stored and never shown again — only its last four characters.
+          </Text>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-        <Text variant="caption" className="text-left leading-5 mb-5" style={{ color: colors.inkSecondary }}>
-          Add a key from any OpenAI-compatible provider and your runs use it, so
-          the tokens are billed to you. The key is encrypted before it is stored
-          and is never shown again — only the last four characters.
-        </Text>
-
-        {/* Existing providers */}
-        {loading ? (
-          <ActivityIndicator size="small" color={colors.brandPrimary} />
-        ) : providers.length === 0 ? (
-          <View
-            className="p-4 rounded-2xl border mb-6"
-            style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-          >
-            <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left leading-5">
-              No providers yet. Runs use the built-in one.
-            </Text>
-          </View>
-        ) : (
-          <View className="mb-6">
-            {providers.map((provider) => (
-              <View
-                key={provider.id}
-                className="p-4 rounded-2xl border mb-3"
-                style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-              >
-                <View className="flex-row items-center mb-1">
-                  <Icon
-                    name={provider.verified_at ? "check" : "alert"}
-                    size={13}
-                    color={provider.verified_at ? colors.success : colors.warning}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text variant="body" className="font-uiMedium text-left flex-1" numberOfLines={1}>
-                    {provider.label}
-                  </Text>
-                  <Text variant="caption" style={{ color: colors.inkMuted }} className="text-[10px]">
-                    ····{provider.key_last4}
-                  </Text>
-                </View>
-
-                <Text variant="caption" style={{ color: colors.inkSecondary }} className="text-left text-[11px]" numberOfLines={1}>
-                  {provider.base_url}
-                </Text>
-                {provider.model ? (
-                  <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left text-[11px] mt-0.5">
-                    Model: {provider.model}
-                  </Text>
-                ) : null}
-
-                <Text variant="caption" style={{ color: provider.verified_at ? colors.inkMuted : colors.warning }} className="text-left text-[11px] mt-1 leading-4">
-                  {provider.verified_at
-                    ? `Last worked ${relativeTime(provider.verified_at)}`
-                    : provider.last_error ?? "Never verified"}
-                </Text>
-
-                <View className="flex-row justify-end mt-3">
-                  <TouchableOpacity
-                    onPress={() => handleTest(provider)}
-                    disabled={busyId !== null}
-                    className="px-3 py-1.5 rounded-lg mr-2"
-                    style={{ backgroundColor: colors.surfaceMuted }}
-                  >
-                    {busyId === provider.id ? (
-                      <ActivityIndicator size="small" color={colors.brandPrimary} />
-                    ) : (
-                      <Text variant="caption" className="text-[11px] font-uiMedium" style={{ color: colors.brandPrimary }}>
-                        Test
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleDelete(provider)}
-                    disabled={busyId !== null}
-                    className="px-3 py-1.5 rounded-lg"
-                    style={{ backgroundColor: colors.failedSoft }}
-                  >
-                    <Text variant="caption" className="text-[11px] font-uiMedium" style={{ color: colors.failed }}>
-                      Remove
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Add a provider */}
-        <Text variant="label" className="text-left mb-3">Add a provider</Text>
-
-        <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left mb-1.5 text-[11px]">Name</Text>
-        <TextInput
-          value={label}
-          onChangeText={setLabel}
-          placeholder="My OpenRouter key"
-          placeholderTextColor={colors.inkMuted}
-          autoCapitalize="none"
-          className="rounded-xl border px-3 py-3 text-sm mb-4"
-          style={field}
-        />
-
-        <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left mb-1.5 text-[11px]">
-          Endpoint — the base URL, usually ending in /v1
-        </Text>
-        <TextInput
-          value={baseUrl}
-          onChangeText={setBaseUrl}
-          placeholder="https://openrouter.ai/api/v1"
-          placeholderTextColor={colors.inkMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          className="rounded-xl border px-3 py-3 text-sm mb-4"
-          style={field}
-        />
-
-        <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left mb-1.5 text-[11px]">API key</Text>
-        <TextInput
-          value={apiKey}
-          onChangeText={setApiKey}
-          placeholder="sk-..."
-          placeholderTextColor={colors.inkMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-          className="rounded-xl border px-3 py-3 text-sm mb-4"
-          style={field}
-        />
-
-        <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left mb-1.5 text-[11px]">
-          Default model (optional)
-        </Text>
-        <TextInput
-          value={model}
-          onChangeText={setModel}
-          placeholder="anthropic/claude-sonnet-4"
-          placeholderTextColor={colors.inkMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          className="rounded-xl border px-3 py-3 text-sm mb-5"
-          style={field}
-        />
-
-        <TouchableOpacity
-          onPress={handleAdd}
-          disabled={!canSave}
-          className="py-3.5 rounded-2xl items-center justify-center"
-          style={{ backgroundColor: colors.brandPrimary, opacity: canSave ? 1 : 0.4 }}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color={colors.canvasBase} />
+          {loading ? (
+            <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginVertical: 16 }} />
+          ) : providers.length === 0 ? (
+            <Card>
+              <Text variant="caption" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+                No providers yet. Runs use the built-in one.
+              </Text>
+            </Card>
           ) : (
-            <Text variant="body" className="font-uiSemiBold" style={{ color: colors.canvasBase }}>
-              Check and save
-            </Text>
-          )}
-        </TouchableOpacity>
+            providers.map((provider) => {
+              const verified = !!provider.verified_at;
+              return (
+                <Card key={provider.id} className="mb-3">
+                  <View className="flex-row items-center">
+                    <Text variant="body" className="font-uiMedium flex-1 mr-2" numberOfLines={1}>{provider.label}</Text>
+                    <Pill tone={verified ? "success" : "warning"}>{verified ? "Working" : "Unverified"}</Pill>
+                  </View>
 
-        <Text variant="caption" style={{ color: colors.inkMuted }} className="text-left leading-5 mt-4 text-[11px]">
-          Saving makes one small test call to the provider, so a wrong key or
-          endpoint is caught now. Builds still count against your plan's daily
-          limit — the key covers the model, not the machine it runs on.
-        </Text>
-      </ScrollView>
+                  <Text variant="caption" className="mt-1.5" style={{ color: colors.inkSecondary }} numberOfLines={1}>
+                    {provider.base_url}
+                  </Text>
+                  <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }} numberOfLines={1}>
+                    {provider.model ? `${provider.model} · ` : ""}key ····{provider.key_last4}
+                  </Text>
+                  <Text variant="caption" className="mt-0.5" style={{ color: verified ? colors.inkMuted : colors.warning, lineHeight: 16 }}>
+                    {verified ? `Last worked ${relativeTime(provider.verified_at!)}` : provider.last_error ?? "Never verified"}
+                  </Text>
+
+                  <View className="flex-row mt-3">
+                    <Button
+                      label="Test"
+                      tone="neutral"
+                      size="sm"
+                      loading={busyId === provider.id}
+                      disabled={busyId !== null}
+                      onPress={() => void handleTest(provider)}
+                    />
+                    <View style={{ width: 8 }} />
+                    <Button
+                      label="Remove"
+                      tone="ghost"
+                      size="sm"
+                      disabled={busyId !== null}
+                      onPress={() => void handleDelete(provider)}
+                    />
+                  </View>
+                </Card>
+              );
+            })
+          )}
+
+          <SectionTitle>Add a provider</SectionTitle>
+          <View className="px-1">
+            <Input label="Name" value={label} onChangeText={setLabel} placeholder="My OpenRouter key" />
+            <Input
+              label="Endpoint"
+              hint="The base URL, usually ending in /v1"
+              value={baseUrl}
+              onChangeText={setBaseUrl}
+              placeholder="https://openrouter.ai/api/v1"
+              keyboardType="url"
+            />
+            <Input label="API key" value={apiKey} onChangeText={setApiKey} placeholder="sk-…" secureTextEntry />
+            <Input
+              label="Default model"
+              hint="Optional"
+              value={model}
+              onChangeText={setModel}
+              placeholder="anthropic/claude-sonnet-4"
+            />
+            <Button label="Check and save" block loading={saving} disabled={!canSave} onPress={() => void handleAdd()} />
+            <Text variant="caption" className="mt-4" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+              Saving makes one small test call, so a wrong key or endpoint is caught now. Builds still count
+              against your limit — the key covers the model, not the machine it runs on.
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

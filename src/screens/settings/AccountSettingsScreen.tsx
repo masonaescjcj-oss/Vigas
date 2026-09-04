@@ -1,19 +1,23 @@
 /**
  * frontend/src/screens/settings/AccountSettingsScreen.tsx
  * ---------------------------------------------------------------------------
- * Account Settings Screen:
- *   - Edit display name, change password, delete the account.
- *   - Update account password.
- *   - Delete Account verification flow (two-step).
+ * Name, password, and the way out.
+ *
+ * Three sections, each a title, its fields and one button. Deleting the
+ * account is the last section and its button is the danger tone — soft red,
+ * not a solid red block, because the loudest thing on a settings page should
+ * not be the one that erases everything. The typed "DELETE" gate stays.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, TextInput, Alert, ScrollView, SafeAreaView, TouchableOpacity } from "react-native";
+import { View, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform } from "react-native";
 import { notify } from "../../services/notify";
-import { useNavigation } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { Input } from "../../components/ui/Input";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "../../services/supabase";
@@ -21,17 +25,13 @@ import { invokeFunction } from "../../services/functionsClient";
 
 export const AccountSettingsScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
   const { profile, loadProfile, signOut } = useAuthStore();
 
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
-  
-  // Password fields
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [deleteWord, setDeleteWord] = useState("");
-  
+
   const [savingProfile, setSavingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -44,32 +44,32 @@ export const AccountSettingsScreen = () => {
         .from("profiles")
         .update({ display_name: displayName })
         .eq("id", profile?.id!);
-
       if (error) throw error;
       await loadProfile();
-      notify("Profile Updated", "Display name changed successfully.");
+      notify("Saved", "Your name has been updated.");
     } catch (e: any) {
-      notify("Error", e.message || "Update failed.");
+      notify("Could not save", e.message || "Update failed.");
     } finally {
       setSavingProfile(false);
     }
   };
 
+  const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+
   const handleUpdatePassword = async () => {
     if (!newPassword || newPassword !== confirmPassword) {
-      notify("Error", "Passwords do not match.");
+      notify("Check the form", "The two passwords do not match.");
       return;
     }
-
     setUpdatingPassword(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      notify("Password Updated", "Your password has been changed successfully.");
+      notify("Password changed", "Use it the next time you sign in.");
       setNewPassword("");
       setConfirmPassword("");
     } catch (e: any) {
-      notify("Error", e.message);
+      notify("Could not change the password", e.message);
     } finally {
       setUpdatingPassword(false);
     }
@@ -77,10 +77,9 @@ export const AccountSettingsScreen = () => {
 
   const handleDeleteAccount = async () => {
     if (deleteWord !== "DELETE") {
-      notify("Error", "Please type 'DELETE' to confirm.");
+      notify("Not deleted", "Type DELETE in capitals to confirm.");
       return;
     }
-
     setDeletingAccount(true);
     try {
       // Real deletion: removes Storage objects then the auth user (rows cascade).
@@ -97,109 +96,58 @@ export const AccountSettingsScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
-        
-        {/* Header */}
-        <View className="mb-6 flex-row justify-between items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-            <Text variant="body" className="font-uiMedium">← Back</Text>
-          </TouchableOpacity>
-          <Text variant="h2" className="font-uiSemiBold">Account Settings</Text>
-        </View>
+      <ScreenHeader title="Account" divider={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          <SectionTitle first>Name</SectionTitle>
+          <Input value={displayName} onChangeText={setDisplayName} placeholder="How you want to be called" />
+          <Button label="Save" size="sm" tone="neutral" loading={savingProfile} disabled={!displayName.trim()} onPress={() => void handleSaveProfile()} />
 
-        {/* Profile Card Info */}
-        <View className="space-y-4 mb-6">
-          <Text variant="label" className="text-left">Edit Profile</Text>
-          <View>
-            <Text variant="caption" className="mb-1 font-uiMedium text-left">Display Name</Text>
-            <TextInput
-              value={displayName}
-              onChangeText={setDisplayName}
-              className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
-              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
-            />
-          </View>
-
-          <Button
-            label="Update Name"
-            onPress={handleSaveProfile}
-            loading={savingProfile}
-            className="w-full"
+          <SectionTitle>Password</SectionTitle>
+          <Input
+            label="New password"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="At least 6 characters"
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
           />
-        </View>
-
-        <View className="h-[1px] bg-borderHairline my-6" style={{ backgroundColor: colors.borderHairline }} />
-
-        {/* Password Card Info */}
-        <View className="space-y-4 mb-6">
-          <Text variant="label" className="text-left">Change Password</Text>
-          
-          <View className="mt-3">
-            <Text variant="caption" className="mb-1 font-uiMedium text-left">New Password</Text>
-            <TextInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
-              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
-            />
-          </View>
-
-          <View className="mt-3">
-            <Text variant="caption" className="mb-1 font-uiMedium text-left">Confirm Password</Text>
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left"
-              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
-            />
-          </View>
-
-          <Button
-            label="Update Password"
-            onPress={handleUpdatePassword}
-            loading={updatingPassword}
-            className="w-full"
+          <Input
+            label="Confirm new password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Once more"
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            error={mismatch ? "Passwords do not match" : null}
           />
-        </View>
+          <Button label="Change password" size="sm" tone="neutral" loading={updatingPassword} disabled={!newPassword || !confirmPassword} onPress={() => void handleUpdatePassword()} />
 
-        <View className="h-[1px] bg-borderHairline my-6" style={{ backgroundColor: colors.borderHairline }} />
-
-        {/* Danger zone delete */}
-        <View 
-          className="p-5 rounded-card border-2"
-          style={{ borderColor: `${colors.failed}30`, backgroundColor: `${colors.failed}05` }}
-        >
-          <Text variant="h3" className="font-uiSemiBold text-red-500 text-left mb-2" style={{ color: colors.failed }}>
-            Delete Account
-          </Text>
-          <Text variant="caption" className="text-left mb-3 opacity-90 leading-5">
-            By deleting your account, all projects, chat histories, and sandbox files will be permanently erased, and Pro subscriptions will be canceled.
-          </Text>
-
-          <Text variant="caption" className="text-left mb-2 font-uiMedium">
-            Type 'DELETE' to confirm:
-          </Text>
-          <TextInput
+          <SectionTitle hint="Every project, chat and file is erased and cannot be recovered.">
+            Delete account
+          </SectionTitle>
+          <Input
             value={deleteWord}
             onChangeText={setDeleteWord}
-            placeholder="DELETE..."
-            placeholderTextColor={colors.inkSecondary}
-            className="w-full bg-surfaceRaised p-3 rounded-input border border-borderHairline font-uiRegular text-sm text-left mb-4"
-            style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline, color: colors.inkPrimary }}
+            placeholder="Type DELETE to confirm"
+            autoCapitalize="characters"
           />
-
           <Button
-            label="Delete Account Permanently"
-            onPress={handleDeleteAccount}
+            label="Delete my account"
+            tone="danger"
+            block
             loading={deletingAccount}
-            className="w-full"
-            style={{ backgroundColor: colors.failed }}
+            disabled={deleteWord !== "DELETE"}
+            onPress={() => void handleDeleteAccount()}
           />
-        </View>
-
-      </ScrollView>
+          <View style={{ height: 8 }} />
+          <Text variant="caption" style={{ color: colors.inkMuted }}>
+            Signed in as {profile?.email ?? "—"}
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

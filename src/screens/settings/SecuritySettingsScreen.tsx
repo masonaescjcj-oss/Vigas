@@ -1,29 +1,39 @@
 /**
  * frontend/src/screens/settings/SecuritySettingsScreen.tsx
  * ---------------------------------------------------------------------------
- * Security Settings Screen:
- *   - Sign out everywhere.
- *   - Explains why a connected-devices list is not shown: listing or revoking
- *     other sessions needs Supabase's admin session APIs, which are
- *     service-role only. Biometrics and 2FA are not implemented.
+ * What the app can honestly say about security, and the one thing it can do.
+ *
+ * Listing or revoking sessions on other devices needs Supabase's admin session
+ * APIs, which are service-role only; biometrics and 2FA are not implemented.
+ * So this screen says where the password lives, says why there is no device
+ * list, and offers to end this device's session. An invented device list
+ * would be worse than none.
  * ---------------------------------------------------------------------------
  */
 
-import React, { useState } from "react";
-import { View, ScrollView, TouchableOpacity, Alert, SafeAreaView } from "react-native";
-import { notify } from "../../services/notify";
+import React from "react";
+import { View, ScrollView, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { notify } from "../../services/notify";
 import { Text } from "../../components/Typography";
+import { Button } from "../../components/Button";
 import { SettingsRow } from "../../components/SettingsRow";
+import { Card } from "../../components/ui/Card";
+import { SectionTitle } from "../../components/ui/SectionTitle";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
+import { type ProfileStackParamList } from "../../types/navigation";
+
+type NavigationProp = NativeStackNavigationProp<ProfileStackParamList, "SecuritySettings">;
 
 export const SecuritySettingsScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const { signOut } = useAuthStore();
 
-  const handleSignOutEverywhere = async () => {
+  const handleSignOut = async () => {
     try {
       await signOut();
     } catch (e: any) {
@@ -33,41 +43,29 @@ export const SecuritySettingsScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        
-        {/* Header Header */}
-        <View className="px-6 py-4 flex-row justify-between items-center border-b border-borderHairline/20" style={{ borderBottomColor: colors.borderHairline }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-            <Text variant="body" className="font-uiMedium">← Back</Text>
-          </TouchableOpacity>
-          <Text variant="h2" className="font-uiSemiBold">Security Settings</Text>
+      <ScreenHeader title="Security" divider={false} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+        <SectionTitle first>Password</SectionTitle>
+        <Card flush>
+          <SettingsRow
+            label="Change password"
+            icon="lock"
+            hint="In Account settings"
+            onPress={() => navigation.navigate("AccountSettings")}
+            last
+          />
+        </Card>
+
+        <SectionTitle hint="Other devices cannot be listed or signed out from here yet — that needs a server-side API this build does not expose. Signing out below ends this device's session only.">
+          Sessions
+        </SectionTitle>
+        <View className="px-1 mt-2">
+          <Button label="Sign out on this device" tone="danger" onPress={() => void handleSignOut()} />
         </View>
 
-        <View className="px-6 py-6">
-          <Text variant="label" className="text-left mb-3">Password</Text>
-          <Text variant="caption" className="text-left opacity-80 leading-5 mb-4">
-            Change your password from Account settings. Signing out here ends this
-            device's session only.
-          </Text>
-
-          <Text variant="label" className="text-left mb-3 mt-4">Sessions</Text>
-          <Text variant="caption" className="text-left opacity-80 leading-5">
-            Listing or revoking sessions on other devices needs a server-side admin
-            API that this build does not expose yet, so no device list is shown —
-            an invented one would be worse than none.
-          </Text>
-
-          <TouchableOpacity
-            onPress={handleSignOutEverywhere}
-            className="mt-6 py-3 px-4 rounded-card border items-center"
-            style={{ backgroundColor: `${colors.failed}15`, borderColor: `${colors.failed}30` }}
-          >
-            <Text variant="body" className="font-uiMedium" style={{ color: colors.failed }}>
-              Sign out on this device
-            </Text>
-          </TouchableOpacity>
-        </View>
-
+        <Text variant="caption" className="px-1 mt-8" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+          Two-factor sign-in and biometric unlock are not available in this version.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
