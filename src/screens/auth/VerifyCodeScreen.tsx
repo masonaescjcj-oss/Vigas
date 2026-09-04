@@ -20,7 +20,8 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { AuthStackParamList } from "../../types/navigation";
 import { Text } from "../../components/Typography";
-import { Icon } from "../../components/Icon";
+import { Button } from "../../components/Button";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { supabase } from "../../services/supabase";
 import { notify } from "../../services/notify";
@@ -44,6 +45,7 @@ export const VerifyCodeScreen = () => {
 
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const inputRef = useRef<TextInput>(null);
 
@@ -102,30 +104,17 @@ export const VerifyCodeScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <View className="flex-1 justify-center px-6">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          className="absolute top-4 left-4 p-2"
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Icon name="arrow-left" size={20} color={colors.inkSecondary} />
-        </TouchableOpacity>
-
-        <View
-          className="w-12 h-12 rounded-2xl items-center justify-center mb-5 border"
-          style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-        >
-          <Icon name="mail" size={22} color={colors.brandPrimary} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+      <ScreenHeader title="" divider={false} />
+      <View className="flex-1 px-6 pb-6">
+        <View className="mb-8 mt-2">
+          <Text variant="h1" className="font-uiSemiBold">
+            {isRecovery ? "Enter the reset code" : "Check your email"}
+          </Text>
+          <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
+            We sent a {OTP_LENGTH}-digit code to {maskEmail(email)}.
+          </Text>
         </View>
-
-        <Text variant="h2" className="font-uiSemiBold text-left mb-2">
-          {isRecovery ? "Enter your reset code" : "Enter your code"}
-        </Text>
-        <Text variant="caption" className="text-left opacity-70 leading-5 mb-7">
-          We sent a {OTP_LENGTH}-digit code to {maskEmail(email)}.
-        </Text>
 
         {/* One field rather than six boxes: six inputs need focus plumbing that
             breaks paste, and paste is how most people enter a code. */}
@@ -139,6 +128,8 @@ export const VerifyCodeScreen = () => {
             // button after typing the last digit.
             if (isCompleteOtp(next)) void verify(next);
           }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           keyboardType="number-pad"
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
@@ -146,41 +137,42 @@ export const VerifyCodeScreen = () => {
           maxLength={OTP_LENGTH}
           editable={!busy}
           accessibilityLabel="Verification code"
-          className="rounded-2xl border text-center"
+          placeholder={"•".repeat(OTP_LENGTH)}
+          placeholderTextColor={colors.inkMuted}
+          className="rounded-input text-center"
           style={{
             backgroundColor: colors.surfaceMuted,
-            borderColor: colors.borderHairline,
+            borderWidth: 1,
+            borderColor: focused ? colors.brandPrimary : colors.borderHairline,
             color: colors.inkPrimary,
-            fontSize: 30,
-            letterSpacing: 12,
-            paddingVertical: 16,
+            fontSize: 28,
+            letterSpacing: 10,
+            paddingVertical: 14,
             fontFamily: "JetBrainsMono_500Medium",
-          }}
+            outlineStyle: "none",
+            outlineWidth: 0,
+          } as object}
         />
 
-        <TouchableOpacity
+        <Button
+          label={busy ? "Checking…" : "Continue"}
+          block
+          loading={busy}
+          disabled={!isCompleteOtp(code)}
           onPress={() => void verify(code)}
-          disabled={!isCompleteOtp(code) || busy}
-          className="w-full py-4 rounded-2xl items-center justify-center mt-5"
-          accessibilityRole="button"
-          style={{
-            backgroundColor: colors.brandPrimary,
-            opacity: !isCompleteOtp(code) || busy ? 0.4 : 1,
-          }}
-        >
-          <Text style={{ color: colors.canvasBase }} className="font-uiSemiBold">
-            {busy ? "Checking…" : "Continue"}
-          </Text>
-        </TouchableOpacity>
+          className="mt-4"
+        />
 
         <TouchableOpacity
           onPress={() => void resend()}
           disabled={cooldown > 0 || busy}
-          className="items-center mt-5 py-2"
+          className="items-center mt-6 py-2"
           accessibilityRole="button"
+          activeOpacity={0.6}
         >
           <Text
-            variant="caption"
+            variant="body"
+            className={cooldown > 0 ? "" : "font-uiMedium"}
             style={{ color: cooldown > 0 ? colors.inkMuted : colors.brandPrimary }}
           >
             {cooldown > 0 ? `Send another code in ${formatCooldown(cooldown)}` : "Send another code"}

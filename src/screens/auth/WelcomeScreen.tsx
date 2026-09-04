@@ -1,129 +1,75 @@
 /**
  * frontend/src/screens/auth/WelcomeScreen.tsx
- * ============================================================================
- * WELCOME & AUTHENTICATION LANDING SCREEN
- * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
- * ============================================================================
- * 
+ * ---------------------------------------------------------------------------
  * Sign in or create an account — those are the only two ways in.
  *
- * There was a third, "Continue as Guest", built on supabase.auth.signInAnonymously().
- * It was removed rather than fixed: it needs anonymous sign-ins enabled on the
- * project, and an account that cannot receive a password reset or be reached by
- * email is a dead end for the user's projects rather than a shortcut into them.
- * ============================================================================
+ * There was a third, "Continue as Guest", built on signInAnonymously(). It was
+ * removed rather than fixed: it needs anonymous sign-ins enabled on the project,
+ * and an account that cannot receive a password reset is a dead end for the
+ * user's projects rather than a shortcut into them.
+ *
+ * The screen was a card with a purple icon tile, three rows each on their own
+ * surface, a monospace caps strapline and a turquoise "pro". It is now the
+ * wordmark, three quiet lines about what the app does, and the two buttons.
+ * ---------------------------------------------------------------------------
  */
 
 import React from "react";
-import { View, SafeAreaView, TouchableOpacity } from "react-native";
-import { Icon } from "../../components/Icon";
+import { View, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
+import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
 import { type AuthStackParamList } from "../../navigation/types";
-import { useThemeStore } from "../../theme/store";
 import { useTheme } from "../../theme/ThemeProvider";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Welcome">;
 
+const POINTS = [
+  { icon: "sparkles", text: "Describe an app; the agent writes it" },
+  { icon: "eye", text: "Preview it on this device as it is built" },
+  { icon: "folder", text: "Every file saved, versioned and yours to download" },
+];
+
 export const WelcomeScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { mode } = useThemeStore();
   const { colors } = useTheme();
 
-  const isLight = mode === "light";
-  const bgCanvas = colors.canvasBase;
-  const bgCard = colors.surfaceRaised;
-  const bgItem = colors.surfaceMuted;
-  const bgButton = colors.surfaceMuted;
-  const textPrimary = colors.inkPrimary;
-  const textSecondary = colors.inkSecondary;
-  const textMuted = colors.inkSecondary;
-
   return (
-    <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1 justify-between px-6 py-8">
-      
-      {/* Top Brand Header */}
-      <View className="items-center mt-4">
-        
-        {/* Sleek Brand Title (Matching Watermark Style) */}
-        <View className="flex-row items-baseline justify-center mb-1">
-          <Text 
-            style={{ 
-              fontSize: 32, 
-              fontWeight: isLight ? "600" : "300", 
-              color: textPrimary, 
-              fontFamily: "'Inter', 'SF Pro Display', -apple-system, 'Segoe UI', Roboto, sans-serif",
-              letterSpacing: -1
-            } as any}
-          >
-            retro code
-          </Text>
-          <Text 
-            style={{ 
-              fontSize: 24, 
-              fontWeight: "600", 
-              color: colors.brandPrimary, 
-              fontFamily: "'Inter', 'SF Pro Display', -apple-system, 'Segoe UI', Roboto, sans-serif",
-              marginLeft: 8,
-              letterSpacing: -0.5
-            } as any}
-          >
-            pro
-          </Text>
-        </View>
-
-        <Text style={{ color: textMuted }} className="text-xs font-semibold tracking-wider uppercase mb-6 font-mono">
-          AI AGENT CODING & BUILDER SPACE
-        </Text>
-
-        {/* What the app actually does */}
-        <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="border p-5 rounded-3xl w-full shadow-xl relative overflow-hidden">
-          <View className="flex-row items-center mb-4">
-            <View className="w-10 h-10 rounded-2xl bg-purple-950/40 items-center justify-center mr-3 border border-purple-500/30">
-              <Icon name="sparkles" size={20} color={colors.brandPrimary} />
-            </View>
-            <View className="flex-1">
-              <Text style={{ color: textPrimary }} className="text-base font-bold text-left">Build from your phone</Text>
-              <Text className="text-purple-500 text-xs text-left">Describe it, the agent writes it</Text>
-            </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+      <View className="flex-1 px-6 pt-4 pb-6">
+        <View className="flex-1 justify-center">
+          {/* One wordmark. "pro" is the same size and weight, one step dimmer —
+              a label on the name, not a badge stuck to it. */}
+          <View className="flex-row items-baseline">
+            <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.inkPrimary }}>
+              retro code
+            </Text>
+            <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.inkMuted, marginLeft: 9 }}>
+              pro
+            </Text>
           </View>
 
-          <View className="space-y-2 pt-1">
-            {[
-              { icon: "layers", color: colors.brandPrimary, label: "Start from a template, or from scratch" },
-              { icon: "eye", color: colors.brandPrimary, label: "Live preview on your device" },
-              { icon: "folder", color: colors.success, label: "Your files, saved and versioned" },
-            ].map((row) => (
-              <View key={row.label} style={{ backgroundColor: bgItem }} className="flex-row items-center px-3 py-2 rounded-xl mb-2">
-                <Icon name={row.icon} size={14} color={row.color} style={{ marginRight: 10 }} />
-                <Text style={{ color: textPrimary }} className="text-xs text-left font-medium flex-1">{row.label}</Text>
+          <Text variant="body" className="mt-3" style={{ fontSize: 16, lineHeight: 24, color: colors.inkSecondary }}>
+            An agent that builds software from a description, on your phone.
+          </Text>
+
+          <View className="mt-10">
+            {POINTS.map((p) => (
+              <View key={p.text} className="flex-row items-start mb-4">
+                <Icon name={p.icon} size={18} color={colors.inkMuted} style={{ marginTop: 2, marginRight: 14 }} />
+                <Text variant="body" className="flex-1" style={{ lineHeight: 22, color: colors.inkPrimary }}>
+                  {p.text}
+                </Text>
               </View>
             ))}
           </View>
         </View>
-      </View>
 
-      {/* Action Buttons */}
-      <View className="space-y-3 mb-4">
-        
-        {/* Sign In Button */}
-        <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
-          onPress={() => navigation.navigate("Login")}
-          className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl mb-3"
-        >
-          <Text className="text-white text-base font-bold tracking-wide">Sign In to Retro Code</Text>
-        </TouchableOpacity>
-
-        {/* Create Account Button */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate("SignUp")}
-          style={{ backgroundColor: bgButton, borderColor: colors.borderHairline }}
-          className="w-full py-4 border rounded-2xl items-center justify-center active:opacity-80 mb-3 shadow-sm"
-        >
-          <Text style={{ color: textPrimary }} className="text-base font-semibold">Create New Account</Text>
-        </TouchableOpacity>
-
+        <Button label="Sign in" block onPress={() => navigation.navigate("Login")} />
+        <View style={{ height: 10 }} />
+        <Button label="Create an account" tone="neutral" block onPress={() => navigation.navigate("SignUp")} />
       </View>
     </SafeAreaView>
   );

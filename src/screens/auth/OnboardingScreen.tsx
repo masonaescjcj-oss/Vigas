@@ -1,171 +1,110 @@
 /**
  * frontend/src/screens/auth/OnboardingScreen.tsx
- * ============================================================================
- * INTRODUCTORY ONBOARDING CAROUSEL
- * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
- * ============================================================================
+ * ---------------------------------------------------------------------------
+ * Three sentences before the door.
+ *
+ * It was a purple "PRO" chip, a monospace wordmark in caps, three icon tiles in
+ * a card, a purple "AI AGENT" badge, an extrabold title, a purple subtitle and
+ * a button reading "Continue ➔". Seven things competing to be looked at on a
+ * screen whose only job is to say what the app does and get out of the way.
+ *
+ * Now: the name, a statement, a line under it, three dots, one button.
+ * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, SafeAreaView, TouchableOpacity } from "react-native";
-import { Icon } from "../../components/Icon";
+import { View, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
+import { Button } from "../../components/Button";
 import { type AuthStackParamList } from "../../navigation/types";
-import { useThemeStore } from "../../theme/store";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useTheme } from "../../theme/ThemeProvider";
 
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Onboarding">;
 
-interface Slide {
-  title: string;
-  subtitle: string;
-  desc: string;
-  badge: string;
-  badgeColor: string;
-  heroEmblems: string[];
-}
+const SLIDES = [
+  {
+    title: "Build apps by describing them",
+    body: "Say what you want. The agent plans it, writes the files, runs the commands and tells you what changed — from your phone.",
+  },
+  {
+    title: "It works on real projects",
+    body: "Start from nothing or from what you already have. Fix a failing test, add a feature, or scaffold a whole shop with a backend.",
+  },
+  {
+    title: "See it running here",
+    body: "Your app renders on your device as it is built. Share it with a link, or download the source and take it anywhere.",
+  },
+];
 
 export const OnboardingScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [activeSlide, setActiveSlide] = useState(0);
-  const { mode } = useThemeStore();
   const { colors } = useTheme();
-
-  const isLight = mode === "light";
-  const bgCanvas = colors.canvasBase;
-  const bgCard = colors.surfaceRaised;
-  const bgItem = colors.surfaceMuted;
-  const textPrimary = colors.inkPrimary;
-  const textSecondary = colors.inkSecondary;
-
-  const slides: Slide[] = [
-    {
-      title: "Build apps by describing them",
-      subtitle: "The agent writes the code",
-      desc: "Say what you want. Retro Code plans it, writes the files, runs the commands, and tells you what it changed — all from your phone.",
-      badge: "AI AGENT",
-      badgeColor: colors.brandPrimary,
-      heroEmblems: ["sparkles", "code", "zap"],
-    },
-    {
-      title: "Start from a template",
-      subtitle: "Landing page, todo, gallery, blog, quiz",
-      desc: "Pick a starter and the agent edits it instead of writing everything from scratch — faster, cheaper, and far more predictable.",
-      badge: "TEMPLATES",
-      badgeColor: colors.brandPrimary,
-      heroEmblems: ["layers", "folder", "edit"],
-    },
-    {
-      title: "See it running instantly",
-      subtitle: "Live preview on your device",
-      desc: "Your app is bundled and rendered right here — no server, no waiting. Change something and look again.",
-      badge: "LIVE PREVIEW",
-      badgeColor: colors.success,
-      heroEmblems: ["eye", "mobile", "check"],
-    },
-  ];
-
   const { setHasSeenOnboarding } = useSettingsStore();
+  const [index, setIndex] = useState(0);
+
+  const last = index === SLIDES.length - 1;
+  const slide = SLIDES[index];
 
   const finish = () => {
     setHasSeenOnboarding(true);
     navigation.replace("Welcome");
   };
 
-  const handleNext = () => {
-    if (activeSlide < slides.length - 1) {
-      setActiveSlide(activeSlide + 1);
-    } else {
-      finish();
-    }
-  };
-
-  const handleSkip = finish;
-
-  const slide = slides[activeSlide];
-
   return (
-    <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1 justify-between px-6 py-6">
-      
-      {/* Top Header */}
-      <View className="flex-row justify-between items-center mt-2">
-        <View className="flex-row items-center">
-          <Text style={{ color: textPrimary }} className="text-lg font-bold tracking-widest font-mono">RETRO CODE</Text>
-          <View className="bg-purple-950 px-2.5 py-0.5 rounded-full ml-2">
-            <Text className="text-purple-300 text-[11px] font-mono font-bold">PRO</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity onPress={handleSkip} style={{ backgroundColor: bgItem }} className="py-2 px-4 rounded-full active:opacity-80 border border-slate-200/40">
-          <Text style={{ color: textPrimary }} className="text-xs font-bold">Skip</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Main Slide Hero Object Card */}
-      <View className="items-center px-2 my-auto">
-        
-        {/* Rich Multi-Emblem Hero Visual Object Card */}
-        <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="w-full p-6 rounded-3xl items-center mb-8 shadow-xl relative border">
-          <View className="flex-row space-x-4 mb-4">
-            {slide.heroEmblems.map((emblem, eIdx) => (
-              <View key={eIdx} style={{ backgroundColor: bgItem }} className="w-14 h-14 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/30">
-                <Icon name={emblem} size={24} color={slide.badgeColor} />
-              </View>
-            ))}
-          </View>
-
-          <View className="bg-purple-950/80 px-4 py-1.5 rounded-full border border-purple-500/30">
-            <Text style={{ color: slide.badgeColor }} className="text-[11px] font-mono font-bold tracking-wider uppercase">
-              {slide.badge}
-            </Text>
-          </View>
-        </View>
-
-        {/* Large Prominent Titles & Typography */}
-        <Text style={{ color: textPrimary }} className="text-3xl font-extrabold text-center leading-9 mb-2 font-sans">
-          {slide.title}
-        </Text>
-
-        <Text className="text-purple-500 text-base font-semibold text-center mb-4">
-          {slide.subtitle}
-        </Text>
-
-        <Text style={{ color: textSecondary }} className="text-sm text-center leading-6 max-w-[95%]">
-          {slide.desc}
-        </Text>
-      </View>
-
-      {/* Footer controls */}
-      <View className="mb-6">
-        {/* Dot Indicators */}
-        <View className="flex-row justify-center space-x-2 mb-6">
-          {slides.map((_, idx) => {
-            const isActive = idx === activeSlide;
-            return (
-              <View
-                key={idx}
-                className="h-2.5 rounded-full mx-1"
-                style={{
-                  width: isActive ? 28 : 10,
-                  backgroundColor: isActive ? colors.brandPrimary : (colors.borderHairline),
-                }}
-              />
-            );
-          })}
-        </View>
-
-        {/* Action Button */}
-        <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
-          onPress={handleNext}
-          className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
-        >
-          <Text className="text-white text-base font-bold tracking-wide">
-            {activeSlide === slides.length - 1 ? "Get Started Now" : "Continue ➔"}
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+      <View className="flex-1 px-6 pt-4 pb-6">
+        {/* Name on the left, the way out on the right. Nothing else up here. */}
+        <View className="flex-row items-center justify-between" style={{ height: 44 }}>
+          <Text variant="body" className="font-uiMedium" style={{ color: colors.inkSecondary }}>
+            retro code
           </Text>
-        </TouchableOpacity>
+          <Button label="Skip" tone="ghost" size="sm" onPress={finish} />
+        </View>
+
+        {/* The statement. Large but not heavy; the weight is the point size. */}
+        <View className="flex-1 justify-center">
+          <Text
+            style={{
+              fontSize: 34,
+              lineHeight: 40,
+              fontWeight: "600",
+              letterSpacing: -0.5,
+              color: colors.inkPrimary,
+            }}
+          >
+            {slide.title}
+          </Text>
+          <Text
+            variant="body"
+            className="mt-4"
+            style={{ fontSize: 16, lineHeight: 24, color: colors.inkSecondary }}
+          >
+            {slide.body}
+          </Text>
+        </View>
+
+        {/* Dots, then the one button. */}
+        <View className="flex-row justify-center mb-6">
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              className="h-1.5 rounded-pill mx-1"
+              style={{
+                width: i === index ? 20 : 6,
+                backgroundColor: i === index ? colors.inkPrimary : colors.surfaceStrong,
+              }}
+            />
+          ))}
+        </View>
+
+        <Button
+          label={last ? "Get started" : "Continue"}
+          block
+          onPress={() => (last ? finish() : setIndex(index + 1))}
+        />
       </View>
     </SafeAreaView>
   );

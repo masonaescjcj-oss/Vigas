@@ -1,21 +1,25 @@
 /**
  * frontend/src/screens/auth/LoginScreen.tsx
- * ============================================================================
- * LOGIN SCREEN
- * BRAND: RETRO CODE
- * ============================================================================
+ * ---------------------------------------------------------------------------
+ * Email, password, in.
+ *
+ * It opened with two decorative tiles — a ghost icon and a ⚡ emoji — over an
+ * extrabold "Welcome Back", then two hand-styled inputs with a Tailwind grey
+ * border and a purple "Forgot Password?" link. None of that helped anyone sign
+ * in. A title, two fields, one button.
+ * ---------------------------------------------------------------------------
  */
 
 import React, { useState } from "react";
-import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
-import { Icon } from "../../components/Icon";
-import { notify } from "../../services/notify";
+import { View, ScrollView, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
+import { Button } from "../../components/Button";
+import { Input } from "../../components/ui/Input";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { notify } from "../../services/notify";
 import { supabase } from "../../services/supabase";
-import { useAuthStore } from "../../stores/authStore";
-import { useThemeStore } from "../../theme/store";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useTheme } from "../../theme/ThemeProvider";
 
@@ -23,16 +27,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Login">;
 
 export const LoginScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { mode } = useThemeStore();
   const { colors } = useTheme();
-
-  const isLight = mode === "light";
-  const bgCanvas = colors.canvasBase;
-  const bgCard = colors.surfaceRaised;
-  const bgInput = colors.surfaceMuted;
-  const textPrimary = colors.inkPrimary;
-  const textSecondary = colors.inkSecondary;
-  const textMuted = colors.inkSecondary;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,110 +35,79 @@ export const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      notify("Error", "Please fill in all fields.");
+      notify("Missing details", "Enter your email and password.");
       return;
     }
-
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
       // On success AppNavigator's onAuthStateChange listener swaps the stack.
-    } catch (e: any) {
-      notify("Sign in failed", e?.message ?? "Could not sign you in. Check your email and password.");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Could not sign you in. Check your email and password.";
+      notify("Sign in failed", message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1">
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} className="px-6 py-8">
-        
-        {/* Header Visual Badge & Titles */}
-        <View className="mb-8">
-          <View className="flex-row items-center space-x-3 mb-4">
-            <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Icon name="ghost" size={22} color={colors.brandPrimary} />
-            </View>
-            <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md border border-slate-200/50">
-              <Text className="text-2xl">⚡</Text>
-            </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+      <ScreenHeader title="" divider={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="mb-8 mt-2">
+            <Text variant="h1" className="font-uiSemiBold">Sign in</Text>
+            <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
+              Back to your projects and chats.
+            </Text>
           </View>
 
-          <Text style={{ color: textPrimary }} className="text-3xl font-extrabold text-left mb-2 font-sans">
-            Welcome Back
-          </Text>
-          
-          <Text style={{ color: textSecondary }} className="text-sm text-left leading-6">
-            Sign in to get back to your projects and chats.
-          </Text>
-        </View>
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+          />
 
-        {/* Form Inputs */}
-        <View className="space-y-4">
-          <View className="mb-4">
-            <Text style={{ color: textPrimary }} className="text-sm font-bold text-left mb-2">Email Address</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="developer@retrocode.dev"
-              placeholderTextColor={textMuted}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              textContentType="emailAddress"
-              className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
-              style={{ backgroundColor: bgInput, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
-            />
-          </View>
-
-          <View className="mb-6">
-            <View className="flex-row justify-between mb-2">
-              <Text style={{ color: textPrimary }} className="text-sm font-bold">Password</Text>
-              <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
-                <Text className="text-purple-500 text-xs font-bold">
-                  Forgot Password?
-                </Text>
+          <Input
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Your password"
+            secureTextEntry
+            autoComplete="current-password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={() => void handleLogin()}
+            trailing={
+              <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")} hitSlop={8}>
+                <Text variant="caption" style={{ color: colors.brandPrimary }}>Forgot?</Text>
               </TouchableOpacity>
-            </View>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={textMuted}
-              secureTextEntry
-              autoComplete="current-password"
-              textContentType="password"
-              autoCapitalize="none"
-              className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
-              style={{ backgroundColor: bgInput, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
-            />
-          </View>
+            }
+          />
 
-          {/* Action Button */}
-          <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
-            onPress={handleLogin}
-            disabled={loading}
-            className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
+          <Button label="Sign in" block loading={loading} onPress={() => void handleLogin()} className="mt-2" />
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate("SignUp")}
+            className="items-center mt-8 py-2"
+            activeOpacity={0.6}
           >
-            <Text className="text-white text-base font-bold tracking-wide">
-              {loading ? "Signing In..." : "Sign In"}
+            <Text variant="body" style={{ color: colors.inkSecondary }}>
+              No account yet?{" "}
+              <Text variant="body" className="font-uiMedium" style={{ color: colors.brandPrimary }}>Create one</Text>
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Footer Link */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate("SignUp")}
-          className="items-center mt-8 py-2"
-        >
-          <Text style={{ color: textSecondary }} className="text-sm font-semibold">
-            Don't have an account? <Text className="text-purple-500 font-extrabold underline">Create Account</Text>
-          </Text>
-        </TouchableOpacity>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

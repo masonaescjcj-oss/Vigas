@@ -1,21 +1,29 @@
 /**
  * frontend/src/screens/auth/SignUpScreen.tsx
- * ============================================================================
- * SIGN UP SCREEN
- * BRAND: RETRO CODE & SKILLS.SH ECOSYSTEM
- * ============================================================================
+ * ---------------------------------------------------------------------------
+ * Email, password twice, agree, in.
+ *
+ * The validation is unchanged — it was fine. What changed is that the three
+ * fields, the checkbox and the button are the app's own, so this screen and the
+ * sign-in screen next to it are visibly the same product.
+ *
+ * Strength is a hint under the field in the field's own colours, not a red /
+ * amber / emerald traffic light from Tailwind's defaults.
+ * ---------------------------------------------------------------------------
  */
 
 import React, { useState, useEffect } from "react";
-import { View, TextInput, Alert, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
-import { Icon } from "../../components/Icon";
-import { notify } from "../../services/notify";
+import { View, ScrollView, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
+import { Button } from "../../components/Button";
+import { Icon } from "../../components/Icon";
+import { Input } from "../../components/ui/Input";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { notify } from "../../services/notify";
 import { supabase } from "../../services/supabase";
-import { useAuthStore } from "../../stores/authStore";
-import { useThemeStore } from "../../theme/store";
+import { selectionFeedback } from "../../services/haptics";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useTheme } from "../../theme/ThemeProvider";
 
@@ -23,16 +31,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "SignUp">;
 
 export const SignUpScreen = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { mode } = useThemeStore();
   const { colors } = useTheme();
-
-  const isLight = mode === "light";
-  const bgCanvas = colors.canvasBase;
-  const bgCard = colors.surfaceRaised;
-  const bgInput = colors.surfaceMuted;
-  const textPrimary = colors.inkPrimary;
-  const textSecondary = colors.inkSecondary;
-  const textMuted = colors.inkSecondary;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,52 +39,38 @@ export const SignUpScreen = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Real-time validations
   const [emailError, setEmailError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState("");
   const [matchError, setMatchError] = useState("");
 
   useEffect(() => {
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError("Invalid email format");
-    } else {
-      setEmailError("");
-    }
+    setEmailError(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "That does not look like an email address" : "");
   }, [email]);
 
   useEffect(() => {
-    if (password) {
-      if (password.length < 6) {
-        setPasswordStrength("Weak (min 6 characters)");
-      } else if (password.length < 10) {
-        setPasswordStrength("Medium");
-      } else {
-        setPasswordStrength("Strong");
-      }
-    } else {
-      setPasswordStrength("");
-    }
+    if (!password) setPasswordStrength("");
+    else if (password.length < 6) setPasswordStrength("At least 6 characters");
+    else if (password.length < 10) setPasswordStrength("Okay — longer is stronger");
+    else setPasswordStrength("Strong");
   }, [password]);
 
   useEffect(() => {
-    if (confirmPassword && password !== confirmPassword) {
-      setMatchError("Passwords do not match");
-    } else {
-      setMatchError("");
-    }
+    setMatchError(confirmPassword && password !== confirmPassword ? "Passwords do not match" : "");
   }, [password, confirmPassword]);
+
+  const weak = password.length > 0 && password.length < 6;
 
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
-      notify("Error", "Please fill in all fields.");
+      notify("Missing details", "Fill in every field.");
       return;
     }
-    if (emailError || matchError) {
-      notify("Error", "Please fix the form errors.");
+    if (emailError || matchError || weak) {
+      notify("Check the form", "Fix the highlighted fields first.");
       return;
     }
     if (!acceptedTerms) {
-      notify("Error", "Please accept the terms and conditions.");
+      notify("One more thing", "Accept the terms to continue.");
       return;
     }
 
@@ -93,155 +78,111 @@ export const SignUpScreen = () => {
     try {
       const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
       if (error) throw error;
-      // With email confirmation on there is no session yet, and the email now
-      // carries a six-digit code rather than a link — so the next step is a
-      // field, not a wait. With confirmation off Supabase returns a session and
-      // the navigator switches itself.
+      // With email confirmation on there is no session yet, and the email
+      // carries a six-digit code — so the next step is a field, not a wait.
+      // With confirmation off Supabase returns a session and the navigator
+      // switches itself.
       if (!data.session) {
         navigation.replace("VerifyCode", { email: email.trim(), purpose: "signup" });
       }
-    } catch (e: any) {
-      notify("Sign up failed", e?.message ?? "Could not create your account.");
+    } catch (e: unknown) {
+      notify("Sign up failed", e instanceof Error ? e.message : "Could not create your account.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1">
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }} className="px-6 py-8">
-        
-        {/* Header Visual Emblems & Titles */}
-        <View className="mb-6">
-          <View className="flex-row items-center space-x-3 mb-4">
-            <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Icon name="ghost" size={22} color={colors.brandPrimary} />
-            </View>
-            <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md mr-3 border border-slate-200/50">
-              <Icon name="puzzle" size={22} color={colors.brandPrimary} />
-            </View>
-            <View style={{ backgroundColor: bgInput }} className="w-12 h-12 rounded-2xl items-center justify-center shadow-md border border-slate-200/50">
-              <Icon name="zap" size={22} color={colors.warning} />
-            </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+      <ScreenHeader title="" divider={false} />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="mb-8 mt-2">
+            <Text variant="h1" className="font-uiSemiBold">Create an account</Text>
+            <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
+              Build apps by describing them, from your phone.
+            </Text>
           </View>
 
-          <Text style={{ color: textPrimary }} className="text-3xl font-extrabold text-left mb-2 font-sans">
-            Create Account
-          </Text>
-          
-          <Text style={{ color: textSecondary }} className="text-sm text-left leading-6">
-            Join Retro Code and build apps by describing them, from your phone.
-          </Text>
-        </View>
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            error={emailError || null}
+            returnKeyType="next"
+          />
 
-        {/* Form Inputs */}
-        <View className="space-y-4">
-          <View className="mb-3">
-            <Text style={{ color: textPrimary }} className="text-sm font-bold text-left mb-2">Email Address</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="developer@retrocode.dev"
-              placeholderTextColor={textMuted}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              textContentType="emailAddress"
-              className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
-              style={{ backgroundColor: bgInput, color: textPrimary }}
-            />
-            {emailError ? (
-              <Text className="text-red-500 text-xs text-left mt-1.5">{emailError}</Text>
-            ) : null}
-          </View>
+          <Input
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="At least 6 characters"
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            error={weak ? passwordStrength : null}
+            hint={!weak && passwordStrength ? passwordStrength : undefined}
+            returnKeyType="next"
+          />
 
-          <View className="mb-3">
-            <Text style={{ color: textPrimary }} className="text-sm font-bold text-left mb-2">Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={textMuted}
-              secureTextEntry
-              autoComplete="new-password"
-              textContentType="newPassword"
-              autoCapitalize="none"
-              className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
-              style={{ backgroundColor: bgInput, color: textPrimary }}
-            />
-            {passwordStrength ? (
-              <Text className={`text-xs text-left mt-1.5 font-bold ${
-                passwordStrength.includes("Weak") ? "text-red-500" : passwordStrength === "Medium" ? "text-amber-500" : "text-emerald-500"
-              }`}>
-                Strength: {passwordStrength}
-              </Text>
-            ) : null}
-          </View>
+          <Input
+            label="Confirm password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Once more"
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            error={matchError || null}
+            returnKeyType="go"
+            onSubmitEditing={() => void handleSignUp()}
+          />
 
-          <View className="mb-4">
-            <Text style={{ color: textPrimary }} className="text-sm font-bold text-left mb-2">Confirm Password</Text>
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="••••••••"
-              placeholderTextColor={textMuted}
-              secureTextEntry
-              autoComplete="new-password"
-              textContentType="newPassword"
-              autoCapitalize="none"
-              className="w-full p-4 rounded-2xl text-base text-left border border-slate-200/50"
-              style={{ backgroundColor: bgInput, color: textPrimary }}
-            />
-            {matchError ? (
-              <Text className="text-red-500 text-xs text-left mt-1.5">{matchError}</Text>
-            ) : null}
-          </View>
-
-          {/* Terms checkbox */}
+          {/* The checkbox is a real control with a real target size, not a
+              16px square. Tapping the sentence toggles it too. */}
           <TouchableOpacity
-            onPress={() => setAcceptedTerms(!acceptedTerms)}
-            activeOpacity={0.8}
-            className="flex-row items-center justify-start py-2 mb-2"
+            onPress={() => { selectionFeedback(); setAcceptedTerms(!acceptedTerms); }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acceptedTerms }}
+            activeOpacity={0.7}
+            className="flex-row items-center py-2 mb-4"
           >
             <View
-              className="w-5 h-5 rounded-md border items-center justify-center mr-3"
+              className="w-[22px] h-[22px] rounded-md items-center justify-center mr-3"
               style={{
                 backgroundColor: acceptedTerms ? colors.brandPrimary : "transparent",
-                borderColor: acceptedTerms ? colors.brandPrimary : colors.borderHairline,
+                borderWidth: 1.5,
+                borderColor: acceptedTerms ? colors.brandPrimary : colors.inkMuted,
               }}
             >
-              {acceptedTerms && (
-                <Icon name="check" size={11} color={colors.canvasBase} />
-              )}
+              {acceptedTerms ? <Icon name="check" size={13} color={colors.canvasBase} /> : null}
             </View>
-            <Text style={{ color: textSecondary }} className="text-xs text-left font-medium">
-              I accept the Terms of Service & Privacy Policy
+            <Text variant="body" className="flex-1" style={{ color: colors.inkSecondary, lineHeight: 20 }}>
+              I accept the Terms of Service and Privacy Policy
             </Text>
           </TouchableOpacity>
 
-          {/* Sign Up Button */}
-          <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }}
-            onPress={handleSignUp}
-            disabled={loading}
-            className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90 shadow-xl"
+          <Button label="Create account" block loading={loading} onPress={() => void handleSignUp()} />
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Login")}
+            className="items-center mt-8 py-2"
+            activeOpacity={0.6}
           >
-            <Text className="text-white text-base font-bold tracking-wide">
-              {loading ? "Creating Account..." : "Create Account"}
+            <Text variant="body" style={{ color: colors.inkSecondary }}>
+              Already have an account?{" "}
+              <Text variant="body" className="font-uiMedium" style={{ color: colors.brandPrimary }}>Sign in</Text>
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Footer Link */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate("Login")}
-          className="items-center mt-6 py-2"
-        >
-          <Text style={{ color: textSecondary }} className="text-sm font-semibold">
-            Already have an account? <Text className="text-purple-500 font-extrabold underline">Sign In</Text>
-          </Text>
-        </TouchableOpacity>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
