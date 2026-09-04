@@ -29,7 +29,6 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Text } from "../../components/Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useThemeStore } from "../../theme/store";
-import { themeFonts, type ThemeMode } from "../../theme/theme";
 import { fontFamilyFor } from "../../theme/fonts";
 import { type ProjectNavigationProp } from "../../navigation/types";
 import { useProjects } from "../../hooks/useProjects";
@@ -44,7 +43,6 @@ import {
 import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "../../services/supabase";
 import { useSettingsStore } from "../../stores/settingsStore";
-import { getUsage, type UsageSummary } from "../../services/usageService";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
@@ -52,7 +50,6 @@ import { fetchModelCatalog } from "../../services/modelCatalog";
 import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
 import { ClarifyCard } from "../../components/ClarifyCard";
 import { PlanCard, TodoChecklist, type TodoItem } from "../../components/RunProgress";
-import { describeSubscription } from "../../core/billing/subscriptionState";
 import { PURCHASES } from "../../services/distributionChannel";
 import { track } from "../../services/analytics";
 import { durationBucket } from "../../core/analytics/events";
@@ -79,13 +76,19 @@ import { buildPreviewHtml } from "../../services/previewBuilder";
 import { createShare } from "../../services/shareService";
 import { exportProject, openDownload, readableSize } from "../../services/exportService";
 import { shareLink } from "../../services/shareSheet";
-import { ToolRunPanel, ToolRunRow, type ToolRunStep } from "../../components/ToolRunRow";
+import { type ToolRunStep } from "../../components/ToolRunRow";
 import { RunLog } from "../../components/RunLog";
 import { AgentMessageText } from "../../components/AgentMessageText";
 import { ThinkingIndicator } from "../../components/ThinkingIndicator";
 import { AnimatedAgentText } from "../../components/AnimatedAgentText";
 import { PreviewSurface } from "../../components/PreviewSurface";
 import { Icon as VectorIcon } from "../../components/Icon";
+import { Button } from "../../components/Button";
+import { SettingsRow } from "../../components/SettingsRow";
+import { Card } from "../../components/ui/Card";
+import { Sheet } from "../../components/ui/Sheet";
+import { Input } from "../../components/ui/Input";
+import { Pill } from "../../components/ui/Pill";
 
 // ============================================================================
 // 1. DATA MODELS & INITIAL STATE SCHEMAS
@@ -148,17 +151,18 @@ const PROJECT_TEMPLATE_CHOICES = [
 ];
 
 
-/** All three theme modes are reachable from the one control that offers them. */
-const THEME_MODE_LABEL: Record<ThemeMode, string> = {
-  light: "Light",
-  dark: "Dark",
-  darkest: "Darkest",
-};
-const NEXT_THEME_MODE: Record<ThemeMode, ThemeMode> = {
-  light: "dark",
-  dark: "darkest",
-  darkest: "light",
-};
+/**
+ * What the empty Build screen offers to someone who has not decided yet. Each
+ * one drops a real prompt into the composer — editable, not sent — so the
+ * first message is theirs.
+ */
+const STARTERS = [
+  { label: "Landing page", prompt: "Build a landing page for " },
+  { label: "Todo app", prompt: "Build a todo app with local storage, filters and a clean minimal design." },
+  { label: "Blog", prompt: "Build a small blog with a list of posts and a post page, content in markdown files." },
+  { label: "Shop with backend", prompt: "Build a shop with a product list, a cart and checkout, using Supabase for products and orders." },
+];
+
 
 // ============================================================================
 // 2. MAIN SCREEN COMPONENT
@@ -281,9 +285,6 @@ export const AgentChatScreen = () => {
   const [savingCheckpoint, setSavingCheckpoint] = useState(false);
 
   // Real token usage (usage-check → usage_metering)
-  const [usage, setUsage] = useState<UsageSummary | null>(null);
-  const [usageLoading, setUsageLoading] = useState(false);
-  const [usageError, setUsageError] = useState<string | null>(null);
   
   // Modal Visibility Controllers
   const [showDrawerModal, setShowDrawerModal] = useState(false);        // Drawer Dashboard
@@ -292,7 +293,6 @@ export const AgentChatScreen = () => {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false); // New Project Dialog
   const [showModelsModal, setShowModelsModal] = useState(false);        // Models Selector Sheet
   const [showFileModal, setShowFileModal] = useState(false);          // File Tree Sheet
-  const [showProfileModal, setShowProfileModal] = useState(false);      // Master Profile Settings Modal
   const [showPreviewModal, setShowPreviewModal] = useState(false);      // Live Web App Sandbox Preview Modal
   const [showCheckpointsModal, setShowCheckpointsModal] = useState(false); // Restore-point history and rollback sheet
 
@@ -342,7 +342,6 @@ export const AgentChatScreen = () => {
     : (threadTitle || activeProjectName || "New chat");
   
   // Settings sheet view: the menu, or the usage panel.
-  const [profileSubScreen, setProfileSubScreen] = useState<"main" | "usage">("main");
   
   // User Profile Settings Form States
 
@@ -355,7 +354,6 @@ export const AgentChatScreen = () => {
   // The catalogue depends on the plan, so a subscription that changes mid-session
   // has to re-read it — otherwise a model just paid for stays locked.
   const tier = profile?.subscription_tier ?? "free";
-  const planDisplay = describeSubscription({ tier });
   // A Play build may say a plan exists but must not tap through to buying
   // one: the tap is the link-out Play regulates, not the sentence.
   const canBuy = PURCHASES.canLinkOut;
@@ -497,27 +495,6 @@ export const AgentChatScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showDrawerModal, projects.length]);
 
-  /** Load real token usage when the usage sub-screen opens. */
-  useEffect(() => {
-    if (profileSubScreen !== "usage") return;
-    let cancelled = false;
-    setUsageLoading(true);
-    setUsageError(null);
-    (async () => {
-      try {
-        const summary = await getUsage();
-        if (!cancelled) setUsage(summary);
-      } catch (e) {
-        if (!cancelled) {
-          setUsage(null);
-          setUsageError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!cancelled) setUsageLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [profileSubScreen]);
 
   /**
    * The label under the pulsing mark. "Thinking" for half a minute is
@@ -730,21 +707,17 @@ export const AgentChatScreen = () => {
   };
 
   const saveRestorePointButton = (
-    <TouchableOpacity style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceMuted }}
+    <Button
+      label="Save a restore point now"
+      icon="plus"
+      tone="neutral"
+      size="sm"
+      block
+      className="mb-4"
+      loading={savingCheckpoint}
+      disabled={isExecuting}
       onPress={handleSaveRestorePoint}
-      disabled={savingCheckpoint || isExecuting}
-      className="flex-row items-center justify-center py-2.5 mb-4 rounded-xl border"
-      activeOpacity={0.8}
-    >
-      {savingCheckpoint ? (
-        <ActivityIndicator size="small" color={colors.brandPrimary} />
-      ) : (
-        <>
-          <VectorIcon name="plus" size={13} color={colors.brandPrimary} style={{ marginRight: 6 }} />
-          <Text style={{ color: colors.brandPrimary }} className=" text-xs font-semibold">Save a restore point now</Text>
-        </>
-      )}
-    </TouchableOpacity>
+    />
   );
 
   /**
@@ -1269,10 +1242,10 @@ export const AgentChatScreen = () => {
 
 
   // Open Master Profile Settings from Drawer
+  // The Profile tab is the settings screen; the chat no longer keeps a copy.
   const handleOpenProfileFromDrawer = () => {
     setShowDrawerModal(false);
-    setProfileSubScreen("main");
-    setShowProfileModal(true);
+    goTo("ProfileTab");
   };
 
   /**
@@ -1288,7 +1261,6 @@ export const AgentChatScreen = () => {
    * 20-odd built screens were unreachable.
    */
   const goTo = (screen: string, params?: object) => {
-    setShowProfileModal(false);
     setShowDrawerModal(false);
     (navigation as unknown as { navigate: (n: string, p?: object) => void }).navigate(screen, params);
   };
@@ -1298,16 +1270,6 @@ export const AgentChatScreen = () => {
 
   const goToProject = (screen: string, params?: object) =>
     goTo("ProjectsTab", { screen, params });
-
-  /** Really sign out (this used to only close the settings sheet). */
-  const handleSignOut = async () => {
-    setShowProfileModal(false);
-    try {
-      await signOut();
-    } catch (e) {
-      notify("Could not sign out", e instanceof Error ? e.message : String(e));
-    }
-  };
 
   /** Delete a project (and its files) from the projects sheet, with confirmation. */
   const handleDeleteProjectFromSheet = async (projectId: string, projectName: string) => {
@@ -1464,38 +1426,38 @@ export const AgentChatScreen = () => {
           {/* Profile Avatar / Drawer Trigger */}
           <TouchableOpacity 
             onPress={() => setShowDrawerModal(true)}
-            style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }}
-            className="w-10 h-10 rounded-full items-center justify-center border shadow-sm"
-            activeOpacity={0.8}
+            style={{ backgroundColor: colors.surfaceMuted }}
+            className="w-10 h-10 rounded-full items-center justify-center"
+            activeOpacity={0.7}
           >
-            <VectorIcon name="user" size={16} color={colors.inkPrimary} />
+            <VectorIcon name="user" size={17} color={colors.inkPrimary} />
           </TouchableOpacity>
 
           {/* Chat asks the model directly; Build queues an agent run with tools. */}
           {isIncognito ? (
             <Text style={{ color: colors.inkSecondary }} className=" text-sm font-medium">Incognito chat</Text>
           ) : (
-            <View style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }} className="flex-row items-center p-1 rounded-full border shadow-sm">
+            <View style={{ backgroundColor: colors.surfaceMuted }} className="flex-row items-center p-1 rounded-full">
               <TouchableOpacity
                 onPress={() => handleSelectMode("chat")}
-                style={{ backgroundColor: activeMode === "chat" ? (colors.surfaceMuted) : "transparent" }}
+                style={{ backgroundColor: activeMode === "chat" ? colors.surfaceStrong : "transparent" }}
                 className="flex-row items-center px-4 py-1.5 rounded-full"
                 activeOpacity={0.8}
               >
-                <VectorIcon name="search" size={12} color={activeMode === "chat" ? colors.brandPrimary : (colors.inkSecondary)} style={{ marginRight: 6 }} />
-                <Text style={{ color: activeMode === "chat" ? (colors.inkPrimary) : (colors.inkSecondary) }} className="text-xs font-semibold">
+                <VectorIcon name="search" size={12} color={activeMode === "chat" ? colors.inkPrimary : colors.inkSecondary} style={{ marginRight: 6 }} />
+                <Text style={{ color: activeMode === "chat" ? (colors.inkPrimary) : (colors.inkSecondary) }} className="text-xs font-medium">
                   Chat
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => handleSelectMode("build")}
-                style={{ backgroundColor: activeMode === "build" ? (colors.surfaceMuted) : "transparent" }}
+                style={{ backgroundColor: activeMode === "build" ? colors.surfaceStrong : "transparent" }}
                 className="flex-row items-center px-4 py-1.5 rounded-full"
                 activeOpacity={0.8}
               >
-                <VectorIcon name="code" size={12} color={activeMode === "build" ? colors.brandPrimary : (colors.inkSecondary)} style={{ marginRight: 6 }} />
-                <Text style={{ color: activeMode === "build" ? (colors.inkPrimary) : (colors.inkSecondary) }} className="text-xs font-semibold">
+                <VectorIcon name="code" size={12} color={activeMode === "build" ? colors.inkPrimary : colors.inkSecondary} style={{ marginRight: 6 }} />
+                <Text style={{ color: activeMode === "build" ? (colors.inkPrimary) : (colors.inkSecondary) }} className="text-xs font-medium">
                   Build
                 </Text>
               </TouchableOpacity>
@@ -1505,11 +1467,12 @@ export const AgentChatScreen = () => {
           {/* Top-right incognito toggle */}
           <TouchableOpacity 
             onPress={handleToggleIncognito}
-            style={{ backgroundColor: isIncognito ? (colors.incognitoSoft) : (colors.surfaceRaised), borderColor: colors.borderHairline }}
-            className="w-10 h-10 rounded-full items-center justify-center border shadow-sm transition-all"
-            activeOpacity={0.8}
+            style={{ backgroundColor: isIncognito ? colors.incognitoSoft : colors.surfaceMuted }}
+            className="w-10 h-10 rounded-full items-center justify-center"
+            activeOpacity={0.7}
+            accessibilityLabel={isIncognito ? "Turn incognito off" : "Incognito chat"}
           >
-            <VectorIcon name="ghost" size={18} color={isIncognito ? colors.brandPrimary : (colors.inkSecondary)} />
+            <VectorIcon name="ghost" size={17} color={isIncognito ? colors.incognito : colors.inkSecondary} />
           </TouchableOpacity>
 
         </View>
@@ -1520,11 +1483,11 @@ export const AgentChatScreen = () => {
           <View className="flex-row items-center flex-1 mr-2">
             <TouchableOpacity 
               onPress={() => setShowDrawerModal(true)}
-              style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }}
-              className="w-9 h-9 rounded-full items-center justify-center mr-3 border shadow-sm"
-              activeOpacity={0.8}
+              style={{ backgroundColor: colors.surfaceMuted }}
+              className="w-9 h-9 rounded-full items-center justify-center mr-3"
+              activeOpacity={0.7}
             >
-              <Text style={{ color: textPrimary }} className="text-sm">☰</Text>
+              <VectorIcon name="user" size={16} color={colors.inkPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1536,7 +1499,7 @@ export const AgentChatScreen = () => {
                   as often as not. `text-left` truncated it from the wrong end. */}
               <Text
                 style={{ color: textPrimary, ...directionStyleFor(headerTitle) }}
-                className="text-sm font-semibold mr-1"
+                className="text-sm font-medium mr-1"
                 numberOfLines={1}
               >
                 {headerTitle}
@@ -1548,20 +1511,22 @@ export const AgentChatScreen = () => {
           <View className="flex-row items-center">
             <TouchableOpacity 
               onPress={handleToggleIncognito}
-              style={{ backgroundColor: isIncognito ? (colors.incognitoSoft) : (colors.surfaceRaised), borderColor: colors.borderHairline }}
-              className="w-9 h-9 rounded-full items-center justify-center mr-2 border shadow-sm"
-              activeOpacity={0.8}
+              style={{ backgroundColor: isIncognito ? colors.incognitoSoft : colors.surfaceMuted }}
+              className="w-9 h-9 rounded-full items-center justify-center mr-2"
+              activeOpacity={0.7}
+              accessibilityLabel={isIncognito ? "Turn incognito off" : "Incognito chat"}
             >
-              <VectorIcon name="ghost" size={16} color={isIncognito ? colors.brandPrimary : (colors.inkSecondary)} />
+              <VectorIcon name="ghost" size={16} color={isIncognito ? colors.incognito : colors.inkSecondary} />
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={handleNewChat}
-              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-              className="w-9 h-9 rounded-full items-center justify-center border shadow-sm"
-              activeOpacity={0.8}
+              style={{ backgroundColor: colors.surfaceMuted }}
+              className="w-9 h-9 rounded-full items-center justify-center"
+              activeOpacity={0.7}
+              accessibilityLabel="New chat"
             >
-              <VectorIcon name="edit" size={14} color={colors.inkPrimary} />
+              <VectorIcon name="edit" size={15} color={colors.inkPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -1577,9 +1542,7 @@ export const AgentChatScreen = () => {
           isIncognito ? (
             /* INCOGNITO MODE ZERO-STATE CANVAS */
             <View className="flex-1 items-center justify-center px-6">
-              <View style={{ borderColor: colors.borderHairline,  backgroundColor: bgCard }} className="w-20 h-20 rounded-3xl items-center justify-center mb-6 shadow-2xl border">
-                <VectorIcon name="ghost" size={40} color={colors.brandPrimary} />
-              </View>
+              <VectorIcon name="ghost" size={28} color={colors.inkMuted} style={{ marginBottom: 16 }} />
 
               <Text style={{ color: textPrimary }} className="text-base font-semibold text-center mb-2 leading-6">
                 This chat is not saved anywhere.
@@ -1597,70 +1560,67 @@ export const AgentChatScreen = () => {
           ) : activeProjectName ? (
             /* PROJECT CONVERSATIONS LIST CANVAS (MATCHING USER SCREENSHOT) */
             <ScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
-              {/* Active Project Banner Header */}
-              <View style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }} className="flex-row items-center justify-between mb-5 p-4 rounded-2xl border shadow-sm">
-                <View className="flex-row items-center flex-1 mr-2">
-                  <VectorIcon name="folder" size={22} color={colors.warning} style={{ marginRight: 12 }} />
-                  <View className="flex-1">
-                    <Text style={{ color: textPrimary }} className="text-base font-bold text-left" numberOfLines={1}>{activeProjectName}</Text>
-                    <Text style={{ color: textSecondary }} className="text-xs text-left">Select a conversation or type below for a new thread</Text>
-                  </View>
+              {/* The project's name is the heading; the way to pick another
+                  sits beside it. It was a card with a folder icon and a
+                  sentence of instructions. */}
+              <View className="flex-row items-center justify-between mb-4 px-1">
+                <View className="flex-1 mr-3">
+                  <Text
+                    style={{ color: textPrimary, ...directionStyleFor(activeProjectName) }}
+                    className="text-xl font-semibold"
+                    numberOfLines={1}
+                  >
+                    {activeProjectName}
+                  </Text>
+                  <Text style={{ color: textMuted }} className="text-xs mt-0.5">
+                    Pick a conversation, or type below to start one
+                  </Text>
                 </View>
-
-                <TouchableOpacity 
+                <Button
+                  label="Change"
+                  tone="neutral"
+                  size="sm"
                   onPress={() => {
                     setActiveProjectName("");
                     setThreadTitle("");
                   }}
-                  style={{ backgroundColor: colors.surfaceMuted }}
-                  className="px-3 py-1.5 rounded-full active:opacity-80"
-                >
-                  <Text style={{ color: textPrimary }} className="text-xs font-semibold">Change</Text>
-                </TouchableOpacity>
+                />
               </View>
 
-              {/* Section Header */}
-              <Text style={{ color: textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-3 px-1">
-                Recent Conversations ({activeProjectName})
-              </Text>
-
-              {/* Real conversations for this project */}
-              <View className="space-y-3">
-                {(activeProjectId ? drawerSessions[activeProjectId] ?? [] : []).length === 0 ? (
-                  <View className="items-center py-8 px-4">
-                    <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
-                      No conversations in this project yet. Type below to start one.
-                    </Text>
-                  </View>
-                ) : (
-                  (drawerSessions[activeProjectId!] ?? []).map((item) => (
+              {(activeProjectId ? drawerSessions[activeProjectId] ?? [] : []).length === 0 ? (
+                <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 py-8 px-4">
+                  No conversations in this project yet. Type below to start one.
+                </Text>
+              ) : (
+                <Card flush>
+                  {(drawerSessions[activeProjectId!] ?? []).map((item, index, all) => (
                     <TouchableOpacity
                       key={item.id}
                       onPress={() =>
                         handleLoadSession(item, { id: activeProjectId!, name: activeProjectName })
                       }
-                      style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-                      className="mb-3 p-4 rounded-2xl border active:opacity-80 shadow-sm"
+                      className="px-4 py-3"
+                      style={{
+                        borderBottomWidth: index === all.length - 1 ? 0 : 1,
+                        borderBottomColor: colors.borderHairline,
+                      }}
+                      activeOpacity={0.6}
                     >
                       <Text
                         style={{ color: textPrimary, ...directionStyleFor(item.title) }}
-                        className="text-sm font-semibold mb-2"
+                        className="text-sm"
                         numberOfLines={1}
                       >
                         {item.title || "Untitled chat"}
                       </Text>
-                      <View className="flex-row items-center justify-between">
-                        <Text style={{ color: textSecondary }} className="text-xs">
-                          {relativeTime(item.updated_at ?? item.created_at)}
-                        </Text>
-                        <Text style={{ color: textMuted }} className="text-[10px] font-mono">
-                          {item.token_usage_total ? `${item.token_usage_total.toLocaleString("en-US")} tokens` : item.status}
-                        </Text>
-                      </View>
+                      <Text style={{ color: textMuted }} className="text-xs mt-0.5">
+                        {relativeTime(item.updated_at ?? item.created_at)}
+                        {item.token_usage_total ? ` · ${item.token_usage_total.toLocaleString("en-US")} tokens` : ""}
+                      </Text>
                     </TouchableOpacity>
-                  ))
-                )}
-              </View>
+                  ))}
+                </Card>
+              )}
             </ScrollView>
           ) : (
             /* PURE WHITE LIGHT MODE WATERMARK CANVAS */
@@ -1675,9 +1635,8 @@ export const AgentChatScreen = () => {
                 <Text
                   style={{
                     fontSize: 30,
-                    fontWeight: "400",
-                    color: colors.inkSecondary,
-                    fontFamily: themeFonts.uiRegular,
+                    fontWeight: "500",
+                    color: colors.inkPrimary,
                     letterSpacing: -0.6,
                   } as any}
                 >
@@ -1686,9 +1645,8 @@ export const AgentChatScreen = () => {
                 <Text
                   style={{
                     fontSize: 30,
-                    fontWeight: "400",
+                    fontWeight: "500",
                     color: colors.inkMuted,
-                    fontFamily: themeFonts.uiRegular,
                     letterSpacing: -0.6,
                     marginLeft: 8,
                   } as any}
@@ -1704,13 +1662,28 @@ export const AgentChatScreen = () => {
                 style={{
                   fontSize: 12,
                   color: colors.inkMuted,
-                  fontFamily: themeFonts.ui,
                   marginTop: 10,
                   opacity: 0.7,
                 } as any}
               >
                 {activeMode === "build" ? "Describe what to build" : "Ask about your code"}
               </Text>
+
+              {activeMode === "build" ? (
+                <View className="flex-row flex-wrap justify-center mt-7 px-2">
+                  {STARTERS.map((starter) => (
+                    <TouchableOpacity
+                      key={starter.label}
+                      onPress={() => { selectionFeedback(); handleInputChange(starter.prompt); }}
+                      style={{ borderColor: colors.borderHairline }}
+                      className="border rounded-full px-3 py-1.5 mr-1.5 mb-1.5"
+                      activeOpacity={0.6}
+                    >
+                      <Text style={{ color: textSecondary }} className="text-xs">{starter.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
             </View>
           )
         ) : (
@@ -1731,13 +1704,13 @@ export const AgentChatScreen = () => {
                 const canFork = typeof msg.transcriptIndex === "number" && !isExecuting;
                 return (
                   <View key={msg.id} className="mb-6 items-end">
-                    <View style={{ backgroundColor: colors.bubbleUser, borderColor: colors.borderHairline }} className="max-w-[92%] p-4 rounded-3xl border shadow-sm">
+                    <View style={{ backgroundColor: colors.bubbleUser, borderBottomRightRadius: 6 }} className="max-w-[88%] px-4 py-2.5 rounded-2xl">
                       {/* Direction from the text itself. `text-left` here was
                           left-aligning Persian, so a user's own message ran the
                           opposite way to the answer below it. */}
                       <Text
                         style={{ color: textPrimary, ...directionStyleFor(msg.content) }}
-                        className="text-sm leading-6 font-sans font-medium"
+                        className="text-sm leading-6"
                       >
                         {msg.content}
                       </Text>
@@ -1754,8 +1727,8 @@ export const AgentChatScreen = () => {
                         ) : (
                           <>
                             <VectorIcon name="branch" size={11} color={textSecondary} style={{ marginRight: 5 }} />
-                            <Text style={{ color: textSecondary }} className="text-[11px] font-mono">
-                              branch from here
+                            <Text style={{ color: textMuted }} className="text-[11px]">
+                              Branch from here
                             </Text>
                           </>
                         )}
@@ -1867,17 +1840,21 @@ export const AgentChatScreen = () => {
 
                   {/* IN-STREAM ACTIONS: LIVE APP PREVIEW & GIT CHECKPOINT ROLLBACK BUTTONS */}
                   {msg.hasCodeEdit && (
-                    <View className="flex-row items-center mt-3 pt-3 space-x-2">
-                      {/* Live App Sandbox Runner Button */}
+                    <View className="mt-3">
+                      {/* One row that says the app is ready to look at. It was
+                          two loud chips — green "Preview App", bordered "Undo". */}
                       <TouchableOpacity
                         onPress={() => setShowPreviewModal(true)}
-                        style={{ backgroundColor: colors.successSoft, borderColor: colors.borderHairline }}
-                        className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 mr-2 border shadow-sm"
-                        activeOpacity={0.8}
+                        style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
+                        className="flex-row items-center px-3.5 py-2.5 rounded-2xl border"
+                        activeOpacity={0.7}
                       >
-                        <VectorIcon name="eye" size={14} color={colors.success} style={{ marginRight: 6 }} />
-                        <Text style={{ color: colors.success }} className="text-xs font-bold mr-1.5">Preview App</Text>
-                        <VectorIcon name="arrow-right" size={12} color={colors.success} />
+                        <VectorIcon name="eye" size={16} color={colors.success} style={{ marginRight: 10 }} />
+                        <View className="flex-1">
+                          <Text style={{ color: textPrimary }} className="text-sm font-medium">Preview ready</Text>
+                          <Text style={{ color: textMuted }} className="text-[11px]">See the app as it is now</Text>
+                        </View>
+                        <Text style={{ color: colors.brandPrimary }} className="text-sm font-medium">Open</Text>
                       </TouchableOpacity>
 
                       {/* Undo this turn — the worker snapshotted the project
@@ -1886,16 +1863,15 @@ export const AgentChatScreen = () => {
                         <TouchableOpacity
                           onPress={() => handleRollback(msg.checkpointId, "before this change")}
                           disabled={restoringCheckpointId !== null || isExecuting}
-                          style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-                          className="px-3.5 py-2 rounded-xl flex-row items-center active:opacity-80 border shadow-sm"
-                          activeOpacity={0.8}
+                          className="flex-row items-center mt-2 px-1 py-1"
+                          activeOpacity={0.6}
                         >
                           {restoringCheckpointId === msg.checkpointId ? (
-                            <ActivityIndicator size="small" color={colors.brandPrimary} />
+                            <ActivityIndicator size="small" color={textSecondary} />
                           ) : (
                             <>
-                              <VectorIcon name="rotate-ccw" size={13} color={colors.brandPrimary} style={{ marginRight: 6 }} />
-                              <Text style={{ color: textPrimary }} className="text-xs font-semibold">Undo this change</Text>
+                              <Text style={{ color: textMuted }} className="text-xs">Restore point saved · </Text>
+                              <Text style={{ color: colors.brandPrimary }} className="text-xs font-medium">Undo this change</Text>
                             </>
                           )}
                         </TouchableOpacity>
@@ -1932,14 +1908,14 @@ export const AgentChatScreen = () => {
             backgroundColor: bgCard, 
             borderColor: colors.borderHairline
           }} 
-          className="absolute bottom-4 left-3 right-3 p-3 rounded-3xl border shadow-2xl"
+          className="absolute bottom-3 left-3 right-3 p-3 rounded-3xl border"
         >
 
           {/* '@' FILE PICKER — real files from the active project */}
           {showMentionsPopup && (
-            <View style={{ backgroundColor: colors.surfaceMuted }} className="mb-2 p-2 rounded-2xl shadow-2xl max-h-56">
-              <Text style={{ color: colors.brandPrimary }} className=" text-[11px] font-mono px-2 py-1">
-                @ Attach a project file
+            <View style={{ backgroundColor: colors.surfaceMuted }} className="mb-2 p-2 rounded-2xl max-h-56">
+              <Text style={{ color: textMuted }} className="text-[11px] px-2 py-1">
+                Attach a project file
               </Text>
               <ScrollView>
                 {fileEntries.length === 0 ? (
@@ -1954,8 +1930,8 @@ export const AgentChatScreen = () => {
                       style={{ backgroundColor: colors.surfaceRaised }}
                       className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
                     >
-                      <VectorIcon name="file-text" size={14} color={colors.brandPrimary} style={{ marginRight: 8 }} />
-                      <Text style={{ color: colors.brandPrimary }} numberOfLines={1} className=" text-xs font-mono font-bold flex-1 text-left">
+                      <VectorIcon name="file-text" size={14} color={colors.inkSecondary} style={{ marginRight: 8 }} />
+                      <Text style={{ color: textPrimary }} numberOfLines={1} className="text-xs font-mono flex-1 text-left">
                         {entry.path}
                       </Text>
                       <Text style={{ color: textSecondary }} className="text-[10px] ml-2">{entry.sizeLabel}</Text>
@@ -1968,8 +1944,8 @@ export const AgentChatScreen = () => {
 
           {/* '/' PROMPT SHORTCUTS — each expands into a full instruction */}
           {showSlashPopup && (
-            <View style={{ backgroundColor: colors.surfaceMuted }} className="mb-2 p-2 rounded-2xl shadow-2xl">
-              <Text style={{ color: colors.brandPrimary }} className=" text-[11px] font-mono px-2 py-1">/ Prompt shortcuts</Text>
+            <View style={{ backgroundColor: colors.surfaceMuted }} className="mb-2 p-2 rounded-2xl">
+              <Text style={{ color: textMuted }} className="text-[11px] px-2 py-1">Prompt shortcuts</Text>
               {SLASH_COMMANDS.map((item) => (
                 <TouchableOpacity
                   key={item.cmd}
@@ -1977,8 +1953,8 @@ export const AgentChatScreen = () => {
                   style={{ backgroundColor: colors.surfaceRaised }}
                   className="flex-row items-center p-2 rounded-xl active:opacity-80 my-0.5"
                 >
-                  <VectorIcon name={item.icon} size={14} color={colors.brandPrimary} style={{ marginRight: 8 }} />
-                  <Text style={{ color: colors.brandPrimary }} className=" text-xs font-mono font-bold mr-2">{item.cmd}</Text>
+                  <VectorIcon name={item.icon} size={14} color={colors.inkSecondary} style={{ marginRight: 8 }} />
+                  <Text style={{ color: textPrimary }} className="text-xs font-mono mr-2">{item.cmd}</Text>
                   <Text style={{ color: textSecondary }} className="text-xs flex-1 text-left">{item.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -2043,22 +2019,23 @@ export const AgentChatScreen = () => {
               {/* '+' BUTTON OPENS 'Add to Chat' BOTTOM SHEET MODAL */}
               <TouchableOpacity 
                 onPress={() => setShowAddToChatModal(true)}
-                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-                className="w-8 h-8 rounded-full items-center justify-center mr-2 border shadow-sm active:opacity-80"
-                activeOpacity={0.8}
+                style={{ backgroundColor: colors.surfaceMuted }}
+                className="w-9 h-9 rounded-full items-center justify-center mr-2"
+                activeOpacity={0.7}
+                accessibilityLabel="Project actions"
               >
-                <VectorIcon name="plus" size={16} color={colors.inkPrimary} />
+                <VectorIcon name="plus" size={17} color={colors.inkPrimary} />
               </TouchableOpacity>
 
               {/* Model & Thinking Switcher Pill */}
               <TouchableOpacity
                 onPress={() => setShowModelsModal(true)}
-                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-                className="flex-row items-center px-3.5 py-1.5 rounded-full border shadow-sm active:opacity-80"
-                activeOpacity={0.8}
+                style={{ backgroundColor: colors.surfaceMuted }}
+                className="flex-row items-center px-3 py-2 rounded-full"
+                activeOpacity={0.7}
               >
                 <VectorIcon name={activeModelObj.icon} size={12} color={colors[activeModelObj.tone]} style={{ marginRight: 6 }} />
-                <Text style={{ color: textPrimary }} className="text-xs font-semibold mr-1.5">
+                <Text style={{ color: textPrimary }} className="text-xs font-medium mr-1.5">
                   {activeModelObj.name}
                 </Text>
                 <VectorIcon name="chevron-down" size={10} color={colors.inkSecondary} />
@@ -2069,9 +2046,9 @@ export const AgentChatScreen = () => {
             <View className="flex-row items-center">
               
               {isIncognito && (
-                <View className="px-2.5 py-1 bg-purple-950/80 rounded-full mr-2 flex-row items-center">
-                  <VectorIcon name="ghost" size={12} color={colors.brandPrimary} style={{ marginRight: 4 }} />
-                  <Text style={{ color: colors.brandPrimary }} className=" text-[10px] font-mono">Incognito</Text>
+                <View style={{ backgroundColor: colors.incognitoSoft }} className="px-2.5 py-1 rounded-full mr-2 flex-row items-center">
+                  <VectorIcon name="ghost" size={12} color={colors.incognito} style={{ marginRight: 4 }} />
+                  <Text style={{ color: colors.incognito }} className="text-[10px] font-medium">Incognito</Text>
                 </View>
               )}
 
@@ -2084,7 +2061,7 @@ export const AgentChatScreen = () => {
                 onPress={() => void handleSend()}
                 disabled={!hasInputText || isExecuting}
                 style={{
-                  backgroundColor: hasInputText && !isExecuting ? colors.brandPrimary : (colors.inkMuted),
+                  backgroundColor: hasInputText && !isExecuting ? colors.brandPrimary : colors.surfaceStrong,
                   width: 36,
                   height: 36,
                   borderRadius: 18,
@@ -2095,9 +2072,9 @@ export const AgentChatScreen = () => {
                 activeOpacity={0.8}
               >
                 <VectorIcon
-                  name={hasInputText ? "arrow-up" : "arrow-up"}
+                  name="arrow-up"
                   size={16}
-                  color={colors.canvasBase}
+                  color={hasInputText && !isExecuting ? colors.canvasBase : colors.inkMuted}
                 />
               </TouchableOpacity>
 
@@ -2109,1567 +2086,843 @@ export const AgentChatScreen = () => {
       {/* =================================================================== */}
       {/* 4. MODAL 1: ADD TO CHAT BOTTOM SHEET (EXACT CLAUDE/PERPLEXITY PARITY) */}
       {/* =================================================================== */}
-      <Modal
+      <Sheet
         visible={showAddToChatModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAddToChatModal(false)}
+        onClose={() => setShowAddToChatModal(false)}
+        title={activeProjectName || "Project"}
+        subtitle="Files, preview, restore points"
       >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-t-[32px] p-5 pb-8 relative shadow-2xl border">
-            
-            <View className="items-center mb-4">
-              <View style={{ backgroundColor: colors.inkMuted }} className="w-12 h-1.5 rounded-full opacity-60" />
-            </View>
+        {/* Ways into the project from the composer. Rows in one group rather
+            than a 2x2 grid of tiles — the same shape as every list in the app. */}
+        <Card flush>
+          {([
+            { key: "files", label: "Files", icon: "file-text", hint: undefined, run: () => setShowFileModal(true) },
+            { key: "preview", label: "Preview", icon: "eye", hint: undefined, run: () => setShowPreviewModal(true) },
+            { key: "restore", label: "Restore points", icon: "rotate-ccw", hint: "Saved before every run that changes files", run: () => setShowCheckpointsModal(true) },
+            { key: "export", label: exporting ? "Preparing the zip…" : "Download as zip", icon: "download", hint: undefined, run: () => void handleExport() },
+            {
+              key: "skills",
+              label: "Skills",
+              icon: "sparkles",
+              hint: activeSkills.length ? `${activeSkills.length} on` : undefined,
+              run: () => setShowSkillsModal(true),
+            },
+          ] as const).map((action, index, all) => (
+            <SettingsRow
+              key={action.key}
+              label={action.label}
+              icon={action.icon}
+              hint={action.hint}
+              last={index === all.length - 1}
+              onPress={() => {
+                if (action.key === "export" && exporting) return;
+                setShowAddToChatModal(false);
+                action.run();
+              }}
+            />
+          ))}
+        </Card>
+      </Sheet>
 
-            <View className="flex-row items-center justify-between mb-5 px-1">
-              <TouchableOpacity 
-                onPress={() => setShowAddToChatModal(false)}
-                style={{ backgroundColor: colors.surfaceStrong }}
-                className="w-9 h-9 rounded-full items-center justify-center"
-                activeOpacity={0.8}
-              >
-                <VectorIcon name="x" size={14} color={colors.inkPrimary} />
-              </TouchableOpacity>
-              
-              <Text style={{ color: textPrimary }} className="text-base font-bold">Project</Text>
-              <View className="w-9" />
-            </View>
-
-            {/* Ways into the project from the composer. Restore points used to
-                have no entry point at all — the sheet existed but nothing
-                opened it. A 2x2 grid rather than one row: four tiles across a
-                phone leaves each one too narrow to read. */}
-            <View className="flex-row flex-wrap justify-between mb-3">
-              {([
-                { key: "files", label: "Files", icon: "file-text", run: () => setShowFileModal(true) },
-                { key: "preview", label: "Preview", icon: "eye", run: () => setShowPreviewModal(true) },
-                { key: "restore", label: "Restore points", icon: "rotate-ccw", run: () => setShowCheckpointsModal(true) },
-                { key: "export", label: "Download as zip", icon: "download", run: () => void handleExport() },
-                {
-                  key: "skills",
-                  label: activeSkills.length ? `Skills · ${activeSkills.length} on` : "Skills",
-                  icon: "sparkles",
-                  run: () => setShowSkillsModal(true),
-                },
-              ] as const).map((action) => (
-                <TouchableOpacity
-                  key={action.key}
-                  onPress={() => {
-                    setShowAddToChatModal(false);
-                    action.run();
-                  }}
-                  disabled={action.key === "export" && exporting}
-                  style={{ backgroundColor: colors.surfaceMuted }}
-                  className="w-[48%] py-5 mb-3 rounded-2xl items-center justify-center active:opacity-80 shadow-sm border border-black/5"
-                >
-                  <View style={{ backgroundColor: colors.surfaceStrong }} className="w-11 h-11 rounded-full items-center justify-center mb-2">
-                    {action.key === "export" && exporting ? (
-                      <ActivityIndicator size="small" color={colors.brandPrimary} />
-                    ) : (
-                      <VectorIcon name={action.icon} size={20} color={colors.inkPrimary} />
-                    )}
-                  </View>
-                  <Text style={{ color: textPrimary }} className="text-xs font-semibold text-center">{action.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-          </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 6. MODAL 3: DRAWER DASHBOARD & SESSIONS HISTORY                      */}
-      {/* =================================================================== */}
+      {/* Chats — every project and its conversations. A page, not a sheet,
+          because it is where someone goes to find their way around. The
+          floating search bar and brand-coloured compose button are gone; search
+          is a field at the top and new-chat is in the header. */}
       <Modal
         visible={showDrawerModal}
         animationType="slide"
         transparent={false}
         onRequestClose={() => setShowDrawerModal(false)}
       >
-        <View style={{ backgroundColor: bgCanvas }} className="flex-1">
-          <View style={{ backgroundColor: bgCanvas }} className="flex-row items-center justify-between px-5 py-4">
-            {/* User Profile Avatar & Name Trigger */}
-            <TouchableOpacity 
-              onPress={handleOpenProfileFromDrawer}
-              style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
-              className="flex-row items-center px-3 py-1.5 rounded-2xl border active:opacity-80"
+        <SafeAreaView style={{ flex: 1, backgroundColor: bgCanvas }}>
+          <View className="flex-row items-center px-3" style={{ height: 56 }}>
+            <TouchableOpacity
+              onPress={() => setShowDrawerModal(false)}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+              className="w-10 h-10 items-center justify-center mr-1"
+              activeOpacity={0.6}
             >
-              <View style={{ backgroundColor: colors.brandSoft }} className="w-7 h-7 rounded-full items-center justify-center mr-2">
-                <VectorIcon name="user" size={14} color={colors.brandPrimary} />
-              </View>
-              <Text style={{ color: textPrimary }} className="text-sm font-bold tracking-wide mr-1.5" numberOfLines={1}>
-                {displayName}
-              </Text>
-              <VectorIcon name="chevron-right" size={10} color={colors.inkSecondary} />
+              <VectorIcon name="x" size={20} color={colors.inkPrimary} />
             </TouchableOpacity>
-
-            <View className="flex-row items-center">
-              {/* Theme toggle */}
-              <TouchableOpacity 
-                onPress={() => setMode(isLight ? "darkest" : "light")}
-                style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
-                className="w-9 h-9 rounded-full items-center justify-center mr-2 border active:opacity-80"
-              >
-                <VectorIcon name={isLight ? "moon" : "sun"} size={15} color={colors.warning} />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                onPress={() => setShowDrawerModal(false)}
-                style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
-                className="w-9 h-9 rounded-full items-center justify-center border"
-              >
-                <VectorIcon name="x" size={14} color={colors.inkPrimary} />
-              </TouchableOpacity>
-            </View>
+            <Text style={{ color: textPrimary }} className="text-base font-semibold flex-1">Chats</Text>
+            <TouchableOpacity
+              onPress={() => setMode(isLight ? "darkest" : "light")}
+              accessibilityLabel={isLight ? "Switch to dark" : "Switch to light"}
+              className="w-10 h-10 rounded-full items-center justify-center mr-1.5"
+              style={{ backgroundColor: colors.surfaceMuted }}
+              activeOpacity={0.6}
+            >
+              <VectorIcon name={isLight ? "moon" : "sun"} size={16} color={colors.inkPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleNewChat}
+              accessibilityLabel="New chat"
+              className="w-10 h-10 rounded-full items-center justify-center"
+              style={{ backgroundColor: colors.surfaceMuted }}
+              activeOpacity={0.6}
+            >
+              <VectorIcon name="edit" size={16} color={colors.inkPrimary} />
+            </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1 px-5 py-3" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
-            <TouchableOpacity 
-              onPress={handleOpenProjectsFromDrawer}
-              style={{ borderColor: colors.borderHairline,  backgroundColor: colors.surfaceRaised }}
-              className="flex-row items-center py-3 px-3.5 rounded-2xl mb-2.5 border active:opacity-80"
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View
+              className="flex-row items-center rounded-input px-3 mb-4"
+              style={{ backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderHairline, minHeight: 44 }}
             >
-              <VectorIcon name="folder" size={18} color={colors.warning} style={{ marginRight: 12 }} />
-              <Text style={{ color: textPrimary }} className="text-sm font-bold flex-1 text-left">Projects</Text>
-              <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
-            </TouchableOpacity>
+              <VectorIcon name="search" size={15} color={colors.inkMuted} style={{ marginRight: 8 }} />
+              <TextInput
+                value={drawerQuery}
+                onChangeText={setDrawerQuery}
+                placeholder="Search chats"
+                placeholderTextColor={colors.inkMuted}
+                className="flex-1 text-sm"
+                style={{ color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
+              />
+              {drawerQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setDrawerQuery("")} className="p-1" accessibilityLabel="Clear search">
+                  <VectorIcon name="x" size={13} color={colors.inkSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
 
-            {/* PROJECT GROUPED CHAT SESSIONS TREE — real projects + sessions */}
-            <View className="mb-6">
-              <Text style={{ color: textSecondary }} className="text-xs font-bold uppercase tracking-wider mb-4 px-1">
-                Projects & Workspace Chats
+            <Card flush>
+              <SettingsRow label={displayName} hint={user?.email ?? undefined} icon="user" onPress={handleOpenProfileFromDrawer} />
+              <SettingsRow
+                label="Projects"
+                hint={projects.length ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : undefined}
+                icon="folder"
+                onPress={handleOpenProjectsFromDrawer}
+                last
+              />
+            </Card>
+
+            {projects.length === 0 ? (
+              <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 py-10 px-4">
+                No projects yet. Create one to start building.
               </Text>
-
-              {projects.length === 0 ? (
-                <View className="items-center py-8 px-4">
-                  <VectorIcon name="folder" size={26} color={colors.inkMuted} style={{ marginBottom: 10 }} />
-                  <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
-                    No projects yet. Create one to start building.
-                  </Text>
-                </View>
-              ) : (
-                projects.map((project) => {
-                  const sessions = (drawerSessions[project.id] ?? []).filter((s) =>
-                    !drawerQuery.trim() ||
-                    (s.title ?? "").toLowerCase().includes(drawerQuery.trim().toLowerCase()),
-                  );
-                  return (
-                    <View key={project.id} className="mb-5">
-                      {/* Folder Header */}
-                      <TouchableOpacity
-                        onPress={() => handleOpenProjectFolder(project.id, project.name)}
-                        className="flex-row items-center justify-between mb-2 px-1 active:opacity-80"
+            ) : (
+              projects.map((project) => {
+                const sessions = (drawerSessions[project.id] ?? []).filter((s) =>
+                  !drawerQuery.trim() ||
+                  (s.title ?? "").toLowerCase().includes(drawerQuery.trim().toLowerCase()),
+                );
+                return (
+                  <View key={project.id}>
+                    <TouchableOpacity
+                      onPress={() => handleOpenProjectFolder(project.id, project.name)}
+                      className="flex-row items-center px-1 mt-7 mb-2"
+                      activeOpacity={0.6}
+                    >
+                      <Text
+                        style={{ color: textSecondary, ...directionStyleFor(project.name) }}
+                        className="text-xs font-medium flex-1"
+                        numberOfLines={1}
                       >
-                        <View className="flex-row items-center flex-1 mr-2">
-                          <VectorIcon name="folder" size={16} color={colors.warning} style={{ marginRight: 8 }} />
-                          <Text
-                            style={{ color: textPrimary, ...directionStyleFor(project.name) }}
-                            className="text-sm font-bold"
-                            numberOfLines={1}
+                        {project.name}
+                      </Text>
+                      <VectorIcon name="chevron-right" size={14} color={colors.inkMuted} />
+                    </TouchableOpacity>
+                    <Card flush>
+                      {sessions.length === 0 ? (
+                        <Text style={{ color: textMuted }} className="text-xs px-4 py-3">
+                          {drawerSessions[project.id] ? "No chats yet" : "Loading…"}
+                        </Text>
+                      ) : (
+                        sessions.map((item, index) => (
+                          <TouchableOpacity
+                            key={item.id}
+                            onPress={() => handleLoadSession(item, project)}
+                            className="px-4 py-3"
+                            style={{
+                              borderBottomWidth: index === sessions.length - 1 ? 0 : 1,
+                              borderBottomColor: colors.borderHairline,
+                            }}
+                            activeOpacity={0.6}
                           >
-                            {project.name}
-                          </Text>
-                        </View>
-
-                        <View style={{ backgroundColor: colors.borderHairline }} className="px-2.5 py-1 rounded-lg">
-                          <Text style={{ color: colors.brandPrimary }} className="text-[10px] font-mono font-bold">Open</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      {/* Real sessions for this project */}
-                      <View style={{ borderColor: colors.borderHairline }} className="pl-3 ml-2 border-l">
-                        {sessions.length === 0 ? (
-                          <Text style={{ color: textMuted }} className="text-[10px] py-2 text-left">
-                            {drawerSessions[project.id] ? "No chats yet" : "Loading…"}
-                          </Text>
-                        ) : (
-                          sessions.map((item) => (
-                            <TouchableOpacity
-                              key={item.id}
-                              onPress={() => handleLoadSession(item, project)}
-                              style={{ backgroundColor: colors.surfaceRaised, borderColor: colors.borderHairline }}
-                              className="p-3 rounded-xl mb-2 border active:opacity-80 shadow-sm"
-                            >
+                            <View className="flex-row items-center">
                               <Text
                                 style={{ color: textPrimary, ...directionStyleFor(item.title) }}
-                                className="text-xs font-medium mb-1.5 font-sans"
+                                className="text-sm flex-1 mr-2"
                                 numberOfLines={1}
                               >
                                 {item.title || "Untitled chat"}
                               </Text>
-                              <View className="flex-row items-center justify-between">
-                                <Text style={{ color: textSecondary }} className="text-[10px]">
-                                  {relativeTime(item.updated_at ?? item.created_at)}
-                                </Text>
-                                <View
-                                  style={{
-                                    backgroundColor:
-                                      item.status === "completed"
-                                        ? (colors.successSoft)
-                                        : item.status === "failed"
-                                          ? (colors.failedSoft)
-                                          : (colors.surfaceMuted),
-                                  }}
-                                  className="px-2 py-0.5 rounded-full"
-                                >
-                                  <Text
-                                    style={{
-                                      color:
-                                        item.status === "completed"
-                                          ? (colors.success)
-                                          : item.status === "failed"
-                                            ? (colors.failed)
-                                            : (colors.inkSecondary),
-                                    }}
-                                    className="text-[9px] font-medium"
-                                  >
-                                    {item.status}
-                                  </Text>
-                                </View>
-                              </View>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </View>
-                    </View>
-                  );
-                })
-              )}
-            </View>
+                              {/* Only failure is worth a badge: "active" is
+                                  every unfinished chat, so marking it marks
+                                  almost every row. */}
+                              {item.status === "failed" ? <Pill tone="failed">Failed</Pill> : null}
+                            </View>
+                            <Text style={{ color: textMuted }} className="text-xs mt-0.5">
+                              {relativeTime(item.updated_at ?? item.created_at)}
+                            </Text>
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </Card>
+                  </View>
+                );
+              })
+            )}
           </ScrollView>
-
-          {/* Bottom Floating Bar Navigation Container */}
-          <View className="absolute bottom-4 left-4 right-4 flex-row items-center justify-between">
-            <View style={{ backgroundColor: colors.surfaceRaised }} className="flex-1 flex-row items-center px-3.5 py-2.5 rounded-full mr-3">
-              <VectorIcon name="search" size={14} color={colors.inkSecondary} style={{ marginRight: 8 }} />
-              <TextInput
-                value={drawerQuery}
-                onChangeText={setDrawerQuery}
-                placeholder="Search chats..."
-                placeholderTextColor={colors.inkMuted}
-                className="flex-1 text-xs text-left"
-                style={{ color: colors.inkPrimary }}
-              />
-              {drawerQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setDrawerQuery("")} className="p-1">
-                  <VectorIcon name="x" size={12} color={colors.inkSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <TouchableOpacity style={{ backgroundColor: colors.brandPrimary }} 
-              onPress={handleNewChat}
-              className="w-12 h-12 rounded-full items-center justify-center shadow-lg"
-            >
-              <VectorIcon name="edit" size={18} color={colors.canvasBase} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
-      {/* =================================================================== */}
-      {/* 8. MODAL 5: PROJECTS MANAGEMENT SHEET                               */}
-      {/* =================================================================== */}
-      <Modal
+      {/* Projects — the list, a way to make one, and the ways into each. */}
+      <Sheet
         visible={showProjectsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowProjectsModal(false)}
+        onClose={() => setShowProjectsModal(false)}
+        title="Projects"
+        subtitle={projects.length ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : undefined}
+        height={0.85}
       >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: bgCard }} className="h-[85%] rounded-t-[32px] p-4 shadow-2xl">
-            <View className="items-center mb-3">
-              <View style={{ backgroundColor: colors.inkMuted }} className="w-12 h-1.5 rounded-full opacity-60" />
-            </View>
-
-            <View className="flex-row items-center justify-between mb-4 pb-2 px-1">
-              <Text style={{ color: textPrimary }} className="text-xl font-bold">Projects</Text>
-              
-              <View className="flex-row items-center">
-                <TouchableOpacity style={{ backgroundColor: colors.warningSoft }} 
-                  onPress={() => setShowNewProjectModal(true)}
-                  className="w-8 h-8 rounded-full items-center justify-center mr-2 active:/30"
-                >
-                  <VectorIcon name="plus" size={16} color={colors.warning} />
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  onPress={() => setShowProjectsModal(false)}
-                  style={{ backgroundColor: colors.surfaceStrong }}
-                  className="w-8 h-8 rounded-full items-center justify-center"
-                >
-                  <VectorIcon name="x" size={14} color={colors.inkSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowProjectsModal(false);
-                  goTo("GlobalSearch");
-                }}
-                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-                className="mb-3 p-3 rounded-2xl flex-row items-center border active:opacity-80"
-              >
-                <VectorIcon name="search" size={15} color={textSecondary} style={{ marginRight: 10 }} />
-                <Text style={{ color: textSecondary }} className="text-xs text-left flex-1">
-                  Search your projects and chats
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setShowNewProjectModal(true)}
-                style={{ backgroundColor: colors.warningSoft }}
-                className="mb-4 p-4 rounded-2xl flex-row items-center justify-between active:opacity-80"
-              >
-                <View className="flex-row items-center">
-                  <View style={{ backgroundColor: colors.warningSoft }} className="w-10 h-10 rounded-xl items-center justify-center mr-3">
-                    <VectorIcon name="sparkles" size={18} color={colors.warning} />
-                  </View>
-                  <View>
-                    <Text style={{ color: colors.warning }} className="text-sm font-bold text-left mb-0.5">New Project</Text>
-                    <Text style={{ color: colors.warning }} className="text-xs text-left">Create coding environment & build new app</Text>
-                  </View>
-                </View>
-                <VectorIcon name="plus" size={18} color={colors.warning} />
-              </TouchableOpacity>
-
-              {projects.length === 0 ? (
-                <View className="items-center py-10 px-4">
-                  <VectorIcon name="folder" size={28} color={colors.inkMuted} style={{ marginBottom: 10 }} />
-                  <Text style={{ color: textSecondary }} className="text-xs text-center leading-5">
-                    No projects yet — tap “New Project” above to create your first one.
-                  </Text>
-                </View>
-              ) : (
-                projects.map((proj) => (
-                  <TouchableOpacity
-                    key={proj.id}
-                    onPress={() => {
-                      setShowProjectsModal(false);
-                      handleOpenProjectFolder(proj.id, proj.name);
-                    }}
-                    style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-                    className="mb-3.5 p-4 rounded-2xl border active:opacity-80 shadow-sm"
-                  >
-                    <View className="flex-row items-center justify-between mb-2">
-                      <Text
-                        style={{ color: textPrimary, ...directionStyleFor(proj.name) }}
-                        className="text-base font-bold flex-1 mr-2"
-                        numberOfLines={1}
-                      >
-                        {proj.name}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteProjectFromSheet(proj.id, proj.name)}
-                        style={{ backgroundColor: colors.surfaceStrong }}
-                        className="w-7 h-7 rounded-lg items-center justify-center"
-                      >
-                        <VectorIcon name="trash" size={12} color={colors.inkSecondary} />
-                      </TouchableOpacity>
-                    </View>
-
-                    {proj.description ? (
-                      <Text style={{ color: textSecondary }} className="text-xs text-left mb-3 leading-5" numberOfLines={2}>
-                        {proj.description}
-                      </Text>
-                    ) : null}
-                    <Text style={{ color: textMuted }} className="text-[10px] text-left mb-3">
-                      Created {relativeTime(proj.created_at)}
-                    </Text>
-
-                    {/* Entry points into the project screens */}
-                    <View className="flex-row flex-wrap">
-                      {([
-                        { label: "Details", target: "ProjectDetail" },
-                        { label: "Files", target: "FileTree" },
-                        { label: "History", target: "SessionHistory" },
-                        { label: "Restore points", target: "CheckpointList" },
-                        { label: "Settings", target: "ProjectSettings" },
-                      ] as const).map((entry) => (
-                        <TouchableOpacity
-                          key={entry.target}
-                          onPress={() => goToProject(entry.target, { projectId: proj.id })}
-                          style={{ backgroundColor: colors.surfaceStrong }}
-                          className="px-2.5 py-1 rounded-lg mr-2 mb-1"
-                        >
-                          <Text style={{ color: textSecondary }} className="text-[10px] font-semibold">{entry.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+          <View className="flex-row mb-4">
+            <Button label="New project" icon="plus" size="sm" onPress={() => setShowNewProjectModal(true)} />
+            <View style={{ width: 8 }} />
+            <Button
+              label="Search"
+              icon="search"
+              tone="neutral"
+              size="sm"
+              onPress={() => {
+                setShowProjectsModal(false);
+                goTo("GlobalSearch");
+              }}
+            />
           </View>
-        </View>
-      </Modal>
 
-      {/* =================================================================== */}
-      {/* 9. MODAL 6: CREATE NEW PROJECT FORM DIALOG                          */}
-      {/* =================================================================== */}
+          {projects.length === 0 ? (
+            <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 py-10 px-4">
+              No projects yet. Make one above.
+            </Text>
+          ) : (
+            projects.map((proj) => (
+              <Card key={proj.id} className="mb-3">
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowProjectsModal(false);
+                    handleOpenProjectFolder(proj.id, proj.name);
+                  }}
+                  activeOpacity={0.6}
+                >
+                  <View className="flex-row items-center">
+                    <Text
+                      style={{ color: textPrimary, ...directionStyleFor(proj.name) }}
+                      className="text-base font-medium flex-1 mr-2"
+                      numberOfLines={1}
+                    >
+                      {proj.name}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteProjectFromSheet(proj.id, proj.name)}
+                      accessibilityLabel={`Delete ${proj.name}`}
+                      className="w-8 h-8 rounded-full items-center justify-center"
+                      activeOpacity={0.6}
+                    >
+                      <VectorIcon name="trash" size={14} color={colors.inkMuted} />
+                    </TouchableOpacity>
+                  </View>
+                  {proj.description ? (
+                    <Text style={{ color: textSecondary }} className="text-xs mt-1 leading-5" numberOfLines={2}>
+                      {proj.description}
+                    </Text>
+                  ) : null}
+                  <Text style={{ color: textMuted }} className="text-xs mt-1">
+                    Created {relativeTime(proj.created_at)}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Entry points into the project screens */}
+                <View className="flex-row flex-wrap mt-3">
+                  {([
+                    { label: "Details", target: "ProjectDetail" },
+                    { label: "Files", target: "FileTree" },
+                    { label: "History", target: "SessionHistory" },
+                    { label: "Restore points", target: "CheckpointList" },
+                    { label: "Settings", target: "ProjectSettings" },
+                  ] as const).map((entry) => (
+                    <Button
+                      key={entry.target}
+                      label={entry.label}
+                      tone="neutral"
+                      size="sm"
+                      className="mr-1.5 mb-1.5"
+                      onPress={() => goToProject(entry.target, { projectId: proj.id })}
+                    />
+                  ))}
+                </View>
+              </Card>
+            ))
+          )}
+        </ScrollView>
+      </Sheet>
+
+      {/* New project. A centred dialog: one field, a template, one button. */}
       <Modal
         visible={showNewProjectModal}
         animationType="fade"
         transparent={true}
         onRequestClose={() => setShowNewProjectModal(false)}
       >
-        <View className="flex-1 justify-center bg-black/80 px-6">
-          <View style={{ backgroundColor: colors.surfaceRaised }} className="p-5 rounded-[28px] shadow-2xl">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center">
-                <VectorIcon name="sparkles" size={16} color={colors.warning} style={{ marginRight: 6 }} />
-                <Text style={{ color: colors.inkPrimary }} className=" text-base font-bold">Create New Project</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowNewProjectModal(false)}>
+        <View className="flex-1 justify-center px-6" style={{ backgroundColor: colors.scrim }}>
+          <View
+            className="rounded-sheet p-5"
+            style={{ backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline }}
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <Text style={{ color: colors.inkPrimary }} className="text-lg font-semibold">New project</Text>
+              <TouchableOpacity
+                onPress={() => setShowNewProjectModal(false)}
+                accessibilityLabel="Close"
+                className="w-8 h-8 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.surfaceMuted }}
+                activeOpacity={0.6}
+              >
                 <VectorIcon name="x" size={14} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
 
-            <Text style={{ color: colors.inkSecondary }} className=" text-xs mb-2 text-left">Project Name:</Text>
-            <TextInput
+            <Input
+              label="Name"
               value={newProjectName}
               onChangeText={setNewProjectName}
-              placeholder="e.g. AI Portfolio App..."
-              placeholderTextColor={colors.inkMuted}
-              className="p-3 rounded-xl text-xs mb-4 text-left"
-              style={{ backgroundColor: colors.surfaceStrong, color: colors.inkPrimary }}
+              placeholder="e.g. Portfolio"
+              autoCapitalize="sentences"
+              autoFocus
             />
 
-            <Text style={{ color: colors.inkSecondary }} className=" text-xs mb-2 text-left">Start from a template:</Text>
-            <View className="flex-row flex-wrap mb-4">
-              {PROJECT_TEMPLATE_CHOICES.map((t) => (
-                <TouchableOpacity
-                  key={t.id}
-                  onPress={() => setNewProjectTemplate(t.id)}
-                  className="px-3 py-2 rounded-xl mr-2 mb-2"
-                  style={{ backgroundColor: newProjectTemplate === t.id ? colors.warning : colors.surfaceStrong }}
-                >
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: newProjectTemplate === t.id ? colors.canvasBase : colors.inkSecondary }}
-                  >
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              onPress={handleCreateNewProject}
-              disabled={isCreatingProject}
-              className=" py-3 rounded-xl items-center shadow-lg flex-row justify-center"
-              style={{ backgroundColor: colors.warning,  opacity: isCreatingProject ? 0.6 : 1 }}
-            >
-              {isCreatingProject ? (
-                <ActivityIndicator size="small" color={colors.canvasBase} />
-              ) : (
-                <>
-                  <Text style={{ color: colors.canvasBase }} className=" text-xs font-bold mr-1.5">Create & Open Project</Text>
-                  <VectorIcon name="arrow-right" size={14} color={colors.canvasBase} />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* MODAL: CONNECT SUPABASE                                             */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showBackendModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowBackendModal(false)}
-      >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: colors.surfaceRaised }} className="rounded-t-[32px] p-5 pb-8">
-            <View className="items-center mb-4">
-              <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
-            </View>
-
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center">
-                <VectorIcon name="drive" size={18} color={colors.brandPrimary} style={{ marginRight: 8 }} />
-                <Text style={{ color: textPrimary }} className="text-xl font-bold">Connect Supabase</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowBackendModal(false)} className="px-3 py-2">
-                <Text style={{ color: colors.inkSecondary }} className="text-sm font-semibold">Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
-              Give the agent your own Supabase project and it can build against a real
-              backend — sign-in, saved data — instead of a page with nowhere to send to.
-            </Text>
-
-            {/* The warning that matters. The anon key is meant to be public; the
-                secret key inside a published page is the whole database. */}
-            <View
-              className="p-3 rounded-xl mb-4"
-              style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.warning, borderWidth: 1 }}
-            >
-              <Text style={{ color: colors.warning }} className="text-[11px] font-bold text-left mb-1">
-                Use the anon key, never the secret one
-              </Text>
-              <Text style={{ color: textSecondary }} className="text-[11px] leading-5 text-left">
-                The anon key is designed to be public and ends up inside the page you
-                publish. A service role key there would hand anyone full access to your
-                database — this screen refuses one if you paste it.
-              </Text>
-            </View>
-
-            <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">Project URL</Text>
-            <TextInput
-              value={backendUrl}
-              onChangeText={setBackendUrl}
-              placeholder="https://abcdefgh.supabase.co"
-              placeholderTextColor={colors.inkMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              className="w-full p-4 rounded-2xl text-sm mb-3"
-              style={{ backgroundColor: colors.surfaceMuted, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
-            />
-
-            <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">
-              Anon / publishable key
-            </Text>
-            <TextInput
-              value={backendKey}
-              onChangeText={setBackendKey}
-              placeholder="sb_publishable_... or eyJ..."
-              placeholderTextColor={colors.inkMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              className="w-full p-4 rounded-2xl text-sm mb-2"
-              style={{ backgroundColor: colors.surfaceMuted, color: textPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
-            />
-            <Text style={{ color: colors.inkMuted }} className="text-[10px] leading-4 mb-4 text-left">
-              Supabase → Project Settings → API. Both values are on that page.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => void handleSaveBackend()}
-              style={{ backgroundColor: colors.brandPrimary }}
-              className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90"
-              activeOpacity={0.9}
-            >
-              <Text style={{ color: colors.canvasBase }} className="text-sm font-bold">Connect</Text>
-            </TouchableOpacity>
-
-            {backend && (
-              <TouchableOpacity
-                onPress={async () => {
-                  await forgetBackendTarget();
-                  setBackend(null);
-                  notify("Supabase disconnected", "The project has been removed from this device.");
-                }}
-                className="mt-3 self-center px-3 py-2"
-              >
-                <Text style={{ color: colors.failed }} className="text-xs font-semibold">
-                  Remove the saved project
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* MODAL: CONNECT NETLIFY                                              */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showDeployModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowDeployModal(false)}
-      >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: colors.surfaceRaised }} className="rounded-t-[32px] p-5 pb-8">
-            <View className="items-center mb-4">
-              <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
-            </View>
-
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center">
-                <VectorIcon name="cloud" size={18} color={colors.success} style={{ marginRight: 8 }} />
-                <Text style={{ color: textPrimary }} className="text-xl font-bold">
-                  Publish to {PROVIDER_LABEL[deployProvider]}
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowDeployModal(false)} className="px-3 py-2">
-                <Text style={{ color: colors.inkSecondary }} className="text-sm font-semibold">Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Both hosts, so the choice is visible rather than a setting to find. */}
-            <View className="flex-row mb-4">
-              {(["netlify", "vercel"] as const).map((option) => {
-                const active = deployProvider === option;
+            <Text variant="label" className="mb-2">Start from</Text>
+            <View className="flex-row flex-wrap mb-3">
+              {PROJECT_TEMPLATE_CHOICES.map((t) => {
+                const on = newProjectTemplate === t.id;
                 return (
                   <TouchableOpacity
-                    key={option}
-                    onPress={() => { selectionFeedback(); setDeployProvider(option); setDeployTokenInput(""); }}
-                    style={{
-                      backgroundColor: active ? colors.brandSoft : colors.surfaceMuted,
-                      borderColor: active ? colors.brandPrimary : colors.borderHairline,
-                      borderWidth: active ? 2 : 1,
-                    }}
-                    className="flex-1 p-3 rounded-2xl mr-2 active:opacity-80"
-                    activeOpacity={0.8}
+                    key={t.id}
+                    onPress={() => { selectionFeedback(); setNewProjectTemplate(t.id); }}
+                    className="px-3 py-1.5 rounded-full mr-1.5 mb-1.5"
+                    style={{ backgroundColor: on ? colors.inkPrimary : colors.surfaceMuted }}
+                    activeOpacity={0.7}
                   >
-                    <View className="flex-row items-center justify-between">
-                      <Text style={{ color: textPrimary }} className="text-sm font-bold">
-                        {PROVIDER_LABEL[option]}
-                      </Text>
-                      {connected[option] ? (
-                        <VectorIcon name="check" size={12} color={colors.success} />
-                      ) : null}
-                    </View>
-                    <Text style={{ color: textSecondary }} className="text-[10px] mt-1 leading-4 text-left">
-                      {option === "netlify"
-                        ? "Sends the whole archive, images included."
-                        : "Sends text files only, no images."}
+                    <Text className="text-xs font-medium" style={{ color: on ? colors.canvasBase : colors.inkSecondary }}>
+                      {t.label}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
-              {PROVIDER_LABEL[deployProvider]}'s free tier hosts static sites at no
-              cost. Paste an access token from your own account — it is used to
-              publish and nothing else.
-            </Text>
-
-            {/* Said plainly rather than implied. The token is a credential for
-                their account and they are entitled to know where it lives. */}
-            <View
-              className="p-3 rounded-xl mb-4"
-              style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline, borderWidth: 1 }}
-            >
-              <Text style={{ color: textSecondary }} className="text-[11px] leading-5 text-left">
-                The token is stored {tokenStorageIsSecure()
-                  ? "in this device's secure keystore"
-                  : "in this browser's local storage, which any script on this page could read"}
-                {" "}and is sent only to {PROVIDER_LABEL[deployProvider]}. It never
-                reaches our servers.
-              </Text>
-            </View>
-
-            <Text style={{ color: textPrimary }} className="text-xs font-bold text-left mb-2">
-              {PROVIDER_LABEL[deployProvider]} access token
-            </Text>
-            <TextInput
-              value={deployTokenInput}
-              onChangeText={setDeployTokenInput}
-              placeholder={deployProvider === "vercel" ? "Vercel token" : "nfp_..."}
-              placeholderTextColor={colors.inkMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-              className="w-full p-4 rounded-2xl text-sm mb-2"
-              style={{
-                backgroundColor: colors.surfaceMuted,
-                color: textPrimary,
-                outlineStyle: "none",
-                outlineWidth: 0,
-              } as any}
-            />
-            <Text style={{ color: colors.inkMuted }} className="text-[10px] leading-4 mb-4 text-left">
-              {deployProvider === "vercel"
-                ? "Vercel → Account Settings → Tokens → Create Token."
-                : "Netlify → User settings → Applications → Personal access tokens → New access token."}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => void handleSaveToken()}
-              style={{ backgroundColor: colors.success }}
-              className="w-full py-4 rounded-2xl items-center justify-center active:opacity-90"
-              activeOpacity={0.9}
-            >
-              <Text style={{ color: colors.canvasBase }} className="text-sm font-bold">Connect</Text>
-            </TouchableOpacity>
-
-            {connected[deployProvider] && (
-              <TouchableOpacity
-                onPress={async () => {
-                  await forgetDeployToken(deployProvider);
-                  setConnected((prev) => ({ ...prev, [deployProvider]: false }));
-                  setDeployedUrl(null);
-                  notify(
-                    `${PROVIDER_LABEL[deployProvider]} disconnected`,
-                    "The token has been removed from this device.",
-                  );
-                }}
-                className="mt-3 self-center px-3 py-2"
-              >
-                <Text style={{ color: colors.failed }} className="text-xs font-semibold">
-                  Remove the saved token
-                </Text>
-              </TouchableOpacity>
-            )}
+            <Button label="Create" block loading={isCreatingProject} onPress={handleCreateNewProject} />
           </View>
         </View>
       </Modal>
 
-      {/* =================================================================== */}
-      {/* MODAL: SKILLS PICKER                                                */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showSkillsModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowSkillsModal(false)}
+      {/* Connect Supabase — the user's own backend for sign-in and saved data. */}
+      <Sheet
+        visible={showBackendModal}
+        onClose={() => setShowBackendModal(false)}
+        title="Connect Supabase"
+        subtitle="Your own backend for sign-in and saved data"
       >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: colors.surfaceRaised }} className="max-h-[85%] rounded-t-[32px] p-5 pb-8">
-            <View className="items-center mb-4">
-              <View className="w-12 h-1.5 rounded-full opacity-60" style={{ backgroundColor: colors.inkMuted }} />
-            </View>
-
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center">
-                <VectorIcon name="sparkles" size={18} color={colors.brandPrimary} style={{ marginRight: 8 }} />
-                <Text style={{ color: textPrimary }} className="text-xl font-bold">Skills</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowSkillsModal(false)} className="px-3 py-2">
-                <Text style={{ color: colors.brandPrimary }} className="text-sm font-semibold">Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
-              Extra instructions for what you are building. Only the ones you switch
-              on are sent, and they never override what you actually ask for.
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 8 }}>
+          {/* The warning that matters. The anon key is meant to be public; the
+              secret key inside a published page is the whole database. */}
+          <View className="p-3 rounded-card mb-4" style={{ backgroundColor: colors.warningSoft }}>
+            <Text style={{ color: colors.warning }} className="text-xs font-medium mb-1">Use the anon key, never the secret one</Text>
+            <Text style={{ color: textSecondary }} className="text-xs leading-5">
+              The anon key is designed to be public and ends up inside the page you publish. A service role
+              key there would hand anyone full access to your database — this screen refuses one if you paste it.
             </Text>
-
-            <ScrollView className="max-h-[420px]" showsVerticalScrollIndicator={false}>
-              {SKILLS.map((skill) => {
-                const on = activeSkills.includes(skill.id);
-                return (
-                  <TouchableOpacity
-                    key={skill.id}
-                    onPress={() => {
-                      selectionFeedback();
-                      setActiveSkills((prev) =>
-                        prev.includes(skill.id)
-                          ? prev.filter((id) => id !== skill.id)
-                          : [...prev, skill.id],
-                      );
-                    }}
-                    style={{
-                      backgroundColor: on ? colors.brandSoft : colors.surfaceMuted,
-                      borderColor: on ? colors.brandPrimary : colors.borderHairline,
-                      borderWidth: on ? 2 : 1,
-                    }}
-                    className="flex-row items-center p-4 rounded-2xl mb-2.5 active:opacity-80"
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={{ backgroundColor: on ? colors.brandPrimary : colors.surfaceStrong }}
-                      className="w-9 h-9 rounded-full items-center justify-center mr-3"
-                    >
-                      <VectorIcon
-                        name={skill.icon}
-                        size={16}
-                        color={on ? colors.canvasBase : colors.inkSecondary}
-                      />
-                    </View>
-                    <View className="flex-1 mr-2">
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">
-                        {skill.name}
-                      </Text>
-                      <Text style={{ color: textSecondary }} className="text-xs text-left mt-0.5 leading-4">
-                        {skill.description}
-                      </Text>
-                    </View>
-                    {/* A tick, not a switch: the whole row is the target, and a
-                        switch beside a pressable row invites two different taps. */}
-                    <View
-                      style={{
-                        borderColor: on ? colors.brandPrimary : colors.borderHairline,
-                        backgroundColor: on ? colors.brandPrimary : "transparent",
-                      }}
-                      className="w-5 h-5 rounded-md border items-center justify-center"
-                    >
-                      {on ? <VectorIcon name="check" size={12} color={colors.canvasBase} /> : null}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Shown where the Supabase skill is switched on, because that is the
-                moment it becomes relevant that a project is needed. */}
-            {activeSkills.includes("supabase-backend") && (
-              <TouchableOpacity
-                onPress={() => { tapFeedback(); setShowBackendModal(true); }}
-                style={{
-                  backgroundColor: colors.surfaceMuted,
-                  borderColor: backend ? colors.success : colors.warning,
-                }}
-                className="flex-row items-center p-3 rounded-2xl border mt-1"
-                activeOpacity={0.8}
-              >
-                <VectorIcon
-                  name={backend ? "check" : "alert"}
-                  size={14}
-                  color={backend ? colors.success : colors.warning}
-                  style={{ marginRight: 8 }}
-                />
-                <View className="flex-1">
-                  <Text style={{ color: textPrimary }} className="text-xs font-semibold text-left">
-                    {backend ? "Supabase project connected" : "No Supabase project connected"}
-                  </Text>
-                  <Text style={{ color: textSecondary }} className="text-[11px] text-left mt-0.5" numberOfLines={1}>
-                    {backend ? backend.url : "Tap to add your project URL and anon key"}
-                  </Text>
-                </View>
-                <VectorIcon name="chevron-right" size={12} color={colors.inkMuted} />
-              </TouchableOpacity>
-            )}
-
-            {activeSkills.length > 0 && (
-              <TouchableOpacity
-                onPress={() => { tapFeedback(); setActiveSkills([]); }}
-                className="mt-3 self-start px-3 py-2 rounded-lg"
-                style={{ backgroundColor: colors.surfaceMuted }}
-              >
-                <Text style={{ color: colors.inkSecondary }} className="text-xs font-semibold">
-                  Turn all off
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
-        </View>
-      </Modal>
 
-      {/* =================================================================== */}
-      {/* 10. MODAL 7: LIVE WEB APP ARTIFACT SANDBOX PREVIEW                 */}
-      {/* =================================================================== */}
+          <Input
+            label="Project URL"
+            value={backendUrl}
+            onChangeText={setBackendUrl}
+            placeholder="https://abcdefgh.supabase.co"
+            keyboardType="url"
+          />
+          <Input
+            label="Anon / publishable key"
+            hint="Supabase → Project Settings → API. Both values are on that page."
+            value={backendKey}
+            onChangeText={setBackendKey}
+            placeholder="sb_publishable_… or eyJ…"
+          />
+
+          <Button label="Connect" block onPress={() => void handleSaveBackend()} />
+
+          {backend && (
+            <Button
+              label="Remove the saved project"
+              tone="ghost"
+              block
+              className="mt-2"
+              onPress={async () => {
+                await forgetBackendTarget();
+                setBackend(null);
+                notify("Supabase disconnected", "The project has been removed from this device.");
+              }}
+            />
+          )}
+        </ScrollView>
+      </Sheet>
+
+      {/* Publish — a token from the user's own hosting account. */}
+      <Sheet
+        visible={showDeployModal}
+        onClose={() => setShowDeployModal(false)}
+        title={`Publish to ${PROVIDER_LABEL[deployProvider]}`}
+        subtitle="Free static hosting on your own account"
+      >
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 8 }}>
+          {/* Both hosts, so the choice is visible rather than a setting to find. */}
+          <View className="flex-row mb-4">
+            {(["netlify", "vercel"] as const).map((option) => {
+              const active = deployProvider === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  onPress={() => { selectionFeedback(); setDeployProvider(option); setDeployTokenInput(""); }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  className="flex-1 p-3 rounded-card mr-2"
+                  style={{
+                    backgroundColor: colors.surfaceMuted,
+                    borderWidth: 1,
+                    borderColor: active ? colors.brandPrimary : colors.borderHairline,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text style={{ color: textPrimary }} className="text-sm font-medium">{PROVIDER_LABEL[option]}</Text>
+                    {connected[option] ? <Pill tone="success">Connected</Pill> : null}
+                  </View>
+                  <Text style={{ color: textMuted }} className="text-[11px] mt-1 leading-4">
+                    {option === "netlify" ? "Whole archive, images included" : "Text files only, no images"}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Said plainly rather than implied. The token is a credential for
+              their account and they are entitled to know where it lives. */}
+          <Text style={{ color: textSecondary }} className="text-xs leading-5 mb-4">
+            Paste an access token from your own {PROVIDER_LABEL[deployProvider]} account. It is stored{" "}
+            {tokenStorageIsSecure()
+              ? "in this device's secure keystore"
+              : "in this browser's local storage, which any script on this page could read"}
+            , sent only to {PROVIDER_LABEL[deployProvider]}, and never reaches our servers.
+          </Text>
+
+          <Input
+            label={`${PROVIDER_LABEL[deployProvider]} access token`}
+            hint={deployProvider === "vercel"
+              ? "Vercel → Account Settings → Tokens → Create Token"
+              : "Netlify → User settings → Applications → Personal access tokens"}
+            value={deployTokenInput}
+            onChangeText={setDeployTokenInput}
+            placeholder={deployProvider === "vercel" ? "Vercel token" : "nfp_…"}
+            secureTextEntry
+          />
+
+          <Button label="Connect" block onPress={() => void handleSaveToken()} />
+
+          {connected[deployProvider] && (
+            <Button
+              label="Remove the saved token"
+              tone="ghost"
+              block
+              className="mt-2"
+              onPress={async () => {
+                await forgetDeployToken(deployProvider);
+                setConnected((prev) => ({ ...prev, [deployProvider]: false }));
+                setDeployedUrl(null);
+                notify(
+                  `${PROVIDER_LABEL[deployProvider]} disconnected`,
+                  "The token has been removed from this device.",
+                );
+              }}
+            />
+          )}
+        </ScrollView>
+      </Sheet>
+
+      {/* Skills — extra instructions, on or off. Rows with a tick, not cards
+          with a two-pixel brand border. */}
+      <Sheet
+        visible={showSkillsModal}
+        onClose={() => setShowSkillsModal(false)}
+        title="Skills"
+        subtitle="Extra instructions, sent only while switched on"
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+          <Card flush>
+            {SKILLS.map((skill, index) => {
+              const on = activeSkills.includes(skill.id);
+              return (
+                <TouchableOpacity
+                  key={skill.id}
+                  onPress={() => {
+                    selectionFeedback();
+                    setActiveSkills((prev) =>
+                      prev.includes(skill.id)
+                        ? prev.filter((id) => id !== skill.id)
+                        : [...prev, skill.id],
+                    );
+                  }}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  className="flex-row items-center px-4 py-3"
+                  style={{
+                    borderBottomWidth: index === SKILLS.length - 1 ? 0 : 1,
+                    borderBottomColor: colors.borderHairline,
+                  }}
+                  activeOpacity={0.6}
+                >
+                  <VectorIcon
+                    name={skill.icon}
+                    size={18}
+                    color={on ? colors.brandPrimary : colors.inkSecondary}
+                    style={{ marginRight: 14 }}
+                  />
+                  <View className="flex-1 mr-3">
+                    <Text style={{ color: textPrimary }} className="text-sm">{skill.name}</Text>
+                    <Text style={{ color: textMuted }} className="text-xs mt-0.5 leading-4">{skill.description}</Text>
+                  </View>
+                  {/* A tick, not a switch: the whole row is the target, and a
+                      switch beside a pressable row invites two different taps. */}
+                  <View
+                    className="w-[22px] h-[22px] rounded-md items-center justify-center"
+                    style={{
+                      backgroundColor: on ? colors.brandPrimary : "transparent",
+                      borderWidth: 1.5,
+                      borderColor: on ? colors.brandPrimary : colors.inkMuted,
+                    }}
+                  >
+                    {on ? <VectorIcon name="check" size={13} color={colors.canvasBase} /> : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </Card>
+
+          {/* Shown where the Supabase skill is switched on, because that is the
+              moment it becomes relevant that a project is needed. */}
+          {activeSkills.includes("supabase-backend") && (
+            <Card flush className="mt-3">
+              <SettingsRow
+                label={backend ? "Supabase project connected" : "No Supabase project connected"}
+                hint={backend ? backend.url : "Add your project URL and anon key"}
+                icon={backend ? "check" : "alert"}
+                onPress={() => setShowBackendModal(true)}
+                last
+              />
+            </Card>
+          )}
+
+          {activeSkills.length > 0 && (
+            <Button label="Turn all off" tone="ghost" size="sm" className="mt-3" onPress={() => setActiveSkills([])} />
+          )}
+        </ScrollView>
+      </Sheet>
+
+      {/* Preview — the built app, full screen. The header holds the three
+          things you do with it: share, deploy, refresh. */}
       <Modal
         visible={showPreviewModal}
         animationType="slide"
         transparent={false}
         onRequestClose={() => setShowPreviewModal(false)}
       >
-        <View style={{ backgroundColor: colors.canvasBase }} className="flex-1 bg-black">
-          <View style={{ backgroundColor: colors.canvasBase }} className="flex-row items-center justify-between px-5 py-4">
-            <TouchableOpacity onPress={() => setShowPreviewModal(false)} className="p-1 flex-row items-center">
-              <VectorIcon name="x" size={14} color={colors.inkSecondary} style={{ marginRight: 6 }} />
-              <Text style={{ color: colors.inkSecondary }} className=" text-sm font-semibold">Close</Text>
-            </TouchableOpacity>
-            <View className="flex-row items-center">
-              <VectorIcon name="eye" size={16} color={colors.success} style={{ marginRight: 6 }} />
-              <Text style={{ color: colors.inkPrimary }} className=" text-base font-bold">Live App Preview</Text>
-            </View>
-            <View className="flex-row items-center">
-              {/* Share what is on screen. Placed here rather than in the chat so
-                  "what you see is what you share" is literally true — this
-                  publishes the document the surface below is rendering. */}
-              <TouchableOpacity
-                onPress={handleShareApp}
-                disabled={publishing || previewLoading || !previewHtml}
-                style={{ opacity: previewHtml && !previewLoading ? 1 : 0.4 }}
-                className="p-1 flex-row items-center mr-4"
-                activeOpacity={0.7}
-              >
-                {publishing ? (
-                  <ActivityIndicator size="small" color={colors.brandPrimary} />
-                ) : (
-                  <>
-                    <VectorIcon
-                      name={publishedUrl ? "link" : "share-2"}
-                      size={12}
-                      color={colors.brandPrimary}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">
-                      {publishedUrl ? "Copy link" : "Share"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {/* Not gated on previewLoading. Deploy publishes the project's files,
-                  not the previewed document — so a preview that is slow or stuck has
-                  nothing to do with whether the project can ship, and coupling them
-                  meant a broken preview also blocked deploying. */}
-              <TouchableOpacity
-                onPress={handleDeploy}
-                disabled={deploying}
-                style={{ opacity: deploying ? 0.5 : 1 }}
-                className="p-1 flex-row items-center mr-4"
-                activeOpacity={0.7}
-              >
-                {deploying ? (
-                  <ActivityIndicator size="small" color={colors.success} />
-                ) : (
-                  <>
-                    <VectorIcon
-                      name={deployedUrl ? "globe" : "cloud"}
-                      size={12}
-                      color={colors.success}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={{ color: colors.success }} className=" text-xs font-bold">
-                      {deployedUrl ? "Open site" : "Deploy"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={loadPreview} className="p-1 flex-row items-center">
-                <VectorIcon name="rotate-ccw" size={12} color={colors.brandPrimary} style={{ marginRight: 4 }} />
-                <Text style={{ color: colors.brandPrimary }} className=" text-xs font-bold">Refresh</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* No frame, no padding, no fake window buttons. This used to be dressed
-              up as a desktop browser — two nested paddings, rounded corners and
-              three traffic lights — which on a phone spent most of the width on
-              decoration and made the preview itself a small box in the middle.
-              The real app gets the whole surface; the controls it needs are in
-              the header above. */}
-          <View style={{ backgroundColor: colors.canvasBase }} className="flex-1">
-            <View className="w-full h-full flex-col">
-              {previewLoading ? (
-                <View className="flex-1 items-center justify-center">
-                  <ActivityIndicator size="large" color={colors.brandPrimary} />
-                  <Text style={{ color: colors.inkSecondary }} className=" text-xs mt-4">Building on-device preview…</Text>
-                </View>
-              ) : previewError ? (
-                <View className="flex-1 items-center justify-center px-6">
-                  <VectorIcon name="x" size={32} color={colors.failed} style={{ marginBottom: 12 }} />
-                  <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold mb-2">Preview failed</Text>
-                  <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">{previewError}</Text>
-                </View>
-              ) : previewHtml ? (
-                <PreviewSurface html={previewHtml} />
-              ) : (
-                <View className="flex-1 items-center justify-center px-6">
-                  <VectorIcon name="eye" size={36} color={colors.inkMuted} style={{ marginBottom: 12 }} />
-                  <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">
-                    Nothing to preview yet — ask the agent to build something.
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 11. MODAL 8: GIT CHECKPOINTS & TIMELINE ROLLBACK (AUTO-FIT HEIGHT) */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showCheckpointsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCheckpointsModal(false)}
-      >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: colors.surfaceRaised }} className="max-h-[85%] rounded-t-[32px] p-5 pb-8">
-            <View className="items-center mb-4">
-              <View className="w-12 h-1.5 bg-zinc-700 rounded-full opacity-60" />
-            </View>
-
-            <View className="flex-row items-center justify-between mb-4 pb-3">
-              <View className="flex-row items-center">
-                <VectorIcon name="rotate-ccw" size={18} color={colors.brandPrimary} style={{ marginRight: 8 }} />
-                <Text style={{ color: colors.inkPrimary }} className=" text-xl font-bold">Restore points</Text>
-              </View>
-              <TouchableOpacity style={{ backgroundColor: colors.surfaceStrong }} 
-                onPress={() => setShowCheckpointsModal(false)}
-                className="w-8 h-8 rounded-full items-center justify-center"
-              >
-                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {checkpointsLoading ? (
-                <View className="py-10 items-center">
-                  <ActivityIndicator size="small" color={colors.brandPrimary} />
-                  <Text style={{ color: colors.inkMuted }} className=" text-xs mt-3">Loading checkpoints…</Text>
-                </View>
-              ) : checkpoints.length === 0 ? (
-                <View className="py-10 items-center px-6">
-                  <VectorIcon name="rotate-ccw" size={26} color={colors.inkMuted} style={{ marginBottom: 10 }} />
-                  <Text style={{ color: colors.inkSecondary }} className=" text-sm font-bold mb-2">No restore points yet</Text>
-                  <Text style={{ color: colors.inkMuted }} className=" text-xs text-center leading-5 mb-4">
-                    One is saved automatically before every run that can change your files.
-                    Ask the agent to build something and it will show up here.
-                  </Text>
-                  <View className="w-full px-6">{saveRestorePointButton}</View>
-                </View>
-              ) : (
-                <>
-                  <Text style={{ color: colors.inkMuted }} className=" text-xs text-left leading-5 mb-3 px-1">
-                    Each one is how the project looked before that run. Rolling back saves a
-                    restore point first, so it can be undone.
-                  </Text>
-                  {saveRestorePointButton}
-                  {checkpoints.map((cp) => (
-                    <View style={{ backgroundColor: colors.surfaceMuted }} key={cp.id} className="mb-3 p-4 rounded-2xl">
-                      <View className="flex-row items-center mb-1">
-                        <View className="w-2.5 h-2.5 rounded-full bg-emerald-400 mr-2" />
-                        <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold text-left flex-1" numberOfLines={1}>
-                          {cp.session_title ? `Before: ${cp.session_title}` : "Restore point"}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center justify-between mt-1">
-                        <Text style={{ color: colors.inkSecondary }} className=" text-xs text-left font-mono">
-                          {relativeTime(cp.created_at)} · {cp.id.slice(0, 7)}
-                        </Text>
-                        <TouchableOpacity style={{ backgroundColor: colors.surfaceStrong }}
-                          onPress={() => handleRollback(cp.id, `on ${relativeTime(cp.created_at)}`)}
-                          disabled={restoringCheckpointId !== null || isExecuting}
-                          className="px-3 py-1.5 rounded-lg flex-row items-center"
-                          activeOpacity={0.8}
-                        >
-                          {restoringCheckpointId === cp.id ? (
-                            <ActivityIndicator size="small" color={colors.brandPrimary} />
-                          ) : (
-                            <>
-                              <VectorIcon name="rotate-ccw" size={12} color={colors.brandPrimary} style={{ marginRight: 5 }} />
-                              <Text style={{ color: colors.brandPrimary }} className=" text-xs font-semibold">Restore</Text>
-                            </>
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))}
-                </>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 12. MODAL 9: MASTER PROFILE & SETTINGS MULTI-SCREEN MODAL           */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showProfileModal}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowProfileModal(false)}
-      >
-        <View style={{ backgroundColor: bgCanvas }} className="flex-1">
-          
-          {/* SUB-SCREEN 1: MAIN SETTINGS OVERVIEW */}
-          {profileSubScreen === "main" && (
-            <View style={{ backgroundColor: bgCanvas }} className="flex-1">
-              <View className="flex-row items-center justify-between px-5 py-4">
-                <TouchableOpacity onPress={() => setShowProfileModal(false)} className="p-1 flex-row items-center">
-                  <VectorIcon name="x" size={14} color={colors.inkSecondary} style={{ marginRight: 6 }} />
-                  <Text style={{ color: textSecondary }} className="text-sm font-semibold">Close</Text>
-                </TouchableOpacity>
-                <Text style={{ color: textPrimary }} className="text-base font-bold">Settings</Text>
-                <View className="w-9" />
-              </View>
-
-              <ScrollView className="flex-1 px-4 py-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 90 }}>
-                {/* Profile Card */}
-                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="p-4 rounded-2xl mb-4 flex-row items-center justify-between shadow-sm border">
-                  <View className="flex-row items-center flex-1 mr-2">
-                    <View className="w-10 h-10 rounded-full bg-purple-950/40 items-center justify-center mr-3">
-                      <VectorIcon name="user" size={18} color={colors.brandPrimary} />
-                    </View>
-                    <View className="flex-1">
-                      <Text style={{ color: textPrimary }} className="text-sm font-bold text-left" numberOfLines={1}>
-                        {displayName}
-                      </Text>
-                      <Text style={{ color: textSecondary }} className="text-xs text-left" numberOfLines={1}>
-                        {user?.email ?? "Not signed in"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Tapping the badge is the shortest route to fixing the
-                      plan, so it does that rather than being decoration.
-
-                      Gone entirely while nothing is for sale: a solid "FREE"
-                      chip beside someone's name reads as a downgrade, and there
-                      is no upgrade to offer them. */}
-                  {PURCHASES.canMentionPlans ? (
-                  <TouchableOpacity
-                    onPress={() => planDisplay.action && canBuy && goTo("Paywall", {})}
-                    disabled={!planDisplay.action || !canBuy}
-                    style={{
-                      backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary,
-                    }}
-                    className="px-3.5 py-1.5 rounded-full items-center justify-center"
-                  >
-                    <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 12 }}>
-                      {planDisplay.badge}
-                    </Text>
-                  </TouchableOpacity>
-                  ) : null}
-                </View>
-
-                {/* Upgrade Card. Hidden for a healthy plan and for Team —
-                    selling to someone who already bought is just noise — and
-                    for every plan while there is nothing to sell. */}
-                {PURCHASES.canMentionPlans && planDisplay.action ? (
-                <View style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }} className="p-5 rounded-2xl mb-6 shadow-sm border relative overflow-hidden">
-                  <Text style={{ color: textPrimary }} className="text-base font-bold text-left mb-1">
-                    {planDisplay.needsAttention ? "Your plan needs attention" : "Want more Retro Code?"}
-                  </Text>
-                  <Text style={{ color: textSecondary }} className="text-xs text-left mb-4 leading-5">
-                    {planDisplay.detail ?? "Upgrade for more usage and capabilities."}
-                  </Text>
-
-                  {canBuy ? (
-                    <TouchableOpacity
-                      onPress={() => goTo("Paywall", {})}
-                      style={{ backgroundColor: planDisplay.needsAttention ? colors.warning : colors.inkPrimary }}
-                      className="px-6 py-2.5 rounded-2xl self-start active:opacity-90 shadow-md items-center justify-center"
-                    >
-                      <Text style={{ color: colors.canvasBase, fontWeight: "700", fontSize: 13 }}>{planDisplay.action}</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    // No tap, so the sentence carries the whole answer. Saying
-                    // nothing would leave a limit with no explanation, which is
-                    // worse for the user than any rule requires.
-                    <Text style={{ color: textSecondary }} className="text-xs text-left leading-5">
-                      Paid plans are managed from your account on the Retro Code website.
-                    </Text>
-                  )}
-                </View>
-                ) : null}
-
-                {/* Account & app screens (these live in the Profile stack) */}
-                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
-                  {([
-                    // Only an operator sees this. Hiding it is presentation —
-                    // every admin action re-checks the flag server-side.
-                    ...(profile?.is_admin
-                      ? [{ label: "Admin", icon: "shield", target: "Admin", root: false } as const]
-                      : []),
-                    { label: "Account", icon: "user", target: "AccountSettings", root: false },
-                    { label: "Preferences", icon: "settings", target: "Preferences", root: false },
-                    { label: "Your AI providers", icon: "cpu", target: "Providers", root: false },
-                    { label: "Shared links", icon: "link", target: "SharedLinks", root: false },
-                    { label: "Security", icon: "lock", target: "SecuritySettings", root: false },
-                    // Subscription is about buying, so it goes when nothing is
-                    // for sale. Token usage stays: knowing how much you have
-                    // used is useful whether or not there is a plan to buy.
-                    ...(PURCHASES.canMentionPlans
-                      ? [{ label: "Subscription", icon: "zap", target: "ManageSubscription", root: true } as const]
-                      : []),
-                    { label: "Token usage", icon: "chart", target: "TokenUsage", root: true },
-                    { label: "Help & Support", icon: "info", target: "HelpSupport", root: false },
-                    { label: "About", icon: "info", target: "About", root: false },
-                    { label: "Privacy Policy", icon: "file-text", target: "PrivacyPolicy", root: false },
-                    { label: "Terms of Service", icon: "file-text", target: "TermsOfService", root: false },
-                  ] as const).map((row) => (
-                    <TouchableOpacity
-                      key={row.target}
-                      onPress={() => (row.root ? goTo(row.target) : goToProfile(row.target))}
-                      className="flex-row items-center justify-between p-4 active:opacity-80"
-                    >
-                      <View className="flex-row items-center">
-                        <VectorIcon name={row.icon} size={16} color={colors.inkSecondary} style={{ marginRight: 12 }} />
-                        <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">{row.label}</Text>
-                      </View>
-                      <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-5 border shadow-sm">
-                  <TouchableOpacity
-                    onPress={() => setProfileSubScreen("usage")}
-                    className="flex-row items-center justify-between p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center">
-                      {/* A card icon and the word "billing" both promise an
-                          invoice. There is none, and the screen behind this
-                          only shows how much has been used. */}
-                      <VectorIcon
-                        name={PURCHASES.canMentionPlans ? "card" : "chart"}
-                        size={16}
-                        color={colors.inkSecondary}
-                        style={{ marginRight: 12 }}
-                      />
-                      <Text style={{ color: textPrimary }} className="text-sm font-semibold">
-                        {PURCHASES.canMentionPlans ? "Usage & Billing" : "Usage"}
-                      </Text>
-                    </View>
-                    <VectorIcon name="chevron-right" size={12} color={colors.inkSecondary} />
-                  </TouchableOpacity>
-                </View>
-
-
-                {/* Theme & Preferences */}
-                <View style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} className="rounded-2xl overflow-hidden mb-6 border shadow-sm">
-                  <TouchableOpacity 
-                    onPress={() => setMode(NEXT_THEME_MODE[mode])}
-                    className="flex-row items-center justify-between p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-center">
-                      <VectorIcon name={isLight ? "sun" : "moon"} size={16} color={colors.warning} style={{ marginRight: 12 }} />
-                      <View>
-                        <Text style={{ color: textPrimary }} className="text-sm font-semibold text-left">Color mode</Text>
-                        <Text style={{ color: colors.warning }} className="text-xs text-left font-medium">
-                          {THEME_MODE_LABEL[mode]}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={{ color: colors.brandPrimary }} className="text-xs font-bold">Tap to Switch ➔</Text>
-                  </TouchableOpacity>
-
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleSignOut}
-                  className="w-full py-3.5 rounded-full bg-red-500/10 items-center justify-center mb-8 active:opacity-80"
-                >
-                  <Text style={{ color: colors.failed }} className=" text-sm font-bold">Sign Out</Text>
-                </TouchableOpacity>
-
-              </ScrollView>
-            </View>
-          )}
-
-          {/* SUB-SCREEN 2: PROFILE EDIT */}
-
-          {/* SUB-SCREEN 5: USAGE AND CREDITS */}
-          {profileSubScreen === "usage" && (
-            <View style={{ backgroundColor: colors.canvasBase }} className="flex-1">
-              <View className="flex-row items-center px-4 py-4">
-                <TouchableOpacity style={{ backgroundColor: colors.surfaceRaised }} 
-                  onPress={() => setProfileSubScreen("main")} 
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                >
-                  <VectorIcon name="arrow-left" size={16} color={colors.canvasBase} />
-                </TouchableOpacity>
-                <Text style={{ color: colors.inkPrimary }} className=" text-lg font-bold">Usage and credits</Text>
-              </View>
-
-              <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-                {usageLoading ? (
-                  <View className="py-12 items-center">
-                    <ActivityIndicator size="small" color={colors.brandPrimary} />
-                    <Text style={{ color: colors.inkMuted }} className=" text-xs mt-3">Loading usage…</Text>
-                  </View>
-                ) : usage ? (
-                  <>
-                    <View style={{ backgroundColor: colors.surfaceRaised }} className="p-4 rounded-2xl mb-4">
-                      <View className="flex-row items-center justify-between mb-3">
-                        <Text style={{ color: colors.inkSecondary }} className=" text-xs">Plan</Text>
-                        <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold uppercase">{usage.tier}</Text>
-                      </View>
-
-                      <Text style={{ color: colors.inkSecondary }} className=" text-xs text-left mb-1">Tokens used this period</Text>
-                      <Text style={{ color: colors.inkPrimary }} className=" text-2xl font-bold text-left mb-3">
-                        {usage.tokensUsed.toLocaleString("en-US")}
-                        {usage.tokenLimit ? (
-                          <Text style={{ color: colors.inkMuted }} className=" text-sm font-medium"> / {usage.tokenLimit.toLocaleString("en-US")}</Text>
-                        ) : null}
-                      </Text>
-
-                      {usage.tokenLimit > 0 && (
-                        <View style={{ backgroundColor: colors.surfaceStrong }} className="h-2 rounded-full overflow-hidden mb-2">
-                          <View
-                            style={{
-                              width: `${Math.min(100, Math.round((usage.tokensUsed / usage.tokenLimit) * 100))}%`,
-                              backgroundColor: usage.remaining > 0 ? colors.brandPrimary : colors.failed,
-                            }}
-                            className="h-full rounded-full"
-                          />
-                        </View>
-                      )}
-
-                      <Text style={{ color: colors.inkMuted }} className=" text-[11px] text-left">
-                        {usage.remaining > 0
-                          ? `${usage.remaining.toLocaleString("en-US")} tokens remaining`
-                          : "Limit reached — new agent runs are blocked until the period resets."}
-                      </Text>
-                    </View>
-
-                    <View className="flex-row justify-between">
-                      <View style={{ backgroundColor: colors.surfaceRaised }} className="w-[48%] p-3.5 rounded-2xl">
-                        <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold mb-2">Agent runs</Text>
-                        <Text style={{ color: colors.inkPrimary }} className=" text-xl font-bold text-left">{usage.requests.toLocaleString("en-US")}</Text>
-                        <Text style={{ color: colors.inkMuted }} className=" text-[10px] text-left">this period</Text>
-                      </View>
-                      <View style={{ backgroundColor: colors.surfaceRaised }} className="w-[48%] p-3.5 rounded-2xl">
-                        <Text style={{ color: colors.inkPrimary }} className=" text-xs font-bold mb-2">Resets</Text>
-                        <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold text-left">
-                          {usage.periodEnd ? new Date(usage.periodEnd).toLocaleDateString() : "—"}
-                        </Text>
-                        <Text style={{ color: colors.inkMuted }} className=" text-[10px] text-left">end of period</Text>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  <View className="py-12 items-center px-6">
-                    <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">
-                      {usageError ?? "Usage is unavailable right now."}
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          )}
-
-        </View>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 13. MODAL 10: PERPLEXITY MODELS SELECTOR SHEET                      */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showModelsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowModelsModal(false)}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={() => setShowModelsModal(false)} 
-          className="flex-1 justify-end bg-black/60"
-        >
-          <TouchableOpacity 
-            activeOpacity={1} 
-            onPress={(e) => e.stopPropagation()}
-            style={{ backgroundColor: bgCard, borderColor: colors.borderHairline }} 
-            className="h-[52%] rounded-t-[32px] px-5 pt-3 pb-4 shadow-2xl border flex-col"
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+          <View
+            className="flex-row items-center px-3"
+            style={{ height: 56, borderBottomWidth: 1, borderBottomColor: colors.borderHairline }}
           >
-            {/* Top Drag Indicator Handle */}
-            <View className="items-center mb-1.5">
-              <View style={{ backgroundColor: colors.borderHairline }} className="w-10 h-1 rounded-full" />
+            <TouchableOpacity
+              onPress={() => setShowPreviewModal(false)}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+              className="w-10 h-10 items-center justify-center mr-1"
+              activeOpacity={0.6}
+            >
+              <VectorIcon name="x" size={20} color={colors.inkPrimary} />
+            </TouchableOpacity>
+            <View className="flex-1">
+              <Text style={{ color: colors.inkPrimary }} className="text-base font-semibold" numberOfLines={1}>Preview</Text>
+              {activeProjectName ? (
+                <Text style={{ color: colors.inkMuted, ...directionStyleFor(activeProjectName) }} className="text-[11px]" numberOfLines={1}>
+                  {activeProjectName}
+                </Text>
+              ) : null}
             </View>
 
-            {/* Header Row */}
-            <View className="flex-row items-center justify-between mb-3">
-              <View>
-                <Text style={{ color: textPrimary }} className="text-lg font-bold">Model</Text>
-                {/* Was "Best AI Engines" beside the title, which is marketing
-                    and says nothing. This is the one thing a person needs to
-                    know before choosing. */}
-                <Text style={{ color: textSecondary }} className="text-xs mt-0.5">
-                  Used for every build in this chat
+            {/* Share what is on screen. Placed here rather than in the chat so
+                "what you see is what you share" is literally true — this
+                publishes the document the surface below is rendering. */}
+            <TouchableOpacity
+              onPress={handleShareApp}
+              disabled={publishing || previewLoading || !previewHtml}
+              accessibilityLabel={publishedUrl ? "Copy link" : "Share"}
+              className="w-10 h-10 rounded-full items-center justify-center mr-1.5"
+              style={{ backgroundColor: colors.surfaceMuted, opacity: previewHtml && !previewLoading ? 1 : 0.4 }}
+              activeOpacity={0.6}
+            >
+              {publishing ? (
+                <ActivityIndicator size="small" color={colors.inkPrimary} />
+              ) : (
+                <VectorIcon name={publishedUrl ? "link" : "share-2"} size={16} color={colors.inkPrimary} />
+              )}
+            </TouchableOpacity>
+
+            {/* Not gated on previewLoading. Deploy publishes the project's files,
+                not the previewed document — so a preview that is slow or stuck has
+                nothing to do with whether the project can ship. */}
+            <TouchableOpacity
+              onPress={handleDeploy}
+              disabled={deploying}
+              accessibilityLabel={deployedUrl ? "Open site" : "Deploy"}
+              className="w-10 h-10 rounded-full items-center justify-center mr-1.5"
+              style={{ backgroundColor: colors.surfaceMuted, opacity: deploying ? 0.5 : 1 }}
+              activeOpacity={0.6}
+            >
+              {deploying ? (
+                <ActivityIndicator size="small" color={colors.inkPrimary} />
+              ) : (
+                <VectorIcon name={deployedUrl ? "globe" : "cloud"} size={16} color={colors.inkPrimary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={loadPreview}
+              accessibilityLabel="Refresh"
+              className="w-10 h-10 rounded-full items-center justify-center"
+              style={{ backgroundColor: colors.surfaceMuted }}
+              activeOpacity={0.6}
+            >
+              <VectorIcon name="rotate-ccw" size={16} color={colors.inkPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* No frame, no padding, no fake window buttons: the real app gets the
+              whole surface. */}
+          <View style={{ backgroundColor: colors.canvasBase }} className="flex-1">
+            {previewLoading ? (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator size="small" color={colors.inkMuted} />
+                <Text style={{ color: colors.inkSecondary }} className="text-xs mt-4">Building the preview…</Text>
+              </View>
+            ) : previewError ? (
+              <View className="flex-1 items-center justify-center px-6">
+                <Text style={{ color: colors.inkPrimary }} className="text-sm font-medium mb-2">Preview failed</Text>
+                <Text style={{ color: colors.inkSecondary }} className="text-xs text-center leading-5">{previewError}</Text>
+              </View>
+            ) : previewHtml ? (
+              <PreviewSurface html={previewHtml} />
+            ) : (
+              <View className="flex-1 items-center justify-center px-6">
+                <Text style={{ color: colors.inkSecondary }} className="text-xs text-center leading-5">
+                  Nothing to preview yet — ask the agent to build something.
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowModelsModal(false)}
-                style={{ backgroundColor: colors.surfaceMuted, borderColor: colors.borderHairline }}
-                className="w-8 h-8 rounded-full items-center justify-center border"
-              >
-                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
-              </TouchableOpacity>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Restore points — how the project looked before each run. */}
+      <Sheet
+        visible={showCheckpointsModal}
+        onClose={() => setShowCheckpointsModal(false)}
+        title="Restore points"
+        subtitle="One is saved before every run that can change files"
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+          {checkpointsLoading ? (
+            <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginVertical: 24 }} />
+          ) : checkpoints.length === 0 ? (
+            <View className="py-4">
+              <Text style={{ color: colors.inkSecondary }} className="text-xs text-center leading-5 mb-4 px-4">
+                Nothing saved yet. Ask the agent to build something and one appears here — or save one now.
+              </Text>
+              {saveRestorePointButton}
             </View>
+          ) : (
+            <>
+              <Text style={{ color: colors.inkMuted }} className="text-xs leading-5 mb-3 px-1">
+                Rolling back saves a restore point first, so it can be undone too.
+              </Text>
+              {saveRestorePointButton}
+              <Card flush>
+                {checkpoints.map((cp, index) => (
+                  <View
+                    key={cp.id}
+                    className="flex-row items-center px-4 py-3"
+                    style={{
+                      borderBottomWidth: index === checkpoints.length - 1 ? 0 : 1,
+                      borderBottomColor: colors.borderHairline,
+                    }}
+                  >
+                    <View className="flex-1 mr-3">
+                      <Text style={{ color: colors.inkPrimary }} className="text-sm" numberOfLines={1}>
+                        {cp.session_title ? `Before “${cp.session_title}”` : "Restore point"}
+                      </Text>
+                      <Text style={{ color: colors.inkMuted }} className="text-xs mt-0.5">
+                        {relativeTime(cp.created_at)} · {cp.id.slice(0, 7)}
+                      </Text>
+                    </View>
+                    <Button
+                      label="Restore"
+                      tone="neutral"
+                      size="sm"
+                      loading={restoringCheckpointId === cp.id}
+                      disabled={restoringCheckpointId !== null || isExecuting}
+                      onPress={() => handleRollback(cp.id, `on ${relativeTime(cp.created_at)}`)}
+                    />
+                  </View>
+                ))}
+              </Card>
+            </>
+          )}
+        </ScrollView>
+      </Sheet>
 
-            {/* Scrollable Models List */}
-            <ScrollView className="flex-1 mt-1" showsVerticalScrollIndicator={false}>
-              {models.map((model) => {
-                const isSelected = selectedModelId === model.id;
-
-                return (
-                  <TouchableOpacity
-                    key={model.id}
-                    // A locked model goes to the payment screen instead of being
-                    // selected. Selecting it would only produce a refused run.
-                    onPress={() => {
-                      if (model.locked) {
-                        track("model_locked_tapped", { required_tier: model.minTier ?? "unknown" });
-                        setShowModelsModal(false);
-                        if (!canBuy) {
-                          // Naming the plan is allowed; tapping through to buy
-                          // it is the link-out. So say which plan it needs and
-                          // leave the user to it.
-                          notify(
-                            `${model.name} needs ${model.badge.toLowerCase()}`,
-                            "Paid plans are managed from your account on the Retro Code website.",
-                          );
-                          return;
-                        }
-                        navigation.getParent()?.navigate("Paywall", {
-                          lockedModel: model.name,
-                          requiredTier: model.minTier ?? undefined,
-                        });
+      {/* Model — one group of rows, the chosen one ticked. */}
+      <Sheet
+        visible={showModelsModal}
+        onClose={() => setShowModelsModal(false)}
+        title="Model"
+        subtitle="Used for every build in this chat"
+        height={0.55}
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+          <Card flush>
+            {models.map((model, index) => {
+              const isSelected = selectedModelId === model.id;
+              return (
+                <TouchableOpacity
+                  key={model.id}
+                  // A locked model goes to the payment screen instead of being
+                  // selected. Selecting it would only produce a refused run.
+                  onPress={() => {
+                    if (model.locked) {
+                      track("model_locked_tapped", { required_tier: model.minTier ?? "unknown" });
+                      setShowModelsModal(false);
+                      if (!canBuy) {
+                        // Naming the plan is allowed; tapping through to buy
+                        // it is the link-out. So say which plan it needs and
+                        // leave the user to it.
+                        notify(
+                          `${model.name} needs ${model.badge.toLowerCase()}`,
+                          "Paid plans are managed from your account on the Retro Code website.",
+                        );
                         return;
                       }
-                      setSelectedModelId(model.id);
-                    }}
-                    activeOpacity={0.9}
-                    style={{
-                      backgroundColor: colors.surfaceMuted,
-                      // Selection was a hairline the same weight as the unselected
-                      // border, so the chosen row looked like the others. The
-                      // brand colour is the only thing that reads at a glance.
-                      borderColor: isSelected ? colors.brandPrimary : "transparent",
-                      opacity: model.locked ? 0.65 : 1,
-                    }}
-                    className="mb-2 px-3 py-2.5 rounded-2xl border"
-                  >
+                      navigation.getParent()?.navigate("Paywall", {
+                        lockedModel: model.name,
+                        requiredTier: model.minTier ?? undefined,
+                      });
+                      return;
+                    }
+                    selectionFeedback();
+                    setSelectedModelId(model.id);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: isSelected }}
+                  activeOpacity={0.6}
+                  className="flex-row items-center px-4 py-3"
+                  style={{
+                    borderBottomWidth: index === models.length - 1 ? 0 : 1,
+                    borderBottomColor: colors.borderHairline,
+                    opacity: model.locked ? 0.6 : 1,
+                  }}
+                >
+                  <VectorIcon
+                    name={model.locked ? "lock" : model.icon}
+                    size={18}
+                    color={model.locked ? colors.inkMuted : colors[model.tone]}
+                    style={{ marginRight: 14 }}
+                  />
+                  <View className="flex-1 mr-3">
                     <View className="flex-row items-center">
-                      {/* The icon carries the row. Loose on the background it
-                          read as decoration; in a tinted tile it anchors the
-                          line and gives the name something to sit against. */}
-                      <View
-                        className="w-8 h-8 rounded-xl items-center justify-center mr-3"
-                        style={{
-                          backgroundColor: model.locked
-                            ? colors.surfaceStrong
-                            : `${colors[model.tone]}1F`,
-                        }}
+                      <Text
+                        style={{ color: model.locked ? textSecondary : textPrimary }}
+                        className="text-sm mr-2"
+                        numberOfLines={1}
                       >
-                        <VectorIcon
-                          name={model.locked ? "lock" : model.icon}
-                          size={15}
-                          color={model.locked ? colors.inkMuted : colors[model.tone]}
-                        />
-                      </View>
-
-                      <View className="flex-1 mr-2">
-                        <View className="flex-row items-center">
-                          <Text
-                            style={{ color: model.locked ? textSecondary : textPrimary }}
-                            className="text-sm font-semibold mr-2"
-                            numberOfLines={1}
-                          >
-                            {model.name}
-                          </Text>
-
-                          {/* Solid, not a 15%-opacity wash: at this size a tint
-                              reads as a smudge. Small and filled is legible;
-                              large and faint is only large. */}
-                          {/* No badge at all when nothing is for sale — see
-                              decorateModels, which leaves it empty. */}
-                          {model.badge ? (
-                          <View
-                            className="rounded-full mr-1"
-                            style={{
-                              backgroundColor: model.minTier ? colors.warning : colors.success,
-                              // Explicit rather than a padding class: the badge
-                              // is meant to be the smallest legible thing on the
-                              // row, and Tailwind's steps are too coarse there.
-                              paddingHorizontal: 4,
-                              paddingVertical: 1,
-                            }}
-                          >
-                            <Text
-                              // Solid accent behind it, so the text takes the
-                              // canvas colour rather than the accent. No letter
-                              // spacing — at 8px it only makes the pill wider.
-                              style={{ color: colors.canvasBase }}
-                              className="text-[8px] font-uiSemiBold uppercase"
-                            >
-                              {model.badge}
-                            </Text>
-                          </View>
-                          ) : null}
-
-                          {/* Secondary information, so an outline rather than a
-                              second solid block competing with the first. */}
-                          {model.isDefault && (
-                            <View
-                              className="rounded-full border"
-                              style={{
-                                borderColor: colors.borderHairline,
-                                paddingHorizontal: 4,
-                                paddingVertical: 1,
-                              }}
-                            >
-                              <Text
-                                style={{ color: colors.inkMuted }}
-                                className="text-[8px] font-uiSemiBold uppercase"
-                              >
-                                default
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-
-                        <Text
-                          style={{ color: textSecondary }}
-                          className="text-xs mt-0.5 text-left"
-                          numberOfLines={1}
-                        >
-                          {model.description}
-                        </Text>
-                      </View>
-
-                      {isSelected && !model.locked && (
-                        <VectorIcon name="check" size={16} color={colors.brandPrimary} />
-                      )}
-                      {model.locked && (
-                        <Text style={{ color: colors.warning }} className="text-[10px] font-uiSemiBold">
-                          Upgrade
-                        </Text>
-                      )}
+                        {model.name}
+                      </Text>
+                      {/* No badge at all when nothing is for sale — see
+                          decorateModels, which leaves it empty. */}
+                      {model.badge ? <Pill tone={model.minTier ? "warning" : "success"}>{model.badge}</Pill> : null}
+                      {model.isDefault ? <View style={{ width: 4 }} /> : null}
+                      {model.isDefault ? <Pill tone="muted">Default</Pill> : null}
                     </View>
-
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* =================================================================== */}
-      {/* 14. MODAL 11: PROJECT FILES TREE & HISTORY SHEET                   */}
-      {/* =================================================================== */}
-      <Modal
-        visible={showFileModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowFileModal(false)}
-      >
-        <View className="flex-1 justify-end bg-black/80">
-          <View style={{ backgroundColor: colors.surfaceRaised }} className="h-3/4 p-4 rounded-t-[28px]">
-            <View className="flex-row justify-between items-center mb-4 pb-3">
-              <Text style={{ color: colors.inkPrimary }} className=" text-sm font-bold">Project Files</Text>
-              <TouchableOpacity onPress={() => setShowFileModal(false)} className="p-1">
-                <VectorIcon name="x" size={14} color={colors.inkSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView className="flex-1">
-              {filesLoading ? (
-                <View className="py-10 items-center">
-                  <ActivityIndicator size="small" color={colors.brandPrimary} />
-                  <Text style={{ color: colors.inkMuted }} className=" text-xs mt-3">Loading project files…</Text>
-                </View>
-              ) : fileEntries.length === 0 ? (
-                <View className="py-10 items-center px-6">
-                  <VectorIcon name="folder" size={28} color={colors.inkMuted} style={{ marginBottom: 10 }} />
-                  <Text style={{ color: colors.inkSecondary }} className=" text-xs text-center leading-5">
-                    {filesError ?? "No files yet — ask the agent to build something and they'll appear here."}
-                  </Text>
-                </View>
-              ) : (
-                fileEntries.map((entry) => (
-                  <View
-                    key={entry.path}
-                    className="py-2.5 px-3 rounded-xl flex-row justify-between items-center mb-1.5"
-                    style={{ backgroundColor: colors.surfaceMuted,  marginLeft: entry.depth * 12 }}
-                  >
-                    <View className="flex-row items-center flex-1 mr-2">
-                      <VectorIcon name="file-text" size={13} color={colors.brandPrimary} style={{ marginRight: 6 }} />
-                      <Text style={{ color: colors.inkSecondary }} numberOfLines={1} className=" text-xs font-mono">{entry.path}</Text>
-                    </View>
-                    <Text style={{ color: colors.inkMuted }} className=" text-[10px]">{entry.sizeLabel}</Text>
+                    <Text style={{ color: textMuted }} className="text-xs mt-0.5" numberOfLines={1}>
+                      {model.description}
+                    </Text>
                   </View>
-                ))
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+                  {isSelected && !model.locked ? (
+                    <VectorIcon name="check" size={18} color={colors.brandPrimary} />
+                  ) : null}
+                  {model.locked ? (
+                    <Text style={{ color: colors.warning }} className="text-xs font-medium">Upgrade</Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </Card>
+        </ScrollView>
+      </Sheet>
+
+      {/* Files — the project's tree, indented by depth. */}
+      <Sheet
+        visible={showFileModal}
+        onClose={() => setShowFileModal(false)}
+        title="Files"
+        subtitle={fileEntries.length ? `${fileEntries.length} file${fileEntries.length === 1 ? "" : "s"}` : undefined}
+        height={0.75}
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+          {filesLoading ? (
+            <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginVertical: 24 }} />
+          ) : fileEntries.length === 0 ? (
+            <Text style={{ color: colors.inkSecondary }} className="text-xs text-center leading-5 py-8 px-4">
+              {filesError ?? "No files yet — ask the agent to build something and they will appear here."}
+            </Text>
+          ) : (
+            <Card flush>
+              {fileEntries.map((entry, index) => (
+                <View
+                  key={entry.path}
+                  className="flex-row items-center py-2.5 pr-4"
+                  style={{
+                    paddingLeft: 16 + entry.depth * 14,
+                    borderBottomWidth: index === fileEntries.length - 1 ? 0 : 1,
+                    borderBottomColor: colors.borderHairline,
+                  }}
+                >
+                  <VectorIcon name="file-text" size={14} color={colors.inkSecondary} style={{ marginRight: 10 }} />
+                  <Text style={{ color: colors.inkPrimary }} numberOfLines={1} className="text-xs font-mono flex-1">
+                    {entry.path}
+                  </Text>
+                  <Text style={{ color: colors.inkMuted }} className="text-[11px] ml-2">{entry.sizeLabel}</Text>
+                </View>
+              ))}
+            </Card>
+          )}
+        </ScrollView>
+      </Sheet>
 
     </SafeAreaView>
   );
 };
+

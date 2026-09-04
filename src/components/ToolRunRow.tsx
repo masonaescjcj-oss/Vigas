@@ -1,22 +1,28 @@
 /**
  * frontend/src/components/ToolRunRow.tsx
  * ---------------------------------------------------------------------------
- * Terminal-style row for one agent tool call — the Claude Code / Cursor look:
+ * What the agent did, as a list of steps.
  *
- *   ✓ edit   index.html                        +2 −2   1.1s
- *   ✓ read   src/app.js                      64 lines  0.4s
- *   ● bash   npm test                                  running
+ *   Built 5 steps                                   48s  ⌄
+ *   ✓ Edited   index.html                        +2 −2
+ *   ✓ Read     src/app.js                      64 lines
+ *   ● Running  npm test
  *
- * Rows are meant to be stacked inside <ToolRunPanel> so a run reads as one
- * terminal session instead of scattered chips.
+ * It was a terminal transcript — monospace glyphs on a near-black panel, the
+ * tool's internal name ("bash", "edit") as the verb. A phone is not a
+ * terminal. The panel is now a card like every other card in the app, the
+ * header says how much was done and can fold the detail away, and each row
+ * leads with a plain verb. Paths and commands stay monospace, because they
+ * are code.
  * ---------------------------------------------------------------------------
  */
 
-import React from "react";
-import { View, Text } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity } from "react-native";
+import { Icon } from "./Icon";
 import { useTheme } from "../theme/ThemeProvider";
 import { MONO_FAMILY } from "../theme/mono";
-import { type ColorTokens } from "../theme/theme";
+import { selectionFeedback } from "../services/haptics";
 
 export type ToolRunStatus = "running" | "completed" | "failed";
 
@@ -32,94 +38,169 @@ export interface ToolRunStep {
 /** Tool names and paths are always monospace, whatever the chat language. */
 const MONO = MONO_FAMILY;
 
-/** Names the role each token plays in the run log, so the JSX reads clearly. */
-function palette(colors: ColorTokens) {
-  return {
-    panelBg: colors.surfaceCode,
-    panelBorder: colors.borderHairline,
-    tool: colors.inkPrimary,
-    target: colors.inkSecondary,
-    meta: colors.inkMuted,
-    plus: colors.success,
-    minus: colors.failed,
-    ok: colors.success,
-    fail: colors.failed,
-    run: colors.warning,
-    errorBg: colors.failedSoft,
-  };
-}
-
 function formatDuration(ms?: number | null): string | null {
   if (ms == null || ms < 0) return null;
   if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`;
 }
 
-/** Container that makes stacked rows read as one terminal block. */
 /**
- * The run log.
+ * The agent's tool names, in the past tense a person would use. Anything not
+ * listed falls back to the raw name, so a new tool is never hidden.
+ */
+const VERB: Record<string, [done: string, running: string]> = {
+  read: ["Read", "Reading"],
+  read_file: ["Read", "Reading"],
+  write: ["Wrote", "Writing"],
+  write_file: ["Wrote", "Writing"],
+  edit: ["Edited", "Editing"],
+  edit_file: ["Edited", "Editing"],
+  bash: ["Ran", "Running"],
+  shell: ["Ran", "Running"],
+  run: ["Ran", "Running"],
+  search: ["Searched", "Searching"],
+  grep: ["Searched", "Searching"],
+  glob: ["Listed", "Listing"],
+  list: ["Listed", "Listing"],
+  list_files: ["Listed", "Listing"],
+  delete: ["Deleted", "Deleting"],
+  delete_file: ["Deleted", "Deleting"],
+  install: ["Installed", "Installing"],
+  dev_server: ["Started", "Starting"],
+  start_dev_server: ["Started", "Starting"],
+  enter_plan_mode: ["Planned", "Planning"],
+  todo_write: ["Listed the work", "Listing the work"],
+  ask_user: ["Asked", "Asking"],
+  supabase: ["Set up backend", "Setting up backend"],
+};
+
+function verbFor(tool: string, running: boolean): string {
+  const pair = VERB[tool] ?? VERB[tool.toLowerCase()];
+  if (!pair) return tool;
+  return running ? pair[1] : pair[0];
+}
+
+/**
+ * The card around the rows.
  *
- * `reveal` shows its rows one at a time. A run's steps are read in a single
- * poll, so without it a minute of work appears in one frame and reads as a
- * page that finished loading rather than as something that happened. Pass 0 to
- * show everything at once — restored history should not replay.
+ * `reveal` shows rows one at a time. A run's steps are read in a single poll,
+ * so without it a minute of work appears in one frame and reads as a page that
+ * finished loading rather than as something that happened. Pass 0 to show
+ * everything at once — restored history should not replay.
+ *
+ * `steps`, when given, draws the summary header; without it the card is just
+ * the rows, which is what the older call sites want.
  */
 export const ToolRunPanel = ({
-  isLight,
   children,
   reveal = 0,
+  steps,
 }: {
-  isLight: boolean;
+  /** Kept for the call sites that still pass it; colour comes from the theme. */
+  isLight?: boolean;
   children: React.ReactNode;
   /** Rows to show. 0 means all of them. */
   reveal?: number;
+  steps?: ToolRunStep[];
 }) => {
   const { colors } = useTheme();
-  const c = palette(colors);
+  const [open, setOpen] = useState(true);
+
+  const rows = React.Children.toArray(children);
+  const shown = reveal > 0 ? rows.slice(0, reveal) : rows;
+
+  const running = steps?.some((s) => s.status === "running") ?? false;
+  const failed = steps?.some((s) => s.status === "failed") ?? false;
+  const total = steps?.length ?? 0;
+  const totalMs = steps?.reduce((sum, s) => sum + (s.durationMs ?? 0), 0) ?? 0;
+
+  const headline = running
+    ? "Working…"
+    : failed
+      ? "Stopped on a step"
+      : `${total} step${total === 1 ? "" : "s"}`;
+
   return (
     <View
       style={{
-        backgroundColor: c.panelBg,
-        borderColor: c.panelBorder,
+        backgroundColor: colors.surfaceRaised,
+        borderColor: colors.borderHairline,
         borderWidth: 1,
         borderRadius: 14,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
         marginBottom: 12,
         overflow: "hidden",
       }}
     >
-      {reveal > 0 ? React.Children.toArray(children).slice(0, reveal) : children}
+      {steps ? (
+        <TouchableOpacity
+          onPress={() => { selectionFeedback(); setOpen((v) => !v); }}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          activeOpacity={0.6}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 12,
+            paddingVertical: 9,
+            borderBottomWidth: open && shown.length > 0 ? 1 : 0,
+            borderBottomColor: colors.borderHairline,
+          }}
+        >
+          {running ? (
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.brandPrimary, marginRight: 9 }} />
+          ) : (
+            <Icon name={failed ? "x" : "check"} size={13} color={failed ? colors.failed : colors.success} style={{ marginRight: 7 }} />
+          )}
+          <Text style={{ color: colors.inkPrimary, fontSize: 13, fontWeight: "500", flex: 1 }}>{headline}</Text>
+          {!running && totalMs > 0 ? (
+            <Text style={{ color: colors.inkMuted, fontSize: 11.5, fontVariant: ["tabular-nums"], marginRight: 8 }}>
+              {formatDuration(totalMs)}
+            </Text>
+          ) : null}
+          <Icon
+            name="chevron-down"
+            size={14}
+            color={colors.inkMuted}
+            style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }}
+          />
+        </TouchableOpacity>
+      ) : null}
+
+      {open ? <View style={{ paddingVertical: 4, paddingHorizontal: 12 }}>{shown}</View> : null}
     </View>
   );
 };
 
-export const ToolRunRow = ({ step, isLight }: { step: ToolRunStep; isLight: boolean }) => {
+export const ToolRunRow = ({ step }: { step: ToolRunStep; isLight?: boolean }) => {
   const { colors } = useTheme();
-  const c = palette(colors);
   const isFailed = step.status === "failed";
   const isRunning = step.status === "running";
 
-  const glyph = isFailed ? "✕" : isRunning ? "●" : "✓";
-  const glyphColor = isFailed ? c.fail : isRunning ? c.run : c.ok;
-
   const m = step.metrics ?? undefined;
   const duration = formatDuration(step.durationMs);
+  const meta = { color: colors.inkMuted, fontFamily: MONO, fontSize: 11, marginLeft: 8 };
 
   return (
     <View style={{ paddingVertical: 5 }}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: glyphColor, fontFamily: MONO, fontSize: 11, width: 14 }}>{glyph}</Text>
+        <View style={{ width: 18, alignItems: "flex-start" }}>
+          {isRunning ? (
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.brandPrimary }} />
+          ) : (
+            <Icon name={isFailed ? "x" : "check"} size={12} color={isFailed ? colors.failed : colors.success} />
+          )}
+        </View>
 
-        <Text style={{ color: c.tool, fontFamily: MONO, fontSize: 12, fontWeight: "600" }}>
-          {step.tool}
+        <Text style={{ color: colors.inkPrimary, fontSize: 12.5, fontWeight: "500" }}>
+          {verbFor(step.tool, isRunning)}
         </Text>
 
         {step.target ? (
           <Text
             numberOfLines={1}
             ellipsizeMode="middle"
-            style={{ color: c.target, fontFamily: MONO, fontSize: 12, flex: 1, marginLeft: 8 }}
+            style={{ color: colors.inkSecondary, fontFamily: MONO, fontSize: 11.5, flex: 1, marginLeft: 8 }}
           >
             {step.target}
           </Text>
@@ -129,48 +210,30 @@ export const ToolRunRow = ({ step, isLight }: { step: ToolRunStep; isLight: bool
 
         {/* Right-hand metrics: +/- for edits, counts for reads/searches */}
         {m?.plus != null && m.plus > 0 && (
-          <Text style={{ color: c.plus, fontFamily: MONO, fontSize: 11, marginLeft: 8 }}>
-            +{m.plus}
-          </Text>
+          <Text style={{ ...meta, color: colors.success }}>+{m.plus}</Text>
         )}
         {m?.minus != null && m.minus > 0 && (
-          <Text style={{ color: c.minus, fontFamily: MONO, fontSize: 11, marginLeft: 4 }}>
-            −{m.minus}
-          </Text>
+          <Text style={{ ...meta, color: colors.failed, marginLeft: 4 }}>−{m.minus}</Text>
         )}
-        {m?.lines != null && (
-          <Text style={{ color: c.meta, fontFamily: MONO, fontSize: 11, marginLeft: 8 }}>
-            {m.lines} lines
-          </Text>
-        )}
-        {m?.matches != null && (
-          <Text style={{ color: c.meta, fontFamily: MONO, fontSize: 11, marginLeft: 8 }}>
-            {m.matches} matches
-          </Text>
-        )}
-        {m?.entries != null && (
-          <Text style={{ color: c.meta, fontFamily: MONO, fontSize: 11, marginLeft: 8 }}>
-            {m.entries} items
-          </Text>
-        )}
+        {m?.lines != null && <Text style={meta}>{m.lines} lines</Text>}
+        {m?.matches != null && <Text style={meta}>{m.matches} matches</Text>}
+        {m?.entries != null && <Text style={meta}>{m.entries} items</Text>}
 
-        <Text style={{ color: c.meta, fontFamily: MONO, fontSize: 11, marginLeft: 8 }}>
-          {isRunning ? "running…" : duration ?? ""}
-        </Text>
+        {!isRunning && duration ? <Text style={meta}>{duration}</Text> : null}
       </View>
 
       {isFailed && step.error ? (
         <View
           style={{
-            backgroundColor: c.errorBg,
+            backgroundColor: colors.failedSoft,
             borderRadius: 8,
             paddingVertical: 6,
             paddingHorizontal: 8,
             marginTop: 6,
-            marginLeft: 14,
+            marginLeft: 18,
           }}
         >
-          <Text numberOfLines={3} style={{ color: c.fail, fontFamily: MONO, fontSize: 11, lineHeight: 16 }}>
+          <Text numberOfLines={3} style={{ color: colors.failed, fontFamily: MONO, fontSize: 11, lineHeight: 16 }}>
             {step.error}
           </Text>
         </View>

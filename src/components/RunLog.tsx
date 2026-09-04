@@ -24,7 +24,7 @@ export const RunLog: React.FC<{
   if (steps.length === 0) return null;
 
   return (
-    <ToolRunPanel isLight={isLight} reveal={animate ? shown : 0}>
+    <ToolRunPanel isLight={isLight} reveal={animate ? shown : 0} steps={steps}>
       {steps.map((step, index) => (
         <ToolRunRow key={index} step={step} isLight={isLight} />
       ))}
