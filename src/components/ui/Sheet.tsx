@@ -15,6 +15,7 @@ import { Modal, View, TouchableOpacity, TouchableWithoutFeedback, type ViewStyle
 import { Icon } from "../Icon";
 import { Text } from "../Typography";
 import { useTheme } from "../../theme/ThemeProvider";
+import { useBreakpoint } from "../../theme/breakpoints";
 import { selectionFeedback } from "../../services/haptics";
 
 interface SheetProps {
@@ -31,6 +32,12 @@ interface SheetProps {
 
 export const Sheet: React.FC<SheetProps> = ({ visible, onClose, title, subtitle, height, children, style }) => {
   const { colors } = useTheme();
+  // A bottom sheet is a phone gesture. On a desktop browser a panel sliding
+  // up from the bottom edge of a 1400px window, spanning the whole width, is
+  // neither reachable nor readable — so on a wide screen the same content is
+  // a centred dialog: no handle, all four corners rounded, capped at a width
+  // a person can scan.
+  const { wide } = useBreakpoint();
 
   const close = () => {
     selectionFeedback();
@@ -38,29 +45,33 @@ export const Sheet: React.FC<SheetProps> = ({ visible, onClose, title, subtitle,
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <View className="flex-1 justify-end" style={{ backgroundColor: colors.scrim }}>
+    <Modal visible={visible} transparent animationType={wide ? "fade" : "slide"} onRequestClose={close}>
+      <View className={wide ? "flex-1 justify-center items-center px-6" : "flex-1 justify-end"} style={{ backgroundColor: colors.scrim }}>
         {/* Tapping the scrim closes; the panel below swallows its own taps. */}
         <TouchableWithoutFeedback onPress={close}>
-          <View className="flex-1" />
+          <View className={wide ? "absolute inset-0" : "flex-1"} />
         </TouchableWithoutFeedback>
 
         <View
-          className="rounded-t-sheet px-5 pt-3 pb-6"
+          className={wide ? "rounded-sheet px-5 pt-5 pb-6" : "rounded-t-sheet px-5 pt-3 pb-6"}
           style={[
             {
               backgroundColor: colors.surfaceRaised,
+              borderWidth: wide ? 1 : 0,
               borderTopWidth: 1,
               borderColor: colors.borderHairline,
               maxHeight: "88%",
-              ...(height ? { height: `${Math.round(height * 100)}%` as unknown as number } : {}),
+              ...(wide ? { width: "100%", maxWidth: 520 } : {}),
+              ...(height && !wide ? { height: `${Math.round(height * 100)}%` as unknown as number } : {}),
             },
             style,
           ]}
         >
-          <View className="items-center mb-3">
-            <View className="w-9 h-1 rounded-pill" style={{ backgroundColor: colors.surfaceStrong }} />
-          </View>
+          {wide ? null : (
+            <View className="items-center mb-3">
+              <View className="w-9 h-1 rounded-pill" style={{ backgroundColor: colors.surfaceStrong }} />
+            </View>
+          )}
 
           {title ? (
             <View className="flex-row items-start justify-between mb-4">

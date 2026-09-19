@@ -56,7 +56,13 @@ export const ProfileMainScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScreenHeader title="Account" noBack divider={false} />
+      {/* The tab bar is hidden, so this is the root of a stack you cannot
+          otherwise leave. Back goes to the chat, which is where you came from. */}
+      <ScreenHeader
+        title="Account"
+        divider={false}
+        onBack={() => navigation.getParent()?.navigate("AgentTab")}
+      />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         {/* Identity. The name is the heading; the email is the line under it. */}
         <View className="px-1 pt-1 pb-6">

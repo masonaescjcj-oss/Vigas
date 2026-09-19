@@ -28,7 +28,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Welcome">;
 
 const POINTS = [
   { icon: "sparkles", text: "Describe an app; the agent writes it" },
-  { icon: "eye", text: "Preview it on this device as it is built" },
+  { icon: "eye", text: "Preview it right here as it is built" },
   { icon: "folder", text: "Every file saved, versioned and yours to download" },
 ];
 
@@ -52,7 +52,7 @@ export const WelcomeScreen = () => {
           </View>
 
           <Text variant="body" className="mt-3" style={{ fontSize: 16, lineHeight: 24, color: colors.inkSecondary }}>
-            An agent that builds software from a description, on your phone.
+            An agent that builds software from a description — on your phone or in the browser.
           </Text>
 
           <View className="mt-10">

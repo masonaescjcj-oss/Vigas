@@ -89,6 +89,7 @@ import { Card } from "../../components/ui/Card";
 import { Sheet } from "../../components/ui/Sheet";
 import { Input } from "../../components/ui/Input";
 import { Pill } from "../../components/ui/Pill";
+import { useBreakpoint, columnStyle, COLUMN_MAX, SIDEBAR_WIDTH } from "../../theme/breakpoints";
 
 // ============================================================================
 // 1. DATA MODELS & INITIAL STATE SCHEMAS
@@ -176,6 +177,9 @@ export const AgentChatScreen = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const isLight = mode === "light";
+  // On a wide screen the drawer is a sidebar, always visible, and the
+  // conversation sits in a column rather than spanning the window.
+  const { wide } = useBreakpoint();
   const bgCanvas = colors.canvasBase;
   const bgCard = colors.surfaceRaised;
   const bgPill = colors.surfaceMuted;
@@ -1422,11 +1426,168 @@ export const AgentChatScreen = () => {
     runStartedAtRef.current = null;
   };
 
+  /**
+   * The drawer's contents — account, projects, every chat. On a phone this is
+   * a modal that slides over the conversation; on a wide screen it is the
+   * left column, always there, and the button that opened it is gone.
+   */
+  const chatsPanel = (inline: boolean) => (
+    <View style={{ flex: 1, backgroundColor: bgCanvas }}>
+      <View className="flex-row items-center px-3" style={{ height: 56 }}>
+        {inline ? (
+          <View style={{ width: 8 }} />
+        ) : (
+          <TouchableOpacity
+            onPress={() => setShowDrawerModal(false)}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+            className="w-10 h-10 items-center justify-center mr-1"
+            activeOpacity={0.6}
+          >
+            <VectorIcon name="x" size={20} color={colors.inkPrimary} />
+          </TouchableOpacity>
+        )}
+        <Text style={{ color: textPrimary }} className="text-base font-semibold flex-1">Chats</Text>
+        <TouchableOpacity
+          onPress={() => setMode(isLight ? "darkest" : "light")}
+          accessibilityLabel={isLight ? "Switch to dark" : "Switch to light"}
+          className="w-10 h-10 rounded-full items-center justify-center mr-1.5"
+          style={{ backgroundColor: colors.surfaceMuted }}
+          activeOpacity={0.6}
+        >
+          <VectorIcon name={isLight ? "moon" : "sun"} size={16} color={colors.inkPrimary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleNewChat}
+          accessibilityLabel="New chat"
+          className="w-10 h-10 rounded-full items-center justify-center"
+          style={{ backgroundColor: colors.surfaceMuted }}
+          activeOpacity={0.6}
+        >
+          <VectorIcon name="edit" size={16} color={colors.inkPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View
+          className="flex-row items-center rounded-input px-3 mb-4"
+          style={{ backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderHairline, minHeight: 44 }}
+        >
+          <VectorIcon name="search" size={15} color={colors.inkMuted} style={{ marginRight: 8 }} />
+          <TextInput
+            value={drawerQuery}
+            onChangeText={setDrawerQuery}
+            placeholder="Search chats"
+            placeholderTextColor={colors.inkMuted}
+            className="flex-1 text-sm"
+            style={{ color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
+          />
+          {drawerQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setDrawerQuery("")} className="p-1" accessibilityLabel="Clear search">
+              <VectorIcon name="x" size={13} color={colors.inkSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Card flush>
+          <SettingsRow label={displayName} hint={user?.email ?? undefined} icon="user" onPress={handleOpenProfileFromDrawer} />
+          <SettingsRow
+            label="Projects"
+            hint={projects.length ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : undefined}
+            icon="folder"
+            onPress={handleOpenProjectsFromDrawer}
+            last
+          />
+        </Card>
+
+        {projects.length === 0 ? (
+          <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 py-10 px-4">
+            No projects yet. Create one to start building.
+          </Text>
+        ) : (
+          projects.map((project) => {
+            const sessions = (drawerSessions[project.id] ?? []).filter((s) =>
+              !drawerQuery.trim() ||
+              (s.title ?? "").toLowerCase().includes(drawerQuery.trim().toLowerCase()),
+            );
+            return (
+              <View key={project.id}>
+                <TouchableOpacity
+                  onPress={() => handleOpenProjectFolder(project.id, project.name)}
+                  className="flex-row items-center px-1 mt-7 mb-2"
+                  activeOpacity={0.6}
+                >
+                  <Text
+                    style={{ color: textSecondary, ...directionStyleFor(project.name) }}
+                    className="text-xs font-medium flex-1"
+                    numberOfLines={1}
+                  >
+                    {project.name}
+                  </Text>
+                  <VectorIcon name="chevron-right" size={14} color={colors.inkMuted} />
+                </TouchableOpacity>
+                <Card flush>
+                  {sessions.length === 0 ? (
+                    <Text style={{ color: textMuted }} className="text-xs px-4 py-3">
+                      {drawerSessions[project.id] ? "No chats yet" : "Loading…"}
+                    </Text>
+                  ) : (
+                    sessions.map((item, index) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        onPress={() => handleLoadSession(item, project)}
+                        className="px-4 py-3"
+                        style={{
+                          borderBottomWidth: index === sessions.length - 1 ? 0 : 1,
+                          borderBottomColor: colors.borderHairline,
+                        }}
+                        activeOpacity={0.6}
+                      >
+                        <View className="flex-row items-center">
+                          <Text
+                            style={{ color: textPrimary, ...directionStyleFor(item.title) }}
+                            className="text-sm flex-1 mr-2"
+                            numberOfLines={1}
+                          >
+                            {item.title || "Untitled chat"}
+                          </Text>
+                          {/* Only failure is worth a badge: "active" is
+                              every unfinished chat, so marking it marks
+                              almost every row. */}
+                          {item.status === "failed" ? <Pill tone="failed">Failed</Pill> : null}
+                        </View>
+                        <Text style={{ color: textMuted }} className="text-xs mt-0.5">
+                          {relativeTime(item.updated_at ?? item.created_at)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </Card>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
+  );
+
   const isChatActive = messages.length > 0;
   const hasInputText = inputText.trim().length > 0;
 
   return (
-    <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1">
+    <SafeAreaView style={{ backgroundColor: bgCanvas }} className="flex-1 flex-row">
+      {wide ? (
+        <View style={{ width: SIDEBAR_WIDTH, borderRightWidth: 1, borderRightColor: colors.borderHairline }}>
+          {chatsPanel(true)}
+        </View>
+      ) : null}
+
+      <View className="flex-1">
       
       {/* =================================================================== */}
       {/* 1. TOP HEADER (LIGHT MODE & CLAUDE PARITY READY)                   */}
@@ -1436,14 +1597,19 @@ export const AgentChatScreen = () => {
         <View style={{ backgroundColor: bgCanvas, zIndex: 50, elevation: 10 }} className="flex-row items-center justify-between px-4 py-3 z-50">
           
           {/* Profile Avatar / Drawer Trigger */}
-          <TouchableOpacity 
-            onPress={() => setShowDrawerModal(true)}
-            style={{ backgroundColor: colors.surfaceMuted }}
-            className="w-10 h-10 rounded-full items-center justify-center"
-            activeOpacity={0.7}
-          >
-            <VectorIcon name="user" size={17} color={colors.inkPrimary} />
-          </TouchableOpacity>
+          {wide ? (
+            <View className="w-10" />
+          ) : (
+            <TouchableOpacity
+              onPress={() => setShowDrawerModal(true)}
+              style={{ backgroundColor: colors.surfaceMuted }}
+              className="w-10 h-10 rounded-full items-center justify-center"
+              activeOpacity={0.7}
+              accessibilityLabel="Chats"
+            >
+              <VectorIcon name="user" size={17} color={colors.inkPrimary} />
+            </TouchableOpacity>
+          )}
 
           {/* Chat asks the model directly; Build queues an agent run with tools. */}
           {isIncognito ? (
@@ -1493,14 +1659,17 @@ export const AgentChatScreen = () => {
         <View style={{ backgroundColor: bgCanvas, zIndex: 50, elevation: 10 }} className="flex-row items-center justify-between px-4 py-3 z-50">
 
           <View className="flex-row items-center flex-1 mr-2">
-            <TouchableOpacity 
-              onPress={() => setShowDrawerModal(true)}
-              style={{ backgroundColor: colors.surfaceMuted }}
-              className="w-9 h-9 rounded-full items-center justify-center mr-3"
-              activeOpacity={0.7}
-            >
-              <VectorIcon name="user" size={16} color={colors.inkPrimary} />
-            </TouchableOpacity>
+            {wide ? null : (
+              <TouchableOpacity
+                onPress={() => setShowDrawerModal(true)}
+                style={{ backgroundColor: colors.surfaceMuted }}
+                className="w-9 h-9 rounded-full items-center justify-center mr-3"
+                activeOpacity={0.7}
+                accessibilityLabel="Chats"
+              >
+                <VectorIcon name="user" size={16} color={colors.inkPrimary} />
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity 
               onPress={() => setShowDrawerModal(true)}
@@ -1571,7 +1740,7 @@ export const AgentChatScreen = () => {
             </View>
           ) : activeProjectName ? (
             /* PROJECT CONVERSATIONS LIST CANVAS (MATCHING USER SCREENSHOT) */
-            <ScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
+            <ScrollView className="flex-1 px-5 py-4" contentContainerStyle={{ paddingBottom: 160, ...columnStyle(wide, COLUMN_MAX) }} showsVerticalScrollIndicator={false}>
               {/* The project's name is the heading; the way to pick another
                   sits beside it. It was a card with a folder icon and a
                   sentence of instructions. */}
@@ -1689,7 +1858,7 @@ export const AgentChatScreen = () => {
           <ScrollView 
             ref={scrollViewRef}
             className="flex-1 px-4 py-3"
-            contentContainerStyle={{ paddingBottom: 160 }}
+            contentContainerStyle={{ paddingBottom: 160, ...columnStyle(wide, COLUMN_MAX) }}
             showsVerticalScrollIndicator={false}
           >
             {messages.map((msg) => {
@@ -1901,12 +2070,15 @@ export const AgentChatScreen = () => {
         {/* =================================================================== */}
         {/* 3. CLAUDE AI STYLE FLOATING INPUT CARD                              */}
         {/* =================================================================== */}
-        <View 
-          style={{ 
-            backgroundColor: bgCard, 
-            borderColor: colors.borderHairline
-          }} 
-          className="absolute bottom-3 left-3 right-3 p-3 rounded-3xl border"
+        <View className="absolute bottom-3 left-3 right-3 items-center" style={{ pointerEvents: "box-none" }}>
+        <View
+          style={{
+            backgroundColor: bgCard,
+            borderColor: colors.borderHairline,
+            width: "100%",
+            ...(wide ? { maxWidth: COLUMN_MAX } : {}),
+          }}
+          className="p-3 rounded-3xl border"
         >
 
           {/* '@' FILE PICKER — real files from the active project */}
@@ -2079,11 +2251,10 @@ export const AgentChatScreen = () => {
             </View>
           </View>
         </View>
+        </View>
+      </View>
       </View>
 
-      {/* =================================================================== */}
-      {/* 4. MODAL 1: ADD TO CHAT BOTTOM SHEET (EXACT CLAUDE/PERPLEXITY PARITY) */}
-      {/* =================================================================== */}
       <Sheet
         visible={showAddToChatModal}
         onClose={() => setShowAddToChatModal(false)}
@@ -2122,154 +2293,14 @@ export const AgentChatScreen = () => {
         </Card>
       </Sheet>
 
-      {/* Chats — every project and its conversations. A page, not a sheet,
-          because it is where someone goes to find their way around. The
-          floating search bar and brand-coloured compose button are gone; search
-          is a field at the top and new-chat is in the header. */}
+      {/* Chats — on a phone. On a wide screen the same panel is the sidebar. */}
       <Modal
-        visible={showDrawerModal}
+        visible={showDrawerModal && !wide}
         animationType="slide"
         transparent={false}
         onRequestClose={() => setShowDrawerModal(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: bgCanvas }}>
-          <View className="flex-row items-center px-3" style={{ height: 56 }}>
-            <TouchableOpacity
-              onPress={() => setShowDrawerModal(false)}
-              accessibilityLabel="Close"
-              accessibilityRole="button"
-              className="w-10 h-10 items-center justify-center mr-1"
-              activeOpacity={0.6}
-            >
-              <VectorIcon name="x" size={20} color={colors.inkPrimary} />
-            </TouchableOpacity>
-            <Text style={{ color: textPrimary }} className="text-base font-semibold flex-1">Chats</Text>
-            <TouchableOpacity
-              onPress={() => setMode(isLight ? "darkest" : "light")}
-              accessibilityLabel={isLight ? "Switch to dark" : "Switch to light"}
-              className="w-10 h-10 rounded-full items-center justify-center mr-1.5"
-              style={{ backgroundColor: colors.surfaceMuted }}
-              activeOpacity={0.6}
-            >
-              <VectorIcon name={isLight ? "moon" : "sun"} size={16} color={colors.inkPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleNewChat}
-              accessibilityLabel="New chat"
-              className="w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.surfaceMuted }}
-              activeOpacity={0.6}
-            >
-              <VectorIcon name="edit" size={16} color={colors.inkPrimary} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View
-              className="flex-row items-center rounded-input px-3 mb-4"
-              style={{ backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.borderHairline, minHeight: 44 }}
-            >
-              <VectorIcon name="search" size={15} color={colors.inkMuted} style={{ marginRight: 8 }} />
-              <TextInput
-                value={drawerQuery}
-                onChangeText={setDrawerQuery}
-                placeholder="Search chats"
-                placeholderTextColor={colors.inkMuted}
-                className="flex-1 text-sm"
-                style={{ color: colors.inkPrimary, outlineStyle: "none", outlineWidth: 0 } as any}
-              />
-              {drawerQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setDrawerQuery("")} className="p-1" accessibilityLabel="Clear search">
-                  <VectorIcon name="x" size={13} color={colors.inkSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <Card flush>
-              <SettingsRow label={displayName} hint={user?.email ?? undefined} icon="user" onPress={handleOpenProfileFromDrawer} />
-              <SettingsRow
-                label="Projects"
-                hint={projects.length ? `${projects.length} project${projects.length === 1 ? "" : "s"}` : undefined}
-                icon="folder"
-                onPress={handleOpenProjectsFromDrawer}
-                last
-              />
-            </Card>
-
-            {projects.length === 0 ? (
-              <Text style={{ color: textSecondary }} className="text-xs text-center leading-5 py-10 px-4">
-                No projects yet. Create one to start building.
-              </Text>
-            ) : (
-              projects.map((project) => {
-                const sessions = (drawerSessions[project.id] ?? []).filter((s) =>
-                  !drawerQuery.trim() ||
-                  (s.title ?? "").toLowerCase().includes(drawerQuery.trim().toLowerCase()),
-                );
-                return (
-                  <View key={project.id}>
-                    <TouchableOpacity
-                      onPress={() => handleOpenProjectFolder(project.id, project.name)}
-                      className="flex-row items-center px-1 mt-7 mb-2"
-                      activeOpacity={0.6}
-                    >
-                      <Text
-                        style={{ color: textSecondary, ...directionStyleFor(project.name) }}
-                        className="text-xs font-medium flex-1"
-                        numberOfLines={1}
-                      >
-                        {project.name}
-                      </Text>
-                      <VectorIcon name="chevron-right" size={14} color={colors.inkMuted} />
-                    </TouchableOpacity>
-                    <Card flush>
-                      {sessions.length === 0 ? (
-                        <Text style={{ color: textMuted }} className="text-xs px-4 py-3">
-                          {drawerSessions[project.id] ? "No chats yet" : "Loading…"}
-                        </Text>
-                      ) : (
-                        sessions.map((item, index) => (
-                          <TouchableOpacity
-                            key={item.id}
-                            onPress={() => handleLoadSession(item, project)}
-                            className="px-4 py-3"
-                            style={{
-                              borderBottomWidth: index === sessions.length - 1 ? 0 : 1,
-                              borderBottomColor: colors.borderHairline,
-                            }}
-                            activeOpacity={0.6}
-                          >
-                            <View className="flex-row items-center">
-                              <Text
-                                style={{ color: textPrimary, ...directionStyleFor(item.title) }}
-                                className="text-sm flex-1 mr-2"
-                                numberOfLines={1}
-                              >
-                                {item.title || "Untitled chat"}
-                              </Text>
-                              {/* Only failure is worth a badge: "active" is
-                                  every unfinished chat, so marking it marks
-                                  almost every row. */}
-                              {item.status === "failed" ? <Pill tone="failed">Failed</Pill> : null}
-                            </View>
-                            <Text style={{ color: textMuted }} className="text-xs mt-0.5">
-                              {relativeTime(item.updated_at ?? item.created_at)}
-                            </Text>
-                          </TouchableOpacity>
-                        ))
-                      )}
-                    </Card>
-                  </View>
-                );
-              })
-            )}
-          </ScrollView>
-        </SafeAreaView>
+        <SafeAreaView style={{ flex: 1, backgroundColor: bgCanvas }}>{chatsPanel(false)}</SafeAreaView>
       </Modal>
 
       {/* Projects — the list, a way to make one, and the ways into each. */}
@@ -2369,10 +2400,10 @@ export const AgentChatScreen = () => {
         transparent={true}
         onRequestClose={() => setShowNewProjectModal(false)}
       >
-        <View className="flex-1 justify-center px-6" style={{ backgroundColor: colors.scrim }}>
+        <View className="flex-1 justify-center items-center px-6" style={{ backgroundColor: colors.scrim }}>
           <View
             className="rounded-sheet p-5"
-            style={{ backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline }}
+            style={{ backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline, width: "100%", maxWidth: 480 }}
           >
             <View className="flex-row items-center justify-between mb-4">
               <Text style={{ color: colors.inkPrimary }} className="text-lg font-semibold">New project</Text>

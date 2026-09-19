@@ -103,7 +103,7 @@ export const SignUpScreen = () => {
           <View className="mb-8 mt-2">
             <Text variant="h1" className="font-uiSemiBold">Create an account</Text>
             <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
-              Build apps by describing them, from your phone.
+              Build apps by describing them.
             </Text>
           </View>
 

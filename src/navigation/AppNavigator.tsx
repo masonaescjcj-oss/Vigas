@@ -9,7 +9,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { View, Text } from "react-native";
-import { NavigationContainer, type NavigationContainerRef } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme, DarkTheme, type NavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuthStore } from "../stores/authStore";
@@ -17,6 +17,7 @@ import { usePushNotifications } from "../hooks/usePushNotifications";
 import { usePasswordRecovery } from "../hooks/usePasswordRecovery";
 import { supabase } from "../services/supabase";
 import { useTheme } from "../theme/ThemeProvider";
+import { useBreakpoint, columnStyle, FORM_MAX, COLUMN_MAX } from "../theme/breakpoints";
 
 // Import NoInternet Banner overlay
 import { NoInternetBanner } from "../components/NoInternetBanner";
@@ -81,6 +82,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 // 1. Auth Stack Navigator
 const AuthNavigator = ({ startAtReset = false }: { startAtReset?: boolean }) => {
   const { colors } = useTheme();
+  const { wide } = useBreakpoint();
   return (
     <AuthStack.Navigator
       // A reset link must land on the reset screen, not walk the user back
@@ -88,7 +90,9 @@ const AuthNavigator = ({ startAtReset = false }: { startAtReset?: boolean }) => 
       initialRouteName={startAtReset ? "ResetPassword" : "Splash"}
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.canvasBase }
+        // A sign-in form is a column, on any screen. Constrained here so the
+        // nine auth screens stay the phone layouts they are.
+        contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, 480) }
       }}
     >
       <AuthStack.Screen name="Splash" component={SplashScreen} />
@@ -107,15 +111,22 @@ const AuthNavigator = ({ startAtReset = false }: { startAtReset?: boolean }) => 
 // 2. Project Stack Navigator
 const ProjectNavigator = () => {
   const { colors } = useTheme();
+  const { wide } = useBreakpoint();
   return (
     <ProjectStack.Navigator
       initialRouteName="AgentChat"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.canvasBase }
+        contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, COLUMN_MAX) }
       }}
     >
-      <ProjectStack.Screen name="AgentChat" component={AgentChatScreen} />
+      {/* The chat lays itself out for a wide screen — it puts the drawer
+          beside the conversation — so it gets the whole width. */}
+      <ProjectStack.Screen
+        name="AgentChat"
+        component={AgentChatScreen}
+        options={{ contentStyle: { backgroundColor: colors.canvasBase } }}
+      />
       <ProjectStack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
       <ProjectStack.Screen name="ProjectSettings" component={ProjectSettingsScreen} />
       <ProjectStack.Screen name="SessionHistory" component={SessionHistoryScreen} />
@@ -129,12 +140,13 @@ const ProjectNavigator = () => {
 // 3. Profile Stack Navigator
 const ProfileNavigator = () => {
   const { colors } = useTheme();
+  const { wide } = useBreakpoint();
   return (
     <ProfileStack.Navigator
       initialRouteName="ProfileMain"
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.canvasBase }
+        contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, FORM_MAX) }
       }}
     >
       <ProfileStack.Screen name="ProfileMain" component={ProfileMainScreen} />
@@ -181,7 +193,29 @@ const MainTabNavigator = () => {
 // 5. Root Navigator Switch
 export const AppNavigator = () => {
   const { user, setSession, initialized, passwordRecovery } = useAuthStore();
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
+  const { wide } = useBreakpoint();
+
+  // React Navigation paints its own container behind every screen, in its
+  // own default theme — which is light. That was invisible while each screen
+  // covered the whole window; on a wide screen the screens sit in a centred
+  // column, and the container showed through as a white field around a dark
+  // app. The navigator now uses the app's palette for that container.
+  const navTheme = React.useMemo(() => {
+    const base = mode === "light" ? DefaultTheme : DarkTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: colors.brandPrimary,
+        background: colors.canvasBase,
+        card: colors.canvasBase,
+        text: colors.inkPrimary,
+        border: colors.borderHairline,
+        notification: colors.brandPrimary,
+      },
+    };
+  }, [mode, colors]);
 
   // Held here because the notification tap handler lives outside the navigator
   // tree — it fires before any screen is mounted on a cold start.
@@ -244,7 +278,7 @@ export const AppNavigator = () => {
       <NoInternetBanner />
 
       {/* 2. Navigation Container Stacks */}
-      <NavigationContainer ref={navigationRef} linking={linking as never}>
+      <NavigationContainer ref={navigationRef} linking={linking as never} theme={navTheme}>
         <RootStack.Navigator
           screenOptions={{
             headerShown: false,
@@ -257,7 +291,12 @@ export const AppNavigator = () => {
               <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
               
               {/* Global overlay Modals */}
-              <RootStack.Group screenOptions={{ presentation: "modal" }}>
+              <RootStack.Group
+                screenOptions={{
+                  presentation: "modal",
+                  contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, FORM_MAX) },
+                }}
+              >
                 <RootStack.Screen name="Paywall" component={PaywallScreen} />
                 <RootStack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} />
                 <RootStack.Screen name="TokenUsage" component={TokenUsageScreen} />

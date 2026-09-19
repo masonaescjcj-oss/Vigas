@@ -27,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<AuthStackParamList, "Onboarding"
 const SLIDES = [
   {
     title: "Build apps by describing them",
-    body: "Say what you want. The agent plans it, writes the files, runs the commands and tells you what changed — from your phone.",
+    body: "Say what you want. The agent plans it, writes the files, runs the commands and tells you what changed.",
   },
   {
     title: "It works on real projects",

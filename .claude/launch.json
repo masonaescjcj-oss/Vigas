@@ -10,14 +10,16 @@
         "--web",
         "--port",
         "8082",
-        "--clear"
+        "--clear",
+        "--offline"
       ],
       "port": 8082,
       "autoPort": false,
       "env": {
         "EXPO_NO_TELEMETRY": "1",
         "BROWSER": "none",
-        "EXPO_NO_PROMPT": "1"
+        "EXPO_NO_PROMPT": "1",
+        "EXPO_OFFLINE": "1"
       }
     }
   ]
