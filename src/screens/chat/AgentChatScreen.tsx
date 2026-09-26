@@ -90,7 +90,7 @@ import { Sheet } from "../../components/ui/Sheet";
 import { Input } from "../../components/ui/Input";
 import { Pill } from "../../components/ui/Pill";
 import { Led } from "../../components/ui/Led";
-import { Grille } from "../../components/ui/Grille";
+import { MatrixMark } from "../../components/ui/MatrixMark";
 import { Monogram } from "../../components/ui/Monogram";
 import { keyEdge, wellShadow } from "../../theme/device";
 import { useBreakpoint, columnStyle, COLUMN_MAX, SIDEBAR_WIDTH } from "../../theme/breakpoints";
@@ -1887,10 +1887,11 @@ export const AgentChatScreen = () => {
                   and it is set one step off the canvas so it sits behind the
                   screen rather than on it. An empty screen's loudest element
                   should not be the app telling you its own name. */}
-              {/* A radio's speaker grille, faint, over the name: the device
-                  at rest, waiting to be spoken to. */}
+              {/* The logo, faint, over the name: the r lit only one step
+                  above the resting dots, so it reads up close and disappears
+                  from across the room. */}
               <View style={{ marginBottom: 18 }}>
-                <Grille size={86} color={colors.surfaceMuted} />
+                <MatrixMark size={86} dim={colors.surfaceMuted} ink={colors.surfaceStrong} accent={colors.surfaceStrong} />
               </View>
               <Text variant="h1" style={{ fontSize: 46, lineHeight: 50, letterSpacing: -2, color: colors.surfaceStrong }}>
                 {activeMode === "build" ? "retro build" : "retro"}

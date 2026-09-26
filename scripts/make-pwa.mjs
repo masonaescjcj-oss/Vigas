@@ -34,7 +34,7 @@ if (!existsSync(join(DIST, "index.html"))) {
 
 const APP_NAME = "Retro Code";
 const SHORT_NAME = "Retro Code";
-const THEME = "#0E0F0F";
+const THEME = "#171614";
 
 /* ---- manifest ----------------------------------------------------------- */
 

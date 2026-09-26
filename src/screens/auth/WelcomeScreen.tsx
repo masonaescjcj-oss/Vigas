@@ -21,7 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
-import { Grille } from "../../components/ui/Grille";
+import { MatrixMark } from "../../components/ui/MatrixMark";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useTheme } from "../../theme/ThemeProvider";
 import appConfig from "../../../app.json";
@@ -47,7 +47,7 @@ export const WelcomeScreen = () => {
         </View>
 
         <View className="flex-1 justify-center" style={{ gap: 32 }}>
-          <Grille size={176} pitch={11} dot={3.6} indicator />
+          <MatrixMark size={176} />
 
           <View style={{ gap: 14 }}>
             <Text variant="h1" style={{ fontSize: 64, lineHeight: 64, letterSpacing: -3 }}>

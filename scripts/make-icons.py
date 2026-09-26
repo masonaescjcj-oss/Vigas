@@ -22,7 +22,7 @@ DIST = sys.argv[1] if len(sys.argv) > 1 else "dist-web"
 SOURCE = "assets/icon.png"
 # Matches manifest background_color and the app's canvas, so the padding is
 # invisible rather than a grey frame.
-BACKGROUND = (14, 15, 15, 255)
+BACKGROUND = (23, 22, 20, 255)
 # Android's documented safe area for a maskable icon.
 SAFE_RATIO = 0.8
 
