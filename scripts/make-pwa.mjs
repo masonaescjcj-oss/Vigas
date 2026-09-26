@@ -20,9 +20,10 @@
  *   node scripts/make-pwa.mjs [dist-dir]
  * ---------------------------------------------------------------------------
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const DIST = process.argv[2] ?? "dist-web";
 
@@ -57,12 +58,49 @@ const manifest = {
 };
 writeFileSync(join(DIST, "manifest.webmanifest"), JSON.stringify(manifest, null, 2));
 
+/* ---- package assets ------------------------------------------------------ */
+
+// Metro exports anything required out of a package — the fonts, React
+// Navigation's icons — under assets/node_modules/, and the Vercel CLI never
+// uploads a directory by that name. Every font was a 404 on the live site
+// while working locally. So the directory is renamed and the bundle's
+// references follow it.
+//
+// A bundle whose bytes change here must change its name too: /_expo/static is
+// served immutable for a year, so a browser that fetched the old bytes under
+// the old name would keep asking for the old paths.
+const bundleDir = join(DIST, "_expo", "static", "js", "web");
+const PKG_FROM = "/assets/node_modules/";
+const PKG_TO = "/assets/pkg/";
+if (existsSync(join(DIST, "assets", "node_modules"))) {
+  renameSync(join(DIST, "assets", "node_modules"), join(DIST, "assets", "pkg"));
+  const renamed = [];
+  for (const file of readdirSync(bundleDir).filter((f) => f.endsWith(".js"))) {
+    const source = readFileSync(join(bundleDir, file), "utf8");
+    if (!source.includes(PKG_FROM)) continue;
+    const rewritten = source.split(PKG_FROM).join(PKG_TO);
+    const hash = createHash("md5").update(rewritten).digest("hex");
+    const next = file.replace(/-[0-9a-f]{32}\.js$/, `-${hash}.js`);
+    writeFileSync(join(bundleDir, next), rewritten);
+    if (next !== file) unlinkSync(join(bundleDir, file));
+    renamed.push([file, next]);
+  }
+  // Point whatever named a renamed bundle at its new name: the HTML's script
+  // tag, and any chunk that loads another by file name.
+  const referrers = [join(DIST, "index.html"), ...readdirSync(bundleDir).map((f) => join(bundleDir, f))];
+  for (const path of referrers) {
+    const text = readFileSync(path, "utf8");
+    const updated = renamed.reduce((acc, [from, to]) => acc.split(from).join(to), text);
+    if (updated !== text) writeFileSync(path, updated);
+  }
+  console.log(`Package assets moved to ${PKG_TO} (${renamed.length} bundle file(s) renamed)`);
+}
+
 /* ---- service worker ------------------------------------------------------ */
 
 // Bumping this evicts the previous cache. Derived from the built bundle's
 // filename, which Metro hashes from its contents — so a new build gets a new
 // cache automatically and a rebuild that changed nothing does not.
-const bundleDir = join(DIST, "_expo", "static", "js", "web");
 const bundle = existsSync(bundleDir)
   ? readdirSync(bundleDir).find((f) => f.startsWith("AppEntry-"))
   : null;
@@ -134,12 +172,6 @@ self.addEventListener("fetch", (event) => {
 });
 `;
 writeFileSync(join(DIST, "sw.js"), sw);
-
-/* ---- fonts --------------------------------------------------------------- */
-
-// None. The app sets no typeface, so there is nothing to copy or declare — see
-// src/theme/fonts.ts. This block used to move ~2.4 MB of TTFs out of
-// assets/node_modules, which Vercel refuses to serve, into /fonts.
 
 /* ---- html --------------------------------------------------------------- */
 
