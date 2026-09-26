@@ -14,9 +14,10 @@
  */
 
 import React from "react";
-import { View, TouchableOpacity, Switch } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import { Icon } from "./Icon";
 import { Text } from "./Typography";
+import { Toggle } from "./ui/Toggle";
 import { useTheme } from "../theme/ThemeProvider";
 import { selectionFeedback } from "../services/haptics";
 
@@ -25,7 +26,7 @@ interface SettingsRowProps {
   /** One line under the label, for what the row does or its current state. */
   hint?: string;
   icon?: string;
-  /** A short value shown before the chevron, e.g. "Darkest" on a theme row. */
+  /** A short value shown before the chevron, e.g. "Black" on a theme row. */
   value?: string;
   hasSwitch?: boolean;
   switchValue?: boolean;
@@ -56,7 +57,7 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
     <View
       className="flex-row items-center px-4"
       style={{
-        minHeight: 52,
+        minHeight: 56,
         borderBottomWidth: last ? 0 : 1,
         borderBottomColor: colors.borderHairline,
       }}
@@ -68,21 +69,17 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
       <View className="flex-1 py-3">
         <Text variant="body" style={{ color: ink }}>{label}</Text>
         {hint ? (
-          <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }}>{hint}</Text>
+          // The legend under a control: mono, as the rest of the panel's is.
+          <Text variant="label" style={{ marginTop: 2, fontSize: 11.5 }}>{hint}</Text>
         ) : null}
       </View>
 
       {hasSwitch ? (
-        <Switch
-          value={switchValue}
-          onValueChange={(v) => { selectionFeedback(); onSwitchChange?.(v); }}
-          trackColor={{ false: colors.surfaceStrong, true: colors.brandPrimary }}
-          thumbColor={colors.canvasBase}
-        />
+        <Toggle value={switchValue} onValueChange={onSwitchChange} accessibilityLabel={label} />
       ) : (
         <View className="flex-row items-center">
           {value ? (
-            <Text variant="caption" className="mr-1.5" style={{ color: colors.inkMuted }}>{value}</Text>
+            <Text variant="label" style={{ marginRight: 6, textTransform: "none" }}>{value}</Text>
           ) : null}
           {onPress ? <Icon name="chevron-right" size={16} color={colors.inkMuted} /> : null}
         </View>
@@ -93,7 +90,7 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
   if (hasSwitch || !onPress) return content;
 
   return (
-    <TouchableOpacity onPress={() => { selectionFeedback(); onPress(); }} activeOpacity={0.6}>
+    <TouchableOpacity onPress={() => { selectionFeedback(); onPress(); }} activeOpacity={0.6} accessibilityRole="button">
       {content}
     </TouchableOpacity>
   );

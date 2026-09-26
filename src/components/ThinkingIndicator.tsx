@@ -14,8 +14,8 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Easing, View } from "react-native";
 import { Text } from "./Typography";
-import { Icon } from "./Icon";
 import { useTheme } from "../theme/ThemeProvider";
+import { glow } from "../theme/device";
 
 interface ThinkingIndicatorProps {
   /** e.g. "Thinking", "Running write", "Reading files". */
@@ -53,28 +53,22 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({ label, det
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.05] });
 
   return (
-    <View className="flex-row items-start py-2">
-      <Animated.View style={{ opacity, transform: [{ scale }], marginRight: 10, marginTop: 1 }}>
-        <Icon name="sparkles" size={15} color={colors.brandPrimary} />
-      </Animated.View>
-
+    <View className="flex-row items-center py-2">
+      {/* A square LED in the signal colour, pulsing: the device is working.
+          Square rather than a sparkle, because a sparkle promises magic and
+          this is a machine running steps. */}
+      <Animated.View
+        style={[
+          { width: 8, height: 8, borderRadius: 2, backgroundColor: colors.brandPrimary, marginRight: 12, opacity, transform: [{ scale }] },
+          glow(colors.brandPrimary, 10),
+        ]}
+      />
       <View className="flex-1">
-        <Animated.View style={{ opacity }}>
-          <Text
-            variant="body"
-            className="text-left text-sm font-uiMedium"
-            style={{ color: colors.inkPrimary }}
-          >
-            {label}
-          </Text>
-        </Animated.View>
+        <Text variant="body" className="font-uiMedium" style={{ fontSize: 14, lineHeight: 19 }}>
+          {label}
+        </Text>
         {detail ? (
-          <Text
-            variant="caption"
-            className="text-left text-xs mt-0.5"
-            style={{ color: colors.inkMuted }}
-            numberOfLines={1}
-          >
+          <Text variant="label" numberOfLines={1} style={{ fontSize: 11, textTransform: "none", marginTop: 1 }}>
             {detail}
           </Text>
         ) : null}

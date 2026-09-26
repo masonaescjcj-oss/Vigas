@@ -51,6 +51,8 @@ import {
   Lock,
   Mail,
   MapPin,
+  Menu,
+  Delete as DeleteKey,
   Mic,
   Moon,
   Pencil,
@@ -84,6 +86,8 @@ import { BrandDeepSeek } from "./BrandMarks";
 
 const ICONS = {
   user: User,
+  menu: Menu,
+  delete: DeleteKey,
   search: Search,
   code: Code2,
   ghost: Ghost,

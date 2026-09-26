@@ -33,12 +33,12 @@ export const Pill: React.FC<{ tone?: PillTone; solid?: boolean; children: React.
   return (
     <View
       className="rounded-pill"
-      style={{ backgroundColor: solid ? map.fg : map.soft, paddingHorizontal: 8, paddingVertical: 2 }}
+      style={{ backgroundColor: solid ? map.fg : map.soft, paddingHorizontal: 8, paddingVertical: 2, alignSelf: "flex-start" }}
     >
+      {/* Mono lowercase: a status word is a legend, not a sentence. */}
       <Text
-        variant="caption"
-        className="text-[11px] font-uiMedium"
-        style={{ color: solid ? colors.canvasBase : map.fg }}
+        variant="label"
+        style={{ fontSize: 10.5, lineHeight: 15, color: solid ? colors.canvasBase : map.fg }}
       >
         {children}
       </Text>

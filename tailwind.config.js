@@ -22,7 +22,9 @@ module.exports = {
         inkMuted: "var(--inkMuted)",
         brandPrimary: "var(--brandPrimary)",
         brandSoft: "var(--brandSoft)",
+        brandEdge: "var(--brandEdge)",
         accentTeal: "var(--accentTeal)",
+        capEdge: "var(--capEdge)",
         bubbleUser: "var(--bubbleUser)",
         borderHairline: "var(--borderHairline)",
         success: "var(--success)",
@@ -36,24 +38,19 @@ module.exports = {
         incognitoSoft: "var(--incognitoSoft)",
         scrim: "var(--scrim)",
       },
-      // These must be the names useFonts registers, not the marketing names.
-      // "Inter" was never a loaded family, so every one of these classes
-      // silently fell back to the platform's default face.
+      // The names theme/useAppFonts registers. Typography picks the family
+      // per weight at render time; these classes are for the raw Text the few
+      // components that bypass it still render.
       fontFamily: {
-        ui: ["Inter_500Medium", "System", "sans-serif"],
-        uiRegular: ["Inter_400Regular", "System", "sans-serif"],
-        uiMedium: ["Inter_500Medium", "System", "sans-serif"],
-        uiSemiBold: ["Inter_600SemiBold", "System", "sans-serif"],
-        uiBold: ["Inter_700Bold", "System", "sans-serif"],
-        // Persian and Arabic. Components pick this per string (theme/fonts.ts);
-        // the classes exist for the few places that know their own script.
-        fa: ["Vazirmatn_400Regular", "System", "sans-serif"],
-        faMedium: ["Vazirmatn_500Medium", "System", "sans-serif"],
-        faSemiBold: ["Vazirmatn_600SemiBold", "System", "sans-serif"],
-        faBold: ["Vazirmatn_700Bold", "System", "sans-serif"],
-        sans: ["Inter_400Regular", "System", "sans-serif"],
-        mono: ["JetBrainsMono_400Regular", "Courier New", "monospace"],
-        monoMedium: ["JetBrainsMono_500Medium", "Courier New", "monospace"],
+        ui: ["IBMPlexSans_500Medium", "System", "sans-serif"],
+        uiRegular: ["IBMPlexSans_400Regular", "System", "sans-serif"],
+        uiMedium: ["IBMPlexSans_500Medium", "System", "sans-serif"],
+        uiSemiBold: ["IBMPlexSans_600SemiBold", "System", "sans-serif"],
+        uiBold: ["IBMPlexSans_600SemiBold", "System", "sans-serif"],
+        display: ["BricolageGrotesque_600SemiBold", "System", "sans-serif"],
+        sans: ["IBMPlexSans_400Regular", "System", "sans-serif"],
+        mono: ["IBMPlexMono_400Regular", "Menlo", "monospace"],
+        monoMedium: ["IBMPlexMono_500Medium", "Menlo", "monospace"],
       },
       spacing: {
         xs: "4px",
@@ -67,8 +64,8 @@ module.exports = {
       },
       borderRadius: {
         pill: "9999px",
-        card: "16px",
-        input: "12px",
+        card: "18px",
+        input: "14px",
         // Bottom sheets only: the one place a larger radius earns its keep.
         sheet: "24px",
       },

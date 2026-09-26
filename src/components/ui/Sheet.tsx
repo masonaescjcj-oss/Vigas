@@ -16,6 +16,7 @@ import { Icon } from "../Icon";
 import { Text } from "../Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useBreakpoint } from "../../theme/breakpoints";
+import { keyEdge } from "../../theme/device";
 import { selectionFeedback } from "../../services/haptics";
 
 interface SheetProps {
@@ -56,7 +57,7 @@ export const Sheet: React.FC<SheetProps> = ({ visible, onClose, title, subtitle,
           className={wide ? "rounded-sheet px-5 pt-5 pb-6" : "rounded-t-sheet px-5 pt-3 pb-6"}
           style={[
             {
-              backgroundColor: colors.surfaceRaised,
+              backgroundColor: colors.canvasBase,
               borderWidth: wide ? 1 : 0,
               borderTopWidth: 1,
               borderColor: colors.borderHairline,
@@ -69,27 +70,26 @@ export const Sheet: React.FC<SheetProps> = ({ visible, onClose, title, subtitle,
         >
           {wide ? null : (
             <View className="items-center mb-3">
-              <View className="w-9 h-1 rounded-pill" style={{ backgroundColor: colors.surfaceStrong }} />
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.surfaceStrong }} />
             </View>
           )}
 
           {title ? (
             <View className="flex-row items-start justify-between mb-4">
               <View className="flex-1 pr-3">
-                <Text variant="h3" className="font-uiSemiBold">{title}</Text>
+                <Text variant="h2">{title}</Text>
                 {subtitle ? (
-                  <Text variant="caption" className="mt-0.5" style={{ color: colors.inkMuted }}>{subtitle}</Text>
+                  <Text variant="label" style={{ marginTop: 3, textTransform: "none" }}>{subtitle}</Text>
                 ) : null}
               </View>
               <TouchableOpacity
                 onPress={close}
                 accessibilityLabel="Close"
                 accessibilityRole="button"
-                className="w-8 h-8 rounded-pill items-center justify-center"
-                style={{ backgroundColor: colors.surfaceMuted }}
-                activeOpacity={0.6}
+                style={[{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised }, keyEdge(colors.capEdge)]}
+                activeOpacity={0.7}
               >
-                <Icon name="x" size={14} color={colors.inkSecondary} />
+                <Icon name="x" size={15} color={colors.inkSecondary} />
               </TouchableOpacity>
             </View>
           ) : null}

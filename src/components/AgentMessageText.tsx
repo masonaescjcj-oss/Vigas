@@ -14,11 +14,15 @@ import { parseBlocks } from "./markdown";
 import { CopyButton } from "./CopyButton";
 import { useTheme } from "../theme/ThemeProvider";
 import { fontFamilyFor } from "../theme/fonts";
-import { MONO_FAMILY } from "../theme/mono";
+import { monoFamily } from "../theme/mono";
 import { directionStyleFor } from "../theme/direction";
 
-/** The platform's own monospace — code must not be set proportionally. */
-const MONO = MONO_FAMILY;
+/**
+ * Plex Mono once loaded, the platform's monospace before. Read on every call:
+ * the family is only safe to name after the files arrive, which is after this
+ * module is imported.
+ */
+const mono = () => monoFamily();
 
 /** Inline `code` and **bold** inside a prose block. */
 const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color: string; codeBg: string; codeColor: string }) => {
@@ -33,14 +37,14 @@ const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color:
     // not, so on a phone this was left-aligned Persian.
     <Text
       selectable
-      style={{ color, fontSize: 14, lineHeight: 22, fontFamily: family, ...directionStyleFor(value) }}
+      style={{ color, fontSize: 15, lineHeight: 23, fontFamily: family, ...directionStyleFor(value) }}
     >
       {parts.map((part, index) => {
         if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
           return (
             <Text
               key={index}
-              style={{ fontFamily: MONO, fontSize: 12.5, color: codeColor, backgroundColor: codeBg }}
+              style={{ fontFamily: mono(), fontSize: 12.5, color: codeColor, backgroundColor: codeBg }}
             >
               {` ${part.slice(1, -1)} `}
             </Text>
@@ -48,7 +52,7 @@ const InlineText = ({ value, color, codeBg, codeColor }: { value: string; color:
         }
         if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
           return (
-            <Text key={index} style={{ fontFamily: bold }}>
+            <Text key={index} style={{ fontFamily: bold, fontWeight: bold ? "normal" : "700" }}>
               {part.slice(2, -2)}
             </Text>
           );
@@ -113,14 +117,14 @@ export const AgentMessageText = ({
                 marginBottom: 6,
               }}
             >
-              <Text style={{ color: langColor, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>
+              <Text style={{ color: langColor, fontFamily: mono(), fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>
                 {block.lang ?? "code"}
               </Text>
               <CopyButton value={block.value} compact />
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <Text
-                style={{ color: codeColor, fontFamily: MONO, fontSize: 12.5, lineHeight: 19 }}
+                style={{ color: codeColor, fontFamily: mono(), fontSize: 12.5, lineHeight: 19 }}
                 // Long-press selection as well as the button: some people want a
                 // fragment rather than the whole block.
                 selectable

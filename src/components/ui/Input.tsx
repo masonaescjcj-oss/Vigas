@@ -1,15 +1,10 @@
 /**
  * components/ui/Input.tsx
  * ---------------------------------------------------------------------------
- * A labelled text field.
+ * A labelled text field, drawn as a well sunk into the body.
  *
- * Five auth screens and three settings screens each typed out the same block:
- * a bold label, a TextInput with `border-slate-200/50` (a Tailwind grey that is
- * not in the palette), an error line in `text-red-500` (also not). Same field,
- * eight slightly different looks. This is the field, once.
- *
- * The label is quiet, not bold — the value is what the eye should land on.
- * Focus is the brand colour on the border and nothing else; no glow, no shadow.
+ * The label is the mono legend above it, lowercase, like the printing beside a
+ * socket on a panel. Focus is the signal colour on the rim and nothing else.
  * ---------------------------------------------------------------------------
  */
 
@@ -19,6 +14,7 @@ import { Text } from "../Typography";
 import { useTheme } from "../../theme/ThemeProvider";
 import { fontFamilyFor } from "../../theme/fonts";
 import { directionStyleFor } from "../../theme/direction";
+import { wellShadow } from "../../theme/device";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -26,7 +22,7 @@ interface InputProps extends TextInputProps {
   error?: string | null;
   /** Shown under the field, muted. */
   hint?: string;
-  /** Something to the right of the label — a "Forgot?" link, a counter. */
+  /** Something to the right of the label — a "forgot?" link, a counter. */
   trailing?: React.ReactNode;
 }
 
@@ -41,10 +37,10 @@ export const Input: React.FC<InputProps> = ({
   onBlur,
   ...props
 }) => {
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const [focused, setFocused] = useState(false);
 
-  const border = error ? colors.failed : focused ? colors.brandPrimary : colors.borderHairline;
+  const border = error ? colors.failed : focused ? colors.brandPrimary : "transparent";
   const text = typeof value === "string" ? value : "";
 
   return (
@@ -63,21 +59,24 @@ export const Input: React.FC<InputProps> = ({
         autoCorrect={false}
         onFocus={(e) => { setFocused(true); onFocus?.(e); }}
         onBlur={(e) => { setFocused(false); onBlur?.(e); }}
-        className="rounded-input px-4 text-base"
         style={[
           {
-            minHeight: 48,
-            backgroundColor: colors.surfaceMuted,
+            minHeight: 52,
+            paddingHorizontal: 16,
+            borderRadius: 14,
+            fontSize: 16,
+            backgroundColor: colors.surfaceCode,
             borderWidth: 1,
             borderColor: border,
             color: colors.inkPrimary,
-            // Persian is set in its own face and runs the right way as it is
-            // typed, not after it is submitted.
+            // Persian is set in the device face and runs the right way as it
+            // is typed, not after it is submitted.
             fontFamily: fontFamilyFor(text),
             ...directionStyleFor(text),
             outlineStyle: "none",
             outlineWidth: 0,
           } as object,
+          wellShadow(mode),
           style,
         ]}
         {...props}

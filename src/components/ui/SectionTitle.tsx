@@ -1,11 +1,8 @@
 /**
  * components/ui/SectionTitle.tsx
  * ---------------------------------------------------------------------------
- * The heading over a group of rows or fields.
- *
- * Small and dim, sitting above its group with room beneath. Seventeen screens
- * set this in uppercase with letter-spacing, which made every settings page
- * read as a form from an office. A heading orients; it does not announce.
+ * The legend over a group of rows or fields: small mono lowercase, the way a
+ * panel labels its controls. It orients; it does not announce.
  * ---------------------------------------------------------------------------
  */
 
@@ -24,7 +21,7 @@ export const SectionTitle: React.FC<{ children: React.ReactNode; hint?: string; 
     <View className={`${first ? "mt-2" : "mt-7"} mb-2 px-1`}>
       <Text variant="label">{children}</Text>
       {hint ? (
-        <Text variant="caption" className="mt-1 leading-5" style={{ color: colors.inkMuted }}>
+        <Text variant="caption" className="mt-1" style={{ color: colors.inkMuted, lineHeight: 18 }}>
           {hint}
         </Text>
       ) : null}

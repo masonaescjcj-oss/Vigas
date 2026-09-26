@@ -1,13 +1,12 @@
 /**
  * components/ui/ScreenHeader.tsx
  * ---------------------------------------------------------------------------
- * The top of every pushed screen.
+ * The top of every pushed screen: a round back key on the left, the title
+ * beside it, one optional action on the right.
  *
- * Twenty-one screens drew their own: some put "← Back" on the left and the
- * title on the right, some the reverse, one centred the title and put the back
- * control after it. The arrow was a text character. None agreed on padding.
- * This is one shape — back on the left, title beside it, one optional action on
- * the right — so moving between screens feels like one app.
+ * One shape across twenty-odd screens, so moving between them feels like one
+ * instrument. The title is set in the display face; a subtitle underneath is
+ * the mono legend — a path, a count, a status.
  * ---------------------------------------------------------------------------
  */
 
@@ -17,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Icon } from "../Icon";
 import { Text } from "../Typography";
 import { useTheme } from "../../theme/ThemeProvider";
+import { keyEdge } from "../../theme/device";
 import { selectionFeedback } from "../../services/haptics";
 
 interface ScreenHeaderProps {
@@ -26,7 +26,7 @@ interface ScreenHeaderProps {
   /** Hide the back control on a root screen. */
   noBack?: boolean;
   onBack?: () => void;
-  /** One action, right-aligned. An icon alone renders as a round icon button. */
+  /** One action, right-aligned. An icon alone renders as a round key. */
   action?: { label?: string; icon?: string; onPress: () => void };
   /** Hairline under the header. Off when the content starts with its own surface. */
   divider?: boolean;
@@ -49,33 +49,44 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     else navigation.goBack();
   };
 
+  const roundKey = {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    ...keyEdge(colors.capEdge),
+  };
+
   return (
     <View
-      className="flex-row items-center px-3"
+      className="flex-row items-center px-4"
       style={{
-        height: 56,
+        minHeight: 64,
+        paddingVertical: 12,
         borderBottomWidth: divider ? 1 : 0,
         borderBottomColor: colors.borderHairline,
       }}
     >
-      {noBack ? (
-        <View style={{ width: 12 }} />
-      ) : (
+      {noBack ? null : (
         <TouchableOpacity
           onPress={back}
           accessibilityLabel="Back"
           accessibilityRole="button"
-          className="w-10 h-10 items-center justify-center mr-1"
-          activeOpacity={0.6}
+          style={[roundKey, { marginRight: 12 }]}
+          activeOpacity={0.7}
         >
-          <Icon name="arrow-left" size={20} color={colors.inkPrimary} />
+          <Icon name="arrow-left" size={18} color={colors.inkPrimary} />
         </TouchableOpacity>
       )}
 
       <View className="flex-1">
-        <Text variant="h3" className="font-uiSemiBold" numberOfLines={1}>{title}</Text>
+        {title ? (
+          <Text variant="h2" numberOfLines={1} style={{ fontSize: 22, lineHeight: 26 }}>{title}</Text>
+        ) : null}
         {subtitle ? (
-          <Text variant="caption" style={{ color: colors.inkMuted }} numberOfLines={1}>{subtitle}</Text>
+          <Text variant="label" numberOfLines={1} style={{ marginTop: 1, textTransform: "none" }}>{subtitle}</Text>
         ) : null}
       </View>
 
@@ -85,19 +96,19 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             onPress={() => { selectionFeedback(); action.onPress(); }}
             accessibilityLabel={action.icon}
             accessibilityRole="button"
-            className="w-10 h-10 items-center justify-center rounded-pill"
-            style={{ backgroundColor: colors.surfaceMuted }}
-            activeOpacity={0.6}
+            style={roundKey}
+            activeOpacity={0.7}
           >
-            <Icon name={action.icon} size={18} color={colors.inkPrimary} />
+            <Icon name={action.icon} size={17} color={colors.inkSecondary} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={() => { selectionFeedback(); action.onPress(); }}
-            className="px-3 py-2"
-            activeOpacity={0.6}
+            accessibilityRole="button"
+            style={[{ height: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.surfaceRaised, justifyContent: "center" }, keyEdge(colors.capEdge)]}
+            activeOpacity={0.7}
           >
-            <Text variant="body" className="font-uiMedium" style={{ color: colors.brandPrimary }}>
+            <Text variant="body" className="font-uiMedium" style={{ color: colors.brandPrimary, fontSize: 14 }}>
               {action.label}
             </Text>
           </TouchableOpacity>

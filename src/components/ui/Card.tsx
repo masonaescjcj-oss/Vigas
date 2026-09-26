@@ -1,11 +1,11 @@
 /**
  * components/ui/Card.tsx
  * ---------------------------------------------------------------------------
- * A raised surface for a group of related things.
+ * A raised panel for a group of related things.
  *
- * One radius (card, 16px), one border (the hairline), no shadow. The admin
- * panel had this right and the rest of the app did not; this is that card,
- * available to everyone.
+ * One radius (18px), one hairline, no drop shadow — the panel stands up from
+ * the body by being a step lighter, the way a key cap does. Keys go on it;
+ * wells sink into it.
  * ---------------------------------------------------------------------------
  */
 
@@ -22,8 +22,11 @@ export const Card: React.FC<CardProps> = ({ flush = false, className = "", style
   const { colors } = useTheme();
   return (
     <View
-      className={`${flush ? "" : "p-4"} rounded-card overflow-hidden ${className}`}
-      style={[{ backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline }, style]}
+      className={`${flush ? "" : "p-4"} overflow-hidden ${className}`}
+      style={[
+        { backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.borderHairline, borderRadius: 18 },
+        style,
+      ]}
       {...props}
     >
       {children}

@@ -1,25 +1,42 @@
 /**
  * frontend/src/theme/useAppFonts.ts
  * ---------------------------------------------------------------------------
- * There are no typefaces to load.
+ * Load the six font files before the first frame.
  *
- * The app used to download Inter, Vazirmatn and JetBrains Mono — 2.4 MB before
- * a word appeared. It now uses whatever face the device already has; the
- * reasoning is in theme/fonts.ts, and the short version is that with
- * font-display:swap the system face is what the first paint shows either way,
- * and no web font covers Persian as well as a phone sold in Iran already does.
+ * Each file is required by path rather than through the package's index: the
+ * index requires every weight it ships, and Metro bundles whatever is required,
+ * so importing it would put all fourteen Plex Sans files in the build to use
+ * three of them.
  *
- * The hook stays because App.tsx gates its first render on it, and because
- * reintroducing a family later should be a change in this folder rather than at
- * the root of the app. It now answers immediately, which removes the blank
- * frame the loader used to hold while files arrived.
+ * `ready` turns true on failure too. A font that will not load costs the right
+ * typeface, never the app — theme/fonts.ts then hands out no family at all and
+ * the device's own face is used.
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @returns ready — always true, since nothing has to arrive first. `failed`
- *          is kept in the shape so the caller did not have to change.
- */
+import { useEffect } from "react";
+import { useFonts } from "expo-font";
+import { FAMILIES, setFontsReady } from "./fonts";
+
+const FILES = {
+  [FAMILIES.uiRegular]: require("@expo-google-fonts/ibm-plex-sans/400Regular/IBMPlexSans_400Regular.ttf"),
+  [FAMILIES.uiMedium]: require("@expo-google-fonts/ibm-plex-sans/500Medium/IBMPlexSans_500Medium.ttf"),
+  [FAMILIES.uiSemiBold]: require("@expo-google-fonts/ibm-plex-sans/600SemiBold/IBMPlexSans_600SemiBold.ttf"),
+  [FAMILIES.display]: require("@expo-google-fonts/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf"),
+  [FAMILIES.mono]: require("@expo-google-fonts/ibm-plex-mono/400Regular/IBMPlexMono_400Regular.ttf"),
+  [FAMILIES.monoMedium]: require("@expo-google-fonts/ibm-plex-mono/500Medium/IBMPlexMono_500Medium.ttf"),
+};
+
 export function useAppFonts(): { ready: boolean; failed: boolean } {
-  return { ready: true, failed: false };
+  const [loaded, error] = useFonts(FILES);
+
+  // Set synchronously during render as well as in the effect: the first frame
+  // after loading must already see the families, and an effect runs after it.
+  if (loaded && !error) setFontsReady(true);
+
+  useEffect(() => {
+    setFontsReady(loaded && !error);
+  }, [loaded, error]);
+
+  return { ready: loaded || !!error, failed: !!error };
 }
