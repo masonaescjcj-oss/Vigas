@@ -20,7 +20,7 @@
  *   node scripts/make-pwa.mjs [dist-dir]
  * ---------------------------------------------------------------------------
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, renameSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, renameSync, unlinkSync, cpSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -73,7 +73,18 @@ const bundleDir = join(DIST, "_expo", "static", "js", "web");
 const PKG_FROM = "/assets/node_modules/";
 const PKG_TO = "/assets/pkg/";
 if (existsSync(join(DIST, "assets", "node_modules"))) {
-  renameSync(join(DIST, "assets", "node_modules"), join(DIST, "assets", "pkg"));
+  const from = join(DIST, "assets", "node_modules");
+  const to = join(DIST, "assets", "pkg");
+  try {
+    renameSync(from, to);
+  } catch (error) {
+    // Windows refuses to rename a folder while anything holds a file in it,
+    // and OneDrive holds freshly exported files while it syncs them. A copy
+    // works regardless; the original left behind is never uploaded anyway.
+    if (error.code !== "EPERM" && error.code !== "EBUSY") throw error;
+    cpSync(from, to, { recursive: true });
+    try { rmSync(from, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { /* see above */ }
+  }
   const renamed = [];
   for (const file of readdirSync(bundleDir).filter((f) => f.endsWith(".js"))) {
     const source = readFileSync(join(bundleDir, file), "utf8");
