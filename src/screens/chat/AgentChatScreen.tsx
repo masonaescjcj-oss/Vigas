@@ -90,7 +90,7 @@ import { Sheet } from "../../components/ui/Sheet";
 import { Input } from "../../components/ui/Input";
 import { Pill } from "../../components/ui/Pill";
 import { Led } from "../../components/ui/Led";
-import { MatrixMark } from "../../components/ui/MatrixMark";
+import { BrandMark } from "../../components/ui/BrandMark";
 import { Monogram } from "../../components/ui/Monogram";
 import { keyEdge, wellShadow } from "../../theme/device";
 import { useBreakpoint, columnStyle, COLUMN_MAX, SIDEBAR_WIDTH } from "../../theme/breakpoints";
@@ -1510,7 +1510,7 @@ export const AgentChatScreen = () => {
             wordmark; on a phone the drawer is a list and says so. */}
         {inline ? (
           <Text variant="h1" style={{ flex: 1, fontSize: 26, lineHeight: 30, letterSpacing: -1.2 }}>
-            retro<Text variant="h1" style={{ fontSize: 26, lineHeight: 30, color: colors.brandPrimary }}>.</Text>
+            retro<Text variant="h1" style={{ fontSize: 26, lineHeight: 30, color: colors.brandPrimary }}>ai</Text>
           </Text>
         ) : (
           <Text variant="h2" style={{ flex: 1 }}>Chats</Text>
@@ -1891,7 +1891,7 @@ export const AgentChatScreen = () => {
                   above the resting dots, so it reads up close and disappears
                   from across the room. */}
               <View style={{ marginBottom: 18 }}>
-                <MatrixMark size={86} dim={colors.surfaceMuted} ink={colors.surfaceStrong} accent={colors.surfaceStrong} />
+                <BrandMark size={86} ink={colors.surfaceStrong} accent={colors.surfaceStrong} />
               </View>
               <Text variant="h1" style={{ fontSize: 46, lineHeight: 50, letterSpacing: -2, color: colors.surfaceStrong }}>
                 {activeMode === "build" ? "retro build" : "retro"}
@@ -2938,7 +2938,7 @@ export const AgentChatScreen = () => {
                         // leave the user to it.
                         notify(
                           `${model.name} needs ${model.badge.toLowerCase()}`,
-                          "Paid plans are managed from your account on the Retro Code website.",
+                          "Paid plans are managed from your account on the RetroAI website.",
                         );
                         return;
                       }

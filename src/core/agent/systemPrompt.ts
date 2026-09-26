@@ -1,7 +1,7 @@
 /**
  * systemPrompt.ts
  * ---------------------------------------------------------------------------
- * System prompt for the Retro Code agent.
+ * System prompt for the RetroAI agent.
  *
  * Written once, in English. It used to duplicate every instruction in Persian
  * and English, which doubled the prompt on every single request (billed on the
@@ -22,7 +22,7 @@
  */
 
 export interface SystemPromptOptions {
-  /** Agent's display label, e.g. "Retro Code". */
+  /** Agent's display label, e.g. "RetroAI". */
   agentLabel?: string;
   /** True for headless/autonomous runs; false for interactive CLI/TUI. */
   autonomous?: boolean;
@@ -43,7 +43,7 @@ const LANGUAGE_DIRECTIVE: Record<"fa" | "en" | "auto", string> = {
 };
 
 export function buildSystemPrompt(opts: SystemPromptOptions = {}): string {
-  const label = opts.agentLabel ?? "Retro Code";
+  const label = opts.agentLabel ?? "RetroAI";
   const mode = opts.autonomous
     ? "an autonomous agent that completes software-engineering tasks end to end"
     : "an interactive tool that helps the user with software-engineering tasks";

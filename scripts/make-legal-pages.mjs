@@ -119,7 +119,7 @@ function render(doc) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(doc.title)} — Retro Code</title>
+<title>${escapeHtml(doc.title)} — RetroAI</title>
 <meta name="description" content="${escapeHtml(doc.intro).slice(0, 160)}">
 <style>
   :root { color-scheme: light dark; }
@@ -141,12 +141,12 @@ function render(doc) {
 </head>
 <body>
 <header>
-  <h1>Retro Code — ${escapeHtml(doc.title)}</h1>
+  <h1>RetroAI — ${escapeHtml(doc.title)}</h1>
   <p class="muted">Last updated ${escapeHtml(doc.updated ?? "")}</p>
 </header>
 <p>${rich(doc.intro)}</p>
 ${body}
-<footer><p><a href="/">Retro Code</a></p></footer>
+<footer><p><a href="/">RetroAI</a></p></footer>
 </body>
 </html>
 `;

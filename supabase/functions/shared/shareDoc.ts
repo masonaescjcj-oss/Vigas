@@ -63,7 +63,7 @@ function attribution(): string {
   color:#F3F3EE;padding:8px 12px;border-radius:999px;text-decoration:none;
   display:flex;align-items:center;gap:6px;box-shadow:0 2px 12px rgba(0,0,0,0.25)">
   <span style="width:6px;height:6px;border-radius:50%;background:#3FC1D3"></span>
-  Built with Retro Code
+  Built with RetroAI
 </div>`;
 }
 

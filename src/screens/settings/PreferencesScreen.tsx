@@ -44,7 +44,7 @@ const PUSH_COPY: Record<PushStatus, { title: string; detail: string; action: "re
   },
   denied: {
     title: "Turned off",
-    detail: "Notifications are blocked for Retro Code in your system settings.",
+    detail: "Notifications are blocked for RetroAI in your system settings.",
     action: "settings",
   },
   unsupported: {

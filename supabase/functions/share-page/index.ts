@@ -87,7 +87,7 @@ export async function handler(req: Request): Promise<Response> {
   // Validated against the alphabet before it becomes a Storage path. A path
   // segment taken from a URL is a traversal waiting to happen.
   if (!isShareCode(code)) {
-    return notice("Not a Retro Code link", "Check the link and try again.", 400);
+    return notice("Not a RetroAI link", "Check the link and try again.", 400);
   }
 
   const service = createServiceClient();

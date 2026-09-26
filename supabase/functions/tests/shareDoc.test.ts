@@ -46,7 +46,7 @@ Deno.test("anything that is not a code is refused", () => {
 Deno.test("attribution is added inside the body", () => {
   const result = prepareShareDocument("<html><body><h1>hi</h1></body></html>");
   assertEquals(result.ok, true);
-  assertStringIncludes(result.document!, "Built with Retro Code");
+  assertStringIncludes(result.document!, "Built with RetroAI");
   // Inside the body, not trailing after </html>, or a page with its own layout
   // pushes the badge off-screen.
   const badge = result.document!.indexOf("__retrocode_badge");
@@ -56,7 +56,7 @@ Deno.test("attribution is added inside the body", () => {
 Deno.test("a document without a body tag still gets attribution", () => {
   const result = prepareShareDocument("<h1>just a fragment</h1>");
   assertEquals(result.ok, true);
-  assertStringIncludes(result.document!, "Built with Retro Code");
+  assertStringIncludes(result.document!, "Built with RetroAI");
 });
 
 Deno.test("the badge is added once even when the page mentions body twice", () => {

@@ -49,10 +49,10 @@ export const SplashScreen = () => {
     <View style={{ flex: 1, backgroundColor: colors.canvasBase }} className="items-center justify-center px-6">
       <View className="flex-row items-baseline">
         <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.inkPrimary }}>
-          retro code
+          retro
         </Text>
-        <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.inkMuted, marginLeft: 9 }}>
-          pro
+        <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.brandPrimary }}>
+          ai
         </Text>
       </View>
       <ActivityIndicator color={colors.inkMuted} size="small" style={{ marginTop: 32 }} />

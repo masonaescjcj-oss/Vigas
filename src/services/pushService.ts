@@ -138,7 +138,7 @@ export async function registerForPush(): Promise<PushResult> {
       granted = (await Notifications.requestPermissionsAsync()).granted;
     }
     if (!granted) {
-      return { status: "denied", detail: "Notifications are turned off for Retro Code." };
+      return { status: "denied", detail: "Notifications are turned off for RetroAI." };
     }
 
     const token = (await Notifications.getExpoPushTokenAsync({ projectId: id })).data;

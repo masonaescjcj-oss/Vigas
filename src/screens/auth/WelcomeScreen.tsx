@@ -21,7 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
-import { MatrixMark } from "../../components/ui/MatrixMark";
+import { BrandMark } from "../../components/ui/BrandMark";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useTheme } from "../../theme/ThemeProvider";
 import appConfig from "../../../app.json";
@@ -42,16 +42,16 @@ export const WelcomeScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
       <View className="flex-1 px-6 pt-5 pb-7">
         <View className="flex-row justify-between items-center">
-          <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6 }}>retro code</Text>
+          <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6 }}>retro ai</Text>
           <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6 }}>ai agent · v{appConfig.expo.version}</Text>
         </View>
 
         <View className="flex-1 justify-center" style={{ gap: 32 }}>
-          <MatrixMark size={176} />
+          <BrandMark size={176} />
 
           <View style={{ gap: 14 }}>
             <Text variant="h1" style={{ fontSize: 64, lineHeight: 64, letterSpacing: -3 }}>
-              retro<Text variant="h1" style={{ fontSize: 64, lineHeight: 64, color: colors.brandPrimary }}>.</Text>
+              retro<Text variant="h1" style={{ fontSize: 64, lineHeight: 64, color: colors.brandPrimary }}>ai</Text>
             </Text>
             <Text variant="body" style={{ fontSize: 17, lineHeight: 26, color: colors.inkSecondary, maxWidth: 320 }}>
               Describe an app. An agent plans it, writes it and runs it — then hands you something you can open.

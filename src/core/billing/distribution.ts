@@ -108,7 +108,7 @@ export function limitMessage(
     // to go, since the app cannot take them there.
     body:
       `Your allowance resets at ${resetHint}. ` +
-      `Paid plans are managed from your account on the Retro Code website.`,
+      `Paid plans are managed from your account on the RetroAI website.`,
     action: null,
   };
 }

@@ -56,7 +56,7 @@ export const NoInternetBanner = () => {
         {/* What is actually known is that our server did not answer. The user's
             internet may be fine, and telling them it is not sends them to fix
             the wrong thing. */}
-        Can't reach Retro Code — retrying
+        Can't reach RetroAI — retrying
       </Text>
     </View>
   );

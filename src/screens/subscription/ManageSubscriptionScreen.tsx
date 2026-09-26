@@ -39,8 +39,8 @@ export const ManageSubscriptionScreen = () => {
     notify(
       "Where to cancel",
       Platform.OS === "ios"
-        ? "Settings → your name → Subscriptions → Retro Code → Cancel."
-        : "Play Store → profile → Payments and subscriptions → Subscriptions → Retro Code → Cancel.",
+        ? "Settings → your name → Subscriptions → RetroAI → Cancel."
+        : "Play Store → profile → Payments and subscriptions → Subscriptions → RetroAI → Cancel.",
     );
   };
 

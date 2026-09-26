@@ -32,8 +32,8 @@ if (!existsSync(join(DIST, "index.html"))) {
   process.exit(1);
 }
 
-const APP_NAME = "Retro Code";
-const SHORT_NAME = "Retro Code";
+const APP_NAME = "RetroAI";
+const SHORT_NAME = "RetroAI";
 const THEME = "#171614";
 
 /* ---- manifest ----------------------------------------------------------- */

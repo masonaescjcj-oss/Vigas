@@ -129,7 +129,7 @@ export const PROJECT_TEMPLATES: Record<string, ProjectTemplate> = {
 
 A React Native app made with Expo.
 
-The preview in Retro Code renders this with react-native-web, which is how Expo
+The preview in RetroAI renders this with react-native-web, which is how Expo
 renders for the web. Components that need a native module — camera, push
 notifications, the filesystem — have no web equivalent and will not show up
 there, but they are still in the project you export.
@@ -173,7 +173,7 @@ npx expo start
     <button class="btn" onclick="alert('Thanks for your interest! 🎉')">Join Waitlist</button>
   </div>
 </section>
-<footer class="container muted center small">Built with Retro Code</footer>
+<footer class="container muted center small">Built with RetroAI</footer>
 </body>
 </html>`,
       "styles.css": `${BASE_CSS}
@@ -339,7 +339,7 @@ lightbox.onclick = () => lightbox.classList.remove("open");`,
 .reader .body{margin-top:16px;white-space:pre-line}
 .back{display:inline-block;margin-bottom:16px;cursor:pointer}`,
       "app.js": `const posts = [
-  { id: 1, title: "Hello, world", date: "2026-08-01", body: "Welcome to my new blog!\\n\\nThis site is fully editable by the Retro Code agent. Ask it to add a post, change the design, or build an about page." },
+  { id: 1, title: "Hello, world", date: "2026-08-01", body: "Welcome to my new blog!\\n\\nThis site is fully editable by the RetroAI agent. Ask it to add a post, change the design, or build an about page." },
   { id: 2, title: "Why I build in public", date: "2026-08-07", body: "Sharing progress keeps me honest and moving.\\n\\nEvery week I will post one small win and one lesson learned." },
   { id: 3, title: "Tools I love", date: "2026-08-12", body: "A running list of tools that spark joy:\\n\\n1. A good todo app\\n2. Dark mode everywhere\\n3. AI agents that write the boring parts" }
 ];

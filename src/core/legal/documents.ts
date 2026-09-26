@@ -40,7 +40,7 @@ export const PRIVACY_POLICY: LegalDocument = {
   title: "Privacy Policy",
   updated: LAST_UPDATED,
   intro:
-    "Retro Code turns what you describe into working software. This explains what we " +
+    "RetroAI turns what you describe into working software. This explains what we " +
     "collect to do that, who else sees it, and how to get rid of it.",
   sections: [
     {
@@ -88,7 +88,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "Children",
       body: [
-        "Retro Code is not directed at children under 13, and we do not knowingly collect their information.",
+        "RetroAI is not directed at children under 13, and we do not knowingly collect their information.",
       ],
     },
     {
@@ -124,7 +124,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       heading: "Fair use",
       body: [
         "The service is free, with a limit on how many builds and messages you can send in a period. The limit is there so one person cannot exhaust it for everyone.",
-        "Do not use Retro Code to build malware, to attack systems you do not own, to infringe copyright, or for anything unlawful. Do not attempt to work around the limits or extract our keys.",
+        "Do not use RetroAI to build malware, to attack systems you do not own, to infringe copyright, or for anything unlawful. Do not attempt to work around the limits or extract our keys.",
       ],
     },
     {

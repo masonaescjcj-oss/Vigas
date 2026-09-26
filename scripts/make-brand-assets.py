@@ -1,9 +1,10 @@
-"""Render the Retro Code logo into the app's image assets.
+"""Render the RetroAI logo into the app's image assets.
 
-The logo is "r." set in the dots of a round speaker grille — the same drawing
-as src/components/ui/MatrixMark.tsx, from the same numbers: a 9x9 grid in a
-100-unit box, dots centred every 10 units, only those within 42.5 of the
-centre drawn. Keep the two in step.
+The logo is two tape reels joined by the tape, the left hub lit — the same
+drawing as src/components/ui/BrandMark.tsx, from the same numbers in a
+100-unit box: reels centred at (29, 50) and (71, 50), radius 17 to the middle
+of a 6.5-wide ring, the tape along their bottoms at y = 67. Keep the two in
+step.
 
 Writes:
   assets/icon.png           1024 full-bleed, for iOS and the legacy Android icon
@@ -16,36 +17,35 @@ Drawn at 4x and scaled down, which is the antialiasing PIL's ellipse lacks.
 
     python scripts/make-brand-assets.py
 """
-import math
-
 from PIL import Image, ImageDraw
 
 # The "Black" theme, which is the app's default (src/theme/theme.ts).
-GROUND = (23, 22, 20, 255)      # canvasBase  #171614
-DIM = (58, 54, 49, 255)         # surfaceStrong #3A3631
-INK = (239, 234, 225, 255)      # inkPrimary  #EFEAE1
+GROUND = (23, 22, 20, 255)      # canvasBase   #171614
+INK = (239, 234, 225, 255)      # inkPrimary   #EFEAE1
 ACCENT = (255, 106, 26, 255)    # brandPrimary #FF6A1A
 
-R_CELLS = {(2, 2), (4, 2), (5, 2), (2, 3), (3, 3), (6, 3), (2, 4), (2, 5), (2, 6)}
-PERIOD = (6, 6)
+RING, STROKE, REELS, CENTRE_Y, TAPE_Y = 17, 6.5, (29, 71), 50, 67
+# Farthest ink from the centre: a reel's outer edge, 21 + 20.25 units out.
+EXTENT = 2 * (50 - REELS[0] + RING + STROKE / 2)
 SS = 4  # supersampling factor
 
 
 def draw_mark(draw, left, top, unit):
     """Draw the mark with its 100-unit box at (left, top), `unit` px per unit."""
-    for row in range(9):
-        for col in range(9):
-            x, y = 10 + col * 10, 10 + row * 10
-            if math.hypot(x - 50, y - 50) > 42.5:
-                continue
-            if (col, row) == PERIOD:
-                radius, colour = 4.0, ACCENT
-            elif (col, row) in R_CELLS:
-                radius, colour = 3.7, INK
-            else:
-                radius, colour = 3.0, DIM
-            cx, cy, r = left + x * unit, top + y * unit, radius * unit
-            draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=colour)
+    def circle(cx, cy, r, **kw):
+        x, y, rr = left + cx * unit, top + cy * unit, r * unit
+        draw.ellipse((x - rr, y - rr, x + rr, y + rr), **kw)
+
+    outer = RING + STROKE / 2
+    for cx in REELS:
+        # PIL draws an outline inward from the box, so the box is the outer edge.
+        circle(cx, CENTRE_Y, outer, outline=INK, width=round(STROKE * unit))
+    draw.rounded_rectangle(
+        (left + (REELS[0] - STROKE / 2) * unit, top + (TAPE_Y - STROKE / 2) * unit,
+         left + (REELS[1] + STROKE / 2) * unit, top + (TAPE_Y + STROKE / 2) * unit),
+        radius=STROKE / 2 * unit, fill=INK)
+    circle(REELS[0], CENTRE_Y, 6.2, fill=ACCENT)
+    circle(REELS[1], CENTRE_Y, 3.4, fill=INK)
 
 
 def render(width, height, ground, mark_box, rounded=None):
@@ -67,12 +67,11 @@ def render(width, height, ground, mark_box, rounded=None):
 # scaled to 68% of the tile.
 render(1024, 1024, GROUND, 1024 * 0.68).save("assets/icon.png", optimize=True)
 
-# The dots reach 46.5 units from the centre (42.5 + the period's radius), so
-# the mark is 93 units across. Android's safe circle is 66 of the layer's
-# 108 dp (61%); 58% leaves a margin inside it.
-render(1024, 1024, None, 1024 * 0.58 * 100 / 93).save("assets/adaptive-icon.png", optimize=True)
+# Android's safe circle is 66 of the layer's 108 dp (61%); the mark is kept
+# to 58% so it has a margin inside it whatever shape the launcher cuts.
+render(1024, 1024, None, 1024 * 0.58 * 100 / EXTENT).save("assets/adaptive-icon.png", optimize=True)
 
-render(1284, 2778, GROUND, 300).save("assets/splash.png", optimize=True)
+render(1284, 2778, GROUND, 320).save("assets/splash.png", optimize=True)
 
 render(256, 256, GROUND, 256 * 0.68, rounded=round(256 * 0.224)).save("assets/favicon.png", optimize=True)
 

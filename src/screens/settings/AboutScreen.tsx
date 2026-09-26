@@ -34,10 +34,10 @@ export const AboutScreen = () => {
         <View className="px-1 pt-4 pb-8">
           <View className="flex-row items-baseline">
             <Text style={{ fontSize: 30, fontWeight: "500", letterSpacing: -0.5, color: colors.inkPrimary }}>
-              retro code
+              retro
             </Text>
-            <Text style={{ fontSize: 30, fontWeight: "500", letterSpacing: -0.5, color: colors.inkMuted, marginLeft: 8 }}>
-              pro
+            <Text style={{ fontSize: 30, fontWeight: "500", letterSpacing: -0.5, color: colors.brandPrimary }}>
+              ai
             </Text>
           </View>
           <Text variant="caption" className="mt-1" style={{ color: colors.inkMuted }}>Version {APP_VERSION}</Text>
@@ -54,7 +54,7 @@ export const AboutScreen = () => {
         </Card>
 
         <Text variant="caption" className="text-center mt-10" style={{ color: colors.inkMuted }}>
-          © 2026 Retro Code
+          © 2026 RetroAI
         </Text>
       </ScrollView>
     </SafeAreaView>
