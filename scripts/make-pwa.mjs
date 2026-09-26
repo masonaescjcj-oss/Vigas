@@ -286,6 +286,10 @@ writeFileSync(join(DIST, "vercel.json"), JSON.stringify(vercel, null, 2));
 // here rather than in a second command somebody has to remember.
 execFileSync(process.execPath, ["scripts/make-legal-pages.mjs", DIST], { stdio: "inherit" });
 
+// The manifest above names /icons/*; without this step they were never
+// written, and an install fell back to a screenshot of the page.
+execFileSync(process.platform === "win32" ? "python" : "python3", ["scripts/make-icons.py", DIST], { stdio: "inherit" });
+
 /* ---- share pages --------------------------------------------------------- */
 
 // Supabase Edge Functions answer HTML with content-type: text/plain. Measured,
