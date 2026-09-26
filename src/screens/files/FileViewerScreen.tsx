@@ -23,7 +23,7 @@ import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
-import { MONO_FAMILY } from "../../theme/mono";
+import { monoFamily } from "../../theme/mono";
 import { getProjectFiles, writeProjectFile } from "../../services/fileService";
 import { type ProjectStackParamList } from "../../navigation/types";
 
@@ -84,7 +84,7 @@ export const FileViewerScreen = () => {
     }
   };
 
-  const code = { fontFamily: MONO_FAMILY, fontSize: 12, lineHeight: 19 };
+  const code = { fontFamily: monoFamily(), fontSize: 12, lineHeight: 19 };
 
   /**
    * Unsaved-changes diff: the buffer being edited against the version loaded

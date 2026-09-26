@@ -38,10 +38,10 @@ const Stat = ({ value, label }: { value: string; label: string }) => {
   const { colors } = useTheme();
   return (
     <Card className="flex-1">
-      <Text style={{ color: colors.inkPrimary, fontSize: 22, fontWeight: "600", fontVariant: ["tabular-nums"] }}>
+      <Text variant="h1" style={{ fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ["tabular-nums"] }}>
         {value}
       </Text>
-      <Text variant="caption" style={{ color: colors.inkMuted }}>{label}</Text>
+      <Text variant="label" style={{ fontSize: 11 }}>{label}</Text>
     </Card>
   );
 };

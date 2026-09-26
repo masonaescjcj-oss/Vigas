@@ -47,3 +47,33 @@ export async function copyText(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Reading text — for the "paste" key on the verification keypad.
+ *
+ * @returns null when nothing could be read: an empty clipboard, a browser that
+ *          refused permission, or a platform without the module. The caller
+ *          says so rather than filling the field with nothing.
+ */
+export async function readText(): Promise<string | null> {
+  if (Platform.OS === "web") {
+    const nav = globalThis.navigator as unknown as {
+      clipboard?: { readText?: () => Promise<string> };
+    } | undefined;
+    if (nav?.clipboard?.readText) {
+      try {
+        return (await nav.clipboard.readText()) || null;
+      } catch {
+        // Permission refused; expo-clipboard below may fare no better, but
+        // trying costs nothing.
+      }
+    }
+  }
+
+  try {
+    const Clipboard = await import("expo-clipboard");
+    return (await Clipboard.getStringAsync()) || null;
+  } catch {
+    return null;
+  }
+}

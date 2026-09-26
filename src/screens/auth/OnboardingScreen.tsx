@@ -58,23 +58,13 @@ export const OnboardingScreen = () => {
       <View className="flex-1 px-6 pt-4 pb-6">
         {/* Name on the left, the way out on the right. Nothing else up here. */}
         <View className="flex-row items-center justify-between" style={{ height: 44 }}>
-          <Text variant="body" className="font-uiMedium" style={{ color: colors.inkSecondary }}>
-            retro code
-          </Text>
+          <Text variant="label" style={{ fontSize: 12, letterSpacing: 0.6 }}>retro code</Text>
           <Button label="Skip" tone="ghost" size="sm" onPress={finish} />
         </View>
 
         {/* The statement. Large but not heavy; the weight is the point size. */}
         <View className="flex-1 justify-center">
-          <Text
-            style={{
-              fontSize: 34,
-              lineHeight: 40,
-              fontWeight: "600",
-              letterSpacing: -0.5,
-              color: colors.inkPrimary,
-            }}
-          >
+          <Text variant="h1" style={{ fontSize: 42, lineHeight: 46, letterSpacing: -1.8 }}>
             {slide.title}
           </Text>
           <Text

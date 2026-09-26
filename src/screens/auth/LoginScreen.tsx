@@ -60,9 +60,9 @@ export const LoginScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View className="mb-8 mt-2">
-            <Text variant="h1" className="font-uiSemiBold">Sign in</Text>
+            <Text variant="h1" style={{ fontSize: 40, lineHeight: 42, letterSpacing: -1.6 }}>Welcome back.</Text>
             <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
-              Back to your projects and chats.
+              Your projects and chats are where you left them.
             </Text>
           </View>
 
@@ -89,7 +89,7 @@ export const LoginScreen = () => {
             onSubmitEditing={() => void handleLogin()}
             trailing={
               <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")} hitSlop={8}>
-                <Text variant="caption" style={{ color: colors.brandPrimary }}>Forgot?</Text>
+                <Text variant="label" style={{ color: colors.brandPrimary }}>forgot?</Text>
               </TouchableOpacity>
             }
           />

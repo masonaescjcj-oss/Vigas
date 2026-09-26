@@ -63,7 +63,7 @@ export const EmailVerificationPendingScreen = () => {
       <ScreenHeader title="" divider={false} onBack={() => navigation.navigate("Login")} />
       <View className="flex-1 px-6 pb-6">
         <View className="mb-8 mt-2">
-          <Text variant="h1" className="font-uiSemiBold">Check your email</Text>
+          <Text variant="h1" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -1.4 }}>Check your email</Text>
           <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
             We sent a confirmation link to{" "}
             <Text variant="body" className="font-uiMedium" style={{ color: colors.inkPrimary }}>{email}</Text>.

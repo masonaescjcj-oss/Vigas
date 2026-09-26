@@ -58,7 +58,7 @@ export const ForgotPasswordScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View className="mb-8 mt-2">
-            <Text variant="h1" className="font-uiSemiBold">Reset your password</Text>
+            <Text variant="h1" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -1.4 }}>Reset your password</Text>
             <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
               Enter your email and we will send a six-digit code.
             </Text>

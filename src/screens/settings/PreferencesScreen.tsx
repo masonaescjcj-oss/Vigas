@@ -25,6 +25,8 @@ import { Card } from "../../components/ui/Card";
 import { SectionTitle } from "../../components/ui/SectionTitle";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
+import { themeColors, THEME_LABEL, type ThemeMode } from "../../theme/theme";
+import { Led } from "../../components/ui/Led";
 import { useSettingsStore, type ModelPreference } from "../../stores/settingsStore";
 import { registerForPush, type PushStatus } from "../../services/pushService";
 import { selectionFeedback } from "../../services/haptics";
@@ -100,6 +102,47 @@ const OptionRow = ({
   );
 };
 
+/**
+ * One body, drawn small in its own colours: a title bar, a line of text, a
+ * key. Picking a theme by seeing it beats picking one by name — "Graphite"
+ * means nothing until you have seen it.
+ */
+const ThemeTile = ({ tone, selected, onPress }: { tone: ThemeMode; selected: boolean; onPress: () => void }) => {
+  const { colors } = useTheme();
+  const t = themeColors[tone];
+  return (
+    <TouchableOpacity
+      onPress={() => { selectionFeedback(); onPress(); }}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={THEME_LABEL[tone]}
+      activeOpacity={0.75}
+      style={{
+        flex: 1,
+        padding: 8,
+        borderRadius: 16,
+        backgroundColor: colors.surfaceRaised,
+        borderWidth: selected ? 1.5 : 1,
+        borderColor: selected ? colors.brandPrimary : colors.borderHairline,
+      }}
+    >
+      <View style={{ height: 96, borderRadius: 10, backgroundColor: t.canvasBase, padding: 9, gap: 6 }}>
+        <View style={{ height: 6, width: "62%", borderRadius: 3, backgroundColor: t.inkPrimary }} />
+        <View style={{ height: 6, width: "82%", borderRadius: 3, backgroundColor: t.surfaceStrong }} />
+        <View style={{ flex: 1 }} />
+        <View style={{ flexDirection: "row", gap: 5 }}>
+          <View style={{ flex: 1, height: 18, borderRadius: 9, backgroundColor: t.surfaceRaised, borderBottomWidth: 2, borderBottomColor: t.capEdge }} />
+          <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: t.brandPrimary, borderBottomWidth: 2, borderBottomColor: t.brandEdge }} />
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10, paddingHorizontal: 2, paddingBottom: 2 }}>
+        <Led on={selected} size={6} style={{ marginRight: 7 }} />
+        <Text variant="body" className={selected ? "font-uiMedium" : ""} style={{ fontSize: 13 }}>{THEME_LABEL[tone]}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 export const PreferencesScreen = () => {
   const { colors, mode, setMode } = useTheme();
   const { defaultModel, setDefaultModel } = useSettingsStore();
@@ -130,11 +173,6 @@ export const PreferencesScreen = () => {
     { key: "gpt-5.6-terra", label: "GPT-5.6 Terra" },
   ];
 
-  const themeOptions: Array<{ key: typeof mode; label: string }> = [
-    { key: "light", label: "Light" },
-    { key: "dark", label: "Dark" },
-    { key: "darkest", label: "Black" },
-  ];
 
   const push = PUSH_COPY[pushStatus ?? "failed"];
 
@@ -143,17 +181,11 @@ export const PreferencesScreen = () => {
       <ScreenHeader title="Preferences" divider={false} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         <SectionTitle first>Appearance</SectionTitle>
-        <Card flush>
-          {themeOptions.map((opt, i) => (
-            <OptionRow
-              key={opt.key}
-              label={opt.label}
-              selected={mode === opt.key}
-              last={i === themeOptions.length - 1}
-              onPress={() => setMode(opt.key)}
-            />
+        <View accessibilityRole="radiogroup" style={{ flexDirection: "row", gap: 10 }}>
+          {(["light", "dark", "darkest"] as const).map((tone) => (
+            <ThemeTile key={tone} tone={tone} selected={mode === tone} onPress={() => setMode(tone)} />
           ))}
-        </Card>
+        </View>
 
         <SectionTitle hint="Pre-selected in every new chat. You can still change it per message.">Default model</SectionTitle>
         <Card flush>

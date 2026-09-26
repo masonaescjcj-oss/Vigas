@@ -25,6 +25,7 @@ import { Text } from "../../components/Typography";
 import { SettingsRow } from "../../components/SettingsRow";
 import { Card } from "../../components/ui/Card";
 import { Pill } from "../../components/ui/Pill";
+import { Monogram } from "../../components/ui/Monogram";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { useAuthStore } from "../../stores/authStore";
@@ -66,14 +67,19 @@ export const ProfileMainScreen = () => {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         {/* Identity. The name is the heading; the email is the line under it. */}
         <View className="px-1 pt-1 pb-6">
-          <Text variant="h2" className="font-uiSemiBold" numberOfLines={1}>
-            {profile?.display_name || "Your account"}
-          </Text>
-          {email ? (
-            <Text variant="body" className="mt-1" style={{ color: colors.inkSecondary }} numberOfLines={1}>
-              {email}
-            </Text>
-          ) : null}
+          <View className="flex-row items-center">
+            <Monogram name={profile?.display_name || email} size={64} />
+            <View className="flex-1 ml-4">
+              <Text variant="h1" numberOfLines={1} style={{ fontSize: 28, lineHeight: 32, letterSpacing: -0.9 }}>
+                {profile?.display_name || "Your account"}
+              </Text>
+              {email ? (
+                <Text variant="label" className="mt-1" numberOfLines={1} style={{ textTransform: "none" }}>
+                  {email}
+                </Text>
+              ) : null}
+            </View>
+          </View>
 
           {/* Subscription state, only while there is a paid alternative to
               measure it against. "Free" on its own raises a question the app

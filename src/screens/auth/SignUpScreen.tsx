@@ -101,7 +101,7 @@ export const SignUpScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View className="mb-8 mt-2">
-            <Text variant="h1" className="font-uiSemiBold">Create an account</Text>
+            <Text variant="h1" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -1.4 }}>Create an account</Text>
             <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
               Build apps by describing them.
             </Text>

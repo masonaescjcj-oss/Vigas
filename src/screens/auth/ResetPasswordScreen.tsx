@@ -189,7 +189,7 @@ export const ResetPasswordScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View className="mb-8 mt-2">
-            <Text variant="h1" className="font-uiSemiBold">Choose a new password</Text>
+            <Text variant="h1" style={{ fontSize: 36, lineHeight: 40, letterSpacing: -1.4 }}>Choose a new password</Text>
             <Text variant="body" className="mt-2" style={{ color: colors.inkSecondary, lineHeight: 22 }}>
               You will sign in with it from now on.
             </Text>

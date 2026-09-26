@@ -3,6 +3,12 @@
  * ---------------------------------------------------------------------------
  * How much has been used, and how much is left.
  *
+ * Two half-dials first: builds and chat messages in the rolling window, the
+ * limits a person actually runs into. They are read from the same counters the
+ * server refuses requests on, so the dial and the refusal cannot disagree.
+ * When the server does not send them (a count failed, or an older function),
+ * the dials are simply left out and the token figures stand alone.
+ *
  * The headline is the number, not a label above it. A meter is only drawn when
  * there is a limit to measure against — a zero limit used to produce
  * `width: "NaN%"`, which renders as a full bar: the worst possible lie for a
@@ -25,11 +31,25 @@ import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useTheme } from "../../theme/ThemeProvider";
 import { PURCHASES } from "../../services/distributionChannel";
 import { supabase } from "../../services/supabase";
+import { Gauge } from "../../components/ui/Gauge";
+import { getQuota, type QuotaReading } from "../../services/usageService";
+
+/** "resets in 7h 20m" for a full window, "rolling 12h" otherwise. */
+function windowDetail(q: QuotaReading, now = Date.now()): string {
+  if (q.limit !== null && q.used >= q.limit && q.nextFreeAt) {
+    const ms = Math.max(0, new Date(q.nextFreeAt).getTime() - now);
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.round((ms % 3_600_000) / 60_000);
+    return h > 0 ? `next in ${h}h ${m}m` : `next in ${m}m`;
+  }
+  return `rolling ${q.windowHours}h`;
+}
 
 export const TokenUsageScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  const [quota, setQuota] = useState<{ build: QuotaReading; chat: QuotaReading } | null>(null);
   const [tokensUsed, setTokensUsed] = useState(0);
   const [tokensLimit, setTokensLimit] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -70,6 +90,8 @@ export const TokenUsageScreen = () => {
       }
     };
     void fetchUsage();
+    // Separate from the token read: a failure here costs the dials, not the page.
+    getQuota().then(setQuota).catch(() => setQuota(null));
   }, []);
 
   // A missing or zero plan limit is normal (no metering row yet, or an
@@ -80,12 +102,22 @@ export const TokenUsageScreen = () => {
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.canvasBase }}>
-      <ScreenHeader title="Usage" divider={false} />
+      <ScreenHeader title="Usage" subtitle={quota ? `rolling ${quota.build.windowHours}-hour window` : undefined} divider={false} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
         {loading ? (
           <ActivityIndicator size="small" color={colors.inkMuted} style={{ marginTop: 32 }} />
         ) : (
           <>
+            {quota ? (
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 8, marginBottom: 12 }}>
+                <Card style={{ flex: 1, alignItems: "center", paddingTop: 18, paddingBottom: 16 }}>
+                  <Gauge used={quota.build.used} limit={quota.build.limit} label="builds" detail={windowDetail(quota.build)} />
+                </Card>
+                <Card style={{ flex: 1, alignItems: "center", paddingTop: 18, paddingBottom: 16 }}>
+                  <Gauge used={quota.chat.used} limit={quota.chat.limit} label="messages" detail={windowDetail(quota.chat)} />
+                </Card>
+              </View>
+            ) : null}
             <Card className="mt-2">
               <Text
                 style={{
