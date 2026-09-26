@@ -42,7 +42,9 @@ const manifest = {
   name: APP_NAME,
   short_name: SHORT_NAME,
   description: "Build apps by describing them. The agent writes the code.",
-  start_url: "/",
+  // The site's front page is the landing page; an installed copy opens the app.
+  start_url: "/app",
+  scope: "/",
   // standalone, so an installed copy has no browser chrome and reads as an app.
   display: "standalone",
   background_color: THEME,
@@ -132,7 +134,7 @@ self.addEventListener("install", (event) => {
   // The new worker takes over on the next load rather than waiting for every
   // tab to close, which for an installed app can be days.
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/", "/index.html"])));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/app", "/app.html"])));
 });
 
 self.addEventListener("activate", (event) => {
@@ -161,7 +163,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match(request).then((hit) => hit ?? caches.match("/index.html"))),
+        .catch(() => caches.match(request).then((hit) => hit ?? caches.match("/app.html"))),
     );
     return;
   }
@@ -197,6 +199,9 @@ if (!html.includes("manifest.webmanifest")) {
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="${SHORT_NAME}">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <!-- The app shell is the same empty page at every path; the landing page
+         at / is the one meant to be found. -->
+    <meta name="robots" content="noindex">
     <script>
       // Registered after load so it never competes with the first paint.
       // Failure is not worth surfacing: the app works without it, it only
@@ -261,8 +266,12 @@ const vercel = {
       // routes. Left in, the fallback served index.html and the router — which
       // has no such screen — dropped the visitor on onboarding. Google Play
       // requires a policy URL that opens the policy, so that was a blocker.
-      source: "/((?!_expo/|assets/|icons/|fonts/|fonts\\.css|manifest\\.webmanifest|sw\\.js|favicon\\.ico|metadata\\.json|privacy|terms|api/|share-page/).*)",
-      destination: "/index.html",
+      source: "/((?!_expo/|assets/|icons/|fonts/|fonts\\.css|manifest\\.webmanifest|sw\\.js|favicon\\.ico|metadata\\.json|privacy|terms|api/|share-page/|app\\.html|og\\.png|robots\\.txt|sitemap\\.xml).*)",
+      // app.html, not index.html: make-landing.mjs moves the app shell there
+      // and makes the landing page the index, because Vercel serves a real
+      // file before any rewrite, so "/" can only be the landing page by being
+      // index.html. /app and every path the app writes itself land here.
+      destination: "/app.html",
     },
   ],
   headers: [
@@ -275,8 +284,15 @@ const vercel = {
     {
       // The opposite: these decide when everything else updates, so a cache
       // must never hold them.
-      source: "/(sw\.js|index\.html|manifest\.webmanifest)",
+      source: "/(sw\.js|index\.html|app\.html|manifest\.webmanifest)",
       headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+    },
+    {
+      // make-legal-pages writes /privacy and /terms without an extension, and
+      // Vercel serves an extensionless file as application/octet-stream, so a
+      // browser downloaded the policy instead of showing it.
+      source: "/(privacy|terms)",
+      headers: [{ key: "Content-Type", value: "text/html; charset=utf-8" }],
     },
     {
       // The app renders generated HTML in a sandboxed iframe, so it cannot deny
@@ -296,6 +312,9 @@ writeFileSync(join(DIST, "vercel.json"), JSON.stringify(vercel, null, 2));
 // this is the step that already runs after every web export — so it happens
 // here rather than in a second command somebody has to remember.
 execFileSync(process.execPath, ["scripts/make-legal-pages.mjs", DIST], { stdio: "inherit" });
+
+// The landing page, robots.txt and sitemap.xml, for the same reason.
+execFileSync(process.execPath, ["scripts/make-landing.mjs", DIST], { stdio: "inherit" });
 
 // The manifest above names /icons/*; without this step they were never
 // written, and an install fell back to a screenshot of the page.

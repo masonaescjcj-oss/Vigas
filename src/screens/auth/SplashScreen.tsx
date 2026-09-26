@@ -1,23 +1,24 @@
 /**
  * frontend/src/screens/auth/SplashScreen.tsx
  * ---------------------------------------------------------------------------
- * The name, while the session is looked up.
+ * The logo, while the session is looked up.
  *
  * Routing is unchanged: once the auth store has initialised, a signed-in user
  * is taken over by RootNavigator and everyone else goes to Onboarding on first
  * run or Welcome after that.
  *
- * The strapline — "AI AGENT CODING & BUILDER SPACE" in tracked caps monospace —
- * is gone. The wordmark is the same one WelcomeScreen shows, so the first two
- * screens are one thing settling rather than two things in a row.
+ * No words and no spinner: the reels mark alone, at the size the native launch
+ * splash draws it (assets/splash.png, 320 of 1284 px across, which lands near
+ * 104 pt on a phone). The launch image and this screen are then one frame, and
+ * the app's name is left to the screen that follows.
  * ---------------------------------------------------------------------------
  */
 
 import React, { useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Text } from "../../components/Typography";
+import { BrandMark } from "../../components/ui/BrandMark";
 import { useAuthStore } from "../../stores/authStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { type AuthStackParamList } from "../../navigation/types";
@@ -47,15 +48,7 @@ export const SplashScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.canvasBase }} className="items-center justify-center px-6">
-      <View className="flex-row items-baseline">
-        <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.inkPrimary }}>
-          retro
-        </Text>
-        <Text style={{ fontSize: 34, fontWeight: "500", letterSpacing: -0.6, color: colors.brandPrimary }}>
-          ai
-        </Text>
-      </View>
-      <ActivityIndicator color={colors.inkMuted} size="small" style={{ marginTop: 32 }} />
+      <BrandMark size={104} />
     </View>
   );
 };

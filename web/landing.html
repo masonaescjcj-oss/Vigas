@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+  // A sign-in or reset link that lands here belongs to the app: hand it over
+  // with its tokens intact rather than showing the landing page.
+  if (/(access_token|refresh_token|error_description)=|type=recovery/.test(location.hash) ||
+      /[?&](code|error_description)=/.test(location.search)) {
+    location.replace("/app" + location.search + location.hash);
+  }
+</script>
+<title>RetroAI — AI chat with live web answers, and an agent that builds apps</title>
+<meta name="description" content="Ask RetroAI anything and get answers from the live web, with sources. Describe an app and its agent writes the code, runs it, and shows you the result. Free to start, in English or Persian.">
+<link rel="canonical" href="https://retrobuild.space/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#171614" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RetroAI">
+<meta property="og:url" content="https://retrobuild.space/">
+<meta property="og:title" content="RetroAI — ask anything, build anything">
+<meta property="og:description" content="AI chat that answers from the live web with sources, and an agent that turns a description into a working app.">
+<meta property="og:image" content="https://retrobuild.space/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The RetroAI logo, two tape reels, beside the words ask anything, build anything">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RetroAI — ask anything, build anything">
+<meta name="twitter:description" content="AI chat that answers from the live web with sources, and an agent that turns a description into a working app.">
+<meta name="twitter:image" content="https://retrobuild.space/og.png">
+
+<link rel="icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://retrobuild.space/#org",
+      "name": "RetroAI",
+      "url": "https://retrobuild.space/",
+      "logo": "https://retrobuild.space/icons/icon-512.png"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://retrobuild.space/#site",
+      "name": "RetroAI",
+      "url": "https://retrobuild.space/",
+      "publisher": { "@id": "https://retrobuild.space/#org" }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "RetroAI",
+      "url": "https://retrobuild.space/app",
+      "applicationCategory": "ProductivityApplication",
+      "operatingSystem": "Web browser",
+      "description": "AI chat that answers from the live web with sources, and an agent that turns a description into a working app.",
+      "inLanguage": ["en", "fa"],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "publisher": { "@id": "https://retrobuild.space/#org" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "What is RetroAI?", "acceptedAnswer": { "@type": "Answer", "text": "An AI app with two modes. Chat is a general assistant that searches the live web and cites its sources. Build is an agent that turns a description into a working app." } },
+        { "@type": "Question", "name": "Is RetroAI free?", "acceptedAnswer": { "@type": "Answer", "text": "You can start free, with no card. The free plan has daily limits; paid plans raise them." } },
+        { "@type": "Question", "name": "Which AI models does it use?", "acceptedAnswer": { "@type": "Answer", "text": "Chat answers through You.com's web search by default, and Build uses GPT-5.6 Terra. You can also add your own key from any OpenAI-compatible provider." } },
+        { "@type": "Question", "name": "Does it understand Persian?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Ask in Persian and the answer comes back in Persian, laid out right to left, with code and file names kept in the right order." } },
+        { "@type": "Question", "name": "Where does the code it writes run?", "acceptedAnswer": { "@type": "Answer", "text": "In an isolated cloud sandbox for each project. You can download everything as a zip whenever you like." } },
+        { "@type": "Question", "name": "Can I use it on my phone?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. It runs in any mobile browser and can be added to your home screen, where it opens like an app." } }
+      ]
+    }
+  ]
+}
+</script>
+
+<style>
+:root {
+  --bg: #171614; --raised: #24221F; --muted: #2E2B27; --strong: #3A3631; --well: #0F0E0D;
+  --ink: #EFEAE1; --ink-2: #A8A197; --ink-3: #948D82;
+  --signal: #FF6A1A; --signal-edge: #B24A12; --on-signal: #171614;
+  --cap-edge: rgba(0, 0, 0, 0.45); --hair: rgba(239, 234, 225, 0.08);
+  --well-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  --tape: #EFE8D8; --tape-ink: #2A2620; --tape-muted: #6B6356; --tape-rule: #C9BFA9; --tape-ok: #2F6B34;
+  --display: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #FFFFFF; --raised: #F6F5F4; --muted: #EEEDEB; --strong: #E4E2DF; --well: #F3F2F0;
+    --ink: #1C1A18; --ink-2: #57534E; --ink-3: #736D66;
+    --signal: #C94A0E; --signal-edge: #8F3309; --on-signal: #FFFFFF;
+    --cap-edge: rgba(28, 26, 24, 0.14); --hair: rgba(28, 26, 24, 0.09);
+    --well-shadow: inset 0 1px 2px rgba(28, 26, 24, 0.10);
+    color-scheme: light;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); overflow-x: hidden; }
+a { color: inherit; }
+img, svg { display: block; }
+.wrap { width: 100%; max-width: 1140px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 720px) { .wrap { padding: 0 32px; } }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--signal); color: var(--on-signal); padding: 8px 14px; border-radius: 10px; z-index: 10; }
+.skip:focus { left: 16px; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 6px; }
+
+.label { font: 500 12.5px/1.4 var(--mono); color: var(--ink-3); letter-spacing: 0.02em; }
+.led { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--signal); vertical-align: 1px; }
+
+.key { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 22px; border-radius: 16px;
+  font: 600 16px/1 var(--sans); text-decoration: none; background: var(--signal); color: var(--on-signal); border-bottom: 3px solid var(--signal-edge); transition: transform .08s ease; }
+.key:active { transform: translateY(2px); border-bottom-width: 1px; margin-top: 2px; }
+.key.neutral { background: var(--muted); color: var(--ink); border-bottom-color: var(--cap-edge); }
+.key.small { min-height: 40px; padding: 0 16px; font-size: 14px; border-radius: 999px; border-bottom-width: 2px; }
+
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 600 22px/1 var(--display); letter-spacing: -0.03em; }
+.brand b { font-weight: 600; color: var(--signal); }
+
+header.nav { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--hair); }
+.nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+.nav nav { display: flex; align-items: center; gap: 28px; }
+.nav nav a.link { text-decoration: none; font-size: 14.5px; color: var(--ink-2); }
+.nav nav a.link:hover { color: var(--ink); }
+@media (max-width: 719px) { .nav nav a.link { display: none; } }
+
+.hero { padding: 56px 0 72px; }
+.hero .wrap { display: grid; gap: 48px; align-items: center; }
+@media (min-width: 960px) { .hero { padding: 88px 0 104px; } .hero .wrap { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 64px; } }
+h1 { margin: 18px 0 0; font: 600 clamp(44px, 8.2vw, 82px)/0.98 var(--display); letter-spacing: -0.04em; }
+h1 em { font-style: normal; color: var(--signal); }
+.lead { margin: 22px 0 0; max-width: 540px; font-size: clamp(17px, 2.2vw, 19px); line-height: 1.6; color: var(--ink-2); }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 26px 0 0; padding: 0; list-style: none; }
+.facts li { font: 400 13px/1.4 var(--mono); color: var(--ink-3); }
+.facts li::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--strong); margin-right: 8px; vertical-align: 2px; }
+
+.device { background: var(--raised); border-radius: 28px; padding: 16px; border: 1px solid var(--hair); border-bottom: 6px solid var(--cap-edge); max-width: 520px; width: 100%; justify-self: center; }
+.device-top { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; }
+.grille { margin-left: auto; width: 76px; height: 18px; background-image: radial-gradient(circle, var(--strong) 1.6px, transparent 1.9px); background-size: 8px 8px; }
+.screen { background: var(--well); box-shadow: var(--well-shadow); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.bubble { align-self: flex-end; max-width: 80%; background: var(--muted); padding: 10px 14px; border-radius: 16px 16px 4px 16px; font-size: 15px; }
+.answer { font-size: 15px; line-height: 1.65; color: var(--ink); }
+.answer sup { font: 500 11px/1 var(--mono); color: var(--signal); margin-left: 1px; }
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sources span { font: 400 12px/1 var(--mono); color: var(--ink-2); background: var(--raised); border: 1px solid var(--hair); padding: 7px 10px; border-radius: 999px; }
+.controls { display: flex; align-items: center; gap: 8px; padding: 14px 4px 2px; }
+.cap { font: 500 12.5px/1 var(--mono); color: var(--ink-2); background: var(--muted); border-bottom: 2px solid var(--cap-edge); padding: 9px 13px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; }
+.cap.on { color: var(--ink); }
+.send { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; background: var(--signal); border-bottom: 3px solid var(--signal-edge); display: grid; place-items: center; color: var(--on-signal); }
+
+section { padding: 72px 0; border-top: 1px solid var(--hair); }
+@media (min-width: 960px) { section { padding: 104px 0; } }
+h2 { margin: 12px 0 0; font: 600 clamp(32px, 5vw, 52px)/1.04 var(--display); letter-spacing: -0.035em; max-width: 760px; }
+.section-lead { margin: 18px 0 0; max-width: 620px; color: var(--ink-2); font-size: 17.5px; }
+
+.modes { display: grid; gap: 16px; margin-top: 44px; }
+@media (min-width: 860px) { .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } }
+.card { background: var(--raised); border: 1px solid var(--hair); border-radius: 22px; padding: 26px; }
+@media (min-width: 720px) { .card { padding: 32px; } }
+.card h3 { margin: 12px 0 0; font: 600 25px/1.2 var(--display); letter-spacing: -0.02em; }
+.card p { margin: 12px 0 0; color: var(--ink-2); }
+.ticks { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 10px; }
+.ticks li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+.ticks svg { flex: none; margin-top: 3px; color: var(--signal); }
+
+.tape { margin-top: 24px; background: var(--tape); color: var(--tape-ink); border-radius: 6px; padding: 16px 18px 18px; font: 400 13.5px/1.9 var(--mono); position: relative; }
+.tape::before { content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 10px; background-image: radial-gradient(circle, var(--raised) 3px, transparent 3.4px); background-size: 12px 10px; }
+.tape .row { display: flex; gap: 12px; border-bottom: 1px dashed var(--tape-rule); }
+.tape .row:last-child { border-bottom: 0; }
+.tape .verb { width: 52px; color: var(--tape-muted); }
+.tape .ok { color: var(--tape-ok); font-weight: 500; }
+
+.grid { display: grid; gap: 14px; margin-top: 44px; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 980px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
+.feature { padding: 24px; border-radius: 20px; border: 1px solid var(--hair); background: var(--bg); }
+.feature .icon { width: 44px; height: 44px; border-radius: 14px; background: var(--muted); border-bottom: 2px solid var(--cap-edge); display: grid; place-items: center; color: var(--ink); }
+.feature h3 { margin: 18px 0 0; font: 600 18.5px/1.3 var(--sans); }
+.feature p { margin: 8px 0 0; color: var(--ink-2); font-size: 15px; }
+
+.steps { list-style: none; margin: 44px 0 0; padding: 0; display: grid; gap: 14px; counter-reset: step; }
+@media (min-width: 860px) { .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
+.steps li { padding: 26px; border-radius: 20px; background: var(--raised); border: 1px solid var(--hair); }
+.steps .num { width: 48px; height: 48px; border-radius: 14px; background: var(--well); box-shadow: var(--well-shadow); display: grid; place-items: center; font: 500 16px/1 var(--mono); color: var(--signal); }
+.steps h3 { margin: 18px 0 0; font: 600 20px/1.25 var(--display); letter-spacing: -0.01em; }
+.steps p { margin: 8px 0 0; color: var(--ink-2); font-size: 15px; }
+
+.faq { margin-top: 36px; border-top: 1px solid var(--hair); max-width: 820px; }
+.faq details { border-bottom: 1px solid var(--hair); }
+.faq summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0; font: 500 17.5px/1.4 var(--sans); min-height: 44px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .plus { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--muted); display: grid; place-items: center; transition: transform .15s ease; }
+.faq details[open] .plus { transform: rotate(45deg); }
+.faq details p { margin: 0 0 22px; color: var(--ink-2); max-width: 680px; }
+
+.final { text-align: center; }
+.final h2 { margin-left: auto; margin-right: auto; }
+.final .section-lead { margin-left: auto; margin-right: auto; }
+.final .cta { justify-content: center; }
+
+footer { border-top: 1px solid var(--hair); padding: 36px 0 48px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: center; justify-content: space-between; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+footer nav a { text-decoration: none; color: var(--ink-2); font-size: 14.5px; }
+footer nav a:hover { color: var(--ink); }
+footer small { color: var(--ink-3); font: 400 13px/1.4 var(--mono); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="RetroAI home">
+      <svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="29" cy="50" r="17" fill="none" stroke="currentColor" stroke-width="6.5"/>
+        <circle cx="71" cy="50" r="17" fill="none" stroke="currentColor" stroke-width="6.5"/>
+        <line x1="29" y1="67" x2="71" y2="67" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="29" cy="50" r="6.2" fill="var(--signal)"/>
+        <circle cx="71" cy="50" r="3.4" fill="currentColor"/>
+      </svg>
+      <span>retro<b>ai</b></span>
+    </a>
+    <nav aria-label="Main">
+      <a class="link" href="#modes">Chat and Build</a>
+      <a class="link" href="#how">How it works</a>
+      <a class="link" href="#faq">FAQ</a>
+      <a class="key small" href="/app">Open the app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <p class="label"><span class="led" aria-hidden="true"></span>&nbsp; live web answers · an agent that builds apps</p>
+        <h1>Ask anything.<br>Build <em>anything.</em></h1>
+        <p class="lead">RetroAI answers from the live web and shows you where each answer came from. When you want software, describe it: an agent plans it, writes the files, runs them, and hands you something you can open.</p>
+        <div class="cta">
+          <a class="key" href="/app">
+            Open RetroAI
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="key neutral" href="#how">How it works</a>
+        </div>
+        <ul class="facts">
+          <li>free to start, no card</li>
+          <li>runs in your browser</li>
+          <li>English and <span lang="fa" dir="rtl">فارسی</span></li>
+        </ul>
+      </div>
+
+      <figure class="device" aria-label="An example chat in RetroAI: a question and an answer with two sources" style="margin: 0;">
+        <div class="device-top">
+          <span class="led" aria-hidden="true"></span>
+          <span class="label">retroai · chat</span>
+          <span class="grille" aria-hidden="true"></span>
+        </div>
+        <div class="screen">
+          <div class="bubble">How do solar panels work?</div>
+          <div class="answer">
+            A panel is made of silicon cells. Sunlight knocks electrons loose in the silicon, and the wiring collects them as a direct current<sup>[1]</sup>. An inverter then turns that into the alternating current a home runs on<sup>[2]</sup>.
+            <div class="sources"><span>[1] energy.gov</span><span>[2] britannica.com</span></div>
+          </div>
+        </div>
+        <div class="controls" aria-hidden="true">
+          <span class="cap on"><span class="led"></span>chat</span>
+          <span class="cap">build</span>
+          <span class="send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </span>
+        </div>
+      </figure>
+    </div>
+  </div>
+
+  <section id="modes" aria-labelledby="modes-title">
+    <div class="wrap">
+      <p class="label">two modes, one app</p>
+      <h2 id="modes-title">A chat that checks the web, and an agent that ships the app.</h2>
+      <div class="modes">
+        <article class="card">
+          <p class="label">01 · chat</p>
+          <h3>A general assistant with sources</h3>
+          <p>Ask about anything — news, prices, how something works, what to write. RetroAI searches the web as it answers and lists what it read, so you can check it.</p>
+          <ul class="ticks">
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Live web search on every answer</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Numbered sources you can open</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Follow-up questions suggested for you</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Incognito chats that store nothing</li>
+          </ul>
+        </article>
+        <article class="card">
+          <p class="label">02 · build</p>
+          <h3>An agent that writes and runs code</h3>
+          <p>Describe an app or a site in plain words. The agent reads, writes and runs the code in its own sandbox, and prints what it did as it goes.</p>
+          <div class="tape" role="img" aria-label="An example build log: wrote index.html, wrote styles.css, ran the preview, ready to open">
+            <div class="row"><span class="verb">wrote</span><span>index.html</span></div>
+            <div class="row"><span class="verb">wrote</span><span>styles.css</span></div>
+            <div class="row"><span class="verb">ran</span><span>preview</span></div>
+            <div class="row"><span class="verb ok">ready</span><span>open it on your phone</span></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="more-title">
+    <div class="wrap">
+      <p class="label">what comes with it</p>
+      <h2 id="more-title">Made for the phone in your hand.</h2>
+      <div class="grid">
+        <article class="feature">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></div>
+          <h3>Preview on your device</h3>
+          <p>What the agent builds opens on your own screen, not a picture of it.</p>
+        </article>
+        <article class="feature">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg></div>
+          <h3>Restore points</h3>
+          <p>A snapshot is taken before every change, so any step can be undone.</p>
+        </article>
+        <article class="feature">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></div>
+          <h3>Share, export, deploy</h3>
+          <p>Send a link to what you built, download it as a zip, or publish it to Netlify or Vercel.</p>
+        </article>
+        <article class="feature">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg></div>
+          <h3>Your own AI key</h3>
+          <p>Add a key from any OpenAI-compatible provider, or You.com, and your usage is billed to you.</p>
+        </article>
+        <article class="feature">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c1 4 4 7 7 8M11 5c-1 4-4 7-7 8"/><path d="M13 21l4-9 4 9M14.5 18h5"/></svg></div>
+          <h3>Persian and English</h3>
+          <p>Right-to-left text is laid out properly, with code and file names kept in order inside a Persian sentence.</p>
+        </article>
+        <article class="feature">
+          <div class="icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <h3>Phone, tablet or desktop</h3>
+          <p>The same account everywhere. On a wide screen your chats sit in a sidebar beside the conversation.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="label">how it works</p>
+      <h2 id="how-title">Say it. Watch it work. Use the result.</h2>
+      <ol class="steps">
+        <li>
+          <div class="num" aria-hidden="true">01</div>
+          <h3>Say what you want</h3>
+          <p>Type a question, or describe the app you have in mind, in your own words.</p>
+        </li>
+        <li>
+          <div class="num" aria-hidden="true">02</div>
+          <h3>RetroAI does the work</h3>
+          <p>It searches the web, or plans and writes the code step by step, where you can follow along.</p>
+        </li>
+        <li>
+          <div class="num" aria-hidden="true">03</div>
+          <h3>Get something you can use</h3>
+          <p>An answer with its sources, or an app running on your phone that you can keep changing.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <p class="label">questions</p>
+      <h2 id="faq-title">Before you start.</h2>
+      <div class="faq">
+        <details>
+          <summary>What is RetroAI?<span class="plus" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+          <p>An AI app with two modes. Chat is a general assistant that searches the live web and cites its sources. Build is an agent that turns a description into a working app.</p>
+        </details>
+        <details>
+          <summary>Is RetroAI free?<span class="plus" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+          <p>You can start free, with no card. The free plan has daily limits; paid plans raise them.</p>
+        </details>
+        <details>
+          <summary>Which AI models does it use?<span class="plus" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+          <p>Chat answers through You.com's web search by default, and Build uses GPT-5.6 Terra. You can also add your own key from any OpenAI-compatible provider.</p>
+        </details>
+        <details>
+          <summary>Does it understand Persian?<span class="plus" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+          <p>Yes. Ask in Persian and the answer comes back in Persian, laid out right to left, with code and file names kept in the right order.</p>
+        </details>
+        <details>
+          <summary>Where does the code it writes run?<span class="plus" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+          <p>In an isolated cloud sandbox for each project. You can download everything as a zip whenever you like.</p>
+        </details>
+        <details>
+          <summary>Can I use it on my phone?<span class="plus" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
+          <p>Yes. It runs in any mobile browser and can be added to your home screen, where it opens like an app.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" aria-labelledby="final-title">
+    <div class="wrap">
+      <h2 id="final-title">Start with a question.</h2>
+      <p class="section-lead">It's free to try and runs in your browser. Your first answer is a few seconds away.</p>
+      <div class="cta">
+        <a class="key" href="/app">Open RetroAI</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="RetroAI home"><span>retro<b>ai</b></span></a>
+    <nav aria-label="Footer">
+      <a href="/app">Open the app</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+    <small>© 2026 RetroAI</small>
+  </div>
+</footer>
+</body>
+</html>

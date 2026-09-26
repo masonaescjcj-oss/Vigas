@@ -75,4 +75,25 @@ render(1284, 2778, GROUND, 320).save("assets/splash.png", optimize=True)
 
 render(256, 256, GROUND, 256 * 0.68, rounded=round(256 * 0.224)).save("assets/favicon.png", optimize=True)
 
-print("wrote assets/icon.png, adaptive-icon.png, splash.png, favicon.png")
+
+def og_image():
+    """The 1200x630 card a link to the site unfurls into: mark, name, line."""
+    from PIL import ImageFont
+    fonts = "node_modules/@expo-google-fonts"
+    display = ImageFont.truetype(f"{fonts}/bricolage-grotesque/600SemiBold/BricolageGrotesque_600SemiBold.ttf", 132 * SS)
+    mono = ImageFont.truetype(f"{fonts}/ibm-plex-mono/400Regular/IBMPlexMono_400Regular.ttf", 34 * SS)
+    w, h = 1200 * SS, 630 * SS
+    image = Image.new("RGBA", (w, h), GROUND)
+    draw = ImageDraw.Draw(image)
+    box = 330 * SS
+    draw_mark(draw, 70 * SS, (h - box) / 2, box / 100)
+    x, baseline = 430 * SS, 322 * SS
+    draw.text((x, baseline), "retro", font=display, fill=INK, anchor="ls")
+    draw.text((x + draw.textlength("retro", font=display), baseline), "ai", font=display, fill=ACCENT, anchor="ls")
+    draw.text((x + 6 * SS, baseline + 74 * SS), "ask anything · build anything", font=mono, fill=(168, 161, 151, 255), anchor="ls")
+    return image.resize((1200, 630), Image.LANCZOS).convert("RGB")
+
+
+og_image().save("assets/og-image.png", optimize=True)
+
+print("wrote assets/icon.png, adaptive-icon.png, splash.png, favicon.png, og-image.png")
