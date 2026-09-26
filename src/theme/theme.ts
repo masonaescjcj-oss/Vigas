@@ -9,7 +9,7 @@
  * into it, and one signal colour — orange, the "=" key — used where something
  * is live, chosen, or the one thing to press.
  *
- * Three bodies: Platinum (light), Graphite, and Black — the default, and the
+ * Three bodies: White (light), Graphite, and Black — the default, and the
  * one the chat and code surfaces were designed on.
  * ---------------------------------------------------------------------------
  */
@@ -18,7 +18,7 @@ export type ThemeMode = "light" | "dark" | "darkest";
 
 /** What each mode is called where a person picks one. */
 export const THEME_LABEL: Record<ThemeMode, string> = {
-  light: "Platinum",
+  light: "White",
   dark: "Graphite",
   darkest: "Black",
 };
@@ -73,41 +73,46 @@ export interface ColorTokens {
 }
 
 export const themeColors: Record<ThemeMode, ColorTokens> = {
-  // Platinum: the grey plastic of a Braun calculator. The signal is a burnt
-  // orange here — the bright one fails contrast as text on a light body.
+  // White: a white body, the way Braun's white radios were white — not a
+  // cream, which read as dirty next to a phone's own white UI. On a white body
+  // nothing can stand up by being lighter, so keys and cards are a soft grey
+  // with a hairline, and wells sink by a shade and an inner shadow. The greys
+  // keep a trace of warmth so the orange still belongs to them. The signal is
+  // the darkest orange that is still orange: white text on it passes 4.5:1,
+  // and so does it as text on white.
   light: {
-    canvasBase: "#EFEBE4",
-    surfaceRaised: "#F9F7F3",
-    surfaceMuted: "#E5E0D7",
-    surfaceStrong: "#D8D1C5",
-    surfaceCode: "#E4DFD5",
+    canvasBase: "#FFFFFF",
+    surfaceRaised: "#F6F5F4",
+    surfaceMuted: "#EEEDEB",
+    surfaceStrong: "#E4E2DF",
+    surfaceCode: "#F3F2F0",
 
-    inkPrimary: "#1D1B18",
-    inkSecondary: "#56504A",
-    inkMuted: "#6B655C",
+    inkPrimary: "#1C1A18",
+    inkSecondary: "#57534E",
+    inkMuted: "#736D66",
 
-    brandPrimary: "#B8440C",
-    brandSoft: "rgba(184, 68, 12, 0.10)",
-    brandEdge: "#7F2F08",
-    accentTeal: "#B8440C",
-    capEdge: "rgba(29, 27, 24, 0.16)",
+    brandPrimary: "#C94A0E",
+    brandSoft: "rgba(201, 74, 14, 0.09)",
+    brandEdge: "#8F3309",
+    accentTeal: "#C94A0E",
+    capEdge: "rgba(28, 26, 24, 0.12)",
 
-    bubbleUser: "#E5E0D7",
+    bubbleUser: "#F1F0EE",
 
-    borderHairline: "rgba(29, 27, 24, 0.10)",
+    borderHairline: "rgba(28, 26, 24, 0.09)",
 
     success: "#2F7A3A",
-    successSoft: "rgba(47, 122, 58, 0.10)",
+    successSoft: "rgba(47, 122, 58, 0.09)",
     failed: "#B8392E",
-    failedSoft: "rgba(184, 57, 46, 0.10)",
+    failedSoft: "rgba(184, 57, 46, 0.09)",
     warning: "#8A6A00",
-    warningSoft: "rgba(138, 106, 0, 0.12)",
-    running: "#B8440C",
+    warningSoft: "rgba(138, 106, 0, 0.10)",
+    running: "#C94A0E",
 
     incognito: "#6B4FA8",
-    incognitoSoft: "rgba(107, 79, 168, 0.10)",
+    incognitoSoft: "rgba(107, 79, 168, 0.09)",
 
-    scrim: "rgba(29, 27, 24, 0.40)",
+    scrim: "rgba(28, 26, 24, 0.32)",
   },
 
   // Graphite: a step lighter than Black, for people who find near-black hard.

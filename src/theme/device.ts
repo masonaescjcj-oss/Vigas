@@ -49,7 +49,7 @@ export function wellShadow(mode: ThemeMode): ViewStyle {
   if (Platform.OS !== "web") return {};
   const shadow =
     mode === "light"
-      ? "inset 0 1px 3px rgba(29, 27, 24, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.6)"
+      ? "inset 0 1px 2px rgba(28, 26, 24, 0.10)"
       : "inset 0 2px 4px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.04)";
   return { boxShadow: shadow } as ViewStyle;
 }
