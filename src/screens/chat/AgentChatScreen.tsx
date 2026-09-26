@@ -401,7 +401,15 @@ export const AgentChatScreen = () => {
   const [newProjectName, setNewProjectName] = useState("");
 
   // Active Model Helper Object
-  const activeModelObj = models.find(m => m.id === selectedModelId) || models[0] || AUTO_MODEL;
+  // You.com's agents answer and search; they cannot call the tools Build runs
+  // on, so Build never offers them. Chat offers everything.
+  const isYoucom = (id: string) => id.startsWith("youcom-");
+  const modeModels = activeMode === "build" ? models.filter((m) => !isYoucom(m.id)) : models;
+  // In Chat, Auto means You.com's web search whenever the server offers it
+  // (see chooseChatEngine), so the catalogue's "Default" is Build's default
+  // there, and saying so in Chat would be wrong.
+  const chatSearches = activeMode === "chat" && models.some((m) => isYoucom(m.id));
+  const activeModelObj = modeModels.find(m => m.id === selectedModelId) || modeModels[0] || AUTO_MODEL;
 
   // The catalogue depends on the plan, so a subscription that changes mid-session
   // has to re-read it — otherwise a model just paid for stays locked.
@@ -1283,6 +1291,8 @@ export const AgentChatScreen = () => {
     if (mode === activeMode || isExecuting) return;
     selectionFeedback();
     setActiveMode(mode);
+    // A chat-only model does not follow you into Build.
+    if (mode === "build" && isYoucom(selectedModelId)) setSelectedModelId(AUTO_MODEL.id);
     if (activeSessionId) {
       setActiveSessionId(null);
       setMessages([]);
@@ -2905,12 +2915,12 @@ export const AgentChatScreen = () => {
         visible={showModelsModal}
         onClose={() => setShowModelsModal(false)}
         title="Model"
-        subtitle="Used for every build in this chat"
+        subtitle={activeMode === "build" ? "Used for every build in this chat" : "Used for every answer in this chat"}
         height={0.55}
       >
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
           <Card flush>
-            {models.map((model, index) => {
+            {modeModels.map((model, index) => {
               const isSelected = selectedModelId === model.id;
               return (
                 <TouchableOpacity
@@ -2945,7 +2955,7 @@ export const AgentChatScreen = () => {
                   activeOpacity={0.6}
                   className="flex-row items-center px-4 py-3"
                   style={{
-                    borderBottomWidth: index === models.length - 1 ? 0 : 1,
+                    borderBottomWidth: index === modeModels.length - 1 ? 0 : 1,
                     borderBottomColor: colors.borderHairline,
                     opacity: model.locked ? 0.6 : 1,
                   }}
@@ -2968,11 +2978,11 @@ export const AgentChatScreen = () => {
                       {/* No badge at all when nothing is for sale — see
                           decorateModels, which leaves it empty. */}
                       {model.badge ? <Pill tone={model.minTier ? "warning" : "success"}>{model.badge}</Pill> : null}
-                      {model.isDefault ? <View style={{ width: 4 }} /> : null}
-                      {model.isDefault ? <Pill tone="muted">Default</Pill> : null}
+                      {model.isDefault && !chatSearches ? <View style={{ width: 4 }} /> : null}
+                      {model.isDefault && !chatSearches ? <Pill tone="muted">Default</Pill> : null}
                     </View>
                     <Text style={{ color: textMuted }} className="text-xs mt-0.5" numberOfLines={1}>
-                      {model.description}
+                      {chatSearches && model.id === AUTO_MODEL.id ? "Searches the web and cites sources" : model.description}
                     </Text>
                   </View>
                   {isSelected && !model.locked ? (

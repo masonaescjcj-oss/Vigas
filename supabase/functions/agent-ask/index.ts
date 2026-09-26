@@ -31,6 +31,8 @@ import { enforceQuota, planQuota, recordQuotaEvent } from "../shared/quota.ts";
 import { OpenAIChatModel, assertProjectOwner, resolveRequestedModel } from "../shared/agentRuntime.ts";
 import { recordUsage, tierOf } from "../shared/usage.ts";
 import { resolveProvider } from "../shared/resolveProvider.ts";
+import { chooseChatEngine, isYoucomModel, runYoucomAgent, YoucomError } from "../shared/youcom.ts";
+import { recordPoolOutcome } from "../shared/poolClient.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface Turn {
@@ -209,34 +211,67 @@ export async function handler(req: Request): Promise<Response> {
     // ChatMessage carries store bookkeeping (id, createdAt) that nothing reads
     // here, but the model interface asks for it.
     const turns: Turn[] = [...history, { role: "user", content: input.prompt }];
-    const stamp = Date.now();
-    // A user who brought their own provider pays for their own tokens, so
-    // theirs is used. The key is decrypted here and never leaves this scope.
-    const credentials = await resolveProvider(service, user.id);
-    // Chat is unlimited but not un-gated: a premium model costs the same here as
-    // it does in Build, so the same catalogue check applies.
-    const chosen = await resolveRequestedModel(service, input.model, tier);
-    const model = new OpenAIChatModel(chosen, credentials);
-    const result = await model.generate({
-      systemPrompt: [
-        SYSTEM_PROMPT,
-        stored ? "" : INCOGNITO_NOTE,
-        FOLLOW_UP_PROMPT,
-        // Chat gets skills too: "how should this landing page be laid out" is the
-        // same question whether or not files end up written.
-        skillPromptFor(input.skills),
-      ].filter(Boolean).join(" "),
-      messages: turns.map((m, index) => ({
-        id: `ask-${index}`,
-        role: m.role,
-        content: m.content,
-        createdAt: stamp + index,
-      })),
-      tools: [],
-    });
-    // The suggestions are not part of the answer: they are stripped before the
-    // transcript is written, so a later turn never sees the marker block.
-    const { text, followUps } = splitFollowUps(result.text ?? "");
+
+    // Which engine answers. You.com Express when it was picked, or when the
+    // picker is on Auto and the user has not brought a model of their own: it
+    // searches the web and cites what it found, which is what a general chat
+    // is for. The OpenAI path below is unchanged for everything else.
+    const engine = await chooseChatEngine(service, user.id, input.model);
+    if (engine.kind === "openai" && isYoucomModel(input.model)) {
+      throw new AppError(503, "YOUCOM_UNAVAILABLE", "You.com is not set up on this server yet. Pick another model, or add your own You.com key under Your AI providers.");
+    }
+
+    let text: string;
+    let followUps: string[] = [];
+    let usage: { inputTokens?: number; outputTokens?: number } | null = null;
+    let providerLabel: string | null;
+
+    if (engine.kind === "youcom") {
+      try {
+        const answer = await runYoucomAgent(engine.key.apiKey, turns, engine.model);
+        text = answer.text;
+        if (engine.key.poolId) await recordPoolOutcome(service, engine.key.poolId, { ok: true }).catch(() => {});
+      } catch (error) {
+        const status = error instanceof YoucomError ? error.status : 0;
+        const detail = error instanceof Error ? error.message : String(error);
+        if (engine.key.poolId) {
+          await recordPoolOutcome(service, engine.key.poolId, { ok: false, status, body: detail }).catch(() => {});
+        }
+        throw new AppError(502, "YOUCOM_FAILED", `You.com could not answer: ${detail}`);
+      }
+      providerLabel = engine.key.source === "user" ? engine.key.label : "You.com Express";
+    } else {
+      const stamp = Date.now();
+      // A user who brought their own provider pays for their own tokens, so
+      // theirs is used. The key is decrypted here and never leaves this scope.
+      const credentials = await resolveProvider(service, user.id);
+      // Chat is unlimited but not un-gated: a premium model costs the same here as
+      // it does in Build, so the same catalogue check applies.
+      const chosen = await resolveRequestedModel(service, input.model, tier);
+      const model = new OpenAIChatModel(chosen, credentials);
+      const result = await model.generate({
+        systemPrompt: [
+          SYSTEM_PROMPT,
+          stored ? "" : INCOGNITO_NOTE,
+          FOLLOW_UP_PROMPT,
+          // Chat gets skills too: "how should this landing page be laid out" is the
+          // same question whether or not files end up written.
+          skillPromptFor(input.skills),
+        ].filter(Boolean).join(" "),
+        messages: turns.map((m, index) => ({
+          id: `ask-${index}`,
+          role: m.role,
+          content: m.content,
+          createdAt: stamp + index,
+        })),
+        tools: [],
+      });
+      // The suggestions are not part of the answer: they are stripped before the
+      // transcript is written, so a later turn never sees the marker block.
+      ({ text, followUps } = splitFollowUps(result.text ?? ""));
+      usage = result.usage ?? null;
+      providerLabel = credentials.label ?? null;
+    }
 
     if (sessionId) await appendTurns(service, sessionId, input.prompt, text);
 
@@ -246,8 +281,10 @@ export async function handler(req: Request): Promise<Response> {
 
     // Token counts are aggregate numbers, not conversation content — metering
     // them keeps quotas honest without recording anything that was said.
-    if (result.usage) {
-      const tokens = (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0);
+    // You.com reports no token counts; its answers still count against the
+    // message quota above, which is the limit a person actually meets.
+    if (usage) {
+      const tokens = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
       await recordUsage(service, user.id, tokens).catch(() => {});
     }
 
@@ -255,10 +292,10 @@ export async function handler(req: Request): Promise<Response> {
       {
         text,
         follow_ups: followUps,
-        usage: result.usage ?? null,
+        usage,
         stored,
         // Which credentials answered, so the UI can show it. Never the key.
-        provider: credentials.label ?? null,
+        provider: providerLabel,
         session_id: sessionId,
         // How many past turns the model actually saw, so the UI can be honest
         // about the memory window instead of implying it is unlimited.

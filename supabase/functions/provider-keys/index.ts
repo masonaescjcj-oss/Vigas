@@ -21,6 +21,7 @@ import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
 import { checkProviderUrl } from "../shared/providerGuard.ts";
 import { lastFour, openSecret, sealSecret } from "../shared/secretBox.ts";
+import { isYoucomUrl, probeYoucom } from "../shared/youcom.ts";
 
 /** Columns the client may see. The ciphertext is not among them. */
 const PUBLIC_COLUMNS = "id,label,base_url,key_last4,model,verified_at,last_error,created_at";
@@ -35,6 +36,12 @@ async function probeProvider(
   apiKey: string,
   model: string | null,
 ): Promise<{ ok: boolean; detail: string }> {
+  // A You.com key is tested against the Agents API — its OpenAI-compatible
+  // endpoint refuses ordinary keys, which would fail a key that works.
+  if (isYoucomUrl(baseUrl)) {
+    const result = await probeYoucom(apiKey);
+    return { ok: result.ok, detail: result.detail };
+  }
   const endpoint = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
   let response: Response;
   try {

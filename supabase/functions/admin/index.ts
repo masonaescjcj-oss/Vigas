@@ -21,6 +21,7 @@ import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { requireAdmin } from "../shared/supabase.ts";
 import { checkProviderUrl } from "../shared/providerGuard.ts";
 import { lastFour, openSecret, sealSecret } from "../shared/secretBox.ts";
+import { isYoucomUrl, probeYoucom } from "../shared/youcom.ts";
 import { classifyFailure, nextHealth, type PoolKey } from "../shared/keyPool.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -37,6 +38,8 @@ async function probe(
   apiKey: string,
   model: string | null,
 ): Promise<{ ok: boolean; status: number; detail: string }> {
+  // A You.com key is tested against the Agents API it will actually be used on.
+  if (isYoucomUrl(baseUrl)) return await probeYoucom(apiKey);
   const endpoint = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
   try {
     const response = await fetch(endpoint, {

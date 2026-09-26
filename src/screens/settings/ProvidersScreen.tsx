@@ -36,6 +36,9 @@ import {
 } from "../../services/providerService";
 import { relativeTime } from "../../services/formatting";
 
+/** You.com's Agents API host. The backend recognises keys saved against it. */
+const YOUCOM_ENDPOINT = "https://api.you.com";
+
 export const ProvidersScreen = () => {
   const { colors } = useTheme();
 
@@ -178,7 +181,22 @@ export const ProvidersScreen = () => {
             })
           )}
 
-          <SectionTitle>Add a provider</SectionTitle>
+          <SectionTitle hint="Any OpenAI-compatible endpoint, or a You.com key.">Add a provider</SectionTitle>
+          {/* You.com speaks its own API, not OpenAI's, so its endpoint is not one
+              people would guess. One tap fills it in. */}
+          <View className="px-1 mb-4" style={{ gap: 8 }}>
+            <Button
+              label="Use a You.com key"
+              icon="globe"
+              tone="neutral"
+              size="sm"
+              onPress={() => { setLabel("You.com"); setBaseUrl(YOUCOM_ENDPOINT); setModel(""); }}
+            />
+            <Text variant="caption" style={{ color: colors.inkMuted, lineHeight: 18 }}>
+              A You.com key (ydc-sk-…) answers your Chat with live web search and sources. Build keeps using an
+              OpenAI-compatible model, since You.com's agents cannot run tools.
+            </Text>
+          </View>
           <View className="px-1">
             <Input label="Name" value={label} onChangeText={setLabel} placeholder="My OpenRouter key" />
             <Input
@@ -189,7 +207,21 @@ export const ProvidersScreen = () => {
               placeholder="https://openrouter.ai/api/v1"
               keyboardType="url"
             />
-            <Input label="API key" value={apiKey} onChangeText={setApiKey} placeholder="sk-…" secureTextEntry />
+            <Input
+              label="API key"
+              value={apiKey}
+              onChangeText={(value) => {
+                setApiKey(value);
+                // A pasted You.com key needs You.com's endpoint; fill it in if
+                // nothing else has been typed there.
+                if (value.trim().startsWith("ydc-sk-") && !baseUrl.trim()) {
+                  setBaseUrl(YOUCOM_ENDPOINT);
+                  if (!label.trim()) setLabel("You.com");
+                }
+              }}
+              placeholder="sk-… or ydc-sk-…"
+              secureTextEntry
+            />
             <Input
               label="Default model"
               hint="Optional"

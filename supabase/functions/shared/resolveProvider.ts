@@ -23,6 +23,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { openSecret } from "./secretBox.ts";
+import { isYoucomUrl } from "./youcom.ts";
 import { poolCandidates } from "./poolClient.ts";
 
 export interface ResolvedProvider {
@@ -55,10 +56,12 @@ export async function resolveProvider(
     query = query.not("verified_at", "is", null);
   }
 
-  const { data, error } = await query.order("created_at", { ascending: true }).limit(1);
-  if (error || !data || data.length === 0) return await resolvePlatformProvider(service);
+  const { data, error } = await query.order("created_at", { ascending: true }).limit(10);
+  // A You.com key answers Chat through its own adapter (shared/youcom.ts) and
+  // cannot drive the OpenAI client this resolves for, so it is skipped here.
+  const row = (data ?? []).find((r) => !isYoucomUrl(r.base_url));
+  if (error || !row) return await resolvePlatformProvider(service);
 
-  const row = data[0];
   try {
     return {
       apiKey: await openSecret(String(row.key_cipher)),

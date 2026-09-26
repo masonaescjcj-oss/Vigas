@@ -18,6 +18,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyFailure, isRested, nextHealth, orderKeys, type PoolKey } from "./keyPool.ts";
 import { openSecret } from "./secretBox.ts";
 import { AppError } from "./errorHandler.ts";
+import { isYoucomUrl } from "./youcom.ts";
 
 export interface PoolCredentials {
   apiKey: string;
@@ -58,6 +59,9 @@ export async function poolCandidates(
   const usable: PoolCredentials[] = [];
   for (const row of ordered) {
     if (restedOnly && !isRested(row, now)) continue;
+    // A You.com key speaks the Agents API, not OpenAI's; Chat reads it through
+    // shared/youcom.ts. Offered here it would be tried, fail, and be marked dead.
+    if (isYoucomUrl(row.base_url)) continue;
     try {
       usable.push({
         apiKey: await openSecret(String(row.key_cipher)),

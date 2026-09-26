@@ -12,6 +12,7 @@ import {
 } from "../../../src/core/agent/index.ts";
 import type { AuditEntry } from "../../../src/core/agent/hooks/defaultHooks.ts";
 import { AppError, asAppError } from "./errorHandler.ts";
+import { isYoucomModel } from "./youcom.ts";
 import { skillPromptFor } from "../../../src/core/agent/skills/catalog.ts";
 import { loadProjectInstructions } from "../../../src/core/agent/projectInstructions.ts";
 import { backendContextFor } from "../../../src/core/agent/backendContext.ts";
@@ -242,6 +243,9 @@ export async function resolveRequestedModel(
   tier: string,
 ): Promise<string | undefined> {
   if (!requested || requested === "auto") return undefined;
+  // Chat routes these to You.com before it gets here; anywhere else (Build) a
+  // You.com id means "the default", since that agent cannot call tools.
+  if (isYoucomModel(requested)) return undefined;
 
   const { data: model, error } = await service
     .from("models")
