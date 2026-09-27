@@ -16,11 +16,12 @@
  */
 
 import React from "react";
-import { View, SafeAreaView } from "react-native";
+import { View, SafeAreaView, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { GoogleSignInButton } from "../../components/GoogleSignInButton";
 import { BrandMark } from "../../components/ui/BrandMark";
 import { type AuthStackParamList } from "../../navigation/types";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -40,6 +41,9 @@ export const WelcomeScreen = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
+      {/* Scrolls rather than overlapping when a short screen cannot fit the
+          plate and the ways in; on a phone it simply fills the screen. */}
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       <View className="flex-1 px-6 pt-5 pb-7">
         <View className="flex-row justify-between items-center">
           <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6 }}>retro ai</Text>
@@ -47,7 +51,11 @@ export const WelcomeScreen = () => {
         </View>
 
         <View className="flex-1 justify-center" style={{ gap: 32 }}>
-          <BrandMark size={176} />
+          {/* The reels fill only the middle of their square; the negative
+              margin takes back the empty band above and below them. */}
+          <View style={{ marginVertical: -48, alignSelf: "flex-start" }}>
+            <BrandMark size={176} />
+          </View>
 
           <View style={{ gap: 14 }}>
             <Text variant="h1" style={{ fontSize: 64, lineHeight: 64, letterSpacing: -3 }}>
@@ -78,10 +86,12 @@ export const WelcomeScreen = () => {
         </View>
 
         <View style={{ gap: 10 }}>
+          <GoogleSignInButton />
           <Button label="Sign in" block onPress={() => navigation.navigate("Login")} />
           <Button label="Create an account" tone="neutral" block onPress={() => navigation.navigate("SignUp")} />
         </View>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };

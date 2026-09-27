@@ -18,6 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Text } from "../../components/Typography";
 import { Button } from "../../components/Button";
+import { GoogleSignInButton } from "../../components/GoogleSignInButton";
 import { Icon } from "../../components/Icon";
 import { Input } from "../../components/ui/Input";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
@@ -170,6 +171,13 @@ export const SignUpScreen = () => {
           </TouchableOpacity>
 
           <Button label="Create account" block loading={loading} onPress={() => void handleSignUp()} />
+
+          <View className="flex-row items-center mt-6 mb-4" style={{ gap: 12 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.borderHairline }} />
+            <Text variant="label">or</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.borderHairline }} />
+          </View>
+          <GoogleSignInButton />
 
           <TouchableOpacity
             onPress={() => navigation.navigate("Login")}

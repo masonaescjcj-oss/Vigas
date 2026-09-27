@@ -8,6 +8,11 @@
  * `detectSessionInUrl` is false on the client, so even on web the tokens in the
  * redirect were dropped on the floor.
  *
+ * It is also where a Google sign-in on web lands: Google hands back to /app
+ * with the session in the fragment, read here like any other auth redirect
+ * (services/googleAuth.ts starts it). On the phone that return is read by the
+ * browser session that opened Google, so it is skipped here.
+ *
  * Two signals are used, because neither is sufficient alone. The URL is what
  * actually carries the tokens, so it has to be parsed. The `PASSWORD_RECOVERY`
  * event is what fires when the Supabase client establishes the session by some
@@ -20,6 +25,8 @@ import { Linking, Platform } from "react-native";
 import { supabase } from "../services/supabase";
 import { useAuthStore } from "../stores/authStore";
 import { describeAuthError, parseAuthRedirect } from "../services/authRedirect";
+import { NATIVE_GOOGLE_REDIRECT } from "../services/googleAuth";
+import { notify } from "../services/notify";
 
 /**
  * Our own redirect target. A bare code carries no type, so the path is the only
@@ -33,8 +40,19 @@ export function usePasswordRecovery(): void {
     const setRecovery = useAuthStore.getState().setPasswordRecovery;
 
     const consume = async (url: string | null) => {
+      // The phone's Google sign-in reads its own return (services/googleAuth).
+      if (Platform.OS !== "web" && url?.startsWith(NATIVE_GOOGLE_REDIRECT)) return;
       const redirect = parseAuthRedirect(url);
       if (!redirect || cancelled) return;
+      forgetTokensInAddressBar();
+
+      const isRecovery = RECOVERY_PATH.test(url ?? "") || /[#?&]type=recovery/.test(url ?? "");
+      if (redirect.kind === "error" && !isRecovery) {
+        // A sign-in that came back refused: Google, not a reset link. Backing
+        // out of Google's page is access_denied, which needs no message.
+        if (redirect.code !== "access_denied") notify("Couldn't sign in", redirect.description);
+        return;
+      }
 
       if (redirect.kind === "error") {
         // Flagged as recovery on purpose: the user came from a reset link and
@@ -67,10 +85,18 @@ export function usePasswordRecovery(): void {
     // Typed here because React Native's lib has no DOM, so globalThis carries
     // neither `location` nor `addEventListener`.
     const web = globalThis as unknown as {
-      location?: { href?: string };
+      location?: { href?: string; pathname?: string };
+      history?: { replaceState?: (data: unknown, unused: string, url: string) => void };
       addEventListener?: (type: string, listener: () => void) => void;
       removeEventListener?: (type: string, listener: () => void) => void;
     };
+
+    // Tokens left in the address bar end up in history, bookmarks and
+    // screenshots. Once read they are not needed there; the path stays.
+    function forgetTokensInAddressBar() {
+      if (Platform.OS !== "web" || !web.history?.replaceState) return;
+      web.history.replaceState(null, "", web.location?.pathname ?? "/");
+    }
 
     // A cold start from a tapped link: the URL is waiting rather than delivered.
     if (Platform.OS === "web") {

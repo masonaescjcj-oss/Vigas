@@ -37,6 +37,8 @@ interface ButtonProps extends TouchableOpacityProps {
   variant?: "primary" | "secondary";
   size?: "md" | "sm";
   icon?: string;
+  /** Drawn before the label in place of an icon — for a mark that is not in the icon set. */
+  leading?: React.ReactNode;
   loading?: boolean;
   /** Stretch to the container. Default is content width, which is what a row of actions wants. */
   block?: boolean;
@@ -48,6 +50,7 @@ export const Button: React.FC<ButtonProps> = ({
   variant,
   size = "md",
   icon,
+  leading,
   loading = false,
   block = false,
   className = "",
@@ -98,7 +101,8 @@ export const Button: React.FC<ButtonProps> = ({
         <ActivityIndicator color={palette.fg} size="small" />
       ) : (
         <View className="flex-row items-center">
-          {icon ? <Icon name={icon} size={small ? 14 : 17} color={palette.fg} style={{ marginRight: 8 }} /> : null}
+          {leading ? <View style={{ marginRight: 10 }}>{leading}</View> : null}
+          {icon && !leading ? <Icon name={icon} size={small ? 14 : 17} color={palette.fg} style={{ marginRight: 8 }} /> : null}
           <Text
             variant="body"
             className={resolved === "primary" ? "font-uiSemiBold" : "font-uiMedium"}
