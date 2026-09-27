@@ -37,6 +37,8 @@ const REDIRECTS = [
   "https://retroai.online/**",
   "https://www.retroai.online/**",
   "https://retrobuild.space/**",
+  // Vercel preview deployments, so a build can be tried before it goes live.
+  "https://retro-code-*-isaacs-projects-dad539ec.vercel.app/**",
   // The phone app's own scheme (app.json "scheme"), for the in-app browser.
   "issac://auth-callback",
   "http://localhost:8082/**",
