@@ -8,5 +8,6 @@ export * from './leaderboard';
 export * from './web';
 export * from './admin';
 export * from './oauth';
+export * from './news-ingest';
 export { seedDatabase } from './seed';
 export { migrateDatabase } from './migrate';

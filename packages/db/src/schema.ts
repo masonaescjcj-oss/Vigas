@@ -214,6 +214,35 @@ export const articles = pgTable(
   (t) => [index('articles_published_idx').on(t.status, t.publishedAt), index('articles_category_idx').on(t.category, t.publishedAt)],
 );
 
+/** RSS/Atom feeds the news pipeline watches. */
+export const newsSources = pgTable('news_sources', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  feedUrl: text('feed_url').notNull().unique(),
+  enabled: boolean('enabled').notNull().default(true),
+  lastFetchedAt: timestamp('last_fetched_at', { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
+/** Items seen in feeds. Each can become one draft article for an editor to review. */
+export const newsItems = pgTable(
+  'news_items',
+  {
+    id: serial('id').primaryKey(),
+    sourceId: integer('source_id').notNull().references(() => newsSources.id, { onDelete: 'cascade' }),
+    guid: text('guid').notNull(),
+    title: text('title').notNull(),
+    url: text('url').notNull(),
+    summary: text('summary').notNull().default(''),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    status: text('status', { enum: ['new', 'drafted', 'ignored', 'error'] }).notNull().default('new'),
+    articleSlug: text('article_slug'),
+    error: text('error'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('news_items_source_guid_idx').on(t.sourceId, t.guid), index('news_items_status_idx').on(t.status, t.createdAt)],
+);
+
 export const tools = pgTable('tools', {
   slug: text('slug').primaryKey(),
   name: text('name').notNull(),
