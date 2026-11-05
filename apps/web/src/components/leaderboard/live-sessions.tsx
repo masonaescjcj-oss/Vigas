@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { connection } from 'next/server';
+import { cacheLife, cacheTag } from 'next/cache';
 import { timeAgo } from '@vigas/core';
 import { getModels, getRecentSessions } from '@/lib/data';
 import { Icon, OrgMark } from '../ui';
@@ -8,9 +8,11 @@ const ago = (t: string) => (t === 'now' ? 'just now' : `${t} ago`);
 
 const SOURCE: Record<string, string> = { api: 'API', chat: 'Vigas Chat', arena: 'Arena battle', retrobuild: 'RetroBuild' };
 
-/** Latest requests across Vigas, anonymized. Rendered at request time. */
+/** Latest requests across Vigas, anonymized. Re-rendered at most every 30 seconds. */
 export async function LiveSessions() {
-  await connection();
+  'use cache';
+  cacheLife({ stale: 30, revalidate: 30, expire: 300 });
+  cacheTag('sessions');
   const [sessions, models] = await Promise.all([getRecentSessions(), getModels()]);
   const byId = new Map(models.map((m) => [m.id, m]));
   const now = new Date();

@@ -27,6 +27,9 @@ const host = (url: string) => {
   }
 };
 
+/** Unknown params wait for the full render, so missing pages get a real 404 status. */
+export const ensureStatic = 'navigation';
+
 export async function generateStaticParams() {
   const tools = await getTools({ sort: 'votes' });
   return tools.map((t) => ({ slug: t.slug }));

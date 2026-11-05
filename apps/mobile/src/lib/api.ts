@@ -12,8 +12,11 @@ export const apiConfigured = API_URL.length > 0;
 /** Public site used for share links. */
 export const SITE_URL = 'https://vigas.ai';
 
-/** `expo/fetch` streams response bodies, which `api.chat` needs for token-by-token output. */
-export const api = new VigasApi({ baseUrl: API_URL, getToken, fetch: expoFetch });
+/**
+ * `expo/fetch` streams response bodies, which `api.chat` needs for token-by-token output. It's wrapped
+ * so it's never invoked as a method of the client (on web it is `window.fetch`, which rejects a foreign `this`).
+ */
+export const api = new VigasApi({ baseUrl: API_URL, getToken, fetch: (input, init) => expoFetch(input, init) });
 
 export { ApiError };
 

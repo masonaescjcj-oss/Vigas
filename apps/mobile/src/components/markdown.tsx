@@ -10,7 +10,7 @@ import { Span, T } from './text';
  * `>` quotes, and inline **bold**, *italic* and `code`. Anything else renders as plain text.
  */
 
-type Block =
+export type Block =
   | { kind: 'p'; text: string }
   | { kind: 'h'; level: 2 | 3; text: string }
   | { kind: 'ul' | 'ol'; items: string[] }

@@ -304,7 +304,7 @@ export default function ChatScreen() {
       ? `${intl(usage.tokens)} tokens · ${usdFromDollars(usage.cost)}`
       : modelInfo
         ? `${modelInfo.name} · pay per token`
-        : 'Best model per message · pay per token';
+        : 'Auto-routed · pay per token';
   const showVote = isArena && arena.phase === 'ready';
   const busy = streaming || arena.phase === 'loading';
 

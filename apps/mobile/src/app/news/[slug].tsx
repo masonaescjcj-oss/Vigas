@@ -174,11 +174,13 @@ function chartRows(a: Article, entries: LeaderboardEntry[]): ChartRow[] | null {
 
 function ArticleBody({ article: a, chart }: { article: Article; chart: ChartRow[] | null }) {
   const [main, tail] = splitTitle(a.title);
-  const blocks = parseBlocks(a.body).length;
+  // Chart after the first paragraph, pull quote after the second (or the last block of a short story).
+  const blocks = parseBlocks(a.body);
+  const paragraphs = blocks.flatMap((b, i) => (b.kind === 'p' ? [i] : []));
   const inserts: Record<number, ReactNode> = {};
-  if (chart) inserts[0] = <WinShareChart rows={chart} />;
+  if (chart) inserts[paragraphs[0] ?? 0] = <WinShareChart rows={chart} />;
   if (a.pullQuote) {
-    const at = Math.min(chart ? 2 : 1, Math.max(0, blocks - 1));
+    const at = paragraphs[1] ?? Math.max(0, blocks.length - 1);
     const existing = inserts[at];
     inserts[at] = (
       <>
@@ -380,7 +382,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     overflow: 'hidden',
   },
-  heroCaption: { position: 'absolute', left: GUTTER, bottom: 14 },
+  heroCaption: { position: 'absolute', left: GUTTER, top: 14 },
   quote: { gap: 8 },
   chart: {
     padding: 16,

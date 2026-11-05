@@ -20,6 +20,9 @@ const DESCRIPTIONS: Record<LeaderboardCategory, string> = {
   work: 'The best AI models for everyday knowledge work, ranked by real sessions and blind votes on Vigas.',
 };
 
+/** Unknown params wait for the full render, so missing pages get a real 404 status. */
+export const ensureStatic = 'navigation';
+
 export function generateStaticParams() {
   return LEADERBOARD_CATEGORIES.filter((c) => c.id !== 'overall').map((c) => ({ category: c.id }));
 }

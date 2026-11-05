@@ -96,8 +96,8 @@ export async function getLeaderboardData(category: LeaderboardCategory): Promise
 
 export async function getRecentSessions(): Promise<RecentSession[]> {
   'use cache';
-  // Short-lived: this block is meant to feel live, so it is resolved at request time.
-  cacheLife({ stale: 30, revalidate: 15, expire: 60 });
+  // Short-lived so the block feels live, but long enough (expire >= 5 min) to stay in static output.
+  cacheLife({ stale: 30, revalidate: 30, expire: 300 });
   cacheTag('sessions');
   return listRecentSessions(getDb(), { limit: 6 });
 }

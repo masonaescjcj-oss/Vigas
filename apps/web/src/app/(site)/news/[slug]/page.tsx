@@ -6,6 +6,9 @@ import { SiteHeader } from '@/components/site-header';
 import { getArticleBySlug, getSitemapData } from '@/lib/data';
 import { pageMetadata } from '@/lib/seo';
 
+/** Unknown params wait for the full render, so missing pages get a real 404 status. */
+export const ensureStatic = 'navigation';
+
 export async function generateStaticParams() {
   const { articles } = await getSitemapData();
   return articles.slice(0, 100).map((a) => ({ slug: a.slug }));

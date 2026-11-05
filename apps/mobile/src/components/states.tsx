@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { apiConfigured } from '@/lib/api';
 import { colors, GUTTER } from '@/theme';
 
 import { GhostButton, KeyButton } from './buttons';
@@ -14,9 +15,9 @@ export function OfflineNote({ onRetry, style }: { onRetry?: () => void; style?: 
     <Animated.View entering={FadeIn.duration(250)} style={[styles.offline, style]}>
       <Icon name="wifiOff" size={16} color={colors.ink3} />
       <T f="mono" size={12} color={colors.ink3} style={styles.flex}>
-        Offline · showing demo data
+        {apiConfigured ? 'Offline · showing demo data' : 'Demo mode · sample data'}
       </T>
-      {onRetry ? (
+      {onRetry && apiConfigured ? (
         <T f="sansMedium" size={13} color={colors.indigo} onPress={onRetry} accessibilityRole="button" style={styles.retry}>
           Retry
         </T>

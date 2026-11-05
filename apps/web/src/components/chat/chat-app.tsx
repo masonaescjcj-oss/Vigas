@@ -155,7 +155,7 @@ export function ChatApp({ models }: { models: ChatModel[] }) {
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const list = loadConvos();
-    /* eslint-disable react-hooks/set-state-in-effect -- one-time restore after hydration (localStorage and URL are client-only) */
+    // One-time restore after hydration (localStorage and the URL are client-only).
     setConvos(list);
     loaded.current = true;
     const m = sp.get('model');
@@ -163,7 +163,6 @@ export function ChatApp({ models }: { models: ChatModel[] }) {
     if (sp.get('mode') === 'arena') setMode('arena');
     const q = sp.get('q');
     if (q) setInput(q.slice(0, 4000));
-    /* eslint-enable react-hooks/set-state-in-effect */
     api
       .me()
       .then(({ user }) => setMe(user))
