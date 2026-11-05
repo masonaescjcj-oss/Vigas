@@ -6,5 +6,6 @@ export * from './catalog';
 export * from './content';
 export * from './leaderboard';
 export * from './web';
+export * from './admin';
 export { seedDatabase } from './seed';
 export { migrateDatabase } from './migrate';
