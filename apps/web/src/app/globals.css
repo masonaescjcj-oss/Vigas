@@ -375,6 +375,7 @@ h3 {
   color: var(--vg-ink);
 }
 .scroll-x {
+  position: relative;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -382,7 +383,58 @@ h3 {
   display: none;
 }
 .tablewrap {
+  /* position: relative keeps absolutely positioned children (e.g. .sr-only) inside the scroller */
+  position: relative;
   overflow-x: auto;
+}
+
+/* Home: numbers band */
+.stats {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.stats > div {
+  padding: 30px var(--vg-gutter);
+  border-right: 1px solid var(--vg-line);
+}
+.stats > div:last-child {
+  border-right: 0;
+}
+@media (max-width: 720px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stats > div:nth-child(2n) {
+    border-right: 0;
+  }
+  .stats > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--vg-line);
+  }
+}
+
+/* The colonnade chart */
+.colonnade .cn-name {
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--vg-ink2);
+  min-height: 30px;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.colonnade .cn-val {
+  font-size: 12px;
+}
+@media (max-width: 560px) {
+  .colonnade > li:nth-child(n + 7) {
+    display: none;
+  }
+  .colonnade .cn-name,
+  .colonnade .cn-val {
+    font-size: 11px;
+  }
 }
 
 details summary {

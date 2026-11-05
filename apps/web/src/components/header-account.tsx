@@ -17,7 +17,9 @@ export function HeaderAccount() {
         </Link>
       )}
       <Link href={signedIn ? '/dashboard#keys' : '/signup?next=/dashboard%23keys'} className="btn key hdr-cta">
-        Get <span className="long">API&nbsp;</span>key
+        <span>
+          Get <span className="long">API </span>key
+        </span>
       </Link>
     </>
   );

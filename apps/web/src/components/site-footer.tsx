@@ -129,7 +129,7 @@ export function SiteFooter() {
             color: 'transparent',
             WebkitTextStroke: '1px rgba(239,234,225,.14)',
             textAlign: 'center',
-            margin: '56px 0 22px',
+            margin: '56px 0 36px',
             userSelect: 'none',
           }}
         >
@@ -151,8 +151,11 @@ export function SiteFooter() {
           <span>© 2026 Vigas Labs · Made with sand &amp; signal</span>
           <span style={{ display: 'flex', gap: 14 }}>
             <span style={{ color: 'var(--vg-ink)' }}>English</span>
-            <span lang="fa" title="Persian edition coming soon">
-              فارسی · soon
+            <span title="Persian edition coming soon">
+              <span lang="fa" dir="rtl">
+                فارسی
+              </span>{' '}
+              · soon
             </span>
           </span>
         </div>

@@ -195,14 +195,14 @@ export default async function HomePage() {
 
         {/* ── Numbers ──────────────────────────────────────────────────── */}
         <section aria-label="Vigas in numbers" style={{ borderBottom: line }}>
-          <div style={{ maxWidth: 1320, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))' }}>
+          <div className="stats">
             {[
               [String(models.length), null, 'Models online'],
               [String(providers), null, 'Providers'],
               [sessionsNum, sessionsUnit, 'Sessions ranked'],
               ['$0', null, 'Markup on first $5'],
-            ].map(([big, unit, label], i) => (
-              <div key={label} style={{ padding: '30px var(--vg-gutter)', borderRight: i < 3 ? line : undefined }}>
+            ].map(([big, unit, label]) => (
+              <div key={label}>
                 <div className="sf" style={{ fontSize: 52, lineHeight: 1, letterSpacing: '-.02em' }}>
                   {big}
                   {unit && <em className="hi">{unit}</em>}
@@ -255,7 +255,7 @@ export default async function HomePage() {
                       key={m.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: 'minmax(0,1fr) 80px 80px',
+                        gridTemplateColumns: 'minmax(0,1fr) minmax(56px,auto) minmax(56px,auto)',
                         gap: 10,
                         alignItems: 'center',
                         padding: '11px 16px',

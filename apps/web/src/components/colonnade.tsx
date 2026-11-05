@@ -18,6 +18,7 @@ export function Colonnade({ entries, maxHeight = 230 }: { entries: LeaderboardEn
   return (
     <ol
       aria-label="Top models by win share"
+      className="colonnade"
       style={{ listStyle: 'none', margin: '26px 0 0', padding: 0, display: 'flex', alignItems: 'flex-end', gap: 'clamp(4px,1.2vw,10px)', flex: 1, minHeight: 340 }}
     >
       {entries.map((a, i) => {
@@ -30,7 +31,7 @@ export function Colonnade({ entries, maxHeight = 230 }: { entries: LeaderboardEn
               title={`${shortName(a.name)} · ${a.winRate.toFixed(2)}% win share`}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: 'var(--vg-ink)' }}
             >
-              <span className="mn" style={{ fontSize: 12, color: t.vc }}>
+              <span className="mn cn-val" style={{ color: t.vc }}>
                 {a.winRate.toFixed(2)}%
               </span>
               <span aria-hidden="true" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 2 }}>
@@ -48,7 +49,7 @@ export function Colonnade({ entries, maxHeight = 230 }: { entries: LeaderboardEn
               <span className="sf" aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, color: t.vc }}>
                 {ROMAN[i]}
               </span>
-              <span style={{ fontSize: 12, lineHeight: 1.25, textAlign: 'center', color: 'var(--vg-ink2)', minHeight: 30, overflowWrap: 'anywhere' }}>
+              <span className="cn-name">
                 <span className="sr-only">Rank {i + 1}: </span>
                 {shortName(a.name)}
               </span>
