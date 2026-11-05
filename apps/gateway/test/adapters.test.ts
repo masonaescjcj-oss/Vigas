@@ -145,12 +145,82 @@ describe('Anthropic adapter', () => {
     ]);
   });
 
-  it('treats Anthropic overload (529) as retryable and tool requests as unsupported', async () => {
+  it('treats Anthropic overload (529) as retryable and rejects non-function tools', async () => {
     const a = new AnthropicAdapter('anthropic', 'https://e', 'k', fakeFetch(() => Response.json({ error: { message: 'Overloaded' } }, { status: 529 })).f);
     await expect(a.complete(req, new AbortController().signal)).rejects.toMatchObject({ status: 529, retryable: true });
     const tools = new AnthropicAdapter('anthropic', 'https://e', 'k', fakeFetch(() => Response.json({})).f);
-    await expect(tools.complete({ ...req, params: { tools: [{}] } }, new AbortController().signal)).rejects.toMatchObject({
+    await expect(tools.complete({ ...req, params: { tools: [{ type: 'web_search' }] } }, new AbortController().signal)).rejects.toMatchObject({
       code: 'unsupported_parameter',
+      retryable: false,
     });
+  });
+});
+
+describe('Anthropic tool calling', () => {
+  const weatherTool = {
+    type: 'function',
+    function: { name: 'get_weather', description: 'Weather for a city', parameters: { type: 'object', properties: { city: { type: 'string' } } } },
+  };
+
+  it('sends tools and tool_choice, and replays tool calls and results', async () => {
+    const { f, calls } = fakeFetch(() => Response.json({ content: [{ type: 'text', text: 'Sunny' }], stop_reason: 'end_turn' }));
+    const a = new AnthropicAdapter('anthropic', 'https://e', 'k', f);
+    await a.complete(
+      {
+        ...req,
+        messages: [
+          { role: 'user', content: 'Weather in Tehran?' },
+          { role: 'assistant', content: null, tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'get_weather', arguments: '{"city":"Tehran"}' } }] },
+          { role: 'tool', tool_call_id: 'call_1', content: '24°C, clear' },
+        ],
+        params: { tools: [weatherTool], tool_choice: 'required' },
+      },
+      new AbortController().signal,
+    );
+    const body = calls[0]!.body as { tools: unknown; tool_choice: unknown; messages: unknown };
+    expect(body.tools).toEqual([{ name: 'get_weather', description: 'Weather for a city', input_schema: weatherTool.function.parameters }]);
+    expect(body.tool_choice).toEqual({ type: 'any' });
+    expect(body.messages).toEqual([
+      { role: 'user', content: [{ type: 'text', text: 'Weather in Tehran?' }] },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'call_1', name: 'get_weather', input: { city: 'Tehran' } }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'call_1', content: '24°C, clear' }] },
+    ]);
+  });
+
+  it('returns tool_use blocks as OpenAI tool_calls', async () => {
+    const { f } = fakeFetch(() =>
+      Response.json({
+        content: [{ type: 'tool_use', id: 'toolu_1', name: 'get_weather', input: { city: 'Shiraz' } }],
+        stop_reason: 'tool_use',
+        usage: { input_tokens: 20, output_tokens: 8 },
+      }),
+    );
+    const r = await new AnthropicAdapter('anthropic', 'https://e', 'k', f).complete({ ...req, params: { tools: [weatherTool] } }, new AbortController().signal);
+    expect(r.finishReason).toBe('tool_calls');
+    expect(r.content).toBeNull();
+    expect(r.toolCalls).toEqual([{ id: 'toolu_1', type: 'function', function: { name: 'get_weather', arguments: '{"city":"Shiraz"}' } }]);
+  });
+
+  it('streams tool calls as OpenAI tool_call deltas', async () => {
+    const { f } = fakeFetch(() =>
+      sse([
+        JSON.stringify({ type: 'message_start', message: { usage: { input_tokens: 15 } } }),
+        JSON.stringify({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }),
+        JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Checking.' } }),
+        JSON.stringify({ type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'toolu_9', name: 'get_weather', input: {} } }),
+        JSON.stringify({ type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"city":' } }),
+        JSON.stringify({ type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '"Tabriz"}' } }),
+        JSON.stringify({ type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 12 } }),
+      ]),
+    );
+    const events = await collect(new AnthropicAdapter('anthropic', 'https://e', 'k', f).stream({ ...req, params: { tools: [weatherTool] } }, new AbortController().signal));
+    expect(events).toEqual([
+      { type: 'delta', content: 'Checking.' },
+      { type: 'delta', toolCalls: [{ index: 0, id: 'toolu_9', type: 'function', function: { name: 'get_weather', arguments: '' } }] },
+      { type: 'delta', toolCalls: [{ index: 0, function: { arguments: '{"city":' } }] },
+      { type: 'delta', toolCalls: [{ index: 0, function: { arguments: '"Tabriz"}' } }] },
+      { type: 'finish', finishReason: 'tool_calls' },
+      { type: 'usage', usage: { promptTokens: 15, completionTokens: 12 } },
+    ]);
   });
 });
