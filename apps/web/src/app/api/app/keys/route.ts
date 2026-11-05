@@ -6,6 +6,14 @@ const MAX_KEYS = 25;
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Give the key a name.').max(80, 'Key names are at most 80 characters.'),
+  /** Optional monthly spending cap for this key, in micro-dollars ($1 – $100,000). Null or absent = no cap. */
+  monthlyLimitMicros: z
+    .number()
+    .int('monthlyLimitMicros must be an integer.')
+    .min(1_000_000, 'The smallest monthly limit is $1.')
+    .max(100_000_000_000, 'The largest monthly limit is $100,000.')
+    .nullable()
+    .optional(),
 });
 
 export async function POST(req: Request) {
@@ -20,6 +28,8 @@ export async function POST(req: Request) {
   if (existing.length >= MAX_KEYS) {
     return apiError(409, 'too_many_keys', `You can have up to ${MAX_KEYS} active keys. Revoke one first.`);
   }
-  const key = await createApiKey(db, auth.user.accountId, body.data.name);
+  const key = await createApiKey(db, auth.user.accountId, body.data.name, {
+    monthlyLimitMicros: body.data.monthlyLimitMicros ?? null,
+  });
   return privateJson(key, { status: 201 });
 }

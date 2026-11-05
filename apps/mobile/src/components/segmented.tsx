@@ -8,7 +8,7 @@ import { colors } from '@/theme';
 import { T } from './text';
 
 export interface SegmentedProps<K extends string> {
-  options: ReadonlyArray<{ id: K; label: string }>;
+  options: readonly { id: K; label: string }[];
   value: K;
   onChange: (id: K) => void;
   /** `light`: ink pill, dark text (Explore). `dark`: graphite pill, ink text (Chat mode). */
@@ -17,11 +17,11 @@ export interface SegmentedProps<K extends string> {
   fontSize?: number;
   /** Stretch segments to the container width (grid) or size to content (inline). */
   stretch?: boolean;
+  /** Inner padding around the pill. */
+  pad?: number;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 }
-
-const PAD = 3;
 
 /** Pill segmented control whose indicator slides between options. */
 export function Segmented<K extends string>({
@@ -32,6 +32,7 @@ export function Segmented<K extends string>({
   height = 42,
   fontSize = 15,
   stretch = true,
+  pad = 3,
   style,
   accessibilityLabel,
 }: SegmentedProps<K>) {
@@ -58,11 +59,11 @@ export function Segmented<K extends string>({
     <View
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
-      style={[styles.track, !stretch && styles.inline, style]}
+      style={[styles.track, { padding: pad }, style]}
     >
       <Animated.View
         pointerEvents="none"
-        style={[styles.pill, { height, backgroundColor: light ? colors.ink : colors.strong }, pill]}
+        style={[styles.pill, { top: pad, left: pad, height, backgroundColor: light ? colors.ink : colors.strong }, pill]}
       />
       {options.map((o, i) => {
         const selected = o.id === value;
@@ -99,11 +100,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line2,
     borderRadius: 999,
-    padding: PAD,
     backgroundColor: colors.bg2,
   },
-  inline: { alignSelf: 'flex-start' },
-  pill: { position: 'absolute', top: PAD, left: PAD, borderRadius: 999 },
+  pill: { position: 'absolute', borderRadius: 999 },
   seg: { alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
   flex: { flex: 1 },
   padded: { paddingHorizontal: 13 },

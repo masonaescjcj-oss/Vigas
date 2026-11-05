@@ -50,7 +50,7 @@ export interface IconProps {
 
 export function Icon({ name, size = 22, color = colors.ink, fill = 'none', strokeWidth = 1.8 }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
+    <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path
         d={ICONS[name]}
         fill={fill}
@@ -66,7 +66,7 @@ export function Icon({ name, size = 22, color = colors.ink, fill = 'none', strok
 /** Filled square used by the "stop generating" button. */
 export function StopGlyph({ size = 14, color = colors.onOrange }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 14 14" accessible={false}>
+    <Svg width={size} height={size} viewBox="0 0 14 14">
       <Rect x={1} y={1} width={12} height={12} rx={2.5} fill={color} />
     </Svg>
   );
@@ -75,7 +75,7 @@ export function StopGlyph({ size = 14, color = colors.onOrange }: { size?: numbe
 /** The Vigas colonnade mark. */
 export function LogoMark({ size = 22, color = colors.orange }: { size?: number; color?: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}>
+    <Svg width={size} height={size} viewBox="0 0 24 24">
       <Rect x={2.5} y={3} width={19} height={2.6} rx={0.6} fill={color} />
       <Path d="M4 6.4h16l-1 1.6H5z" fill={color} />
       <Rect x={5.2} y={9} width={2.4} height={9} rx={0.3} fill={color} />

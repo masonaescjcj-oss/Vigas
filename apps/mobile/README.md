@@ -1,56 +1,51 @@
-# Welcome to your Expo app 👋
+# Vigas for Android
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native + Expo (SDK 58) app for Vigas: Home, Explore (news and tools), Vigas Chat with Arena, Ranks and Wallet.
+The visual spec is `design/premium/Android*.dc.html`.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run
 
 ```bash
-npm run reset-project
+cp .env.example .env        # EXPO_PUBLIC_API_URL=http://10.0.2.2:3000 (the host machine, seen from the emulator)
+npx expo start              # press "a" for Android; press "s" to switch between a dev build and Expo Go
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+The app talks to the website's `/api/app/*` and `/api/auth/*` routes (`apps/web`) through `@vigas/api-client`.
+Every screen falls back to the demo data in `@vigas/core/seed` when the server is unreachable or
+`EXPO_PUBLIC_API_URL` is empty, so the app always renders. Signing in, chat, Arena, tool votes and the wallet
+need the server.
 
-### Other setup steps
+## Checks
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx tsc --noEmit
+npx expo lint
+npx expo-doctor
+npx expo export --platform android --output-dir /tmp/vigas-android-export   # proves Metro can bundle the monorepo
+```
 
-## Learn more
+## Build (EAS)
 
-To learn more about developing your project with Expo, look at the following resources:
+`eas.json` has three profiles: `development` (dev client APK, API on `10.0.2.2:3000`), `preview` (internal APK)
+and `production` (Play Store AAB, version code auto-incremented remotely). Run from this folder:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx eas-cli@latest build --platform android --profile preview
+```
 
-## Join the community
+`preview` and `production` point `EXPO_PUBLIC_API_URL` at `https://vigas.ai`; change it in `eas.json` if the API lives elsewhere.
 
-Join our community of developers creating universal apps.
+## Layout
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `src/app` — routes: `(tabs)/` (index, explore, chat, ranks, wallet), `news/[slug]` (article), `sign-in`.
+- `src/components` — design-system pieces: text, icons (SVG paths from the design files), key buttons, chips,
+  segmented control, fluted pillars and podium, typographic news covers, sheet, skeletons, tab bar.
+- `src/lib` — API client and session (token in SecureStore), keyed data store with seed fallback, haptics, formatting.
+
+## Known gaps
+
+- Saved stories are kept in memory only.
+- No clipboard module is installed, so keys and replies are shared through the Android share sheet (the new key is
+  also selectable text).
+- Voice input and attachments from the design are not implemented.
+- Icons are still the Expo template images.

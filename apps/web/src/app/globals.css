@@ -642,7 +642,7 @@ details[open] .pm {
 .prose p {
   margin: 0 0 1.3em;
 }
-.prose > .sec:first-child > p:first-child::first-letter {
+.prose > .sec:first-child > .sec-html > p:first-child::first-letter {
   float: left;
   font-size: 4.6em;
   line-height: 0.8;

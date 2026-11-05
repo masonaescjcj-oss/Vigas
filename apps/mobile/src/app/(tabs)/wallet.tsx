@@ -2,7 +2,7 @@ import { blendedCost, formatCompact, quoteTopup, timeAgo, type ApiKeySummary, ty
 import { seedModels } from '@vigas/core/seed';
 import { useScrollToTop } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, TextInput, View, type ScrollViewInstance } from 'react-native';
 import Animated, { Easing, FadeInDown, LinearTransition, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -40,7 +40,7 @@ export default function WalletScreen() {
   const insets = useSafeAreaInsets();
   const { token, user, signOut } = useSession();
   const wallet = useWallet();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
 
   return (

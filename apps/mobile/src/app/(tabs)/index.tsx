@@ -1,7 +1,7 @@
 import type { NewsListItem, ToolItem, WalletResponse } from '@vigas/core';
 import { router, useScrollToTop } from 'expo-router';
 import { useRef } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,7 +17,7 @@ import { OfflineNote } from '@/components/states';
 import { Heading, Label, Span, T } from '@/components/text';
 import { api } from '@/lib/api';
 import { fallbackHome } from '@/lib/fallback';
-import { agoLabel, dayLabel, greeting, intl, pct, pillarName, shortTitle, usd } from '@/lib/format';
+import { agoLabel, dayLabel, greeting, intl, navStamp, pct, pillarName, shortTitle, usd } from '@/lib/format';
 import { useRemote } from '@/lib/remote';
 import { useSession, userInitials } from '@/lib/session';
 import { useWallet } from '@/lib/wallet';
@@ -28,7 +28,7 @@ const CARD_W = 290;
 const CARD_GAP = 10;
 
 const openChat = (prompt?: string) =>
-  router.navigate({ pathname: '/chat', params: { prompt: prompt ?? '', mode: 'chat', t: String(Date.now()) } });
+  router.navigate({ pathname: '/chat', params: { prompt: prompt ?? '', mode: 'chat', t: navStamp() } });
 
 const enter = (i: number) => FadeInDown.duration(420).delay(40 + i * 55);
 
@@ -37,7 +37,7 @@ export default function HomeScreen() {
   const { token, user } = useSession();
   const home = useRemote('home', () => api.home(), { fallback: fallbackHome });
   const wallet = useWallet();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
 
   const feed = home.data;
@@ -69,7 +69,7 @@ export default function HomeScreen() {
             icon="search"
             accessibilityLabel="Search"
             style={styles.pushRight}
-            onPress={() => router.navigate({ pathname: '/explore', params: { focus: '1', t: String(Date.now()) } })}
+            onPress={() => router.navigate({ pathname: '/explore', params: { focus: '1', t: navStamp() } })}
           />
           <Pressable
             accessibilityRole="button"
@@ -144,7 +144,7 @@ export default function HomeScreen() {
         <Animated.View entering={enter(3)} style={styles.section}>
           <View style={styles.sectionHead}>
             <Heading size={26}>Today in AI</Heading>
-            <SeeAll label="See all" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'news', t: String(Date.now()) } })} />
+            <SeeAll label="See all" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'news', t: navStamp() } })} />
           </View>
           {feed ? (
             <FlatList
@@ -195,7 +195,7 @@ export default function HomeScreen() {
         <Animated.View entering={enter(5)} style={styles.tools}>
           <View style={[styles.sectionHead, styles.noPad, { marginBottom: 6 }]}>
             <Heading>Trending tools</Heading>
-            <SeeAll label="Explore" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: String(Date.now()) } })} />
+            <SeeAll label="Explore" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })} />
           </View>
           {feed
             ? feed.trendingTools.slice(0, 3).map((t) => <ToolRow key={t.slug} tool={t} />)
@@ -249,7 +249,7 @@ function ToolRow({ tool }: { tool: ToolItem }) {
   return (
     <PressableScale
       accessibilityLabel={`${tool.name}. ${tool.tagline}. ${tool.votes} upvotes`}
-      onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: String(Date.now()) } })}
+      onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })}
       style={styles.toolRow}
       scaleTo={0.985}
     >

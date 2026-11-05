@@ -2,7 +2,7 @@ import { NEWS_CATEGORIES, TOOL_CATEGORIES, type NewsCategory, type NewsListItem,
 import { router, useLocalSearchParams, useScrollToTop } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,8 +35,8 @@ const SEGMENTS = [
   { id: 'news', label: 'News' },
   { id: 'tools', label: 'Tools' },
 ] as const;
-const TOOL_CHIPS = [{ id: 'All', label: 'All' }, ...TOOL_CATEGORIES.map((c) => ({ id: c, label: c }))];
-const NEWS_CHIPS = [{ id: 'All', label: 'All' }, ...NEWS_CATEGORIES.map((c) => ({ id: c, label: c }))];
+const TOOL_CHIPS: { id: 'All' | ToolCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...TOOL_CATEGORIES.map((c) => ({ id: c, label: c }))];
+const NEWS_CHIPS: { id: 'All' | NewsCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...NEWS_CATEGORIES.map((c) => ({ id: c, label: c }))];
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
@@ -57,7 +57,7 @@ export default function ExploreScreen() {
     if (params.seg === 'news' || params.seg === 'tools') setSeg(params.seg);
   }
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   useEffect(() => {
     if (!params.focus || !params.t) return;
     const id = setTimeout(() => inputRef.current?.focus(), 320);
@@ -116,6 +116,7 @@ export default function ExploreScreen() {
           value={seg}
           onChange={(s) => setSeg(s)}
           accessibilityLabel="Section"
+          pad={4}
           style={styles.segments}
         />
         <View style={styles.search}>
@@ -338,7 +339,7 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   listContent: { paddingBottom: 28, flexGrow: 1 },
   head: { paddingHorizontal: GUTTER },
-  segments: { marginTop: 18, padding: 4 },
+  segments: { marginTop: 18 },
   search: {
     marginTop: 12,
     height: 52,

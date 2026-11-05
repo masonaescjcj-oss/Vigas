@@ -25,13 +25,13 @@ import { OfflineNote } from '@/components/states';
 import { T } from '@/components/text';
 import { api } from '@/lib/api';
 import { fallbackLeaderboard } from '@/lib/fallback';
-import { baseModelName, intl, pct, pillarName, usd } from '@/lib/format';
+import { baseModelName, intl, navStamp, pct, pillarName, usd } from '@/lib/format';
 import { useRemote } from '@/lib/remote';
 import { colors, GUTTER } from '@/theme';
 
-const openArena = () => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: String(Date.now()) } });
+const openArena = () => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: navStamp() } });
 const openModel = (modelId: string) =>
-  router.navigate({ pathname: '/chat', params: { mode: 'chat', model: modelId, t: String(Date.now()) } });
+  router.navigate({ pathname: '/chat', params: { mode: 'chat', model: modelId, t: navStamp() } });
 
 export default function RanksScreen() {
   const insets = useSafeAreaInsets();
@@ -118,7 +118,7 @@ export default function RanksScreen() {
                 <SkeletonRow key={i} square={34} />
               ))}
             </View>
-          ) : null
+          ) : undefined
         }
         ListFooterComponent={<ArenaCta />}
         contentContainerStyle={styles.listContent}

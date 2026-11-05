@@ -1,7 +1,18 @@
 import { AUTO_MODEL_ID, type ArenaBattleResponse, type ArenaVote, type ArenaVoteResponse } from '@vigas/core';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  TextInput,
+  View,
+  type ScrollViewInstance,
+  type TextInputInstance,
+} from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -82,9 +93,9 @@ export default function ChatScreen() {
     if (params.prompt) setDraft(params.prompt);
   }
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const listRef = useRef<FlatList<ChatMsg>>(null);
-  const arenaRef = useRef<ScrollView>(null);
+  const arenaRef = useRef<ScrollViewInstance>(null);
   const abortRef = useRef<AbortController | null>(null);
   const atBottom = useRef(true);
 
@@ -189,7 +200,7 @@ export default function ChatScreen() {
 
   const sendChat = (text: string) => {
     const user: ChatMsg = { id: uid(), role: 'user', content: text, status: 'done' };
-    const assistant: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming' };
+    const assistant: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming', requested: model };
     const history = [...messages.filter((m) => m.role === 'user' || (m.status === 'done' && m.content)), user];
     atBottom.current = true;
     setMessages((prev) => [...prev, user, assistant]);
@@ -205,7 +216,7 @@ export default function ChatScreen() {
     const idx = messages.findIndex((m) => m.id === assistantId);
     if (idx < 1) return;
     const history = messages.slice(0, idx).filter((m) => m.role === 'user' || (m.status === 'done' && m.content));
-    const fresh: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming' };
+    const fresh: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming', requested: model };
     haptics.tap();
     setMessages((prev) => [...prev.slice(0, idx), fresh]);
     void stream(fresh.id, history);
@@ -330,7 +341,7 @@ export default function ChatScreen() {
             style={styles.flex}
             contentContainerStyle={styles.thread}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
+            keyboardDismissMode="on-drag"
             onContentSizeChange={() => arenaRef.current?.scrollToEnd({ animated: true })}
           >
             <Label color={colors.orangeText}>Arena · blind test</Label>
@@ -385,7 +396,11 @@ export default function ChatScreen() {
             style={styles.flex}
             contentContainerStyle={[styles.thread, messages.length === 0 && styles.grow]}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
+            keyboardDismissMode="on-drag"
+            // The keyboard shrinks the list; keep the latest message in view.
+            onLayout={() => {
+              if (atBottom.current) listRef.current?.scrollToEnd({ animated: false });
+            }}
             onScroll={(e) => {
               const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
               atBottom.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
@@ -401,7 +416,6 @@ export default function ChatScreen() {
               ) : (
                 <AssistantMessage
                   msg={item}
-                  requested={model}
                   canAct={!streaming}
                   costLabel={item.costUsd !== null && item.costUsd !== undefined ? usdFromDollars(item.costUsd) : null}
                   onShare={() => void Share.share({ message: item.content }).catch(() => undefined)}

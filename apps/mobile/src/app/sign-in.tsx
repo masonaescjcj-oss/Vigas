@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, type ReactNode, type Ref } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,8 +33,8 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const signup = mode === 'signup';
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -102,7 +102,18 @@ export default function SignInScreen() {
             </Animated.View>
           ) : null}
 
-          <Segmented options={MODES} value={mode} onChange={(m) => { setMode(m); setError(null); }} style={styles.modes} height={40} fontSize={14} accessibilityLabel="Sign in or create an account" />
+          <Segmented
+            options={MODES}
+            value={mode}
+            onChange={(m) => {
+              setMode(m);
+              setError(null);
+            }}
+            style={styles.modes}
+            height={40}
+            fontSize={14}
+            accessibilityLabel="Sign in or create an account"
+          />
 
           <Animated.View layout={LinearTransition.duration(220)} style={styles.form}>
             {signup ? (
@@ -190,7 +201,7 @@ export default function SignInScreen() {
 interface FieldProps extends TextInputProps {
   label: string;
   trailing?: ReactNode;
-  ref?: Ref<TextInput>;
+  ref?: Ref<TextInputInstance>;
 }
 
 function Field({ label, trailing, style, ref, ...input }: FieldProps) {

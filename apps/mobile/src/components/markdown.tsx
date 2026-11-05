@@ -116,7 +116,7 @@ export function Markdown({ text, variant = 'chat', dropCap = false, inserts, col
     lh: article ? 1.62 : 1.55,
     color: color ?? (article ? colors.body : colors.ink),
   };
-  let usedDropCap = false;
+  const capIndex = dropCap && article ? blocks.findIndex((b) => b.kind === 'p' && b.text.length > 1) : -1;
 
   return (
     <View style={article ? styles.articleGap : styles.chatGap}>
@@ -174,8 +174,7 @@ export function Markdown({ text, variant = 'chat', dropCap = false, inserts, col
             );
             break;
           default: {
-            const cap = dropCap && article && !usedDropCap && b.text.length > 1;
-            if (cap) usedDropCap = true;
+            const cap = i === capIndex;
             node = cap ? (
               <T {...body}>
                 <Span f="serif" color={colors.orange} style={styles.dropCap}>

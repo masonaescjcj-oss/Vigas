@@ -39,7 +39,7 @@ export function Chip({ label, selected = false, onPress, height = 40, role = 'bu
 }
 
 export interface ChipRowProps<K extends string> {
-  options: ReadonlyArray<{ id: K; label: string }>;
+  options: readonly { id: K; label: string }[];
   value: K;
   onChange: (id: K) => void;
   style?: StyleProp<ViewStyle>;

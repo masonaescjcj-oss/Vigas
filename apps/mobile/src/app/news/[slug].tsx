@@ -27,7 +27,7 @@ import { EmptyState, OfflineNote } from '@/components/states';
 import { Heading, Label, Span, T } from '@/components/text';
 import { api, SITE_URL } from '@/lib/api';
 import { fallbackArticle, fallbackLeaderboard, fallbackModels } from '@/lib/fallback';
-import { baseModelName, pct, shortDate, splitTitle } from '@/lib/format';
+import { baseModelName, navStamp, pct, shortDate, splitTitle } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { useRemote } from '@/lib/remote';
 import { toggleSaved, useIsSaved } from '@/lib/saved';
@@ -69,7 +69,7 @@ export default function ArticleScreen() {
         mode: 'chat',
         model: mentioned?.id ?? '',
         prompt: mentioned ? `What is ${mentioned.name} best at, and what does it cost?` : `Summarize this story for me: “${a.title}”`,
-        t: String(Date.now()),
+        t: navStamp(),
       },
     });
   };
@@ -136,7 +136,6 @@ export default function ArticleScreen() {
           <KeyButton label="Try in Chat" onPress={openChat} />
         </Animated.View>
       ) : null}
-
     </View>
   );
 }
@@ -184,14 +183,14 @@ function ArticleBody({ article: a, chart }: { article: Article; chart: ChartRow[
     inserts[at] = (
       <>
         {existing}
-      <View style={styles.quote}>
-        <T f="serifItalic" size={25} lh={1.28} color={colors.sand}>
-          “{a.pullQuote.text}”
-        </T>
-        <T f="mono" size={12} color={colors.ink3}>
-          — {a.pullQuote.cite}
-        </T>
-      </View>
+        <View style={styles.quote}>
+          <T f="serifItalic" size={25} lh={1.28} color={colors.sand}>
+            “{a.pullQuote.text}”
+          </T>
+          <T f="mono" size={12} color={colors.ink3}>
+            — {a.pullQuote.cite}
+          </T>
+        </View>
       </>
     );
   }

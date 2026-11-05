@@ -11,7 +11,7 @@ import { T } from './text';
 export function DotGrid({ spacing = 12, opacity = 0.1 }: { spacing?: number; opacity?: number }) {
   const id = `dots${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
-    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" accessible={false} pointerEvents="none">
+    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
       <Defs>
         <Pattern id={id} patternUnits="userSpaceOnUse" width={spacing} height={spacing}>
           <Circle cx={spacing / 2} cy={spacing / 2} r={1} fill={colors.ink} fillOpacity={opacity} />

@@ -73,3 +73,8 @@ export function splitTitle(title: string): [string, string | null] {
   if (i < 12) return [title, null];
   return [title.slice(0, i), title.slice(i + 3)];
 }
+
+/** Unique value for the `t` route param, so following the same link twice re-applies its params. */
+export function navStamp(): string {
+  return Date.now().toString(36);
+}

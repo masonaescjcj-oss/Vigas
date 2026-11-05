@@ -26,6 +26,8 @@ export interface ChatMsg {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** Model the user asked for when the message was sent (may be `vigas/auto`). */
+  requested?: string;
   /** Model that actually answered (from the stream). */
   model?: string | null;
   costUsd?: number | null;
@@ -56,7 +58,6 @@ export function AssistantMark() {
 
 export interface AssistantMessageProps {
   msg: ChatMsg;
-  requested: string;
   costLabel: string | null;
   onShare: () => void;
   onRegenerate: () => void;
@@ -64,7 +65,8 @@ export interface AssistantMessageProps {
   canAct: boolean;
 }
 
-export function AssistantMessage({ msg, requested, costLabel, onShare, onRegenerate, onArena, canAct }: AssistantMessageProps) {
+export function AssistantMessage({ msg, costLabel, onShare, onRegenerate, onArena, canAct }: AssistantMessageProps) {
+  const requested = msg.requested ?? AUTO_MODEL_ID;
   const routed = msg.model ? modelSlug(msg.model) : null;
   const done = msg.status === 'done' || msg.status === 'stopped';
   return (
@@ -187,7 +189,7 @@ export function ArenaCard({ side, index }: { side: ArenaSideView; index: number 
 }
 
 export function VoteBar({ onVote, busy, chosen }: { onVote: (v: ArenaVote) => void; busy: boolean; chosen: ArenaVote | null }) {
-  const opts: Array<{ v: ArenaVote; label: string; narrow?: boolean }> = [
+  const opts: { v: ArenaVote; label: string; narrow?: boolean }[] = [
     { v: 'a', label: 'A is better' },
     { v: 'tie', label: 'Tie', narrow: true },
     { v: 'b', label: 'B is better' },
@@ -228,7 +230,7 @@ export interface ModelPickerProps {
 }
 
 export function ModelPicker({ visible, onClose, models, value, onPick }: ModelPickerProps) {
-  const data: Array<ModelListItem | null> = [null, ...models];
+  const data: (ModelListItem | null)[] = [null, ...models];
   return (
     <Sheet visible={visible} onClose={onClose} title="Choose a model" maxHeight="80%">
       <FlatList
