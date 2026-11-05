@@ -15,10 +15,9 @@ export class MockAdapter implements ProviderAdapter {
   private reply(req: UpstreamRequest): string {
     const last = [...req.messages].reverse().find((m) => m.role === 'user');
     const asked = messageText(last?.content).replace(/\s+/g, ' ').trim().slice(0, 120);
-    return (
-      `[mock ${this.slug} · ${req.upstreamModel}] This is a development response. ` +
-      `Set ${this.slug.toUpperCase()}_API_KEY to get real answers. You asked: “${asked}”`
-    );
+    // No model or provider name in the text: Arena battles must stay blind even in development.
+    // The X-Vigas-Provider / X-Vigas-Model headers still say who served it.
+    return `[mock] This is a development response. Add provider API keys to get real answers. You asked: “${asked}”`;
   }
 
   private check() {

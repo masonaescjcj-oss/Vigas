@@ -137,7 +137,9 @@ describe('chat completions', () => {
     expect(events.at(-1)).toBe('[DONE]');
     const chunks = events.slice(0, -1).map((e) => JSON.parse(e) as { choices: Array<{ delta: { content?: string }; finish_reason: string | null }>; usage?: { cost: number } });
     const content = chunks.map((c) => c.choices[0]?.delta.content ?? '').join('');
-    expect(content).toContain('[mock openai · gpt-6.1-terra]');
+    expect(content).toContain('[mock] This is a development response.');
+    expect(content).not.toMatch(/openai|terra/i); // stays blind for Arena
+    expect(res.headers.get('x-vigas-model')).toBe('openai/gpt-6.1-terra');
     expect(chunks.some((c) => c.choices[0]?.finish_reason === 'stop')).toBe(true);
     expect(chunks.at(-1)!.usage!.cost).toBeGreaterThan(0);
     // settlement happens before [DONE]
