@@ -43,6 +43,8 @@ can see and revoke it in their Vigas dashboard (it's named "RetroBuild (Sign in 
 
 ## Status
 
-- Done: code storage and exchange (`packages/db/src/oauth.ts`), `POST /v1/auth/keys` on the gateway, tests.
-- To do: the consent page `/auth` on the website (sign in if needed → show app name, callback host
-  and limit → Approve calls `createAuthCode` and redirects to `redirectUrl`).
+- Done on the Vigas side: the consent page `/auth` (signs the user in if needed, shows the app,
+  callback host and limit; Cancel returns `?error=access_denied`), `POST /api/auth/authorize`
+  (cookie session only), code storage and exchange (`packages/db/src/oauth.ts`) and
+  `POST /v1/auth/keys` on the gateway. Tested end to end, including the capped key.
+- To do on the RetroBuild side: the "Sign in with Vigas" button and steps 1, 3 and 4 above.

@@ -42,6 +42,10 @@ Workspace packages export TypeScript source (no build step); the gateway bundles
 - `pnpm dev`, `pnpm typecheck`, `pnpm test`, `pnpm build`. Tests need Postgres: db tests use `vigas_test`, gateway tests create `vigas_gateway_test`; both reset their schema.
 - Schema change: edit `packages/db/src/schema.ts`, then `pnpm db:generate` and commit the new SQL in `packages/db/drizzle/`.
 - New API key: `pnpm --filter @vigas/db create-key <email> [name]`.
+- News pipeline: `pnpm --filter @vigas/db ingest-news` (feeds in `NEWS_FEEDS`; drafting needs `NEWS_DRAFT_ACCOUNT_ID` + `INTERNAL_SERVICE_TOKEN`).
+- Admin UI at `/admin` for users with `role = 'admin'`. The "Sign in with Vigas" consent page is `/auth` (see `docs/SIGN-IN-WITH-VIGAS.md`).
+- Other test databases: `vigas_admin_test` and `vigas_news_test` (db package), created and reset by their tests.
+- Web typecheck is `next typegen && tsc --noEmit`. Pages that read the session must `await connection()` before using the time (see `apps/web/src/lib/auth.ts`).
 
 ## Rules of thumb
 

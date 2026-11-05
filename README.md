@@ -56,7 +56,14 @@ Without provider keys (local development) every model is answered by a clearly l
 | `pnpm typecheck` / `pnpm test` / `pnpm build` | Checks across the monorepo (tests need Postgres) |
 | `pnpm db:generate` | Create a migration after editing `packages/db/src/schema.ts` |
 | `pnpm leaderboard:compute` | Recompute leaderboards from Arena votes (run on a schedule) |
+| `pnpm --filter @vigas/db ingest-news` | Collect RSS/Atom items (`NEWS_FEEDS`) and write AI drafts for review (run on a schedule) |
 | `pnpm --filter @vigas/mobile start` | Start the Expo dev server for the Android app |
+
+## Content and partners
+
+- **Admin:** `/admin` (users with `role = 'admin'`; the seeded demo user is one). Write and publish news with a markdown preview, review AI drafts from the news inbox, and manage the tools directory.
+- **News pipeline:** feeds → `news_items` → "Draft with AI" (or the `ingest-news` job) → unpublished draft → an editor publishes it. Drafts are never published automatically.
+- **Sign in with Vigas:** apps such as RetroBuild get an API key on the user's account through a PKCE consent page at `/auth`. Integration guide: [docs/SIGN-IN-WITH-VIGAS.md](docs/SIGN-IN-WITH-VIGAS.md).
 
 ## How money works
 
