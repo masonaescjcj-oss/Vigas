@@ -49,6 +49,13 @@ export function T({ f = 'sans', size = 15, color = colors.ink, lh, ls, align, up
   );
 }
 
+/**
+ * Inline span inside a `T`: changes face/color but inherits size and line height from its parent.
+ */
+export function Span({ f, color, style, ...rest }: TextProps & { f?: FontName; color?: string }) {
+  return <Text {...rest} style={[f ? { fontFamily: fonts[f] } : null, color ? { color } : null, style]} />;
+}
+
 /** Small uppercase mono label (`.lbl` in the design). */
 export function Label({ color = colors.ink3, ...rest }: TProps) {
   return <T f="monoMedium" size={12} lh={1.3} ls={0.12} upper color={color} {...rest} />;
