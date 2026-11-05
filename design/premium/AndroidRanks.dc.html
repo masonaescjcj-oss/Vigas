@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigas Android — Leaderboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.lbl{font:500 12px/1.3 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#958E84}
+.ib{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:#EFEAE1;display:grid;place-items:center;cursor:pointer}
+.hs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 20px}
+.hs::-webkit-scrollbar{display:none}
+.led{width:7px;height:7px;border-radius:50%;background:#6FCF73;box-shadow:0 0 0 3px rgba(111,207,115,.2);animation:pulse 2.2s infinite;display:inline-block}
+@keyframes pulse{50%{opacity:.4}}
+</style>
+</helmet>
+<div style="width:412px;height:915px;position:relative;overflow:hidden;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased">
+  <div style="height:100%;overflow-y:auto;padding-bottom:104px">
+    <header style="padding:14px 12px 0 20px;display:flex;align-items:flex-start">
+      <div style="flex:1">
+        <h1 class="sf" style="font-size:44px;line-height:1;letter-spacing:-.02em;margin:10px 0 6px">Ranks</h1>
+        <div class="mn" style="font-size:12px;color:#A9A298;display:flex;align-items:center;gap:8px"><span class="led"></span>373,440,550 sessions</div>
+      </div>
+      <button type="button" class="ib" aria-label="How we rank"><svg class="i" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.5"></path></svg></button>
+    </header>
+
+    <div role="tablist" aria-label="Category" class="hs" style="margin-top:18px">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="6">
+        <button type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}" style="flex-shrink:0;min-height:40px;padding:0 15px;border-radius:999px;font:500 14px Inter,sans-serif;cursor:pointer;background:{{t.bg}};color:{{t.color}};border:1px solid {{t.bd}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+
+    <section aria-label="Top three" style="margin:18px 20px 0;padding:18px 12px 0;border-radius:24px;background:#1C1B18;border:1px solid rgba(239,234,225,.075);overflow:hidden">
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <sc-for list="{{podium}}" as="p" hint-placeholder-count="3">
+          <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center">
+            <span aria-hidden="true" style="width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font:400 18px 'Instrument Serif',serif;background:{{p.tint}};color:{{p.c}}">{{p.l}}</span>
+            <b style="font-weight:500;font-size:13px;line-height:1.2;margin-top:6px;min-height:32px">{{p.name}}</b>
+            <span class="sf" style="font-size:28px;line-height:1;margin:2px 0 10px;color:{{p.vc}}">{{p.win}}</span>
+            <span aria-hidden="true" style="display:flex;flex-direction:column;align-items:center;width:100%;gap:2px"><span style="display:block;width:86%;height:8px;border-radius:2px;background:{{p.fill}}"></span><span style="display:block;width:62%;height:{{p.h}}px;background:repeating-linear-gradient(90deg,{{p.fill}} 0 6px,{{p.groove}} 6px 7px)"></span></span>
+            <span style="display:grid;place-items:center;width:100%;height:42px;background:#24221F;border-top:1px solid rgba(239,234,225,.14);border-radius:5px 5px 0 0"><span class="sf" style="font-size:24px;line-height:1;color:{{p.vc}}">{{p.rn}}</span></span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="Full ranking" style="margin:16px 20px 0">
+      <sc-for list="{{rows}}" as="a" hint-placeholder-count="8">
+        <a href="AndroidChat.dc.html" style="display:grid;grid-template-columns:28px 34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid rgba(239,234,225,.06);min-height:64px">
+          <span class="mn" style="font-size:14px;font-weight:600;color:#958E84">{{a.rank}}</span>
+          <span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:400 16px 'Instrument Serif',serif;background:{{a.tint}};color:{{a.c}}">{{a.l}}</span>
+          <span style="min-width:0"><b style="display:block;font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{a.name}}</b><span style="display:block;height:4px;border-radius:2px;background:#24221F;margin-top:7px;overflow:hidden"><span style="display:block;height:100%;width:{{a.pct}}%;background:#5B8FD6;border-radius:2px"></span></span></span>
+          <span style="text-align:right"><span class="mn" style="display:block;font-size:14px;color:#6FCF73">{{a.win}}</span><span class="mn" style="display:block;font-size:12px;color:#958E84">{{a.cost}}/task</span></span>
+        </a>
+      </sc-for>
+    </section>
+
+    <a href="AndroidChat.dc.html" style="margin:16px 20px 0;display:flex;align-items:center;gap:12px;padding:16px;border-radius:20px;background:rgba(255,106,26,.1);border:1px solid rgba(255,106,26,.35)">
+      <span style="width:44px;height:44px;border-radius:13px;background:#FF6A1A;color:#160903;display:grid;place-items:center;flex-shrink:0"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 4h7v16H4zM13 4h7v16h-7z"></path></svg></span>
+      <span style="flex:1"><b style="display:block;font-weight:600">Vote in the Arena</b><span style="font-size:13px;color:#A9A298">Compare two hidden models. Shape the ranks.</span></span>
+      <svg class="i" viewBox="0 0 24 24" width="20" height="20" style="color:#FF8A4C" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+    </a>
+  </div>
+
+  <nav aria-label="Main" style="position:absolute;left:0;right:0;bottom:0;height:88px;background:rgba(23,22,20,.94);border-top:1px solid rgba(239,234,225,.075);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:10px 4px 18px">
+    <sc-for list="{{nav}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" aria-current="{{t.cur}}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:500;color:{{t.color}}">
+        <span style="width:60px;height:32px;border-radius:16px;display:grid;place-items:center;background:{{t.bg}}"><svg class="i" viewBox="0 0 24 24" width="22" height="22" style="color:{{t.ic}}" aria-hidden="true"><path d="{{t.icon}}"></path></svg></span>{{t.label}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 0 }; }
+  renderVals() {
+    const s = this.state;
+    const ACTIVE = 'ranks';
+    const nav = [
+      ['home', 'Home', 'AndroidHome.dc.html', 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
+      ['explore', 'Explore', 'AndroidExplore.dc.html', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5z'],
+      ['chat', 'Chat', 'AndroidChat.dc.html', 'M4 5h16v11H9l-5 4z'],
+      ['ranks', 'Ranks', 'AndroidRanks.dc.html', 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4v3h-4z'],
+      ['wallet', 'Wallet', 'AndroidWallet.dc.html', 'M4 7h15a1 1 0 0 1 1 1v11H5a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h11v3M16 13h1']
+    ].map(([id, label, href, icon]) => ({ label, href, icon, cur: id === ACTIVE ? 'page' : 'false', color: id === ACTIVE ? '#EFEAE1' : '#958E84', ic: id === ACTIVE ? '#FF6A1A' : '#A9A298', bg: id === ACTIVE ? 'rgba(255,106,26,.16)' : 'transparent' }));
+    const ORG = { Anthropic: ['#E3B65C', 'A'], OpenAI: ['#6FCF73', 'O'], Google: ['#5B8FD6', 'G'], Meta: ['#7AA2F7', 'M'], Moonshot: ['#5DB7B0', 'K'], DeepSeek: ['#9A9DFA', 'D'], Xiaomi: ['#FF8A4C', 'Mi'], NVIDIA: ['#76B900', 'N'] };
+    const BASE = [['Claude Opus 5.5', 'Anthropic', 20.04, 6.82], ['Gemini 4 Carbon', 'Google', 16.56, 1.73], ['Claude Sonnet 5.5', 'Anthropic', 14.62, 0.96], ['GPT-6 Astra', 'OpenAI', 13.66, 4.10], ['Claude Fable 5.1', 'Anthropic', 13.15, 0.61], ['GPT-6.1 Sol', 'OpenAI', 12.24, 2.85], ['Gemini 4 Argon', 'Google', 10.61, 0.74], ['GPT-6.1 Terra', 'OpenAI', 10.19, 0.52], ['Muse Wonder Full', 'Meta', 9.63, 0.88], ['Kimi K3.1 Pro', 'Moonshot', 7.12, 0.31], ['DeepSeek V4.1 Flash', 'DeepSeek', 6.40, 0.12]]
+      .map(([name, org, win, cost]) => ({ name, org, win, cost, c: ORG[org][0], l: ORG[org][1], tint: ORG[org][0] + '26' }));
+    let a = (s.tab + 5) * 9301 + 49297; const rnd = () => { a = (a * 9301 + 49297) % 233280; return a / 233280; };
+    const L = s.tab ? BASE.map((x) => Object.assign({}, x, { win: +(x.win * (0.7 + rnd() * 0.6)).toFixed(2) })).sort((x, y) => y.win - x.win) : BASE;
+    const mx = L[0].win;
+    const RN = ['I', 'II', 'III'];
+    const podium = [1, 0, 2].map((i) => Object.assign({ name: L[i].name, win: L[i].win.toFixed(1) + '%', rn: RN[i], h: [120, 84, 60][i], c: L[i].c, l: L[i].l, tint: L[i].tint }, i === 0 ? { fill: '#FF6A1A', groove: '#C9520F', vc: '#FF6A1A' } : { fill: '#E3B65C', groove: '#B88E3F', vc: '#E3B65C' }));
+    const rows = L.slice(3, 11).map((x, k) => Object.assign({}, x, { rank: k + 4, win: x.win.toFixed(2) + '%', pct: (x.win / mx * 100).toFixed(1), cost: '$' + x.cost.toFixed(2) }));
+    const tabs = ['Overall', 'Coding', 'WebDev', 'Text', 'Vision', 'Image edit'].map((label, k) => ({ label, sel: k === s.tab ? 'true' : 'false', pick: () => this.setState({ tab: k }), bg: k === s.tab ? '#EFEAE1' : 'transparent', color: k === s.tab ? '#12110F' : '#A9A298', bd: k === s.tab ? '#EFEAE1' : 'rgba(239,234,225,.14)' }));
+    return { nav, tabs, podium, rows };
+  }
+}
+</script>
+</body>
+</html>

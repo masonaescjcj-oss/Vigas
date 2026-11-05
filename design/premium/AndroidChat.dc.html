@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigas Android — Chat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.lbl{font:500 12px/1.3 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#958E84}
+.ib{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:#EFEAE1;display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+.ib:active{background:#24221F}
+.tc{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;border:1px solid rgba(239,234,225,.12);font-size:12px;color:#A9A298}
+.vb{flex:1;min-height:48px;border-radius:14px;border:1px solid rgba(239,234,225,.14);background:#1C1B18;color:#EFEAE1;font:500 14px Inter,sans-serif;cursor:pointer}
+.vb:active{border-color:#FF6A1A;color:#FF8A4C}
+</style>
+</helmet>
+<div style="width:412px;height:915px;position:relative;overflow:hidden;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column">
+  <header style="display:flex;align-items:center;gap:4px;padding:10px 8px;border-bottom:1px solid rgba(239,234,225,.075)">
+    <a href="AndroidHome.dc.html" class="ib" aria-label="Back"><svg class="i" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></a>
+    <div style="flex:1;min-width:0">
+      <button type="button" style="display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:#EFEAE1;padding:0;cursor:pointer"><span style="width:8px;height:8px;border-radius:50%;background:#6FCF73"></span><span class="mn" style="font-size:14px;font-weight:500">{{modelLabel}}</span><svg class="i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <div class="mn" style="font-size:12px;color:#958E84">2,912 tokens · $0.0093</div>
+    </div>
+    <div role="tablist" aria-label="Mode" style="display:inline-flex;border:1px solid rgba(239,234,225,.14);border-radius:999px;padding:3px;background:#171614">
+      <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+        <button type="button" role="tab" aria-selected="{{m.sel}}" onClick="{{m.pick}}" style="border:0;font:500 13px Inter,sans-serif;min-height:36px;padding:0 13px;border-radius:999px;cursor:pointer;background:{{m.bg}};color:{{m.color}}">{{m.label}}</button>
+      </sc-for>
+    </div>
+  </header>
+
+  <div style="flex:1;overflow-y:auto;padding:18px 16px 12px">
+    <sc-if value="{{isChat}}" hint-placeholder-val="{{true}}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="align-self:flex-end;max-width:84%;background:#24221F;border:1px solid rgba(239,234,225,.075);border-radius:20px 20px 6px 20px;padding:11px 15px;font-size:15px">Which model should I use to summarize 10,000 contracts — and what will it cost?</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span aria-hidden="true" style="width:28px;height:28px;border-radius:9px;background:rgba(255,106,26,.13);color:#FF6A1A;display:grid;place-items:center"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><rect x="2.5" y="3" width="19" height="2.6" rx=".6"></rect><path d="M4 6.4h16l-1 1.6H5z"></path><rect x="5.2" y="9" width="2.4" height="9" rx=".3"></rect><rect x="10.8" y="9" width="2.4" height="9" rx=".3"></rect><rect x="16.4" y="9" width="2.4" height="9" rx=".3"></rect><rect x="3.5" y="18.6" width="17" height="2.4" rx=".6"></rect></svg></span>
+            <span class="mn" style="font-size:12px;color:#958E84">auto → <span style="color:#E3B65C">claude-sonnet-5.5</span></span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px">
+            <span class="tc"><svg class="i" viewBox="0 0 24 24" width="12" height="12" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>Leaderboard</span>
+            <span class="tc"><svg class="i" viewBox="0 0 24 24" width="12" height="12" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>Live prices</span>
+            <span class="tc"><svg class="i" viewBox="0 0 24 24" width="12" height="12" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>Vigas News</span>
+          </div>
+          <p style="margin:0 0 12px">Three good options. Costs assume ~3K tokens in and ~300 out per contract:</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{shortlist}}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:#1C1B18;border:1px solid {{r.bd}}">
+                <span aria-hidden="true" style="width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font:400 16px 'Instrument Serif',serif;background:{{r.tint}};color:{{r.c}}">{{r.l}}</span>
+                <span style="flex:1;min-width:0"><b style="display:block;font-weight:500;font-size:14px">{{r.name}}</b><span class="mn" style="font-size:12px;color:#958E84">score {{r.elo}} · {{r.inp}}/1M</span></span>
+                <span style="text-align:right"><span class="sf" style="display:block;font-size:24px;line-height:1;color:{{r.cc}}">{{r.cost}}</span><span class="mn" style="font-size:12px;color:#958E84">10K docs</span></span>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin:12px 0 0">Run the bulk pass on <b style="font-weight:600">Gemini 4 Argon</b> and send only flagged clauses to <b style="font-weight:600">Sonnet 5.5</b>.</p>
+          <div style="display:flex;align-items:center;gap:0;margin-top:6px;color:#958E84">
+            <button type="button" class="ib" aria-label="Copy" style="color:#958E84"><svg class="i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg></button>
+            <button type="button" class="ib" aria-label="Regenerate" style="color:#958E84"><svg class="i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"></path></svg></button>
+            <button type="button" onClick="{{toArena}}" class="tc" style="background:none;cursor:pointer;min-height:36px">Compare in Arena</button>
+            <span class="mn" style="margin-left:auto;font-size:12px">$0.0041</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isArena}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="lbl" style="color:#FF8A4C">Arena · blind test</div>
+        <div style="align-self:flex-end;max-width:84%;background:#24221F;border:1px solid rgba(239,234,225,.075);border-radius:20px 20px 6px 20px;padding:11px 15px">Summarize this NDA in five bullets for a founder.</div>
+        <sc-for list="{{arena}}" as="a" hint-placeholder-count="2">
+          <article style="background:#1C1B18;border:1px solid {{a.bd}};border-radius:20px;padding:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="sf" style="font-size:22px;line-height:1">{{a.title}}</span><span class="mn" style="font-size:12px;color:{{a.tagC}}">{{a.tag}}</span></div>
+            <ul style="margin:0;padding-left:18px;color:#D9D3C7;font-size:14px;display:flex;flex-direction:column;gap:5px">
+              <sc-for list="{{a.points}}" as="p" hint-placeholder-count="3"><li>{{p}}</li></sc-for>
+            </ul>
+          </article>
+        </sc-for>
+        <sc-if value="{{voted}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px;border-radius:16px;background:rgba(111,207,115,.08);border:1px solid rgba(111,207,115,.3);font-size:14px">
+            <svg class="i" viewBox="0 0 24 24" width="18" height="18" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>
+            <span style="flex:1">Vote counted. It’s now part of the leaderboard.</span>
+            <a href="AndroidRanks.dc.html" style="color:#9A9DFA;font-weight:500">Ranks</a>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding:8px 12px 18px;border-top:1px solid rgba(239,234,225,.06);background:#12110F">
+    <sc-if value="{{showVote}}" hint-placeholder-val="{{false}}">
+      <div role="group" aria-label="Vote" style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" class="vb" onClick="{{voteA}}">A is better</button>
+        <button type="button" class="vb" onClick="{{voteTie}}" style="flex:0 0 72px">Tie</button>
+        <button type="button" class="vb" onClick="{{voteB}}">B is better</button>
+      </div>
+    </sc-if>
+    <div style="display:flex;align-items:center;gap:6px;background:#1C1B18;border:1px solid rgba(239,234,225,.14);border-radius:28px;padding:5px">
+      <button type="button" class="ib" aria-label="Attach" style="color:#A9A298"><svg class="i" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button>
+      <label style="flex:1;min-width:0"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Message</span><input placeholder="Message Vigas…" style="width:100%;background:transparent;border:0;outline:0;color:#EFEAE1;font:16px Inter,sans-serif;min-height:44px"></label>
+      <button type="button" class="ib" aria-label="Voice input" style="color:#A9A298"><svg class="i" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></button>
+      <button type="button" aria-label="Send" style="width:44px;height:44px;border-radius:50%;border:0;background:#FF6A1A;color:#160903;display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 0 #A8420C;flex-shrink:0"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { mode: 'chat', vote: null }; }
+  renderVals() {
+    const s = this.state;
+    const isArena = s.mode === 'arena';
+    const mk = (c, l) => ({ c, l, tint: c + '26' });
+    const modes = [['chat', 'Chat'], ['arena', 'Arena']].map(([id, label]) => ({ label, sel: s.mode === id ? 'true' : 'false', pick: () => this.setState({ mode: id, vote: null }), bg: s.mode === id ? '#302D29' : 'transparent', color: s.mode === id ? '#EFEAE1' : '#A9A298' }));
+    const shortlist = [
+      Object.assign({ name: 'Claude Sonnet 5.5', elo: 1462, inp: '$3.00', cost: '$135', cc: '#EFEAE1', bd: 'rgba(239,234,225,.075)' }, mk('#E3B65C', 'A')),
+      Object.assign({ name: 'Gemini 4 Argon', elo: 1436, inp: '$0.30', cost: '$17', cc: '#6FCF73', bd: 'rgba(111,207,115,.35)' }, mk('#5B8FD6', 'G')),
+      Object.assign({ name: 'DeepSeek V4.1 Flash', elo: 1393, inp: '$0.07', cost: '$3', cc: '#6FCF73', bd: 'rgba(239,234,225,.075)' }, mk('#9A9DFA', 'D'))
+    ];
+    const v = s.vote;
+    const arena = [
+      { title: v ? 'Claude Sonnet 5.5' : 'Model A', tag: v ? 'ANTHROPIC' : 'HIDDEN', win: v === 'A', points: ['Deal terms stay secret for 3 years.', 'Prior or public knowledge isn’t covered.', 'No hiring their staff for 12 months — push back.'] },
+      { title: v ? 'GPT-6.1 Terra' : 'Model B', tag: v ? 'OPENAI' : 'HIDDEN', win: v === 'B', points: ['Mutual NDA, three-year term.', 'Standard exclusions apply.', 'Includes a non-solicitation clause.'] }
+    ].map((a) => Object.assign(a, { bd: a.win ? '#FF6A1A' : 'rgba(239,234,225,.1)', tagC: a.win ? '#FF8A4C' : '#958E84' }));
+    return {
+      modes, shortlist, arena, isChat: !isArena, isArena,
+      modelLabel: isArena ? 'Arena · 2 hidden' : 'vigas/auto',
+      showVote: isArena && !v, voted: !!v,
+      toArena: () => this.setState({ mode: 'arena', vote: null }),
+      voteA: () => this.setState({ vote: 'A' }), voteB: () => this.setState({ vote: 'B' }), voteTie: () => this.setState({ vote: 'tie' })
+    };
+  }
+}
+</script>
+</body>
+</html>

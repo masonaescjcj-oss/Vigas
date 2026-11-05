@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigas Android — Wallet &amp; keys</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.lbl{font:500 12px/1.3 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#958E84}
+.ib{width:44px;height:44px;border-radius:12px;border:0;background:#24221F;color:#EFEAE1;display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+</style>
+</helmet>
+<div style="width:412px;height:915px;position:relative;overflow:hidden;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased">
+  <div style="height:100%;overflow-y:auto;padding-bottom:104px">
+    <header style="padding:24px 20px 0"><h1 class="sf" style="font-size:44px;line-height:1;letter-spacing:-.02em;margin:0">Wallet</h1></header>
+
+    <section style="margin:18px 20px 0;padding:20px;border-radius:26px;background:#1C1B18;border:1px solid rgba(239,234,225,.1);position:relative;overflow:hidden">
+      <div aria-hidden="true" style="position:absolute;right:-30px;top:-30px;width:150px;height:150px;border-radius:50%;border:1px solid rgba(255,106,26,.25)"></div>
+      <div aria-hidden="true" style="position:absolute;right:-6px;top:-6px;width:100px;height:100px;border-radius:50%;border:1px solid rgba(255,106,26,.18)"></div>
+      <div class="lbl" style="position:relative">Available credits</div>
+      <div class="sf" style="position:relative;font-size:60px;line-height:1;letter-spacing:-.03em;margin:8px 0 4px">{{balance}}</div>
+      <div class="mn" style="position:relative;font-size:12px;color:#958E84">≈ {{tokens}} tokens · API, Chat &amp; RetroBuild</div>
+      <div role="group" aria-label="Top-up amount" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:18px 0 10px">
+        <sc-for list="{{amounts}}" as="a" hint-placeholder-count="4">
+          <button type="button" onClick="{{a.pick}}" aria-pressed="{{a.sel}}" class="mn" style="height:48px;border-radius:14px;cursor:pointer;font-size:15px;font-weight:500;background:{{a.bg}};color:{{a.color}};border:1px solid {{a.bd}}">{{a.label}}</button>
+        </sc-for>
+      </div>
+      <button type="button" onClick="{{buy}}" style="width:100%;min-height:54px;border:0;border-radius:16px;background:#FF6A1A;color:#160903;font:600 16px Inter,sans-serif;cursor:pointer;box-shadow:0 3px 0 #A8420C">Add {{amtLabel}}</button>
+      <div class="mn" style="font-size:12px;color:#958E84;text-align:center;margin-top:10px">Card · Crypto · Bank transfer</div>
+    </section>
+
+    <section style="margin:16px 20px 0;padding:18px;border-radius:22px;background:#1C1B18;border:1px solid rgba(239,234,225,.075)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h2 class="sf" style="font-size:24px;margin:0;font-weight:400">This week</h2><span class="mn" style="font-size:14px">$14.82</span></div>
+      <div aria-hidden="true" style="display:flex;align-items:flex-end;gap:10px;height:110px;margin-top:16px">
+        <sc-for list="{{week}}" as="d" hint-placeholder-count="7">
+          <span style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><span style="width:100%;height:{{d.h}}px;border-radius:6px;background:{{d.c}}"></span><span class="mn" style="font-size:12px;color:{{d.tc}}">{{d.l}}</span></span>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+        <sc-for list="{{split}}" as="p" hint-placeholder-count="3">
+          <div><div style="display:flex;justify-content:space-between;font-size:14px"><span>{{p.t}}</span><span class="mn" style="font-size:13px">{{p.v}}</span></div><div style="height:6px;border-radius:3px;background:#24221F;margin-top:6px;overflow:hidden"><div style="height:100%;width:{{p.w}}%;background:{{p.c}};border-radius:3px"></div></div></div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="margin:16px 20px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h2 class="sf" style="font-size:24px;margin:0;font-weight:400">API keys</h2><button type="button" onClick="{{newKey}}" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid rgba(239,234,225,.14);background:transparent;color:#EFEAE1;font:500 14px Inter,sans-serif;cursor:pointer"><svg class="i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New key</button></div>
+      <sc-for list="{{keys}}" as="k" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid rgba(239,234,225,.06)">
+          <span aria-hidden="true" style="width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(154,157,250,.14);color:#9A9DFA;flex-shrink:0"><svg class="i" viewBox="0 0 24 24" width="18" height="18"><path d="M12 15a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM10.8 12.2 20 3M17 6l2.5 2.5M14.5 8.5l2 2"></path></svg></span>
+          <span style="flex:1;min-width:0"><b style="display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{k.n}}</b><span class="mn" style="display:block;font-size:12px;color:#958E84">{{k.k}}</span><span class="mn" style="display:block;font-size:12px;color:#A9A298">{{k.used}}</span></span>
+          <button type="button" class="ib" aria-label="Copy key"><svg class="i" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg></button>
+        </div>
+      </sc-for>
+    </section>
+  </div>
+
+  <nav aria-label="Main" style="position:absolute;left:0;right:0;bottom:0;height:88px;background:rgba(23,22,20,.94);border-top:1px solid rgba(239,234,225,.075);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:10px 4px 18px">
+    <sc-for list="{{nav}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" aria-current="{{t.cur}}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:500;color:{{t.color}}">
+        <span style="width:60px;height:32px;border-radius:16px;display:grid;place-items:center;background:{{t.bg}}"><svg class="i" viewBox="0 0 24 24" width="22" height="22" style="color:{{t.ic}}" aria-hidden="true"><path d="{{t.icon}}"></path></svg></span>{{t.label}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { amt: 25, bal: 48.2, keys: [{ n: 'Production gateway', k: 'sk-vg-v1-98a4••••3f12', used: '$31.40 this month' }, { n: 'RetroBuild mobile agent', k: 'sk-vg-v1-41c9••••88a0', used: '$6.15 this month' }] };
+  }
+  renderVals() {
+    const s = this.state;
+    const ACTIVE = 'wallet';
+    const nav = [
+      ['home', 'Home', 'AndroidHome.dc.html', 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
+      ['explore', 'Explore', 'AndroidExplore.dc.html', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5z'],
+      ['chat', 'Chat', 'AndroidChat.dc.html', 'M4 5h16v11H9l-5 4z'],
+      ['ranks', 'Ranks', 'AndroidRanks.dc.html', 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4v3h-4z'],
+      ['wallet', 'Wallet', 'AndroidWallet.dc.html', 'M4 7h15a1 1 0 0 1 1 1v11H5a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h11v3M16 13h1']
+    ].map(([id, label, href, icon]) => ({ label, href, icon, cur: id === ACTIVE ? 'page' : 'false', color: id === ACTIVE ? '#EFEAE1' : '#958E84', ic: id === ACTIVE ? '#FF6A1A' : '#A9A298', bg: id === ACTIVE ? 'rgba(255,106,26,.16)' : 'transparent' }));
+    const amounts = [10, 25, 50, 100].map((a) => ({ label: '$' + a, sel: s.amt === a ? 'true' : 'false', pick: () => this.setState({ amt: a }), bg: s.amt === a ? 'rgba(255,106,26,.13)' : '#171614', color: s.amt === a ? '#FF8A4C' : '#EFEAE1', bd: s.amt === a ? '#FF6A1A' : 'rgba(239,234,225,.14)' }));
+    const week = [['M', 1.4], ['T', 2.2], ['W', 1.1], ['T', 3.0], ['F', 2.6], ['S', 2.4], ['S', 2.1]].map(([l, v], i) => ({ l, h: Math.round(v / 3 * 80), c: i === 6 ? '#FF6A1A' : '#3A3631', tc: i === 6 ? '#EFEAE1' : '#958E84' }));
+    const split = [['API', '$9.40', 63, '#9A9DFA'], ['RetroBuild', '$3.62', 24, '#FF6A1A'], ['Chat', '$1.80', 12, '#E3B65C']].map(([t, v, w, c]) => ({ t, v, w, c }));
+    return {
+      nav, amounts, week, split, keys: s.keys,
+      balance: '$' + s.bal.toFixed(2), tokens: (s.bal / 7.9).toFixed(1) + 'M', amtLabel: '$' + s.amt + '.00',
+      buy: () => this.setState({ bal: s.bal + s.amt }),
+      newKey: () => { const r = Math.random().toString(16).slice(2, 6); this.setState({ keys: [{ n: 'New key ' + r.toUpperCase(), k: 'sk-vg-v1-' + r + '••••91c0', used: 'Never used' }].concat(s.keys) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

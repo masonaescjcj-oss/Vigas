@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Best AI tools of 2026 — reviewed and ranked | Vigas Tools</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}a:hover{color:#E3B65C}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font:500 14px/1 Inter,system-ui,sans-serif;border:0;cursor:pointer;white-space:nowrap}
+.key,.key:hover{background:#FF6A1A;color:#160903;box-shadow:0 3px 0 #A8420C,inset 0 1px 0 rgba(255,255,255,.3)}
+.gh,.gh:hover{background:#1C1B18;color:#EFEAE1;box-shadow:inset 0 0 0 1px rgba(239,234,225,.14)}
+.gh:hover{background:#24221F}
+.lbl{font:500 12px/1.3 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#958E84}
+.chip{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border-radius:999px;border:1px solid rgba(239,234,225,.14);background:transparent;color:#A9A298;font:500 13px Inter,sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.chip:hover{color:#EFEAE1}
+.lift{transition:transform .2s,border-color .2s}.lift:hover{transform:translateY(-3px);border-color:rgba(239,234,225,.24)!important}
+.vote{display:flex;flex-direction:column;align-items:center;justify-content:center;width:54px;height:58px;border-radius:13px;font:600 12px 'JetBrains Mono',monospace;gap:1px;flex-shrink:0;cursor:pointer;margin-left:auto}
+.vote:hover{border-color:#958E84!important}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden">
+<dc-import name="SiteHeader" active="tools" hint-size="100%,105px"></dc-import>
+<main style="max-width:1320px;margin:0 auto;padding:0 clamp(16px,4vw,32px)">
+  <nav aria-label="Breadcrumb" class="mn" style="font-size:12px;color:#958E84;padding:28px 0 0;display:flex;gap:8px"><a href="Main.dc.html" style="color:#958E84">Home</a><span>/</span><span style="color:#EFEAE1">Tools</span></nav>
+  <header style="padding:22px 0 30px;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;justify-content:space-between">
+    <div style="flex:1 1 560px;min-width:0">
+      <div class="lbl">§ Tools directory · 1,412 tools · updated daily</div>
+      <h1 class="sf" style="font-size:clamp(46px,6vw,84px);line-height:.98;letter-spacing:-.03em;margin:16px 0 14px">The best <em style="color:#E3B65C">AI tools,</em><br>ranked by builders.</h1>
+      <p style="font-size:18px;color:#A9A298;max-width:560px;margin:0">Hand-tested by our editors, voted on by 210,000 builders. See what’s new, what’s rising and what’s worth paying for.</p>
+    </div>
+    <a href="#submit" class="btn gh"><svg class="i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Submit a tool</a>
+  </header>
+
+  <section aria-labelledby="tr" style="padding-bottom:40px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><svg class="i" viewBox="0 0 24 24" width="18" height="18" style="color:#FF6A1A" aria-hidden="true"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"></path></svg><h2 id="tr" class="sf" style="font-size:30px;margin:0;font-weight:400">Trending this week</h2></div>
+    <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none">
+      <sc-for list="{{trending}}" as="t" hint-placeholder-count="6">
+        <a href="#dir" class="lift" style="flex:0 0 250px;background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;color:#EFEAE1">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start"><span class="sf" style="font-size:40px;line-height:.9;color:{{t.rc}}">{{t.rank}}</span><span class="mn" style="font-size:12px;padding:2px 7px;border-radius:5px;background:{{t.mbg}};color:{{t.mc}}">{{t.move}}</span></div>
+          <div style="display:flex;align-items:center;gap:10px"><span aria-hidden="true" style="width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font:400 19px 'Instrument Serif',serif;flex-shrink:0;background:{{t.tint}};color:{{t.c}};box-shadow:inset 0 0 0 1px {{t.ring}}">{{t.l}}</span><span style="min-width:0"><b style="display:block;font-weight:600">{{t.n}}</b><span class="mn" style="font-size:12px;color:#958E84">{{t.cat}} · ▲ {{t.vs}}</span></span></div>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+
+  <section aria-label="Tool of the week" style="display:flex;flex-wrap:wrap;border:1px solid rgba(255,106,26,.32);border-radius:26px;overflow:hidden;background:#1C1B18;margin-bottom:56px">
+    <div aria-hidden="true" style="flex:1.1 1 420px;min-height:300px;position:relative;background:#151411;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;padding:28px;align-content:center">
+      <sc-for list="{{heat}}" as="h" hint-placeholder-count="84"><span style="aspect-ratio:1;border-radius:5px;background:{{h}}"></span></sc-for>
+      <span class="mn" style="position:absolute;left:16px;top:16px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:6px;background:#FF6A1A;color:#160903;letter-spacing:.06em">TOOL OF THE WEEK</span>
+    </div>
+    <div style="flex:1 1 380px;min-width:0;padding:clamp(22px,3vw,40px);display:flex;flex-direction:column;gap:16px;justify-content:center">
+      <div style="display:flex;align-items:center;gap:12px"><span aria-hidden="true" style="width:48px;height:48px;border-radius:13px;display:grid;place-items:center;font:400 22px 'Instrument Serif',serif;background:rgba(255,106,26,.15);color:#FF6A1A;box-shadow:inset 0 0 0 1px rgba(255,106,26,.3)">R</span><span><b style="font-size:17px;font-weight:600;display:block">RetroBuild</b><span class="mn" style="font-size:12px;color:#958E84">Agents · Freemium · ★ 4.9</span></span></div>
+      <h2 class="sf" style="font-size:clamp(34px,3.6vw,50px);line-height:1.02;letter-spacing:-.02em;margin:0">Describe an app.<br><em style="color:#E3B65C">Ship it tonight.</em></h2>
+      <p style="margin:0;color:#A9A298">An agent that writes, previews and checkpoints your app. It runs on any model through your Vigas key — this weekly heatmap was its first build.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><a href="RetroBuild.dc.html" class="btn key">Try RetroBuild</a><a href="RetroBuild.dc.html" class="btn gh">Read the review</a></div>
+    </div>
+  </section>
+
+  <section id="dir" aria-labelledby="dh" style="padding-bottom:64px">
+    <h2 id="dh" class="sf" style="font-size:clamp(32px,3.4vw,46px);margin:0 0 18px;letter-spacing:-.02em;line-height:1.04">The directory</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px">
+      <label style="flex:1 1 280px;min-width:0;height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:12px;background:#1C1B18;border:1px solid rgba(239,234,225,.14);color:#958E84">
+        <svg class="i" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"></path></svg>
+        <input aria-label="Search tools" value="{{q}}" onChange="{{onQ}}" placeholder="Search 1,412 tools — “video”, “free”, “coding agent”…" style="flex:1;min-width:0;background:transparent;border:0;outline:0;color:#EFEAE1;font:15px Inter,sans-serif">
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#A9A298">Sort
+        <select style="height:48px;border-radius:12px;background:#1C1B18;border:1px solid rgba(239,234,225,.14);color:#EFEAE1;padding:0 12px;font:14px Inter,sans-serif"><option>Most upvoted</option><option>Top rated</option><option>Newest</option></select>
+      </label>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:22px">
+      <sc-for list="{{cats}}" as="c" hint-placeholder-count="8">
+        <button type="button" class="chip" onClick="{{c.pick}}" aria-pressed="{{c.sel}}" style="background:{{c.bg}};color:{{c.color}};border-color:{{c.bd}}">{{c.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+      <sc-for list="{{grid}}" as="t" hint-placeholder-count="12">
+        <article class="lift" style="background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <span aria-hidden="true" style="width:48px;height:48px;border-radius:13px;display:grid;place-items:center;font:400 21px 'Instrument Serif',serif;flex-shrink:0;background:{{t.tint}};color:{{t.c}};box-shadow:inset 0 0 0 1px {{t.ring}}">{{t.l}}</span>
+            <div style="min-width:0">
+              <h3 style="margin:0;font-size:16px;font-weight:600;display:flex;align-items:center;gap:6px"><a href="#">{{t.n}}</a><sc-if value="{{t.vg}}" hint-placeholder-val="{{false}}"><svg class="i" viewBox="0 0 24 24" width="15" height="15" style="color:#5B8FD6" aria-label="Runs on Vigas API" role="img"><path d="M12 3l2.4 1.8 3-.2.9 2.9 2.4 1.8-1 2.8 1 2.8-2.4 1.8-.9 2.9-3-.2L12 21l-2.4-1.8-3 .2-.9-2.9L3.3 14.7l1-2.8-1-2.8 2.4-1.8.9-2.9 3 .2zM8.5 12l2.5 2.5 4.5-5"></path></svg></sc-if></h3>
+              <p style="margin:3px 0 0;color:#A9A298;font-size:14px;line-height:1.45">{{t.t}}</p>
+            </div>
+            <button type="button" class="vote" onClick="{{t.vote}}" aria-pressed="{{t.on}}" aria-label="Upvote {{t.n}}" style="border:1px solid {{t.vbd}};background:{{t.vbg}};color:{{t.vc}}"><svg class="i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>{{t.vs}}</button>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:auto">
+            <span class="mn" style="font-size:12px;padding:3px 8px;border-radius:6px;background:#24221F;color:#A9A298">{{t.cat}}</span>
+            <span class="mn" style="font-size:12px;padding:3px 8px;border-radius:6px;background:#24221F;color:{{t.pc}}">{{t.p}}</span>
+            <sc-if value="{{t.vg}}" hint-placeholder-val="{{false}}"><span class="mn" style="font-size:12px;padding:3px 8px;border-radius:6px;background:rgba(255,106,26,.13);color:#FF8A4C">Vigas API</span></sc-if>
+            <sc-if value="{{t.isNew}}" hint-placeholder-val="{{false}}"><span class="mn" style="font-size:12px;padding:3px 8px;border-radius:6px;background:#24221F;color:#E3B65C">New</span></sc-if>
+            <span class="mn" style="margin-left:auto;font-size:12px;color:#E3B65C">★ {{t.r}}</span>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+    <div style="text-align:center;margin-top:24px"><button type="button" class="btn gh">Show 24 more</button></div>
+  </section>
+
+  <section aria-labelledby="col" style="padding-bottom:64px">
+    <div class="lbl">§ Collections</div>
+    <h2 id="col" class="sf" style="font-size:clamp(32px,3.4vw,46px);margin:10px 0 22px;letter-spacing:-.02em;line-height:1.04">Hand-picked <em style="color:#E3B65C">shortlists.</em></h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+      <sc-for list="{{collections}}" as="c" hint-placeholder-count="6">
+        <a href="#dir" class="lift" style="display:flex;align-items:center;gap:16px;background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:18px;padding:18px;color:#EFEAE1">
+          <span style="display:flex;flex-shrink:0">
+            <sc-for list="{{c.stack}}" as="s" hint-placeholder-count="3"><span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:400 16px 'Instrument Serif',serif;margin-right:-8px;border:2px solid #1C1B18;background:{{s.bg}};color:{{s.c}}">{{s.l}}</span></sc-for>
+          </span>
+          <span style="min-width:0;margin-left:8px"><b class="sf" style="display:block;font-size:21px;font-weight:400;line-height:1.15">{{c.t}}</b><span class="mn" style="font-size:12px;color:#958E84">{{c.n}} tools</span></span>
+          <svg class="i" viewBox="0 0 24 24" width="18" height="18" style="margin-left:auto;color:#958E84" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="submit" style="margin-bottom:96px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between;padding:clamp(22px,3vw,40px);border-radius:24px;background:#FF6A1A;color:#160903">
+    <div style="flex:1 1 420px"><h2 class="sf" style="font-size:clamp(32px,3.4vw,46px);margin:0;line-height:1.04;font-weight:400">Built something people should know about?</h2><p style="margin:10px 0 0;font-size:16px;max-width:560px">Submit your tool. Our editors test every submission, and the best ones make the weekly newsletter.</p></div>
+    <a href="#" class="btn" style="background:#160903;color:#FF8A4C;min-height:52px;padding:0 26px;font-size:15px">Submit a tool</a>
+  </section>
+</main>
+<dc-import name="SiteFooter" hint-size="100%,760px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3500}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { cat: 'All', q: '', voted: {} }; }
+  renderVals() {
+    const s = this.state;
+    const mark = (c, l) => ({ c, l, tint: c + '26', ring: c + '4D' });
+    const TOOLS = [
+      { n: 'RetroBuild', t: 'Describe an app — an agent writes, previews and checkpoints it.', c: 'Agents', p: 'Freemium', r: 4.9, v: 4821, col: '#FF6A1A', l: 'R', vg: 1, isNew: 1 },
+      { n: 'Cursor', t: 'The AI-first code editor with agentic multi-file edits.', c: 'Coding', p: 'Freemium', r: 4.8, v: 4410, col: '#A9A298', l: 'C', vg: 1 },
+      { n: 'Perplexity', t: 'Answer engine with cited, real-time web research.', c: 'Research', p: 'Freemium', r: 4.7, v: 3988, col: '#5DB7B0', l: 'P' },
+      { n: 'Midjourney', t: 'Painterly, cinematic image generation with style control.', c: 'Image', p: 'Paid', r: 4.7, v: 3720, col: '#9A9DFA', l: 'M' },
+      { n: 'ElevenLabs', t: 'Lifelike voices, dubbing and real-time speech agents.', c: 'Audio', p: 'Freemium', r: 4.8, v: 3410, col: '#EFEAE1', l: 'E' },
+      { n: 'Runway', t: 'Generate and edit video with frame-level control.', c: 'Video', p: 'Freemium', r: 4.6, v: 3102, col: '#6FCF73', l: 'R' },
+      { n: 'NotebookLM', t: 'Turn your documents into an expert you can question.', c: 'Research', p: 'Free', r: 4.7, v: 2950, col: '#5B8FD6', l: 'N', isNew: 1 },
+      { n: 'v0', t: 'Generate production React UIs from a prompt or screenshot.', c: 'Coding', p: 'Freemium', r: 4.6, v: 2811, col: '#EFEAE1', l: 'v0' },
+      { n: 'Suno', t: 'Full songs — vocals, lyrics and mix — from a sentence.', c: 'Audio', p: 'Freemium', r: 4.5, v: 2640, col: '#E3B65C', l: 'S' },
+      { n: 'Gamma', t: 'Decks, docs and sites that design themselves.', c: 'Productivity', p: 'Freemium', r: 4.5, v: 2390, col: '#B39DF0', l: 'G' },
+      { n: 'Granola', t: 'AI meeting notes that don’t join your calls.', c: 'Productivity', p: 'Freemium', r: 4.6, v: 2204, col: '#7CC47A', l: 'G', isNew: 1 },
+      { n: 'Lovable', t: 'Ship full-stack apps by chatting with an engineer-agent.', c: 'Agents', p: 'Freemium', r: 4.5, v: 2118, col: '#F07A72', l: 'L', vg: 1 }
+    ];
+    const q = s.q.toLowerCase();
+    const grid = TOOLS.filter((t) => (s.cat === 'All' || t.c === s.cat) && (t.n + t.t + t.c).toLowerCase().includes(q)).map((t) => {
+      const on = !!s.voted[t.n];
+      return Object.assign({}, t, mark(t.col, t.l), {
+        cat: t.c, vg: !!t.vg, isNew: !!t.isNew, on: on ? 'true' : 'false',
+        vs: (t.v + (on ? 1 : 0)).toLocaleString('en-US'),
+        vbd: on ? '#FF6A1A' : 'rgba(239,234,225,.14)', vbg: on ? 'rgba(255,106,26,.13)' : 'transparent', vc: on ? '#FF8A4C' : '#EFEAE1',
+        pc: t.p === 'Free' ? '#6FCF73' : '#A9A298',
+        vote: () => this.setState({ voted: Object.assign({}, s.voted, { [t.n]: !on }) })
+      });
+    });
+    const moves = ['▲ 2', '▲ 5', '—', 'NEW', '▲ 1', '▼ 1'];
+    const trending = [0, 6, 1, 10, 4, 2].map((i, k) => {
+      const t = TOOLS[i]; const m = moves[k];
+      return Object.assign({ n: t.n, cat: t.c, vs: t.v.toLocaleString('en-US'), rank: '0' + (k + 1), rc: k === 0 ? '#FF6A1A' : '#3A3631', move: m, mc: m === 'NEW' ? '#160903' : m.indexOf('▲') === 0 ? '#6FCF73' : m === '—' ? '#958E84' : '#F07A72', mbg: m === 'NEW' ? '#E3B65C' : '#24221F' }, mark(t.col, t.l));
+    });
+    const CATS = ['All', 'Agents', 'Coding', 'Research', 'Image', 'Video', 'Audio', 'Productivity'];
+    const cats = CATS.map((c) => ({ label: c, sel: s.cat === c ? 'true' : 'false', pick: () => this.setState({ cat: c }), bg: s.cat === c ? '#EFEAE1' : 'transparent', color: s.cat === c ? '#12110F' : '#A9A298', bd: s.cat === c ? '#EFEAE1' : 'rgba(239,234,225,.14)' }));
+    const HC = ['#24221F', '#3A2618', '#6B3214', '#A8420C', '#FF6A1A'];
+    let a = 42 * 9301 + 49297; const rnd = () => { a = (a * 9301 + 49297) % 233280; return a / 233280; };
+    const heat = []; for (let k = 0; k < 84; k++) heat.push(HC[Math.floor(rnd() * rnd() * 5.4)]);
+    const st = (arr) => arr.map(([c, l]) => ({ c, l, bg: '#24221F' }));
+    const collections = [
+      { t: 'Best AI coding tools in 2026', n: 48, stack: st([['#A9A298', 'C'], ['#EFEAE1', 'v0'], ['#F07A72', 'L']]) },
+      { t: 'Best AI image generators', n: 36, stack: st([['#9A9DFA', 'M'], ['#6FCF73', 'R'], ['#E3B65C', 'F']]) },
+      { t: 'Free AI tools that are actually good', n: 52, stack: st([['#5B8FD6', 'N'], ['#76B900', 'N'], ['#5DB7B0', 'P']]) },
+      { t: 'Best AI voice & music tools', n: 29, stack: st([['#EFEAE1', 'E'], ['#E3B65C', 'S'], ['#FF8A4C', 'U']]) },
+      { t: 'AI tools for students', n: 41, stack: st([['#5B8FD6', 'N'], ['#5DB7B0', 'P'], ['#B39DF0', 'G']]) },
+      { t: 'Tools that run on the Vigas API', n: 23, stack: st([['#FF6A1A', 'R'], ['#A9A298', 'C'], ['#F07A72', 'L']]) }
+    ];
+    return { trending, grid, cats, heat, collections, q: s.q, onQ: (e) => this.setState({ q: e.target.value }) };
+  }
+}
+</script>
+</body>
+</html>

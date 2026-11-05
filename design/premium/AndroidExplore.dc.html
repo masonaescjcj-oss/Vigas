@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigas Android — Explore</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.lbl{font:500 12px/1.3 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#958E84}
+.hs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 20px}
+.hs::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="width:412px;height:915px;position:relative;overflow:hidden;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased">
+  <div style="height:100%;overflow-y:auto;padding-bottom:104px">
+    <header style="padding:24px 20px 0">
+      <h1 class="sf" style="font-size:44px;line-height:1;letter-spacing:-.02em;margin:0">Explore</h1>
+      <div role="tablist" aria-label="Section" style="display:grid;grid-template-columns:1fr 1fr;margin-top:18px;border:1px solid rgba(239,234,225,.14);border-radius:999px;padding:4px;background:#171614">
+        <sc-for list="{{segs}}" as="s" hint-placeholder-count="2">
+          <button type="button" role="tab" aria-selected="{{s.sel}}" onClick="{{s.pick}}" style="min-height:42px;border:0;border-radius:999px;font:500 15px Inter,sans-serif;cursor:pointer;background:{{s.bg}};color:{{s.color}}">{{s.label}}</button>
+        </sc-for>
+      </div>
+      <label style="margin-top:12px;height:52px;display:flex;align-items:center;gap:10px;padding:0 16px;border-radius:999px;background:#1C1B18;border:1px solid rgba(239,234,225,.1);color:#958E84">
+        <svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"></path></svg>
+        <input aria-label="Search" placeholder="{{ph}}" style="flex:1;min-width:0;background:transparent;border:0;outline:0;color:#EFEAE1;font:16px Inter,sans-serif">
+      </label>
+    </header>
+
+    <sc-if value="{{isTools}}" hint-placeholder-val="{{true}}">
+      <div class="hs" style="margin-top:14px">
+        <sc-for list="{{cats}}" as="c" hint-placeholder-count="6"><button type="button" onClick="{{c.pick}}" style="flex-shrink:0;min-height:38px;padding:0 14px;border-radius:999px;font:500 14px Inter,sans-serif;cursor:pointer;background:{{c.bg}};color:{{c.color}};border:1px solid {{c.bd}}">{{c.label}}</button></sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:22px 20px 12px"><svg class="i" viewBox="0 0 24 24" width="18" height="18" style="color:#FF6A1A" aria-hidden="true"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"></path></svg><h2 class="sf" style="font-size:24px;margin:0;font-weight:400">Trending this week</h2></div>
+      <div class="hs">
+        <sc-for list="{{trend}}" as="t" hint-placeholder-count="3">
+          <a href="#" style="flex:0 0 200px;padding:16px;border-radius:20px;background:#1C1B18;border:1px solid {{t.bd}};display:flex;flex-direction:column;gap:12px">
+            <span style="display:flex;justify-content:space-between;align-items:flex-start"><span aria-hidden="true" style="width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font:400 21px 'Instrument Serif',serif;background:{{t.tint}};color:{{t.c}}">{{t.l}}</span><span class="sf" style="font-size:34px;line-height:.9;color:{{t.rc}}">{{t.rank}}</span></span>
+            <span><b style="display:block;font-weight:600">{{t.n}}</b><span class="mn" style="font-size:12px;color:#958E84">{{t.cat}} · ▲ {{t.v}}</span></span>
+          </a>
+        </sc-for>
+      </div>
+      <h2 class="sf" style="font-size:24px;margin:24px 20px 4px;font-weight:400">All tools</h2>
+      <div style="padding:0 20px">
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid rgba(239,234,225,.06)">
+            <span aria-hidden="true" style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font:400 21px 'Instrument Serif',serif;flex-shrink:0;background:{{t.tint}};color:{{t.c}}">{{t.l}}</span>
+            <span style="flex:1;min-width:0"><b style="display:block;font-weight:600">{{t.n}}</b><span style="display:block;font-size:13px;color:#A9A298;line-height:1.35">{{t.d}}</span><span class="mn" style="font-size:12px;color:#958E84">{{t.cat}} · {{t.p}} · <span style="color:#E3B65C">★ {{t.r}}</span></span></span>
+            <button type="button" onClick="{{t.vote}}" aria-pressed="{{t.on}}" aria-label="Upvote {{t.n}}" style="width:52px;height:56px;border-radius:14px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font:600 12px 'JetBrains Mono',monospace;cursor:pointer;border:1px solid {{t.vbd}};background:{{t.vbg}};color:{{t.vc}}"><svg class="i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>{{t.vs}}</button>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isNews}}" hint-placeholder-val="{{false}}">
+      <div style="padding:16px 20px 0">
+        <sc-for list="{{news}}" as="n" hint-placeholder-count="6">
+          <a href="AndroidArticle.dc.html" style="display:flex;gap:14px;padding:14px 0;border-top:1px solid rgba(239,234,225,.06)">
+            <span style="flex:1;min-width:0"><span class="mn" style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#FF6A1A">{{n.cat}} <span style="color:#958E84;font-weight:500">· {{n.ago}}</span></span><span class="sf" style="display:block;font-size:20px;line-height:1.18;margin-top:5px">{{n.t}}</span></span>
+            <span aria-hidden="true" style="width:92px;height:92px;flex-shrink:0;border-radius:14px;background-color:#151411;background-image:radial-gradient(rgba(239,234,225,.1) 1px,transparent 1.2px);background-size:10px 10px;border:1px solid rgba(239,234,225,.075);display:flex;flex-direction:column;justify-content:space-between;padding:8px 10px"><span class="mn" style="font-size:12px;color:#958E84">{{n.cap}}</span><span class="sf" style="font-size:30px;line-height:1;color:{{n.c}}">{{n.big}}</span></span>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <nav aria-label="Main" style="position:absolute;left:0;right:0;bottom:0;height:88px;background:rgba(23,22,20,.94);border-top:1px solid rgba(239,234,225,.075);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:10px 4px 18px">
+    <sc-for list="{{nav}}" as="t" hint-placeholder-count="5">
+      <a href="{{t.href}}" aria-current="{{t.cur}}" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:500;color:{{t.color}}">
+        <span style="width:60px;height:32px;border-radius:16px;display:grid;place-items:center;background:{{t.bg}}"><svg class="i" viewBox="0 0 24 24" width="22" height="22" style="color:{{t.ic}}" aria-hidden="true"><path d="{{t.icon}}"></path></svg></span>{{t.label}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { seg: 'tools', cat: 'All', voted: {} }; }
+  renderVals() {
+    const s = this.state;
+    const ACTIVE = 'explore';
+    const nav = [
+      ['home', 'Home', 'AndroidHome.dc.html', 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
+      ['explore', 'Explore', 'AndroidExplore.dc.html', 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.5 8.5l-2 5-5 2 2-5z'],
+      ['chat', 'Chat', 'AndroidChat.dc.html', 'M4 5h16v11H9l-5 4z'],
+      ['ranks', 'Ranks', 'AndroidRanks.dc.html', 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4v3h-4z'],
+      ['wallet', 'Wallet', 'AndroidWallet.dc.html', 'M4 7h15a1 1 0 0 1 1 1v11H5a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h11v3M16 13h1']
+    ].map(([id, label, href, icon]) => ({ label, href, icon, cur: id === ACTIVE ? 'page' : 'false', color: id === ACTIVE ? '#EFEAE1' : '#958E84', ic: id === ACTIVE ? '#FF6A1A' : '#A9A298', bg: id === ACTIVE ? 'rgba(255,106,26,.16)' : 'transparent' }));
+    const segs = [['news', 'News'], ['tools', 'Tools']].map(([id, label]) => ({ label, sel: s.seg === id ? 'true' : 'false', pick: () => this.setState({ seg: id }), bg: s.seg === id ? '#EFEAE1' : 'transparent', color: s.seg === id ? '#12110F' : '#A9A298' }));
+    const T = [
+      ['RetroBuild', 'Describe an app — the agent builds it.', 'Agents', 'Freemium', 4.9, 4821, '#FF6A1A', 'R'],
+      ['Cursor', 'AI-first code editor with agentic edits.', 'Coding', 'Freemium', 4.8, 4410, '#A9A298', 'C'],
+      ['Perplexity', 'Answer engine with cited web research.', 'Research', 'Freemium', 4.7, 3988, '#5DB7B0', 'P'],
+      ['Midjourney', 'Cinematic image generation.', 'Image', 'Paid', 4.7, 3720, '#9A9DFA', 'M'],
+      ['ElevenLabs', 'Lifelike voices and dubbing.', 'Audio', 'Freemium', 4.8, 3410, '#EFEAE1', 'E'],
+      ['NotebookLM', 'Turn your documents into an expert.', 'Research', 'Free', 4.7, 2950, '#5B8FD6', 'N'],
+      ['Runway', 'Generate and edit video.', 'Video', 'Freemium', 4.6, 3102, '#6FCF73', 'R']
+    ];
+    const tools = T.filter((t) => s.cat === 'All' || t[2] === s.cat).map(([n, d, cat, p, r, v, c, l]) => {
+      const on = !!s.voted[n];
+      return { n, d, cat, p, r, c, l, tint: c + '26', on: on ? 'true' : 'false', vs: (v + (on ? 1 : 0)).toLocaleString('en-US'), vbd: on ? '#FF6A1A' : 'rgba(239,234,225,.14)', vbg: on ? 'rgba(255,106,26,.13)' : 'transparent', vc: on ? '#FF8A4C' : '#EFEAE1', vote: () => this.setState({ voted: Object.assign({}, s.voted, { [n]: !on }) }) };
+    });
+    const trend = [0, 5, 1].map((i, k) => { const t = T[i]; return { n: t[0], cat: t[2], v: t[5].toLocaleString('en-US'), c: t[6], l: t[7], tint: t[6] + '26', rank: '0' + (k + 1), rc: k === 0 ? '#FF6A1A' : '#3A3631', bd: k === 0 ? 'rgba(255,106,26,.4)' : 'rgba(239,234,225,.075)' }; });
+    const cats = ['All', 'Agents', 'Coding', 'Research', 'Image', 'Audio', 'Video'].map((c) => ({ label: c, pick: () => this.setState({ cat: c }), bg: s.cat === c ? '#EFEAE1' : 'transparent', color: s.cat === c ? '#12110F' : '#A9A298', bd: s.cat === c ? '#EFEAE1' : 'rgba(239,234,225,.14)' }));
+    const news = [
+      ['MODELS', '12 MIN', 'Claude Opus 5.5 takes the top spot on agent leaderboards', '20%', 'WIN SHARE', '#FF6A1A'],
+      ['MODELS', '48 MIN', 'Gemini 4 Carbon ships with native computer use across Android', '3B', 'DEVICES', '#5B8FD6'],
+      ['AGENTS', '1 H', 'OpenAI splits GPT-6.1 into Sol and Terra', '6×', 'PRICE GAP', '#6FCF73'],
+      ['ANALYSIS', '2 H', 'Inference prices fell 38% this quarter', '−38%', 'QOQ', '#E3B65C'],
+      ['POLICY', '4 H', 'EU AI Act enforcement begins: the first notices', 'EU', 'AI ACT', '#9A9DFA'],
+      ['FUNDING', '8 H', 'Agent startups raised $41B in Q3', '$41B', 'Q3', '#E3B65C']
+    ].map(([cat, ago, t, big, cap, c]) => ({ cat, ago, t, big, cap, c }));
+    return { nav, segs, isTools: s.seg === 'tools', isNews: s.seg === 'news', ph: s.seg === 'tools' ? 'Search 1,412 tools' : 'Search AI news', cats, trend, tools, news };
+  }
+}
+</script>
+</body>
+</html>

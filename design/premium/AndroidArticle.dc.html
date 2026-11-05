@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigas Android — Article</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.ib{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:#EFEAE1;display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+</style>
+</helmet>
+<div style="width:412px;height:915px;position:relative;overflow:hidden;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased">
+  <header style="position:absolute;left:0;right:0;top:0;z-index:2;display:flex;align-items:center;gap:2px;padding:8px;background:rgba(18,17,15,.9);border-bottom:1px solid rgba(239,234,225,.075)">
+    <a href="AndroidHome.dc.html" class="ib" aria-label="Back"><svg class="i" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></a>
+    <span class="mn" style="font-size:12px;color:#958E84;letter-spacing:.1em">VIGAS NEWS</span>
+    <button type="button" class="ib" aria-label="Listen" style="margin-left:auto"><svg class="i" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"></path></svg></button>
+    <button type="button" class="ib" aria-label="Save" onClick="{{toggleSave}}" style="color:{{saveC}}"><svg class="i" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z" fill="{{saveFill}}"></path></svg></button>
+    <button type="button" class="ib" aria-label="Share"><svg class="i" viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M12 3v12M7 8l5-5 5 5"></path></svg></button>
+    <span aria-hidden="true" style="position:absolute;left:0;bottom:-1px;height:2px;width:28%;background:#FF6A1A"></span>
+  </header>
+
+  <div style="height:100%;overflow-y:auto;padding:64px 0 120px">
+    <div style="padding:20px 20px 0">
+      <div class="mn" style="font-size:12px;font-weight:600;letter-spacing:.1em;color:#FF6A1A;display:flex;align-items:center;gap:8px"><span style="padding:2px 7px;border-radius:5px;background:#FF6A1A;color:#160903">BREAKING</span>MODELS</div>
+      <h1 class="sf" style="font-size:38px;line-height:1.04;letter-spacing:-.024em;margin:14px 0 12px">Claude Opus 5.5 takes the top spot on agent leaderboards — <em style="color:#E3B65C">by the widest margin yet</em></h1>
+      <p class="sf" style="font-size:20px;line-height:1.4;color:#A9A298;margin:0 0 18px">One in five real-world agent sessions — and a price per task that tells a different story.</p>
+      <div style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:50%;background:#E3B65C;color:#160903;display:grid;place-items:center;font:600 13px Inter,sans-serif">SM</span><span><b style="display:block;font-weight:500;font-size:14px">Sara Moradi</b><span class="mn" style="font-size:12px;color:#958E84">5 Nov · 6 min read</span></span></div>
+    </div>
+    <div aria-hidden="true" style="margin:20px 0;height:200px;background:#151411;border-top:1px solid rgba(239,234,225,.075);border-bottom:1px solid rgba(239,234,225,.075);overflow:hidden">
+      <svg viewBox="0 0 412 200" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" style="display:block">
+        <circle cx="206" cy="86" r="96" fill="#FF6A1A" opacity=".14"></circle><circle cx="206" cy="86" r="70" fill="#FF6A1A" opacity=".32"></circle><circle cx="206" cy="86" r="46" fill="#E3B65C"></circle>
+        <rect x="96" y="64" width="220" height="8" fill="#EFEAE1"></rect>
+        <rect x="108" y="76" width="16" height="78" fill="#EFEAE1"></rect><rect x="150" y="76" width="16" height="78" fill="#EFEAE1"></rect><rect x="198" y="76" width="16" height="78" fill="#EFEAE1"></rect><rect x="246" y="76" width="16" height="78" fill="#EFEAE1"></rect><rect x="288" y="76" width="16" height="78" fill="#EFEAE1"></rect>
+        <rect x="88" y="154" width="236" height="8" fill="#EFEAE1"></rect><rect x="74" y="162" width="264" height="10" fill="#EFEAE1" opacity=".7"></rect>
+      </svg>
+    </div>
+    <div style="padding:0 20px;font-family:'Instrument Serif',Georgia,serif;font-size:20px;line-height:1.62;color:#E6E0D6">
+      <p style="margin:0 0 1.1em"><span style="float:left;font-size:4.2em;line-height:.8;padding:6px 10px 0 0;color:#FF6A1A">A</span>nthropic’s new flagship now wins 20.04% of real-world agent sessions on Vigas — one in five. The ordering at the top changed three times in a single week before settling.</p>
+      <div style="margin:0 0 1.1em;font-family:Inter,sans-serif;font-size:14px;background:#1C1B18;border:1px solid rgba(239,234,225,.1);border-radius:18px;padding:16px">
+        <b style="font-weight:600;color:#EFEAE1">Agent win share</b>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
+          <sc-for list="{{chart}}" as="c" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:8px;align-items:center"><div style="position:relative;height:30px;border-radius:7px;background:#171614;overflow:hidden"><div style="position:absolute;inset:0 auto 0 0;width:{{c.w}}%;background:{{c.bg}};border-radius:7px"></div><span style="position:relative;display:flex;align-items:center;height:100%;padding:0 10px;font-size:13px;color:{{c.tc}}">{{c.name}}</span></div><span class="mn" style="text-align:right;font-size:12px;color:#6FCF73">{{c.v}}</span></div>
+          </sc-for>
+        </div>
+      </div>
+      <p style="margin:0 0 1.1em">At $6.82 per completed task, Opus 5.5 costs eleven times as much as Claude Fable 5.1 — which still wins 13% of sessions.</p>
+      <blockquote style="margin:0 0 1.1em;font-style:italic;font-size:25px;line-height:1.28;color:#E3B65C">“Price is the last benchmark.”</blockquote>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:12px;right:12px;bottom:18px;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;border-radius:22px;background:rgba(28,27,24,.96);border:1px solid rgba(239,234,225,.14);box-shadow:0 20px 40px -12px rgba(0,0,0,.7)">
+    <span style="flex:1;min-width:0"><span class="mn" style="display:block;font-size:12px;color:#958E84">In this story</span><span style="display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Claude Opus 5.5 · $15 / $75</span></span>
+    <a href="AndroidChat.dc.html" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:14px;background:#FF6A1A;color:#160903;font-weight:600;font-size:14px;box-shadow:0 3px 0 #A8420C">Try in Chat</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":915}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { saved: false }; }
+  renderVals() {
+    const chart = [['Claude Opus 5.5', 20.04], ['Gemini 4 Carbon', 16.56], ['Claude Sonnet 5.5', 14.62], ['GPT-6 Astra', 13.66]]
+      .map(([name, v], i) => ({ name, v: v.toFixed(1) + '%', w: (v / 20.04 * 100).toFixed(1), bg: i === 0 ? '#FF6A1A' : '#2C5A8F', tc: i === 0 ? '#160903' : '#EFEAE1' }));
+    const saved = this.state.saved;
+    return { chart, toggleSave: () => this.setState({ saved: !saved }), saveC: saved ? '#FF6A1A' : '#EFEAE1', saveFill: saved ? '#FF6A1A' : 'none' };
+  }
+}
+</script>
+</body>
+</html>

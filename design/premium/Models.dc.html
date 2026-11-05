@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI models &amp; API pricing — Vigas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:#12110F}
+*{box-sizing:border-box}
+a{color:#EFEAE1;text-decoration:none}a:hover{color:#E3B65C}
+.sf{font-family:'Instrument Serif',Georgia,serif;font-weight:400}
+.mn{font-family:'JetBrains Mono',ui-monospace,monospace}
+.i{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:12px;font:500 14px/1 Inter,system-ui,sans-serif;border:0;cursor:pointer;white-space:nowrap;transition:filter .15s,background .15s}
+.key,.key:hover{background:#FF6A1A;color:#160903;box-shadow:0 3px 0 #A8420C,inset 0 1px 0 rgba(255,255,255,.3)}
+.key:hover{filter:brightness(1.07)}
+.key:active{transform:translateY(2px);box-shadow:0 1px 0 #A8420C}
+.gh,.gh:hover{background:#1C1B18;color:#EFEAE1;box-shadow:inset 0 0 0 1px rgba(239,234,225,.14)}
+.gh:hover{background:#24221F}
+.lbl{font:500 12px/1.3 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#958E84}
+.led{width:7px;height:7px;border-radius:50%;background:#6FCF73;box-shadow:0 0 0 3px rgba(111,207,115,.2);animation:pulse 2.2s infinite;display:inline-block;flex-shrink:0}
+.hov{transition:background .15s}.hov:hover{background:#24221F}
+.chip{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(239,234,225,.14);background:transparent;color:#A9A298;font:500 13px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.chip:hover{color:#EFEAE1;border-color:rgba(239,234,225,.3)}
+.ck{accent-color:#FF6A1A;width:16px;height:16px;margin:0}
+details summary{list-style:none;cursor:pointer}details summary::-webkit-details-marker{display:none}
+details[open] .pm{transform:rotate(45deg)}
+@keyframes pulse{50%{opacity:.4}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#12110F;color:#EFEAE1;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden">
+<dc-import name="SiteHeader" active="models" hint-size="100%,105px"></dc-import>
+<main style="max-width:1320px;margin:0 auto;padding:0 clamp(16px,4vw,32px)">
+
+  <nav aria-label="Breadcrumb" class="mn" style="font-size:12px;color:#958E84;padding:28px 0 0;display:flex;gap:8px"><a href="Main.dc.html" style="color:#958E84">Home</a><span>/</span><span style="color:#EFEAE1">Models</span></nav>
+  <header style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-end;justify-content:space-between;padding:22px 0 40px;border-bottom:1px solid rgba(239,234,225,.075)">
+    <div style="flex:1 1 560px;min-width:0">
+      <div class="lbl" style="display:inline-flex;align-items:center;gap:10px"><span class="led"></span>API · OpenAI-compatible</div>
+      <h1 class="sf" style="font-size:clamp(46px,6vw,84px);line-height:.98;letter-spacing:-.03em;margin:16px 0 16px">Every model, <em style="color:#E3B65C">one price sheet.</em></h1>
+      <p style="font-size:18px;color:#A9A298;max-width:600px;margin:0">Prices per 1M tokens, passed through from each provider. Zero markup on your first $5 — then one simple fee, shown before you pay.</p>
+    </div>
+    <div style="flex:0 1 auto;display:flex;flex-direction:column;gap:10px;min-width:260px">
+      <span class="lbl">Base URL</span>
+      <div style="display:flex;align-items:center;gap:10px;padding:6px 6px 6px 16px;border-radius:12px;background:#1C1B18;border:1px solid rgba(239,234,225,.14)">
+        <span class="mn" style="font-size:14px;color:#6FCF73;white-space:nowrap">https://api.vigas.ai/v1</span>
+        <button type="button" aria-label="Copy base URL" style="width:36px;height:36px;border-radius:9px;border:0;background:#24221F;color:#EFEAE1;display:grid;place-items:center;cursor:pointer;margin-left:auto"><svg class="i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <section aria-label="Model catalogue" style="display:flex;flex-wrap:wrap;gap:28px;padding:32px 0 72px">
+    <aside aria-label="Filters" style="flex:1 1 230px;min-width:0;display:flex;flex-direction:column;gap:26px">
+      <div>
+        <div class="lbl" style="margin-bottom:12px">Providers</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{providers}}" as="p" hint-placeholder-count="7">
+            <label class="hov" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:14px">
+              <input type="checkbox" class="ck" checked="{{p.on}}" onChange="{{p.toggle}}">
+              <span aria-hidden="true" style="width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font:400 13px 'Instrument Serif',serif;background:{{p.tint}};color:{{p.c}}">{{p.l}}</span>
+              <span>{{p.name}}</span>
+            </label>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:12px">Context window</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="chip" style="color:#EFEAE1;border-color:rgba(239,234,225,.3)">Any</button><button type="button" class="chip">128K+</button><button type="button" class="chip">1M+</button></div>
+      </div>
+      <div style="background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:16px;padding:18px">
+        <div class="lbl">Not sure which?</div>
+        <p style="margin:8px 0 14px;font-size:14px;color:#A9A298">Use <span class="mn" style="color:#EFEAE1">vigas/auto</span> and we route each request by price, speed or quality.</p>
+        <a href="Leaderboard.dc.html" style="color:#9A9DFA;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px">Compare on the leaderboard<svg class="i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+      </div>
+    </aside>
+
+    <div style="flex:999 1 640px;min-width:0">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+        <label style="flex:1 1 260px;min-width:0;height:46px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:12px;background:#1C1B18;border:1px solid rgba(239,234,225,.14);color:#958E84">
+          <svg class="i" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"></path></svg>
+          <input aria-label="Search models" value="{{q}}" onChange="{{onQ}}" placeholder="Search 327 models by name, provider or ID" style="flex:1;min-width:0;background:transparent;border:0;outline:0;color:#EFEAE1;font:15px Inter,sans-serif">
+        </label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{cats}}" as="c" hint-placeholder-count="6">
+            <button type="button" class="chip" onClick="{{c.pick}}" style="background:{{c.bg}};color:{{c.color}};border-color:{{c.bd}}">{{c.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="border:1px solid rgba(239,234,225,.075);border-radius:20px;overflow:hidden;background:#1C1B18">
+        <div style="overflow-x:auto">
+          <div style="min-width:820px">
+            <div class="mn" style="display:grid;grid-template-columns:minmax(240px,2.4fr) 80px 96px 96px 80px 150px;gap:14px;align-items:center;padding:12px 20px;background:#171614;font-size:12px;color:#958E84;text-transform:uppercase;letter-spacing:.07em">
+              <span>Model</span><span style="text-align:right">Context</span><span style="text-align:right">Input / 1M</span><span style="text-align:right">Output / 1M</span><span style="text-align:right">24h</span><span style="text-align:right">Use it</span>
+            </div>
+            <sc-for list="{{rows}}" as="m" hint-placeholder-count="10">
+              <div class="hov" style="display:grid;grid-template-columns:minmax(240px,2.4fr) 80px 96px 96px 80px 150px;gap:14px;align-items:center;padding:14px 20px;border-top:1px solid rgba(239,234,225,.06)">
+                <div style="display:flex;align-items:center;gap:12px;min-width:0">
+                  <span aria-hidden="true" style="width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font:400 16px 'Instrument Serif',serif;flex-shrink:0;background:{{m.tint}};color:{{m.c}};box-shadow:inset 0 0 0 1px {{m.ring}}">{{m.l}}</span>
+                  <div style="min-width:0">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b style="font-weight:500">{{m.name}}</b>
+                      <sc-for list="{{m.tags}}" as="t" hint-placeholder-count="2"><span class="mn" style="font-size:12px;padding:1px 6px;border-radius:5px;background:#24221F;color:#A9A298">{{t}}</span></sc-for>
+                    </div>
+                    <div class="mn" style="font-size:12px;color:#958E84;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{m.id}}</div>
+                  </div>
+                </div>
+                <span class="mn" style="font-size:13px;text-align:right;color:#A9A298">{{m.ctx}}</span>
+                <span class="mn" style="font-size:13px;text-align:right">{{m.inp}}</span>
+                <span class="mn" style="font-size:13px;text-align:right">{{m.out}}</span>
+                <span class="mn" style="font-size:12px;text-align:right;color:{{m.cc}}">{{m.chg}}</span>
+                <span style="display:flex;gap:6px;justify-content:flex-end">
+                  <a href="Chat.dc.html" class="btn gh" style="min-height:34px;padding:0 12px;font-size:13px;border-radius:9px">Try</a>
+                  <button type="button" class="btn gh" style="min-height:34px;padding:0 12px;font-size:13px;border-radius:9px">Copy ID</button>
+                </span>
+              </div>
+            </sc-for>
+            <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+              <div style="padding:40px 20px;text-align:center;color:#A9A298">No models match. Try another filter.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+      <div class="mn" style="font-size:12px;color:#958E84;margin-top:12px">Showing {{count}} of 327 · prices update every 60 s</div>
+    </div>
+  </section>
+
+  <section aria-labelledby="qs" style="display:flex;flex-wrap:wrap;gap:16px;padding:0 0 72px">
+    <div style="flex:1.6 1 520px;min-width:0;background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><div class="lbl">§ Quickstart</div><h2 id="qs" class="sf" style="font-size:34px;margin:6px 0 0;letter-spacing:-.015em;line-height:1.05">Live in <em style="color:#E3B65C">30 seconds.</em></h2></div>
+        <div role="tablist" aria-label="Language" style="display:inline-flex;border:1px solid rgba(239,234,225,.14);border-radius:11px;padding:3px;background:#171614">
+          <sc-for list="{{langs}}" as="t" hint-placeholder-count="3">
+            <button type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.pick}}" style="border:0;font:500 13px Inter,sans-serif;padding:7px 14px;border-radius:8px;cursor:pointer;background:{{t.bg}};color:{{t.color}}">{{t.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{isPy}}" hint-placeholder-val="{{true}}">
+<pre class="mn" style="margin:0;background:#0D0C0B;border:1px solid rgba(239,234,225,.075);border-radius:14px;padding:20px 22px;font-size:13.5px;line-height:1.75;color:#D9D3C7;overflow-x:auto"><span style="color:#FF8A4C">from</span> openai <span style="color:#FF8A4C">import</span> OpenAI
+
+client = <span style="color:#A5A8FF">OpenAI</span>(
+    base_url=<span style="color:#A6D49F">"https://api.vigas.ai/v1"</span>,
+    api_key=<span style="color:#A6D49F">"sk-vg-v1-…"</span>,
+)
+resp = client.chat.completions.<span style="color:#A5A8FF">create</span>(
+    model=<span style="color:#A6D49F">"anthropic/claude-opus-5.5"</span>,  <span style="color:#7E776E"># or "vigas/auto"</span>
+    messages=[{<span style="color:#A6D49F">"role"</span>: <span style="color:#A6D49F">"user"</span>, <span style="color:#A6D49F">"content"</span>: <span style="color:#A6D49F">"Hello"</span>}],
+)</pre>
+      </sc-if>
+      <sc-if value="{{isTs}}" hint-placeholder-val="{{false}}">
+<pre class="mn" style="margin:0;background:#0D0C0B;border:1px solid rgba(239,234,225,.075);border-radius:14px;padding:20px 22px;font-size:13.5px;line-height:1.75;color:#D9D3C7;overflow-x:auto"><span style="color:#FF8A4C">import</span> OpenAI <span style="color:#FF8A4C">from</span> <span style="color:#A6D49F">"openai"</span>;
+
+<span style="color:#FF8A4C">const</span> client = <span style="color:#FF8A4C">new</span> <span style="color:#A5A8FF">OpenAI</span>({
+  baseURL: <span style="color:#A6D49F">"https://api.vigas.ai/v1"</span>,
+  apiKey: process.env.VIGAS_API_KEY,
+});
+<span style="color:#FF8A4C">const</span> resp = <span style="color:#FF8A4C">await</span> client.chat.completions.<span style="color:#A5A8FF">create</span>({
+  model: <span style="color:#A6D49F">"vigas/auto"</span>,
+  messages: [{ role: <span style="color:#A6D49F">"user"</span>, content: <span style="color:#A6D49F">"Hello"</span> }],
+});</pre>
+      </sc-if>
+      <sc-if value="{{isCurl}}" hint-placeholder-val="{{false}}">
+<pre class="mn" style="margin:0;background:#0D0C0B;border:1px solid rgba(239,234,225,.075);border-radius:14px;padding:20px 22px;font-size:13.5px;line-height:1.75;color:#D9D3C7;overflow-x:auto"><span style="color:#A5A8FF">curl</span> https://api.vigas.ai/v1/chat/completions \
+  -H <span style="color:#A6D49F">"Authorization: Bearer $VIGAS_API_KEY"</span> \
+  -H <span style="color:#A6D49F">"Content-Type: application/json"</span> \
+  -d <span style="color:#A6D49F">'{"model": "vigas/auto", "messages": [{"role": "user", "content": "Hello"}]}'</span></pre>
+      </sc-if>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:14px;color:#A9A298">
+        <span style="display:inline-flex;align-items:center;gap:8px"><svg class="i" viewBox="0 0 24 24" width="16" height="16" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>Works with the OpenAI SDKs</span>
+        <span style="display:inline-flex;align-items:center;gap:8px"><svg class="i" viewBox="0 0 24 24" width="16" height="16" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>Streaming &amp; tool calls</span>
+        <span style="display:inline-flex;align-items:center;gap:8px"><svg class="i" viewBox="0 0 24 24" width="16" height="16" style="color:#6FCF73" aria-hidden="true"><path d="M5 12.5 10 17l9-10"></path></svg>Same key in Chat &amp; RetroBuild</span>
+      </div>
+    </div>
+
+    <div style="flex:1 1 360px;min-width:0;background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:22px;padding:24px;display:flex;flex-direction:column">
+      <div class="lbl">Available credits</div>
+      <div class="sf" style="font-size:64px;line-height:1;letter-spacing:-.03em;margin:10px 0 6px">{{balance}}</div>
+      <div class="mn" style="font-size:12px;color:#958E84">≈ {{tokens}} tokens at your blended rate</div>
+      <div role="group" aria-label="Top-up amount" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:18px 0 12px">
+        <sc-for list="{{amounts}}" as="a" hint-placeholder-count="4">
+          <button type="button" onClick="{{a.pick}}" aria-pressed="{{a.sel}}" class="mn" style="height:46px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:500;background:{{a.bg}};color:{{a.color}};border:1px solid {{a.bd}}">{{a.label}}</button>
+        </sc-for>
+      </div>
+      <button type="button" class="btn key" onClick="{{buy}}" style="width:100%;min-height:50px;font-size:15px">Add {{amtLabel}} in credits</button>
+      <div class="mn" style="font-size:12px;color:#958E84;text-align:center;margin-top:8px">Cards · Crypto · Bank transfer</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding-top:18px;border-top:1px solid rgba(239,234,225,.075)">
+        <b style="font-weight:600">API keys</b>
+        <button type="button" class="btn gh" onClick="{{newKey}}" style="min-height:34px;padding:0 12px;font-size:13px;border-radius:9px"><svg class="i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New key</button>
+      </div>
+      <sc-for list="{{keys}}" as="k" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid rgba(239,234,225,.06)">
+          <span style="flex:1;min-width:0"><span style="display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{k.n}}</span><span class="mn" style="display:block;font-size:12px;color:#958E84">{{k.k}} · {{k.used}}</span></span>
+          <button type="button" aria-label="Copy key" style="width:36px;height:36px;border-radius:9px;border:0;background:#24221F;color:#EFEAE1;display:grid;place-items:center;cursor:pointer"><svg class="i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg></button>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section aria-label="Gateway features" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;padding:0 0 72px">
+    <sc-for list="{{features}}" as="f" hint-placeholder-count="4">
+      <div style="background:#1C1B18;border:1px solid rgba(239,234,225,.075);border-radius:20px;padding:22px">
+        <span style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(255,106,26,.13);color:#FF6A1A"><svg class="i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="{{f.icon}}"></path></svg></span>
+        <h3 class="sf" style="font-size:24px;margin:16px 0 6px;font-weight:400;letter-spacing:-.01em">{{f.t}}</h3>
+        <p style="margin:0;color:#A9A298;font-size:14px">{{f.d}}</p>
+      </div>
+    </sc-for>
+  </section>
+
+  <section aria-labelledby="faq" style="display:flex;flex-wrap:wrap;gap:40px;padding:0 0 96px">
+    <div style="flex:1 1 320px"><div class="lbl">§ FAQ</div><h2 id="faq" class="sf" style="font-size:clamp(34px,3.6vw,48px);line-height:1.04;margin:12px 0 0;letter-spacing:-.02em">Questions developers <em style="color:#E3B65C">actually ask.</em></h2></div>
+    <div style="flex:2 1 560px;min-width:0">
+      <sc-for list="{{faq}}" as="f" hint-placeholder-count="4">
+        <details style="border-top:1px solid rgba(239,234,225,.1);padding:4px 0">
+          <summary style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;font-size:17px;font-weight:500">{{f.q}}<svg class="i pm" viewBox="0 0 24 24" width="20" height="20" style="color:#FF6A1A;transition:transform .2s" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></summary>
+          <p style="margin:0 0 18px;color:#A9A298;max-width:680px">{{f.a}}</p>
+        </details>
+      </sc-for>
+    </div>
+  </section>
+</main>
+<dc-import name="SiteFooter" hint-size="100%,760px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3500}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { q: '', cat: 'all', off: {}, lang: 'py', amt: 25, bal: 48.2, keys: [{ n: 'Production gateway', k: 'sk-vg-v1-98a4••••3f12', used: '$31.40 this month' }, { n: 'RetroBuild mobile agent', k: 'sk-vg-v1-41c9••••88a0', used: '$6.15 this month' }] };
+  }
+  renderVals() {
+    const s = this.state;
+    const ORG = { Anthropic: ['#E3B65C', 'A'], OpenAI: ['#6FCF73', 'O'], Google: ['#5B8FD6', 'G'], Moonshot: ['#5DB7B0', 'K'], DeepSeek: ['#9A9DFA', 'D'], Xiaomi: ['#FF8A4C', 'Mi'], NVIDIA: ['#76B900', 'N'] };
+    const av = (o) => { const p = ORG[o]; return { c: p[0], l: p[1], tint: p[0] + '26', ring: p[0] + '4D' }; };
+    const ALL = [
+      ['Claude Opus 5.5', 'anthropic/claude-opus-5.5', 'Anthropic', 15, 75, '1M', ['agents', 'coding'], 0],
+      ['Gemini 4 Carbon', 'google/gemini-4-carbon', 'Google', 2.5, 15, '2M', ['agents', 'vision'], -8.2],
+      ['GPT-6 Astra', 'openai/gpt-6-astra', 'OpenAI', 5, 40, '1M', ['agents', 'reasoning'], 0],
+      ['Claude Sonnet 5.5', 'anthropic/claude-sonnet-5.5', 'Anthropic', 3, 15, '1M', ['coding'], 0],
+      ['GPT-6.1 Terra', 'openai/gpt-6.1-terra', 'OpenAI', 0.6, 4.8, '400K', ['reasoning'], -12.5],
+      ['Gemini 4 Argon', 'google/gemini-4-argon', 'Google', 0.3, 2.5, '1M', ['vision'], -15],
+      ['Kimi K3.1 Pro', 'moonshotai/kimi-k3.1-pro', 'Moonshot', 0.6, 2.5, '256K', ['coding'], -4.1],
+      ['DeepSeek V4.1 Flash', 'deepseek/v4.1-flash', 'DeepSeek', 0.07, 0.28, '160K', ['reasoning'], -22],
+      ['MiMo-V2.6-Pro', 'xiaomi/mimo-v2.6-pro', 'Xiaomi', 0.2, 0.8, '128K', ['coding'], 0],
+      ['Nemotron 3.5 Super', 'nvidia/nemotron-3.5-super', 'NVIDIA', 0, 0, '128K', ['free'], 0]
+    ].map(([name, id, org, i, o, ctx, tags, chg]) => Object.assign({ name, id, org, ctx, tags, inp: i === 0 ? 'Free' : '$' + i.toFixed(2), out: o === 0 ? 'Free' : '$' + o.toFixed(2), chg: chg < 0 ? '▼ ' + Math.abs(chg) + '%' : '—', cc: chg < 0 ? '#6FCF73' : '#958E84' }, av(org)));
+    const q = s.q.toLowerCase();
+    const rows = ALL.filter((m) => !s.off[m.org] && (s.cat === 'all' || m.tags.includes(s.cat)) && (m.name + m.id + m.org).toLowerCase().includes(q));
+    const providers = Object.keys(ORG).map((name) => Object.assign({ name, on: !s.off[name], toggle: () => this.setState({ off: Object.assign({}, s.off, { [name]: !s.off[name] }) }) }, av(name)));
+    const cats = ['all', 'agents', 'coding', 'reasoning', 'vision', 'free'].map((c) => ({ label: c === 'all' ? 'All' : c[0].toUpperCase() + c.slice(1), pick: () => this.setState({ cat: c }), bg: s.cat === c ? '#EFEAE1' : 'transparent', color: s.cat === c ? '#12110F' : '#A9A298', bd: s.cat === c ? '#EFEAE1' : 'rgba(239,234,225,.14)' }));
+    const langs = [['py', 'Python'], ['ts', 'TypeScript'], ['curl', 'cURL']].map(([id, label]) => ({ label, sel: s.lang === id ? 'true' : 'false', pick: () => this.setState({ lang: id }), bg: s.lang === id ? '#302D29' : 'transparent', color: s.lang === id ? '#EFEAE1' : '#A9A298' }));
+    const amounts = [10, 25, 50, 100].map((a) => ({ label: '$' + a, sel: s.amt === a ? 'true' : 'false', pick: () => this.setState({ amt: a }), bg: s.amt === a ? 'rgba(255,106,26,.13)' : '#171614', color: s.amt === a ? '#FF8A4C' : '#EFEAE1', bd: s.amt === a ? '#FF6A1A' : 'rgba(239,234,225,.14)' }));
+    const features = [
+      { icon: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7', t: 'Automatic fallbacks', d: 'If a provider is down or rate-limited, the request moves to the next one — same response format.' },
+      { icon: 'M13 3 5 13h6l-1 8 8-10h-6z', t: 'Route by price or speed', d: 'Sort candidates by cost, latency or quality per request, or let vigas/auto decide.' },
+      { icon: 'M4 7h15a1 1 0 0 1 1 1v11H5a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h11v3M16 13h1', t: 'One bill, every provider', d: 'Prepaid credits across 61 providers. No separate accounts, no surprise invoices.' },
+      { icon: 'M4 19V5M4 19h16M8 15l3-4 3 2 5-6', t: 'Usage you can read', d: 'Per-key spend, tokens and latency — in the dashboard and in the Android app.' }
+    ];
+    const faq = [
+      { q: 'Is Vigas compatible with the OpenAI SDK?', a: 'Yes. Point base_url at https://api.vigas.ai/v1, use your Vigas key, and pick any model ID from this page.' },
+      { q: 'How is pricing calculated?', a: 'You pay each provider’s per-token price, shown above. The first $5 has no markup; after that a small platform fee is shown at checkout.' },
+      { q: 'What happens when a provider goes down?', a: 'With fallbacks on, Vigas retries the same request on the next best provider and tells you which one answered.' },
+      { q: 'Can I use the same key in Vigas Chat and RetroBuild?', a: 'Yes. One account, one balance — every Vigas product draws from the same credits.' }
+    ];
+    return {
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value }),
+      rows, count: rows.length, empty: rows.length === 0, providers, cats, langs,
+      isPy: s.lang === 'py', isTs: s.lang === 'ts', isCurl: s.lang === 'curl',
+      amounts, amtLabel: '$' + s.amt + '.00', balance: '$' + s.bal.toFixed(2), tokens: (s.bal / 7.9).toFixed(1) + 'M',
+      buy: () => this.setState({ bal: s.bal + s.amt }),
+      keys: s.keys,
+      newKey: () => { const r = Math.random().toString(16).slice(2, 6); this.setState({ keys: [{ n: 'New key ' + r.toUpperCase(), k: 'sk-vg-v1-' + r + '••••91c0', used: 'Never used' }].concat(s.keys) }); },
+      features, faq
+    };
+  }
+}
+</script>
+</body>
+</html>

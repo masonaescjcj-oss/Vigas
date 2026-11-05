@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vigas site header</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width:100%;font-family:Inter,system-ui,sans-serif;color:#EFEAE1;background:#12110F;-webkit-font-smoothing:antialiased">
+  <header style="background:rgba(18,17,15,.9);border-bottom:1px solid rgba(239,234,225,.075)">
+    <div style="max-width:1320px;margin:0 auto;padding:10px clamp(16px,4vw,32px);min-height:64px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <a href="Main.dc.html" aria-label="Vigas home" style="display:flex;align-items:center;gap:10px;color:#EFEAE1;text-decoration:none">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="#FF6A1A" aria-hidden="true"><rect x="2.5" y="3" width="19" height="2.6" rx=".6"></rect><path d="M4 6.4h16l-1 1.6H5z"></path><rect x="5.2" y="9" width="2.4" height="9" rx=".3"></rect><rect x="10.8" y="9" width="2.4" height="9" rx=".3"></rect><rect x="16.4" y="9" width="2.4" height="9" rx=".3"></rect><rect x="3.5" y="18.6" width="17" height="2.4" rx=".6"></rect></svg>
+        <span style="font-family:'Instrument Serif',Georgia,serif;font-size:27px;line-height:1;letter-spacing:-.01em">Vigas</span>
+      </a>
+      <nav aria-label="Primary" style="display:flex;gap:2px;flex-wrap:wrap">
+        <sc-for list="{{links}}" as="n" hint-placeholder-count="6">
+          <a href="{{n.href}}" style="padding:8px 12px;border-radius:9px;font-size:14px;text-decoration:none;color:{{n.color}};background:{{n.bg}};box-shadow:{{n.ring}}">{{n.label}}</a>
+        </sc-for>
+      </nav>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="height:38px;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(239,234,225,.14);background:#1C1B18;color:#958E84;width:240px;max-width:100%">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" style="stroke-width:1.7;stroke-linecap:round;flex-shrink:0" aria-hidden="true"><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM20 20l-4-4"></path></svg>
+          <input aria-label="Search Vigas" placeholder="Search models, news, tools" style="flex:1;min-width:0;background:transparent;border:0;outline:0;color:#EFEAE1;font:13px Inter,sans-serif">
+          <kbd style="font:12px 'JetBrains Mono',monospace;padding:1px 6px;border-radius:5px;border:1px solid rgba(239,234,225,.14);color:#A9A298">⌘K</kbd>
+        </label>
+        <a href="#" style="font-size:14px;color:#A9A298;text-decoration:none;padding:8px 6px">Sign in</a>
+        <a href="Models.dc.html" style="display:inline-flex;align-items:center;min-height:38px;padding:0 14px;border-radius:10px;background:#FF6A1A;color:#160903;font-weight:500;font-size:14px;text-decoration:none;box-shadow:0 3px 0 #A8420C,inset 0 1px 0 rgba(255,255,255,.3)">Get API key</a>
+      </div>
+    </div>
+  </header>
+  <sc-if value="{{showTicker}}" hint-placeholder-val="{{true}}">
+    <div style="display:flex;align-items:center;height:40px;border-bottom:1px solid rgba(239,234,225,.075);background:#171614;overflow:hidden;font-size:13px">
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 14px;height:100%;background:#FF6A1A;color:#160903;font:600 12px 'JetBrains Mono',monospace;letter-spacing:.1em">
+        <span style="width:7px;height:7px;border-radius:50%;background:#160903;display:inline-block"></span>LIVE
+      </div>
+      <div style="overflow:hidden;flex:1;-webkit-mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(90deg,transparent,#000 30px,#000 calc(100% - 30px),transparent)">
+        <div style="display:flex;gap:44px;white-space:nowrap;width:max-content;padding-left:24px;animation:vgMarq 70s linear infinite">
+          <sc-for list="{{ticker}}" as="t" hint-placeholder-count="8">
+            <a href="{{t.href}}" style="color:#A9A298;text-decoration:none"><b style="font:500 12px 'JetBrains Mono',monospace;margin-right:8px;color:{{t.c}}">{{t.k}}</b>{{t.text}}</a>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <style>@keyframes vgMarq{to{transform:translateX(-50%)}}</style>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["home","models","chat","leaderboard","news","tools","retrobuild"],"default":"home"},"ticker":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":105}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active ?? 'home';
+    const links = [
+      ['models', 'Models', 'Models.dc.html'],
+      ['chat', 'Chat', 'Chat.dc.html'],
+      ['leaderboard', 'Leaderboard', 'Leaderboard.dc.html'],
+      ['news', 'News', 'News.dc.html'],
+      ['tools', 'Tools', 'Tools.dc.html'],
+      ['retrobuild', 'RetroBuild', 'RetroBuild.dc.html']
+    ].map(([id, label, href]) => ({
+      label, href,
+      color: id === active ? '#EFEAE1' : '#A9A298',
+      bg: id === active ? '#24221F' : 'transparent',
+      ring: id === active ? 'inset 0 0 0 1px rgba(239,234,225,.1)' : 'none'
+    }));
+    const items = [
+      { k: 'MODELS', c: '#FF6A1A', text: 'Claude Opus 5.5 takes the top spot on agent leaderboards', href: 'Article.dc.html' },
+      { k: '▼ 22%', c: '#6FCF73', text: 'DeepSeek V4.1 Flash input price', href: 'Models.dc.html' },
+      { k: '#1', c: '#E3B65C', text: 'Claude Opus 5.5 · 20.04% win share', href: 'Leaderboard.dc.html' },
+      { k: 'AGENTS', c: '#FF6A1A', text: 'OpenAI splits GPT-6.1 into Sol and Terra', href: 'News.dc.html' },
+      { k: 'TOOLS', c: '#5DB7B0', text: 'RetroBuild is tool of the week', href: 'Tools.dc.html' },
+      { k: 'POLICY', c: '#FF6A1A', text: 'EU AI Act: first enforcement notices issued', href: 'News.dc.html' }
+    ];
+    const tk = this.props.ticker;
+    return { links, ticker: items.concat(items), showTicker: !(tk === false || tk === 'false') };
+  }
+}
+</script>
+</body>
+</html>
