@@ -1,0 +1,26 @@
+{
+  "name": "vigas",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:up": "bash scripts/db-local.sh up",
+    "db:down": "bash scripts/db-local.sh down",
+    "db:migrate": "pnpm --filter @vigas/db migrate",
+    "db:seed": "pnpm --filter @vigas/db seed",
+    "db:generate": "pnpm --filter @vigas/db generate",
+    "leaderboard:compute": "pnpm --filter @vigas/db leaderboard"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.10",
+    "typescript": "~5.9.3",
+    "@types/node": "^22.20.5"
+  }
+}
