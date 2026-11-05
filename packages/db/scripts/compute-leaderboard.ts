@@ -14,7 +14,7 @@ const catalog = new Map((await listModels(db)).map((m) => [m.id, m]));
 
 for (const { id: category } of LEADERBOARD_CATEGORIES) {
   const battles = await listBattleOutcomes(db, category);
-  if (battles.length < MIN_VOTES) {
+  if (battles.length === 0 || battles.length < MIN_VOTES) {
     console.log(`${category}: ${battles.length} votes (< ${MIN_VOTES}), keeping current snapshot`);
     continue;
   }

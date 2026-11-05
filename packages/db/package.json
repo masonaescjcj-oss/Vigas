@@ -13,10 +13,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "generate": "drizzle-kit generate",
-    "migrate": "tsx scripts/migrate.ts",
-    "seed": "tsx scripts/seed.ts",
-    "leaderboard": "tsx scripts/compute-leaderboard.ts",
-    "create-key": "tsx scripts/create-key.ts"
+    "migrate": "tsx --env-file-if-exists=../../.env scripts/migrate.ts",
+    "seed": "tsx --env-file-if-exists=../../.env scripts/seed.ts",
+    "leaderboard": "tsx --env-file-if-exists=../../.env scripts/compute-leaderboard.ts",
+    "create-key": "tsx --env-file-if-exists=../../.env scripts/create-key.ts"
   },
   "dependencies": {
     "@vigas/core": "workspace:*",
