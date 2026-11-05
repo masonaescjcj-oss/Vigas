@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTO_MODEL_ID } from '@vigas/core';
-import { getAccount, keySpendThisMonth, type Db } from '@vigas/db';
+import { exchangeAuthCode, getAccount, keySpendThisMonth, OAuthError, type Db } from '@vigas/db';
 import { authenticate } from './auth';
 import { handleChatCompletion, type GatewayDeps } from './chat';
 import type { GatewayConfig } from './config';
@@ -97,6 +97,29 @@ export function createApp(opts: CreateAppOptions) {
         limit_reset: 'monthly',
       },
     });
+  });
+
+  // "Sign in with Vigas" (PKCE): an app exchanges the one-time code from its callback, plus its
+  // code_verifier, for an API key on the user's account. Same shape as OpenRouter's /auth/keys.
+  app.post('/v1/auth/keys', async (c) => {
+    let body: { code?: unknown; code_verifier?: unknown };
+    try {
+      body = await c.req.json();
+    } catch {
+      return errorResponse(400, 'Request body must be valid JSON', 'invalid_request_error', 'invalid_json');
+    }
+    if (typeof body.code !== 'string' || typeof body.code_verifier !== 'string') {
+      return errorResponse(400, '"code" and "code_verifier" are required', 'invalid_request_error', 'invalid_request');
+    }
+    const wait = deps.limiter.take(`oauth:${c.req.header('x-forwarded-for') ?? 'local'}`);
+    if (wait > 0) return errorResponse(429, `Too many attempts. Retry in ${wait}s.`, 'rate_limit_error', 'rate_limited');
+    try {
+      const key = await exchangeAuthCode(deps.db, { code: body.code, codeVerifier: body.code_verifier });
+      return c.json({ key: key.key, user_id: key.userId, name: key.name, limit: key.monthlyLimitMicros ? key.monthlyLimitMicros / 1e6 : null });
+    } catch (err) {
+      if (err instanceof OAuthError) return errorResponse(403, err.message, 'authentication_error', err.code);
+      throw err;
+    }
   });
 
   app.post('/v1/chat/completions', (c) => handleChatCompletion(deps, c.req.raw));

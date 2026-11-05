@@ -133,6 +133,24 @@ export const usageEvents = pgTable(
   (t) => [index('usage_account_idx').on(t.accountId, t.createdAt), index('usage_key_idx').on(t.apiKeyId, t.createdAt)],
 );
 
+/**
+ * One-time codes for the "Sign in with Vigas" PKCE flow (used by RetroBuild and other apps).
+ * The app exchanges a code plus its PKCE verifier for an API key on the user's account.
+ */
+export const oauthCodes = pgTable('oauth_codes', {
+  codeHash: text('code_hash').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  appName: text('app_name').notNull(),
+  callbackUrl: text('callback_url').notNull(),
+  codeChallenge: text('code_challenge').notNull(),
+  challengeMethod: text('challenge_method', { enum: ['S256', 'plain'] }).notNull(),
+  keyLimitMicros: micros('key_limit_micros'),
+  createdAt: createdAt(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+});
+
 // ── Catalogue ───────────────────────────────────────────────────────────────
 
 export const models = pgTable('models', {

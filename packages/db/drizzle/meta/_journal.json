@@ -15,6 +15,13 @@
       "when": 1793886650061,
       "tag": "0001_key_monthly_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793887156276,
+      "tag": "0002_oauth_codes",
+      "breakpoints": true
     }
   ]
 }

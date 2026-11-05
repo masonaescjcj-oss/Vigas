@@ -84,6 +84,28 @@ export function generateSessionToken(): SessionToken {
   return { token, hash: sha256Hex(token) };
 }
 
+/** PKCE S256 challenge for a verifier: base64url(SHA-256(verifier)). */
+export function pkceChallengeS256(verifier: string): string {
+  return createHash('sha256').update(verifier).digest('base64url');
+}
+
+/**
+ * Callback URLs allowed for "Sign in with Vigas": https anywhere, or http on localhost for development.
+ * Returns the normalized URL or null.
+ */
+export function validateCallbackUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+    if (u.protocol !== 'https:' && !(u.protocol === 'http:' && local)) return null;
+    if (u.username || u.password) return null;
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 /** Constant-time string comparison for shared secrets. */
 export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);

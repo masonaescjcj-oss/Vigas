@@ -2,10 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 import { usdToMicros } from '@vigas/core';
-import { hashPassword } from '@vigas/core/server';
+import { hashPassword, pkceChallengeS256 } from '@vigas/core/server';
 import {
   completeTopup,
   createApiKey,
+  createAuthCode,
   createDb,
   createUser,
   getAccount,
@@ -202,6 +203,43 @@ describe('chat completions', () => {
     expect((await post({ model: 'nvidia/nemotron-3.5-super', messages }, capped)).status).toBe(200);
     const internal = await app.request('/v1/key', { headers: { Authorization: `Bearer ${INTERNAL}`, 'X-Vigas-Account': accountId } });
     expect(internal.status).toBe(400);
+  });
+
+  it('exchanges a Sign-in-with-Vigas code and PKCE verifier for a working key, once', async () => {
+    const verifier = 'v'.repeat(20) + '-retrobuild-pkce-verifier-0123456789';
+    const { code, redirectUrl } = await createAuthCode(h.db, {
+      userId: (await getAccount(h.db, accountId))!.userId,
+      accountId,
+      appName: 'RetroBuild',
+      callbackUrl: 'https://retrobuild.space/auth/vigas#ignored',
+      codeChallenge: pkceChallengeS256(verifier),
+      keyLimitMicros: 10_000_000,
+    });
+    expect(redirectUrl).toBe(`https://retrobuild.space/auth/vigas?code=${code}`);
+    const exchange = (v: string, c = code) =>
+      app.request('/v1/auth/keys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: c, code_verifier: v }) });
+
+    const ok = await exchange(verifier);
+    expect(ok.status).toBe(200);
+    const body = (await ok.json()) as { key: string; name: string; limit: number };
+    expect(body).toMatchObject({ name: 'RetroBuild (Sign in with Vigas)', limit: 10 });
+    const info = await app.request('/v1/key', { headers: { Authorization: `Bearer ${body.key}` } });
+    expect(((await info.json()) as { data: { limit: number } }).data.limit).toBe(10);
+    expect((await exchange(verifier)).status).toBe(403); // already used
+
+    const second = await createAuthCode(h.db, {
+      userId: (await getAccount(h.db, accountId))!.userId,
+      accountId,
+      appName: 'RetroBuild',
+      callbackUrl: 'http://localhost:5173/cb',
+      codeChallenge: pkceChallengeS256(verifier),
+    });
+    expect((await exchange('wrong-verifier-wrong-verifier-wrong-verifier', second.code)).status).toBe(403);
+    expect((await exchange(verifier, second.code)).status).toBe(403); // burned by the wrong attempt
+
+    await expect(
+      createAuthCode(h.db, { userId: 'x', accountId, appName: 'Evil', callbackUrl: 'http://evil.example/cb', codeChallenge: pkceChallengeS256(verifier) }),
+    ).rejects.toThrow(/https/);
   });
 
   it('reports credits for a key', async () => {
