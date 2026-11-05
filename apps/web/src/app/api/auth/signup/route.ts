@@ -4,9 +4,11 @@ import { hashPassword } from '@vigas/core/server';
 import { createSession, createUser, findUserByEmail, getDb } from '@vigas/db';
 import { setSessionCookies, toPublicUser } from '@/lib/auth';
 import { apiError, clientIp, originMismatch, rateLimit, readJson } from '@/lib/http';
+import { PREVIEW_MESSAGE, PREVIEW_MODE } from '@/lib/preview';
 import { signupSchema } from '@/lib/schemas';
 
 export async function POST(req: Request) {
+  if (PREVIEW_MODE) return apiError(503, 'preview_mode', PREVIEW_MESSAGE);
   const bad = originMismatch(req);
   if (bad) return bad;
   const limited = rateLimit(`signup:${clientIp(req)}`, 5, 60_000);

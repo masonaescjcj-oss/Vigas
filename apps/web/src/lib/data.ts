@@ -29,11 +29,21 @@ import {
   type RecentSession,
   type ToolSort,
 } from '@vigas/db';
+import {
+  PREVIEW_MODE,
+  previewArticle,
+  previewLeaderboard,
+  previewModels,
+  previewNews,
+  previewSitemap,
+  previewTools,
+} from './preview';
 
 export async function getModels(): Promise<ModelListItem[]> {
   'use cache';
   cacheLife('content');
   cacheTag('models');
+  if (PREVIEW_MODE) return previewModels();
   const rows = await listModels(getDb());
   return rows.map((m) => ({
     id: m.id,
@@ -53,6 +63,7 @@ export async function getNews(
   'use cache';
   cacheLife('content');
   cacheTag('news');
+  if (PREVIEW_MODE) return previewNews(opts);
   const db = getDb();
   const [items, total] = await Promise.all([
     listArticles(db, { category: opts.category ?? null, limit: opts.limit ?? 20, offset: opts.offset ?? 0 }),
@@ -65,6 +76,7 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   'use cache';
   cacheLife('content');
   cacheTag('news', `article:${slug}`);
+  if (PREVIEW_MODE) return previewArticle(slug);
   return getArticle(getDb(), slug);
 }
 
@@ -74,6 +86,7 @@ export async function getTools(
   'use cache';
   cacheLife('catalog');
   cacheTag('tools');
+  if (PREVIEW_MODE) return previewTools(opts);
   const items = await listTools(getDb(), { category: opts.category ?? null, q: opts.q ?? null, sort: opts.sort ?? 'votes' });
   return items.map((t) => ({ ...t, voted: false }));
 }
@@ -82,6 +95,7 @@ export async function getToolBySlug(slug: string): Promise<ToolItem | null> {
   'use cache';
   cacheLife('catalog');
   cacheTag('tools', `tool:${slug}`);
+  if (PREVIEW_MODE) return previewTools({}).find((t) => t.slug === slug) ?? null;
   const all = await listTools(getDb(), { limit: 200 });
   const tool = all.find((t) => t.slug === slug);
   return tool ? { ...tool, voted: false } : null;
@@ -91,6 +105,7 @@ export async function getLeaderboardData(category: LeaderboardCategory): Promise
   'use cache';
   cacheLife('content');
   cacheTag('leaderboard', `leaderboard:${category}`);
+  if (PREVIEW_MODE) return previewLeaderboard(category);
   return getLeaderboard(getDb(), category);
 }
 
@@ -99,6 +114,7 @@ export async function getRecentSessions(): Promise<RecentSession[]> {
   // Short-lived so the block feels live, but long enough (expire >= 5 min) to stay in static output.
   cacheLife({ stale: 30, revalidate: 30, expire: 300 });
   cacheTag('sessions');
+  if (PREVIEW_MODE) return [];
   return listRecentSessions(getDb(), { limit: 6 });
 }
 
@@ -147,6 +163,7 @@ export async function getSitemapData(): Promise<{
   'use cache';
   cacheLife('content');
   cacheTag('news', 'tools');
+  if (PREVIEW_MODE) return previewSitemap();
   const db = getDb();
   const [articles, tools] = await Promise.all([listArticleSitemap(db), listToolSitemap(db)]);
   return { articles: articles.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt.toISOString() })), tools };

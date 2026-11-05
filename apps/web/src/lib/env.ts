@@ -1,5 +1,11 @@
-/** Public origin of the website, without a trailing slash. Inlined at build time. */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+/**
+ * Public origin of the website, without a trailing slash. Inlined at build time. On Vercel it falls
+ * back to the project's production domain when NEXT_PUBLIC_SITE_URL isn't set.
+ */
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000')
+).replace(/\/+$/, '');
 
 export const SITE_NAME = 'Vigas';
 

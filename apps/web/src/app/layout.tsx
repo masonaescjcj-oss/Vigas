@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Instrument_Serif, Inter, JetBrains_Mono } from 'next/font/google';
 import { colors, cssVariables } from '@vigas/tokens';
 import { SITE_NAME, SITE_URL } from '@/lib/env';
+import { PREVIEW_MESSAGE, PREVIEW_MODE } from '@/lib/preview';
 import { DEFAULT_DESCRIPTION } from '@/lib/seo';
 import './globals.css';
 
@@ -42,6 +43,15 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <a href="#main" className="skip-link">
           Skip to content
         </a>
+        {PREVIEW_MODE && (
+          <div
+            role="note"
+            className="mn"
+            style={{ background: 'var(--vg-sand)', color: 'var(--vg-on-orange)', fontSize: 12, padding: '6px 16px', textAlign: 'center', letterSpacing: '.04em' }}
+          >
+            PREVIEW · sample data · {PREVIEW_MESSAGE}
+          </div>
+        )}
         {children}
       </body>
     </html>

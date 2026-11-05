@@ -3,6 +3,7 @@ import { connection, type NextResponse } from 'next/server';
 import type { PublicUser } from '@vigas/core';
 import { getDb, getSessionUser, SESSION_TTL_MS, type SessionUser } from '@vigas/db';
 import { serverEnv } from './env';
+import { PREVIEW_MODE } from './preview';
 
 /** httpOnly session cookie holding the session token. */
 export const SESSION_COOKIE = 'vigas_session';
@@ -42,6 +43,7 @@ export function readToken(req: Request): { token: string; via: AuthVia } | null 
 }
 
 export async function getRequestAuth(req: Request): Promise<RequestAuth | null> {
+  if (PREVIEW_MODE) return null;
   const t = readToken(req);
   if (!t || t.token.length > 200) return null;
   const user = await getSessionUser(getDb(), t.token);
@@ -51,6 +53,7 @@ export async function getRequestAuth(req: Request): Promise<RequestAuth | null> 
 /** For request-time Server Components. Must be rendered inside <Suspense>. */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (PREVIEW_MODE) return null;
   if (!token || token.length > 200) return null;
   // The session lookup compares expiry with the current time; tell Next this runs per request,
   // otherwise it reports `new Date()` during prerendering.

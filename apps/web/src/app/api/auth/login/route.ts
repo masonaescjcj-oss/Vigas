@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from '@vigas/core/server';
 import { createSession, findUserByEmail, getDb } from '@vigas/db';
 import { setSessionCookies, toPublicUser } from '@/lib/auth';
 import { apiError, clientIp, originMismatch, rateLimit, readJson } from '@/lib/http';
+import { PREVIEW_MESSAGE, PREVIEW_MODE } from '@/lib/preview';
 import { loginSchema } from '@/lib/schemas';
 
 // Verifying unknown emails against a real hash keeps their timing close to that of wrong passwords.
@@ -13,6 +14,7 @@ const getDummyHash = () => (dummyHash ??= hashPassword('vigas-timing-equalizer')
 const INVALID = 'Invalid email or password.';
 
 export async function POST(req: Request) {
+  if (PREVIEW_MODE) return apiError(503, 'preview_mode', PREVIEW_MESSAGE);
   const bad = originMismatch(req);
   if (bad) return bad;
   const limited = rateLimit(`login:${clientIp(req)}`, 10, 60_000);
