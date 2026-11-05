@@ -97,7 +97,9 @@ export class VigasApi {
   private readonly f: FetchLike;
 
   constructor(private readonly opts: VigasApiOptions) {
-    this.f = opts.fetch ?? ((input, init) => fetch(input, init));
+    // Always call fetch as a plain function: window.fetch rejects being called with the client as `this`.
+    const custom = opts.fetch;
+    this.f = custom ? (input, init) => custom(input, init) : (input, init) => fetch(input, init);
   }
 
   private async headers(json: boolean): Promise<Record<string, string>> {

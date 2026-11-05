@@ -239,7 +239,7 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
             : quote.freeMicros > 0
               ? 'No fee on your first $5'
               : 'No fee'}
-          {'  ·  Card · Crypto · Bank transfer'}
+          {'\nCard · Crypto · Bank transfer'}
         </T>
       </Animated.View>
 
