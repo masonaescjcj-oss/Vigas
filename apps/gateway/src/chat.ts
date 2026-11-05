@@ -13,7 +13,7 @@ import {
   type RouteCandidate,
 } from '@vigas/core';
 import { randomBase62 } from '@vigas/core/server';
-import { reserveCredits, settleUsage, type Db } from '@vigas/db';
+import { keySpendThisMonth, reserveCredits, settleUsage, type Db } from '@vigas/db';
 import { authenticate, type Caller } from './auth';
 import type { GatewayConfig } from './config';
 import { errorResponse } from './errors';
@@ -114,6 +114,17 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
 
   // Reserve enough for the most expensive endpoint that might serve the request.
   const reserve = Math.max(...attempts.map((a) => estimateMaxCostMicros(a.candidate.endpoint, promptEstimate, maxTokens)));
+  if (caller.apiKeyId && caller.monthlyLimitMicros !== null && reserve > 0) {
+    const spent = await keySpendThisMonth(deps.db, caller.apiKeyId);
+    if (spent + reserve > caller.monthlyLimitMicros) {
+      return errorResponse(
+        402,
+        `This key's monthly limit of $${(caller.monthlyLimitMicros / 1e6).toFixed(2)} would be exceeded. Raise it in the dashboard or lower max_tokens.`,
+        'insufficient_quota',
+        'key_limit_reached',
+      );
+    }
+  }
   const holdId = await reserveCredits(deps.db, caller.accountId, reserve);
   if (!holdId) {
     return errorResponse(402, 'Insufficient credits. Add credits at https://vigas.ai/dashboard', 'insufficient_quota', 'insufficient_credits');

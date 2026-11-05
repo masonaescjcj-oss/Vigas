@@ -8,6 +8,10 @@ export interface Caller {
   source: UsageSource;
   /** Key used for rate limiting. */
   limitKey: string;
+  /** Name of the API key, when called with one. */
+  keyName: string | null;
+  /** Monthly spending cap of the API key, if any. */
+  monthlyLimitMicros: number | null;
 }
 
 export type AuthResult = { ok: true; caller: Caller } | { ok: false; status: number; message: string };
@@ -31,11 +35,24 @@ export async function authenticate(db: Db, config: GatewayConfig, headers: Heade
     if (!accountId || !INTERNAL_SOURCES.has(source)) return { ok: false, status: 400, message: 'Invalid internal request headers' };
     const account = await getAccount(db, accountId);
     if (!account) return { ok: false, status: 401, message: 'Unknown account' };
-    return { ok: true, caller: { accountId, apiKeyId: null, source, limitKey: `acct:${accountId}` } };
+    return {
+      ok: true,
+      caller: { accountId, apiKeyId: null, source, limitKey: `acct:${accountId}`, keyName: null, monthlyLimitMicros: null },
+    };
   }
 
   if (!looksLikeApiKey(token)) return { ok: false, status: 401, message: 'Invalid API key' };
   const key = await authenticateApiKey(db, token);
   if (!key) return { ok: false, status: 401, message: 'Invalid or revoked API key' };
-  return { ok: true, caller: { accountId: key.accountId, apiKeyId: key.apiKeyId, source: 'api', limitKey: `key:${key.apiKeyId}` } };
+  return {
+    ok: true,
+    caller: {
+      accountId: key.accountId,
+      apiKeyId: key.apiKeyId,
+      source: 'api',
+      limitKey: `key:${key.apiKeyId}`,
+      keyName: key.name,
+      monthlyLimitMicros: key.monthlyLimitMicros,
+    },
+  };
 }

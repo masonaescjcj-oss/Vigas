@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTO_MODEL_ID } from '@vigas/core';
-import { getAccount, type Db } from '@vigas/db';
+import { getAccount, keySpendThisMonth, type Db } from '@vigas/db';
 import { authenticate } from './auth';
 import { handleChatCompletion, type GatewayDeps } from './chat';
 import type { GatewayConfig } from './config';
@@ -78,6 +78,24 @@ export function createApp(opts: CreateAppOptions) {
     return c.json({
       balance_usd: (account?.balanceMicros ?? 0) / 1e6,
       lifetime_topup_usd: (account?.lifetimeTopupMicros ?? 0) / 1e6,
+    });
+  });
+
+  // OpenRouter-style key info: label, this month's usage and the remaining limit (USD).
+  app.get('/v1/key', async (c) => {
+    const auth = await authenticate(deps.db, deps.config, c.req.raw.headers);
+    if (!auth.ok) return errorResponse(auth.status, auth.message, 'authentication_error', 'invalid_api_key');
+    const { apiKeyId, keyName, monthlyLimitMicros } = auth.caller;
+    if (!apiKeyId) return errorResponse(400, 'This endpoint needs an API key', 'invalid_request_error', 'api_key_required');
+    const spent = await keySpendThisMonth(deps.db, apiKeyId);
+    return c.json({
+      data: {
+        label: keyName,
+        usage: spent / 1e6,
+        limit: monthlyLimitMicros === null ? null : monthlyLimitMicros / 1e6,
+        limit_remaining: monthlyLimitMicros === null ? null : Math.max(0, monthlyLimitMicros - spent) / 1e6,
+        limit_reset: 'monthly',
+      },
     });
   });
 

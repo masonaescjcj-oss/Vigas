@@ -65,6 +65,8 @@ export const apiKeys = pgTable(
     name: text('name').notNull(),
     keyHash: text('key_hash').notNull().unique(),
     display: text('display').notNull(),
+    /** Optional spending cap per calendar month (UTC). Null = no cap beyond the account balance. */
+    monthlyLimitMicros: micros('monthly_limit_micros'),
     createdAt: createdAt(),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),

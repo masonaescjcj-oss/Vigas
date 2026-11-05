@@ -10,13 +10,21 @@ export type UsageSource = 'api' | 'chat' | 'arena' | 'retrobuild';
 export interface KeyAuth {
   accountId: string;
   apiKeyId: string;
+  name: string;
   balanceMicros: number;
+  monthlyLimitMicros: number | null;
 }
 
 /** Looks up a live API key by its plain value. Returns null for unknown or revoked keys. */
 export async function authenticateApiKey(db: Db, key: string): Promise<KeyAuth | null> {
   const [row] = await db
-    .select({ apiKeyId: apiKeys.id, accountId: apiKeys.accountId, balanceMicros: accounts.balanceMicros })
+    .select({
+      apiKeyId: apiKeys.id,
+      accountId: apiKeys.accountId,
+      name: apiKeys.name,
+      balanceMicros: accounts.balanceMicros,
+      monthlyLimitMicros: apiKeys.monthlyLimitMicros,
+    })
     .from(apiKeys)
     .innerJoin(accounts, eq(accounts.id, apiKeys.accountId))
     .where(and(eq(apiKeys.keyHash, sha256Hex(key)), isNull(apiKeys.revokedAt)))
@@ -139,6 +147,7 @@ export async function listApiKeys(db: Db, accountId: string): Promise<ApiKeySumm
       display: apiKeys.display,
       createdAt: apiKeys.createdAt,
       lastUsedAt: apiKeys.lastUsedAt,
+      monthlyLimitMicros: apiKeys.monthlyLimitMicros,
       spent,
     })
     .from(apiKeys)
@@ -151,15 +160,22 @@ export async function listApiKeys(db: Db, accountId: string): Promise<ApiKeySumm
     createdAt: r.createdAt.toISOString(),
     lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
     spentThisMonthMicros: Number(r.spent),
+    monthlyLimitMicros: r.monthlyLimitMicros,
   }));
 }
 
-export async function createApiKey(db: Db, accountId: string, name: string): Promise<CreatedApiKey> {
+export async function createApiKey(
+  db: Db,
+  accountId: string,
+  name: string,
+  opts: { monthlyLimitMicros?: number | null } = {},
+): Promise<CreatedApiKey> {
   const k = generateApiKey();
   const id = randomId('key');
+  const limit = opts.monthlyLimitMicros && opts.monthlyLimitMicros > 0 ? Math.round(opts.monthlyLimitMicros) : null;
   const [row] = await db
     .insert(apiKeys)
-    .values({ id, accountId, name: name.trim().slice(0, 80) || 'Untitled key', keyHash: k.hash, display: k.display })
+    .values({ id, accountId, name: name.trim().slice(0, 80) || 'Untitled key', keyHash: k.hash, display: k.display, monthlyLimitMicros: limit })
     .returning();
   return {
     id,
@@ -169,7 +185,27 @@ export async function createApiKey(db: Db, accountId: string, name: string): Pro
     createdAt: row!.createdAt.toISOString(),
     lastUsedAt: null,
     spentThisMonthMicros: 0,
+    monthlyLimitMicros: limit,
   };
+}
+
+/** Sets or clears (null) a key's monthly spending cap. */
+export async function setApiKeyLimit(db: Db, accountId: string, keyId: string, monthlyLimitMicros: number | null): Promise<boolean> {
+  const res = await db
+    .update(apiKeys)
+    .set({ monthlyLimitMicros: monthlyLimitMicros && monthlyLimitMicros > 0 ? Math.round(monthlyLimitMicros) : null })
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.accountId, accountId), isNull(apiKeys.revokedAt)))
+    .returning({ id: apiKeys.id });
+  return res.length > 0;
+}
+
+/** What a key has spent since the start of the current UTC month. */
+export async function keySpendThisMonth(db: Db, apiKeyId: string): Promise<number> {
+  const [row] = await db
+    .select({ spent: sql<number>`coalesce(sum(${usageEvents.costMicros}), 0)::bigint` })
+    .from(usageEvents)
+    .where(and(eq(usageEvents.apiKeyId, apiKeyId), gte(usageEvents.createdAt, monthStart())));
+  return Number(row?.spent ?? 0);
 }
 
 export async function revokeApiKey(db: Db, accountId: string, keyId: string): Promise<boolean> {

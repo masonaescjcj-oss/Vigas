@@ -141,6 +141,8 @@ export interface ApiKeySummary {
   createdAt: string;
   lastUsedAt: string | null;
   spentThisMonthMicros: number;
+  /** Monthly spending cap for this key; null or absent = no cap. */
+  monthlyLimitMicros?: number | null;
 }
 
 export interface CreatedApiKey extends ApiKeySummary {

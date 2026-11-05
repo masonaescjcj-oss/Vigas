@@ -17,7 +17,10 @@ import {
   getLeaderboard,
   getSessionUser,
   getWallet,
+  keySpendThisMonth,
+  listApiKeys,
   listArticles,
+  setApiKeyLimit,
   listBattleOutcomes,
   listEndpoints,
   listModels,
@@ -120,6 +123,12 @@ describe('billing', () => {
     expect(wallet!.week.at(-1)!.costMicros).toBe(126);
     expect(wallet!.bySource).toEqual([{ source: 'api', costMicros: 126 }]);
     expect(wallet!.keys[0]!.spentThisMonthMicros).toBe(126);
+
+    expect(await keySpendThisMonth(h.db, key.id)).toBe(126);
+    expect(await setApiKeyLimit(h.db, u.accountId, key.id, 5_000_000)).toBe(true);
+    expect((await authenticateApiKey(h.db, key.key))?.monthlyLimitMicros).toBe(5_000_000);
+    expect((await listApiKeys(h.db, u.accountId))[0]!.monthlyLimitMicros).toBe(5_000_000);
+    expect(await setApiKeyLimit(h.db, 'acc_other', key.id, 1)).toBe(false);
 
     expect(await revokeApiKey(h.db, u.accountId, key.id)).toBe(true);
     expect(await authenticateApiKey(h.db, key.key)).toBeNull();

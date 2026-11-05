@@ -190,6 +190,20 @@ describe('chat completions', () => {
     expect(third.headers.get('retry-after')).toBeTruthy();
   });
 
+  it('enforces a key’s monthly limit and reports it on /v1/key', async () => {
+    const capped = (await createApiKey(h.db, accountId, 'capped', { monthlyLimitMicros: 1_000 })).key; // $0.001
+    const info = await app.request('/v1/key', { headers: { Authorization: `Bearer ${capped}` } });
+    expect(await info.json()).toEqual({ data: { label: 'capped', usage: 0, limit: 0.001, limit_remaining: 0.001, limit_reset: 'monthly' } });
+    // Opus with the default 4,096 max tokens could cost far more than $0.001.
+    const res = await post({ model: 'anthropic/claude-opus-5.5', messages }, capped);
+    expect(res.status).toBe(402);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe('key_limit_reached');
+    // Free models are never blocked by the cap.
+    expect((await post({ model: 'nvidia/nemotron-3.5-super', messages }, capped)).status).toBe(200);
+    const internal = await app.request('/v1/key', { headers: { Authorization: `Bearer ${INTERNAL}`, 'X-Vigas-Account': accountId } });
+    expect(internal.status).toBe(400);
+  });
+
   it('reports credits for a key', async () => {
     const res = await app.request('/v1/credits', { headers: { Authorization: `Bearer ${key}` } });
     expect(res.status).toBe(200);
