@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import type { NextResponse } from 'next/server';
+import { connection, type NextResponse } from 'next/server';
 import type { PublicUser } from '@vigas/core';
 import { getDb, getSessionUser, SESSION_TTL_MS, type SessionUser } from '@vigas/db';
 import { serverEnv } from './env';
@@ -52,6 +52,9 @@ export async function getRequestAuth(req: Request): Promise<RequestAuth | null> 
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token || token.length > 200) return null;
+  // The session lookup compares expiry with the current time; tell Next this runs per request,
+  // otherwise it reports `new Date()` during prerendering.
+  await connection();
   return getSessionUser(getDb(), token);
 }
 

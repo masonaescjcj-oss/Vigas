@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { NEWS_CATEGORIES, type NewsCategory } from '@vigas/core';
 import { adminSaveArticle } from './admin';
 import type { Db } from './client';
@@ -102,6 +102,32 @@ export async function listNewItems(db: Db, limit = 10) {
     .where(eq(newsItems.status, 'new'))
     .orderBy(asc(newsItems.createdAt))
     .limit(limit);
+}
+
+/** Inbox for the admin: items in the given states, newest first, with their source name. */
+export async function adminListNewsItems(
+  db: Db,
+  opts: { statuses?: Array<'new' | 'drafted' | 'ignored' | 'error'>; limit?: number } = {},
+) {
+  const statuses = opts.statuses ?? ['new', 'error'];
+  const rows = await db
+    .select({ item: newsItems, sourceName: newsSources.name })
+    .from(newsItems)
+    .innerJoin(newsSources, eq(newsSources.id, newsItems.sourceId))
+    .where(inArray(newsItems.status, statuses))
+    .orderBy(desc(newsItems.createdAt))
+    .limit(Math.min(opts.limit ?? 50, 200));
+  return rows.map(({ item, sourceName }) => ({
+    id: item.id,
+    title: item.title,
+    url: item.url,
+    summary: item.summary,
+    sourceName,
+    status: item.status,
+    error: item.error,
+    articleSlug: item.articleSlug,
+    publishedAt: item.publishedAt?.toISOString() ?? null,
+  }));
 }
 
 export async function setNewsItemStatus(db: Db, id: number, status: 'ignored' | 'new') {
