@@ -7,12 +7,14 @@ export const DEFAULT_DESCRIPTION =
 interface PageMetaInput {
   title: string;
   description: string;
-  /** Path with query, e.g. "/news?category=Models". Used for the canonical URL. */
+  /** Path with query, e.g. "/tools/cursor". Used for the canonical URL. */
   path: string;
   /** Use the title as is, without the " | Vigas" suffix. */
   absoluteTitle?: boolean;
   type?: 'website' | 'article';
   noindex?: boolean;
+  image?: string;
+  imageAlt?: string;
   article?: { publishedTime: string; modifiedTime: string; authors: string[]; section: string };
 }
 
@@ -20,10 +22,15 @@ interface PageMetaInput {
 export function pageMetadata(input: PageMetaInput): Metadata {
   const fullTitle = input.absoluteTitle ? input.title : `${input.title} | ${SITE_NAME}`;
   const url = absoluteUrl(input.path);
+  const ogImage = absoluteUrl(input.image ?? '/opengraph-image');
+  const ogAlt = input.imageAlt ?? fullTitle;
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
-    alternates: { canonical: input.path },
+    alternates: {
+      canonical: input.path,
+      types: { 'application/rss+xml': [{ url: '/feed.xml', title: `${SITE_NAME} AI News RSS` }] },
+    },
     robots: input.noindex ? { index: false, follow: true } : undefined,
     openGraph: {
       siteName: SITE_NAME,
@@ -31,6 +38,7 @@ export function pageMetadata(input: PageMetaInput): Metadata {
       url,
       title: fullTitle,
       description: input.description,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogAlt }],
       ...(input.article
         ? {
             type: 'article',
@@ -41,7 +49,7 @@ export function pageMetadata(input: PageMetaInput): Metadata {
           }
         : { type: 'website' }),
     },
-    twitter: { card: 'summary_large_image', title: fullTitle, description: input.description },
+    twitter: { card: 'summary_large_image', title: fullTitle, description: input.description, images: [ogImage] },
   };
 }
 

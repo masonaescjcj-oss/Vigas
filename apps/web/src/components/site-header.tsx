@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getHomeFeed, getModels } from '@/lib/data';
 import { HeaderAccount } from './header-account';
+import { MobileNav } from './mobile-nav';
 import { QuickSearch } from './quick-search';
-import { LogoMark } from './ui';
+import { Icon, LogoMark } from './ui';
 
 export type NavKey = 'home' | 'models' | 'chat' | 'leaderboard' | 'news' | 'tools' | 'retrobuild' | 'none';
 
@@ -21,6 +23,15 @@ export function SiteHeader({ active = 'none', ticker = true }: { active?: NavKey
     <>
       <header className="site-header">
         <div className="hdr">
+          <Suspense
+            fallback={
+              <span className="ib hdr-toggle" aria-hidden="true">
+                <Icon name="menu" size={20} />
+              </span>
+            }
+          >
+            <MobileNav active={active} nav={NAV} />
+          </Suspense>
           <Link href="/" aria-label="Vigas home" className="hdr-logo">
             <LogoMark />
             <span className="sf" style={{ fontSize: 27, lineHeight: 1, letterSpacing: '-.01em' }}>

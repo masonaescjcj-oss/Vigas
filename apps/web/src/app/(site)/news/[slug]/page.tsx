@@ -8,9 +8,12 @@ import { pageMetadata } from '@/lib/seo';
 
 /** Unknown params wait for the full render, so missing pages get a real 404 status. */
 export const ensureStatic = 'navigation';
+/** URL validation runs before streaming so missing slugs emit real 404s without dev warnings. */
+export const instant = false;
 
 export async function generateStaticParams() {
   const { articles } = await getSitemapData();
+  if (articles.length === 0) return [{ slug: '__placeholder__' }];
   return articles.slice(0, 100).map((a) => ({ slug: a.slug }));
 }
 
@@ -22,6 +25,8 @@ export async function generateMetadata({ params }: PageProps<'/news/[slug]'>): P
     title: article.title,
     description: article.dek,
     path: `/news/${article.slug}`,
+    image: `/og/news/${article.slug}`,
+    imageAlt: article.title,
     article: {
       publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt,

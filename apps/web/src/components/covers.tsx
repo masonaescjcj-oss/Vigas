@@ -114,16 +114,19 @@ export function CoverArt({
 export function TypoCover({
   cover,
   size = 'sm',
+  className,
   style,
 }: {
   cover: Cover;
   size?: 'sm' | 'md' | 'lg';
+  className?: string;
   style?: CSSProperties;
 }) {
   const big = size === 'sm' ? 36 : size === 'md' ? 46 : 56;
   return (
     <span
       aria-hidden="true"
+      className={className}
       style={{
         borderRadius: 14,
         backgroundColor: '#151411',

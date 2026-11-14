@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { adminListArticles, getDb } from '@vigas/db';
 import { AdminPage, AdminSkeleton, StatusBadge } from '@/components/admin/admin-shell';
+import { ClearDemoButton } from '@/components/admin/clear-demo-button';
 import { getAdminUser } from '@/lib/admin';
 import { pageMetadata } from '@/lib/seo';
 
@@ -17,9 +18,12 @@ export default function AdminArticlesPage() {
         </>
       }
       actions={
-        <Link href="/admin/articles/new" className="btn key">
-          New article
-        </Link>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <ClearDemoButton />
+          <Link href="/admin/articles/new" className="btn key">
+            New article
+          </Link>
+        </div>
       }
     >
       <Suspense fallback={<AdminSkeleton />}>

@@ -36,6 +36,7 @@ export function ModelsCatalogue({
   const [cat, setCat] = useState<Cat>('all');
   const [ctx, setCtx] = useState<Ctx>('any');
   const [off, setOff] = useState<Record<string, boolean>>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Deep links from the footer, home page and search: ?org=, ?tag=, ?q=
   useEffect(() => {
@@ -63,9 +64,11 @@ export function ModelsCatalogue({
     );
   }, [models, off, cat, ctx, q]);
 
+  const activeFilterCount = Object.values(off).filter(Boolean).length + (ctx !== 'any' ? 1 : 0);
+
   return (
     <section aria-label="Model catalogue" style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '32px 0 72px' }}>
-      <aside aria-label="Filters" style={{ flex: '1 1 230px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 26 }}>
+      <aside id="models-filters-panel" aria-label="Filters" className="models-filters" data-open={filtersOpen}>
         <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
           <legend className="lbl" style={{ marginBottom: 12, padding: 0 }}>
             Providers
@@ -117,7 +120,7 @@ export function ModelsCatalogue({
 
       <div style={{ flex: '999 1 640px', minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-          <label className="field" style={{ flex: '1 1 260px', minWidth: 0, height: 46 }}>
+          <label className="field" style={{ flex: '1 1 240px', minWidth: 0, height: 46 }}>
             <Icon name="search" size={17} />
             <span className="sr-only">Search models</span>
             <input
@@ -128,7 +131,18 @@ export function ModelsCatalogue({
               style={{ font: '15px var(--vg-font-sans)' }}
             />
           </label>
-          <div role="group" aria-label="Category" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn gh models-filter-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls="models-filters-panel"
+            onClick={() => setFiltersOpen((v) => !v)}
+            style={{ minHeight: 46, padding: '0 14px', borderRadius: 12 }}
+          >
+            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            <Icon name={filtersOpen ? 'x' : 'chevDown'} size={15} />
+          </button>
+          <div role="group" aria-label="Category" className="scroll-x" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: '100%' }}>
             {CATS.map(([id, label]) => (
               <button key={id} type="button" className="chip" aria-pressed={cat === id} onClick={() => setCat(id)}>
                 {label}
@@ -138,7 +152,7 @@ export function ModelsCatalogue({
         </div>
 
         <div style={{ border: '1px solid var(--vg-line)', borderRadius: 20, overflow: 'hidden', background: 'var(--vg-surface)' }}>
-          <div className="tablewrap">
+          <div className="models-desktop tablewrap">
             <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
               <caption className="sr-only">AI models with context window and price per 1M tokens</caption>
               <colgroup>
@@ -232,6 +246,71 @@ export function ModelsCatalogue({
                 })}
               </tbody>
             </table>
+            {rows.length === 0 && (
+              <p style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vg-ink2)', margin: 0 }}>No models match. Try another filter.</p>
+            )}
+          </div>
+
+          <div className="models-mobile">
+            {rows.map((m, idx) => {
+              const chg =
+                m.priceChange24h < 0
+                  ? { t: `▼ ${Math.abs(m.priceChange24h)}%`, c: 'var(--vg-green)' }
+                  : m.priceChange24h > 0
+                    ? { t: `▲ ${m.priceChange24h}%`, c: 'var(--vg-red)' }
+                    : { t: '—', c: 'var(--vg-ink3)' };
+              return (
+                <div key={m.id} style={{ padding: '14px 16px', borderTop: idx ? '1px solid rgba(239,234,225,.06)' : undefined, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <Mark color={m.color} letter={m.letter} size={34} radius={10} fontSize={16} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <b style={{ display: 'block', fontWeight: 500, fontSize: 15 }}>{m.name}</b>
+                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {m.id}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mn" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 6, fontSize: 12, padding: '8px 10px', borderRadius: 10, background: 'var(--vg-bg2)' }}>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>CTX</span>
+                      {formatContext(m.contextLength)}
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>IN/1M</span>
+                      {formatPricePerMillion(m.inputPerMillionMicros)}
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>OUT/1M</span>
+                      {formatPricePerMillion(m.outputPerMillionMicros)}
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>24H</span>
+                      <span style={{ color: chg.c }}>{chg.t}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginRight: 'auto' }}>
+                      {m.tags.map((t) => (
+                        <span key={t} className="mn" style={{ fontSize: 11, padding: '2px 6px', borderRadius: 5, background: 'var(--vg-raised)', color: 'var(--vg-ink2)' }}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                    <Link
+                      href={`/chat?model=${encodeURIComponent(m.id)}`}
+                      className="btn gh"
+                      style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                      aria-label={`Try ${m.name} in Vigas Chat`}
+                    >
+                      Try
+                    </Link>
+                    <CopyButton text={m.id} label={`Copy model ID ${m.id}`} style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
+                      Copy ID
+                    </CopyButton>
+                  </div>
+                </div>
+              );
+            })}
             {rows.length === 0 && (
               <p style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vg-ink2)', margin: 0 }}>No models match. Try another filter.</p>
             )}

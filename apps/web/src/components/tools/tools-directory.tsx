@@ -12,14 +12,30 @@ import { VoteButton, type VoteState } from './vote-button';
 type Sort = 'votes' | 'rating' | 'new';
 const PAGE = 24;
 
-export function ToolsDirectory({ tools, categories }: { tools: ToolItem[]; categories: readonly ToolCategory[] }) {
+export function ToolsDirectory({
+  tools,
+  categories,
+  initialCategory = 'All',
+  initialPricing = null,
+  initialVigasOnly = false,
+  initialSort = 'votes',
+  categoryMode = 'filter',
+}: {
+  tools: ToolItem[];
+  categories: readonly ToolCategory[];
+  initialCategory?: ToolCategory | 'All';
+  initialPricing?: string | null;
+  initialVigasOnly?: boolean;
+  initialSort?: Sort;
+  categoryMode?: 'filter' | 'link';
+}) {
   const router = useRouter();
   const signedIn = useSignedInHint();
-  const [cat, setCat] = useState<ToolCategory | 'All'>('All');
+  const [cat, setCat] = useState<ToolCategory | 'All'>(initialCategory);
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState<Sort>('votes');
-  const [pricing, setPricing] = useState<string | null>(null);
-  const [vigasOnly, setVigasOnly] = useState(false);
+  const [sort, setSort] = useState<Sort>(initialSort);
+  const [pricing, setPricing] = useState<string | null>(initialPricing);
+  const [vigasOnly, setVigasOnly] = useState(initialVigasOnly);
   const [limit, setLimit] = useState(PAGE);
   const [votes, setVotes] = useState<Record<string, VoteState>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -93,7 +109,7 @@ export function ToolsDirectory({ tools, categories }: { tools: ToolItem[]; categ
     }
   };
 
-  const filtersOn = pricing || vigasOnly;
+  const filtersOn = categoryMode === 'filter' && (pricing || vigasOnly);
 
   return (
     <>
@@ -126,21 +142,33 @@ export function ToolsDirectory({ tools, categories }: { tools: ToolItem[]; categ
         </label>
       </div>
       <div role="group" aria-label="Category" className="scroll-x" style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
-        {(['All', ...categories] as const).map((c) => (
-          <button
-            key={c}
-            type="button"
-            className="chip"
-            aria-pressed={cat === c}
-            onClick={() => {
-              setCat(c);
-              setLimit(PAGE);
-            }}
-            style={{ minHeight: 38, padding: '0 15px' }}
-          >
-            {c}
-          </button>
-        ))}
+        {(['All', ...categories] as const).map((c) =>
+          categoryMode === 'link' ? (
+            <Link
+              key={c}
+              href={c === 'All' ? '/tools#dir' : `/tools/category/${c.toLowerCase()}`}
+              className="chip"
+              aria-current={cat === c ? 'page' : undefined}
+              style={{ minHeight: 38, padding: '0 15px' }}
+            >
+              {c}
+            </Link>
+          ) : (
+            <button
+              key={c}
+              type="button"
+              className="chip"
+              aria-pressed={cat === c}
+              onClick={() => {
+                setCat(c);
+                setLimit(PAGE);
+              }}
+              style={{ minHeight: 38, padding: '0 15px' }}
+            >
+              {c}
+            </button>
+          ),
+        )}
         {filtersOn && (
           <button
             type="button"
@@ -175,7 +203,7 @@ export function ToolsDirectory({ tools, categories }: { tools: ToolItem[]; categ
               <li key={t.slug} className="lift card" style={{ borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <Mark color={t.color} letter={t.letter} size={48} radius={13} fontSize={21} />
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Link href={`/tools/${t.slug}`}>{t.name}</Link>
                       {t.runsOnVigas && <Icon name="verified" size={15} style={{ color: 'var(--vg-blue)' }} label="Runs on the Vigas API" />}
@@ -185,14 +213,16 @@ export function ToolsDirectory({ tools, categories }: { tools: ToolItem[]; categ
                   <VoteButton name={t.name} state={st} busy={busy === t.slug} onClick={() => vote(t)} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 'auto' }}>
-                  <span className="pill">{t.category}</span>
+                  <Link href={`/tools/category/${t.category.toLowerCase()}`} className="pill" style={{ color: 'var(--vg-ink2)' }}>
+                    {t.category}
+                  </Link>
                   <span className="pill" style={{ color: t.pricing === 'Free' ? 'var(--vg-green)' : undefined }}>
                     {t.pricing}
                   </span>
                   {t.runsOnVigas && (
-                    <span className="pill" style={{ background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
+                    <Link href="/tools/collection/vigas-api" className="pill" style={{ background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
                       Vigas API
-                    </span>
+                    </Link>
                   )}
                   {t.isNew && (
                     <span className="pill" style={{ color: 'var(--vg-sand)' }}>

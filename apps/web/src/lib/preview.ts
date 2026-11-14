@@ -1,7 +1,7 @@
 /**
  * Preview mode: when DATABASE_URL is not set (e.g. a first Vercel deploy without a database), public
- * pages are served from the built-in sample data and everything that needs an account is disabled.
- * Set DATABASE_URL to turn the real site on; nothing else changes.
+ * pages are served from the built-in catalog data + real Markdown files in `content/articles/`, while
+ * accounts, chat and payments stay turned off. Set DATABASE_URL to turn the real backend on.
  */
 import type {
   Article,
@@ -14,10 +14,21 @@ import type {
   ToolItem,
 } from '@vigas/core';
 import { SEED_TOTAL_SESSIONS, seedArticles, seedLeaderboard, seedModels, seedTools } from '@vigas/core/seed';
+import { loadLocalArticles } from './local-articles';
 
 export const PREVIEW_MODE = !process.env.DATABASE_URL;
 
 export const PREVIEW_MESSAGE = 'This is a preview without a database, so accounts, chat and payments are turned off.';
+
+/** Prototype stories stay suppressed unless explicitly enabled via VIGAS_DEMO_NEWS=1. */
+export const DEMO_NEWS_ENABLED = process.env.VIGAS_DEMO_NEWS === '1' || process.env.VIGAS_DEMO_NEWS === 'true';
+
+function resolvedPreviewArticles(): Article[] {
+  const local = loadLocalArticles();
+  const demo = DEMO_NEWS_ENABLED ? seedArticles() : [];
+  const seen = new Set(local.map((a) => a.slug));
+  return [...local, ...demo.filter((a) => !seen.has(a.slug))].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+}
 
 export function previewModels(): ModelListItem[] {
   return seedModels
@@ -35,7 +46,7 @@ export function previewModels(): ModelListItem[] {
 }
 
 export function previewNews(opts: { category?: NewsCategory | null; limit?: number; offset?: number }): { items: NewsListItem[]; total: number } {
-  const all = seedArticles().filter((a) => !opts.category || a.category === opts.category);
+  const all = resolvedPreviewArticles().filter((a) => !opts.category || a.category === opts.category);
   const offset = opts.offset ?? 0;
   const items = all.slice(offset, offset + (opts.limit ?? 20)).map(
     (a): NewsListItem => ({
@@ -54,7 +65,7 @@ export function previewNews(opts: { category?: NewsCategory | null; limit?: numb
 }
 
 export function previewArticle(slug: string): Article | null {
-  return seedArticles().find((a) => a.slug === slug) ?? null;
+  return resolvedPreviewArticles().find((a) => a.slug === slug) ?? null;
 }
 
 export function previewTools(opts: { category?: ToolCategory | null; q?: string | null; sort?: 'votes' | 'rating' | 'new' }): ToolItem[] {
@@ -74,7 +85,7 @@ export function previewLeaderboard(category: LeaderboardCategory): LeaderboardRe
 
 export function previewSitemap(): { articles: Array<{ slug: string; updatedAt: string }>; tools: Array<{ slug: string }> } {
   return {
-    articles: seedArticles().map((a) => ({ slug: a.slug, updatedAt: a.updatedAt })),
+    articles: resolvedPreviewArticles().map((a) => ({ slug: a.slug, updatedAt: a.updatedAt })),
     tools: seedTools.map((t) => ({ slug: t.slug })),
   };
 }

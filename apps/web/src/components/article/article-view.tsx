@@ -52,6 +52,7 @@ export async function ArticleView({ slug }: { slug: string }) {
   });
   if (article.faq.length) toc.push({ id: 'faq', text: 'FAQ' });
 
+  const categorySlug = article.category.toLowerCase();
   const ld = [
     {
       '@context': 'https://schema.org',
@@ -65,14 +66,14 @@ export async function ArticleView({ slug }: { slug: string }) {
       inLanguage: 'en',
       mainEntityOfPage: { '@type': 'WebPage', '@id': url },
       url,
-      image: [absoluteUrl('/opengraph-image')],
+      image: [absoluteUrl(`/og/news/${article.slug}`)],
       author: [{ '@type': 'Person', name: article.author.name, jobTitle: article.author.role }],
       publisher: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL, logo: { '@type': 'ImageObject', url: absoluteUrl('/icon.svg') } },
     },
     breadcrumbLd([
       { name: 'Home', path: '/' },
       { name: 'News', path: '/news' },
-      { name: article.category, path: `/news?category=${article.category}` },
+      { name: article.category, path: `/news/category/${categorySlug}` },
       { name: article.title, path: `/news/${article.slug}` },
     ]),
     ...(article.faq.length ? [faqLd(article.faq)] : []),
@@ -100,7 +101,7 @@ export async function ArticleView({ slug }: { slug: string }) {
             items={[
               { name: 'Home', href: '/' },
               { name: 'News', href: '/news' },
-              { name: article.category, href: `/news?category=${article.category}`, accent: true },
+              { name: article.category, href: `/news/category/${categorySlug}`, accent: true },
             ]}
           />
           <div
@@ -112,10 +113,12 @@ export async function ArticleView({ slug }: { slug: string }) {
                 {article.flag.toUpperCase()}
               </span>
             )}
-            {article.category.toUpperCase()}
+            <Link href={`/news/category/${categorySlug}`} style={{ color: 'var(--vg-orange)' }}>
+              {article.category.toUpperCase()}
+            </Link>
             {showData ? ' · LEADERBOARD' : ''}
           </div>
-          <h1 className="sf" style={{ fontSize: 'clamp(40px,5.6vw,76px)', lineHeight: 1.02, letterSpacing: '-.03em', margin: '18px 0' }}>
+          <h1 className="sf" style={{ fontSize: 'clamp(36px,5.6vw,76px)', lineHeight: 1.02, letterSpacing: '-.03em', margin: '18px 0' }}>
             <SplitTitle title={article.title} />
           </h1>
           <p className="sf" style={{ fontSize: 'clamp(19px,1.8vw,23px)', color: 'var(--vg-ink2)', lineHeight: 1.45, margin: '0 auto 26px', maxWidth: 720 }}>
@@ -170,9 +173,9 @@ export async function ArticleView({ slug }: { slug: string }) {
           </figcaption>
         </figure>
 
-        <div className="wrap" style={{ maxWidth: 1180, display: 'flex', flexWrap: 'wrap', gap: 56, alignItems: 'flex-start' }}>
+        <div className="wrap article-layout">
           {toc.length > 1 && (
-            <nav aria-label="On this page" className="toc" style={{ flex: '1 1 200px', minWidth: 0, maxWidth: 240, position: 'sticky', top: 24 }}>
+            <nav aria-label="On this page" className="toc article-toc">
               <div className="lbl" style={{ marginBottom: 10 }}>
                 On this page
               </div>
@@ -211,7 +214,7 @@ export async function ArticleView({ slug }: { slug: string }) {
               </section>
             )}
 
-            <div id="author" className="card" style={{ marginTop: '2.2em', display: 'flex', gap: 16, alignItems: 'flex-start', padding: 22, borderRadius: 18, fontSize: 14, scrollMarginTop: 24 }}>
+            <div id="author" className="card article-author-box">
               <Avatar name={article.author.name} color={article.author.color} size={52} />
               <div>
                 <b style={{ fontWeight: 600, fontSize: 16 }}>{article.author.name}</b>
@@ -238,7 +241,12 @@ export async function ArticleView({ slug }: { slug: string }) {
                     <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) auto', gap: 10, alignItems: 'center', padding: '11px 0', borderTop: '1px solid rgba(239,234,225,.06)' }}>
                       <Mark color={mk.color} letter={mk.letter} size={32} radius={9} fontSize={16} ring={false} />
                       <span style={{ minWidth: 0 }}>
-                        <b style={{ display: 'block', fontWeight: 500, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</b>
+                        <Link
+                          href={`/models?q=${encodeURIComponent(m.id)}`}
+                          style={{ display: 'block', fontWeight: 500, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--vg-ink)' }}
+                        >
+                          {m.name}
+                        </Link>
                         <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
                           {rank ? `#${rank} · ` : ''}
                           {m.inputPerMillionMicros === 0 && m.outputPerMillionMicros === 0
@@ -288,9 +296,12 @@ export async function ArticleView({ slug }: { slug: string }) {
         <section aria-labelledby="kr" className="wrap" style={{ maxWidth: 1180, marginTop: 56, paddingTop: 40, paddingBottom: 96, borderTop: '1px solid var(--vg-line)' }}>
           <div className="lbl">§ Keep reading</div>
           <h2 id="kr" className="sf" style={{ fontSize: 36, margin: '10px 0 24px', fontWeight: 400 }}>
-            More on <em className="hi">{article.category.toLowerCase()}</em>
+            More on{' '}
+            <Link href={`/news/category/${categorySlug}`} style={{ color: 'var(--vg-sand)' }}>
+              <em className="hi">{article.category.toLowerCase()}</em>
+            </Link>
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 24 }}>
             {related.map((n) => (
               <Link key={n.slug} href={`/news/${n.slug}`} className="st" style={{ display: 'block', color: 'var(--vg-ink)' }}>
                 <TypoCover cover={n.cover} size="lg" style={{ aspectRatio: '16/10', marginBottom: 14, padding: '14px 16px' }} />
@@ -362,7 +373,7 @@ function WinShareFigure({ entries }: { entries: Array<{ modelId: string; name: s
 
 function PullQuote({ quote }: { quote: { text: string; cite: string } }) {
   return (
-    <blockquote style={{ margin: '1.6em 0', padding: 0, border: 0, fontSize: 32, lineHeight: 1.25, fontStyle: 'italic', color: 'var(--vg-sand)', textAlign: 'center' }}>
+    <blockquote className="pull-quote">
       <p style={{ margin: 0 }}>“{quote.text}”</p>
       <cite className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', fontStyle: 'normal', marginTop: 12, letterSpacing: '.08em', textTransform: 'uppercase' }}>
         — {quote.cite}

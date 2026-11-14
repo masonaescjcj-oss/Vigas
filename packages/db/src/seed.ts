@@ -11,6 +11,8 @@ import { articles, authors, modelEndpoints, models, tools, users } from './schem
 export interface SeedOptions {
   /** Create demo@vigas.ai with $48.20 of credits and two keys (local development only). */
   demoUser?: { email: string; password: string } | null;
+  /** Seed prototype news stories (defaults to true for dev/tests; set false for clean launch). */
+  demoNews?: boolean;
   now?: Date;
 }
 
@@ -33,25 +35,27 @@ export async function seedDatabase(db: Db, opts: SeedOptions = {}): Promise<Seed
   for (const a of seedAuthors) {
     await db.insert(authors).values(a).onConflictDoUpdate({ target: authors.slug, set: a });
   }
-  for (const a of seedArticles(opts.now)) {
-    const values = {
-      slug: a.slug,
-      title: a.title,
-      dek: a.dek,
-      category: a.category,
-      flag: a.flag,
-      authorSlug: a.author.slug,
-      status: 'published' as const,
-      publishedAt: new Date(a.publishedAt),
-      updatedAt: new Date(a.updatedAt),
-      body: a.body,
-      readingMinutes: a.readingMinutes,
-      cover: a.cover,
-      faq: a.faq,
-      mentionedModelIds: a.mentionedModelIds,
-      pullQuote: a.pullQuote,
-    };
-    await db.insert(articles).values(values).onConflictDoNothing({ target: articles.slug });
+  if (opts.demoNews !== false) {
+    for (const a of seedArticles(opts.now)) {
+      const values = {
+        slug: a.slug,
+        title: a.title,
+        dek: a.dek,
+        category: a.category,
+        flag: a.flag,
+        authorSlug: a.author.slug,
+        status: 'published' as const,
+        publishedAt: new Date(a.publishedAt),
+        updatedAt: new Date(a.updatedAt),
+        body: a.body,
+        readingMinutes: a.readingMinutes,
+        cover: a.cover,
+        faq: a.faq,
+        mentionedModelIds: a.mentionedModelIds,
+        pullQuote: a.pullQuote,
+      };
+      await db.insert(articles).values(values).onConflictDoNothing({ target: articles.slug });
+    }
   }
   for (const t of seedTools) {
     const { votes, voted: _voted, ...rest } = t;

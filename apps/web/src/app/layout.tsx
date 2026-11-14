@@ -21,8 +21,14 @@ export const metadata: Metadata = {
   title: { default: 'Vigas — One key for every AI model', template: `%s | ${SITE_NAME}` },
   description: DEFAULT_DESCRIPTION,
   applicationName: SITE_NAME,
-  openGraph: { siteName: SITE_NAME, type: 'website', locale: 'en_US' },
-  twitter: { card: 'summary_large_image' },
+  alternates: { types: { 'application/rss+xml': [{ url: '/feed.xml', title: `${SITE_NAME} AI News RSS` }] } },
+  openGraph: {
+    siteName: SITE_NAME,
+    type: 'website',
+    locale: 'en_US',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Vigas — One key for every AI model' }],
+  },
+  twitter: { card: 'summary_large_image', images: ['/opengraph-image'] },
   formatDetection: { telephone: false },
 };
 
@@ -32,6 +38,7 @@ export const viewport: Viewport = {
 };
 
 const tokenCss = cssVariables();
+const SHOW_PREVIEW_BANNER = process.env.VIGAS_PREVIEW_BANNER === '1';
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
@@ -43,7 +50,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        {PREVIEW_MODE && (
+        {PREVIEW_MODE && SHOW_PREVIEW_BANNER && (
           <div
             role="note"
             className="mn"

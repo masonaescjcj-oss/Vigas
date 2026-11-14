@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { cacheLife, cacheTag } from 'next/cache';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { LEADERBOARD_CATEGORIES, formatUsd, paretoFrontier, timeAgo, type LeaderboardCategory } from '@vigas/core';
 import { orgMark } from '@vigas/tokens';
 import { getLeaderboardData } from '@/lib/data';
-import { absoluteUrl } from '@/lib/env';
-import { breadcrumbLd } from '@/lib/seo';
+import { absoluteUrl, SITE_NAME, SITE_URL } from '@/lib/env';
+import { breadcrumbLd, faqLd } from '@/lib/seo';
+import { getLeaderboardFaq, LEADERBOARD_CATEGORY_SEO } from '@/lib/seo-catalog';
 import { pillarTone, ROMAN, shortName } from '../colonnade';
 import { Breadcrumb, Icon, JsonLd, Mark, type IconName } from '../ui';
+import { ParetoChart, type ParetoPoint } from './pareto-chart';
 import { RankingTable } from './ranking-table';
 
 export const CATEGORY_ICON: Record<LeaderboardCategory, IconName> = {
@@ -47,30 +49,78 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
   const pts = entries.filter((e) => e.costPerTaskMicros > 0);
   const costs = pts.map((e) => e.costPerTaskMicros);
   const scores = pts.map((e) => e.rating);
-  const cMin = Math.min(...costs) * 0.8;
-  const cMax = Math.max(...costs) * 1.25;
-  const sMin = Math.floor((Math.min(...scores) - 10) / 10) * 10;
-  const sMax = Math.ceil((Math.max(...scores) + 10) / 10) * 10;
-  const lx = (c: number) => ((Math.log10(c) - Math.log10(cMin)) / (Math.log10(cMax) - Math.log10(cMin))) * 100;
-  const ly = (s: number) => (1 - (s - sMin) / (sMax - sMin)) * 100;
+  const cMin = costs.length ? Math.min(...costs) * 0.8 : 1000;
+  const cMax = costs.length ? Math.max(...costs) * 1.25 : 100_000;
+  const sMin = scores.length ? Math.floor((Math.min(...scores) - 10) / 10) * 10 : 1200;
+  const sMax = scores.length ? Math.ceil((Math.max(...scores) + 10) / 10) * 10 : 1600;
+  const cDenom = Math.max(0.0001, Math.log10(cMax) - Math.log10(cMin));
+  const sDenom = Math.max(1, sMax - sMin);
+  const lx = (c: number) => ((Math.log10(c) - Math.log10(cMin)) / cDenom) * 100;
+  const ly = (s: number) => (1 - (s - sMin) / sDenom) * 100;
   const frontier = paretoFrontier(pts.map((e) => ({ id: e.modelId, name: e.name, cost: e.costPerTaskMicros, score: e.rating })));
   const onFrontier = new Set(frontier.map((f) => f.id));
   const best = frontier[frontier.length - 1];
+  const paretoPoints: ParetoPoint[] = pts.map((e) => ({
+    modelId: e.modelId,
+    name: e.name,
+    org: e.org,
+    rank: e.rank,
+    winRate: e.winRate,
+    rating: e.rating,
+    costPerTaskMicros: e.costPerTaskMicros,
+    onFrontier: onFrontier.has(e.modelId),
+    xPct: lx(e.costPerTaskMicros),
+    yPct: ly(e.rating),
+  }));
+  const frontierPolyline = frontier.map((f) => `${lx(f.cost).toFixed(1)},${ly(f.score).toFixed(1)}`).join(' ');
+
+  const catSeo = LEADERBOARD_CATEGORY_SEO[category];
+  const faqItems = getLeaderboardFaq(category, label, entries);
+  const pageUrl = absoluteUrl(path);
 
   const itemList = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: `${label} AI leaderboard`,
-    url: absoluteUrl(path),
+    url: pageUrl,
     numberOfItems: entries.length,
     itemListOrder: 'https://schema.org/ItemListOrderDescending',
     itemListElement: entries.map((e) => ({
       '@type': 'ListItem',
       position: e.rank,
       name: e.name,
+      url: absoluteUrl(`/models?q=${encodeURIComponent(e.modelId)}`),
       description: `${e.org} · ${e.winRate.toFixed(2)}% win share · score ${Math.round(e.rating)} · ${formatUsd(e.costPerTaskMicros)} per task`,
     })),
   };
+
+  const datasetLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Dataset',
+    name: `Vigas ${label} AI Model & Agent Leaderboard`,
+    description: `${catSeo.intro} Built from ${board.totalSessions.toLocaleString('en-US')} real sessions and blind pairwise Arena votes.`,
+    url: pageUrl,
+    dateModified: board.updatedAt,
+    inLanguage: 'en',
+    isAccessibleForFree: true,
+    creator: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
+    variableMeasured: ['Win Share Percentage', 'Bradley-Terry ELO Score', 'Cost Per Completed Task (USD)', '95% Confidence Interval'],
+    distribution: {
+      '@type': 'DataDownload',
+      encodingFormat: 'text/html',
+      contentUrl: pageUrl,
+    },
+  };
+
+  const collectionLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${label} AI Leaderboard`,
+    url: pageUrl,
+    description: catSeo.intro,
+    mainEntity: { '@type': 'ItemList', numberOfItems: entries.length },
+  };
+
   const crumbs = [
     { name: 'Home', path: '/' },
     { name: 'Leaderboard', path: '/leaderboard' },
@@ -79,7 +129,7 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
 
   return (
     <>
-      <JsonLd data={[breadcrumbLd(crumbs), itemList]} />
+      <JsonLd data={[breadcrumbLd(crumbs), collectionLd, itemList, datasetLd, faqLd(faqItems)]} />
       <Breadcrumb
         items={[
           { name: 'Home', href: '/' },
@@ -111,7 +161,9 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
             )}
           </h1>
           <p style={{ fontSize: 18, color: 'var(--vg-ink2)', maxWidth: 560, margin: 0 }}>
-            Rankings built from real people doing real work on Vigas — every session, every blind vote, every dollar spent.
+            {category === 'overall'
+              ? 'Rankings built from real people doing real work on Vigas — every session, every blind vote, every dollar spent.'
+              : catSeo.intro}
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 24 }}>
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 10 }}>
@@ -198,39 +250,40 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
             Win share · this week
           </span>
         </div>
-        <ol style={{ listStyle: 'none', margin: 0, padding: 0, position: 'relative', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 'clamp(10px,2.4vw,32px)' }}>
+        <ol className="podium-list">
           {podium.map((p) => {
             const i = p.rank - 1;
             const t = pillarTone(i);
+            const h = [220, 160, 120][i] ?? 100;
             return (
               <li key={p.modelId} className="podium-col" style={{ order: i === 1 ? 0 : i === 0 ? 1 : 2 }}>
                 <Mark color={p.color} letter={p.letter} size={46} radius={13} fontSize={22} />
-                <b className="sf" style={{ fontSize: 'clamp(18px,2vw,26px)', fontWeight: 400, lineHeight: 1.1, marginTop: 10 }}>
+                <b className="sf" style={{ fontSize: 'clamp(17px,2vw,26px)', fontWeight: 400, lineHeight: 1.1, marginTop: 10 }}>
                   <span className="sr-only">Rank {p.rank}: </span>
-                  {shortName(p.name)}
+                  <Link href={`/models?q=${encodeURIComponent(p.modelId)}`} style={{ color: 'var(--vg-ink)' }}>
+                    {shortName(p.name)}
+                  </Link>
                 </b>
-                <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 2 }}>
+                <span className="mn podium-meta" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 2 }}>
                   {p.org} · {Math.round(p.rating)} score
                 </span>
-                <span className="sf" style={{ fontSize: 'clamp(34px,3.6vw,52px)', lineHeight: 1, margin: '10px 0 14px', color: t.vc }}>
+                <span className="sf podium-pct" style={{ color: t.vc }}>
                   {p.winRate.toFixed(2)}%
                 </span>
                 <span aria-hidden="true" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 3 }}>
                   <span style={{ display: 'block', width: '84%', height: 12, borderRadius: 3, background: t.fill }} />
                   <span style={{ display: 'block', width: '92%', height: 6, borderRadius: 2, background: t.fill, opacity: 0.7 }} />
                   <span
-                    style={{
-                      display: 'block',
-                      width: '64%',
-                      height: [220, 160, 120][i] ?? 100,
-                      background: `repeating-linear-gradient(90deg,${t.fill} 0 10px,${t.groove} 10px 12px)`,
-                    }}
+                    className="podium-bar"
+                    style={
+                      {
+                        '--podium-h': `${h}px`,
+                        background: `repeating-linear-gradient(90deg,${t.fill} 0 10px,${t.groove} 10px 12px)`,
+                      } as CSSProperties
+                    }
                   />
                 </span>
-                <span
-                  aria-hidden="true"
-                  style={{ display: 'grid', placeItems: 'center', width: '100%', height: 64, background: 'var(--vg-raised)', borderTop: '1px solid var(--vg-line2)', borderRadius: '6px 6px 0 0' }}
-                >
+                <span aria-hidden="true" className="podium-base">
                   <span className="sf" style={{ fontSize: 34, lineHeight: 1, color: t.vc }}>
                     {ROMAN[i]}
                   </span>
@@ -242,77 +295,19 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
       </section>
 
       <section aria-label="Rankings" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start', paddingBottom: 72 }}>
-        <RankingTable entries={entries} category={category} categoryLabel={label} />
+        <RankingTable entries={entries} category={category} categoryLabel={label} siteUrl={SITE_URL} />
 
         <div style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="card" style={{ borderRadius: 22, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <h2 className="sf" style={{ fontSize: 26, margin: 0, fontWeight: 400 }}>
-                Pareto frontier
-              </h2>
-              <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                score vs $/task
-              </span>
-            </div>
-            <p style={{ margin: '6px 0 14px', fontSize: 13, color: 'var(--vg-ink2)' }}>
-              Green models give the best score for their price. Everything below the line is beaten by something cheaper.
-            </p>
-            <div
-              role="img"
-              aria-label={`Pareto frontier: ${frontier.map((f) => shortName(f.name)).join(', ')} give the best score for their cost.`}
-              style={{ position: 'relative', height: 260, marginLeft: 34, marginBottom: 22, borderLeft: '1px solid var(--vg-line2)', borderBottom: '1px solid var(--vg-line2)' }}
-            >
-              <div
-                aria-hidden="true"
-                style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(239,234,225,.06) 1px,transparent 1px)', backgroundSize: '100% 25%' }}
-              />
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style={{ position: 'absolute', inset: 0, overflow: 'visible' }} aria-hidden="true">
-                <polyline
-                  points={frontier.map((f) => `${lx(f.cost).toFixed(1)},${ly(f.score).toFixed(1)}`).join(' ')}
-                  fill="none"
-                  stroke="var(--vg-green)"
-                  style={{ strokeWidth: 1.5, strokeDasharray: '4 4', vectorEffect: 'non-scaling-stroke' }}
-                />
-              </svg>
-              {pts.map((e) => {
-                const on = onFrontier.has(e.modelId);
-                const s = on ? 11 : 8;
-                return (
-                  <span
-                    key={e.modelId}
-                    title={`${e.name} · ${Math.round(e.rating)} · ${formatUsd(e.costPerTaskMicros)}/task`}
-                    style={{
-                      position: 'absolute',
-                      left: `${lx(e.costPerTaskMicros).toFixed(1)}%`,
-                      top: `${ly(e.rating).toFixed(1)}%`,
-                      width: s,
-                      height: s,
-                      margin: `${-s / 2}px 0 0 ${-s / 2}px`,
-                      borderRadius: '50%',
-                      background: on ? 'var(--vg-green)' : 'var(--vg-ink3)',
-                    }}
-                  />
-                );
-              })}
-              <span className="mn" aria-hidden="true" style={{ position: 'absolute', left: -34, top: -7, fontSize: 12, color: 'var(--vg-ink3)' }}>
-                {sMax}
-              </span>
-              <span className="mn" aria-hidden="true" style={{ position: 'absolute', left: -34, bottom: -7, fontSize: 12, color: 'var(--vg-ink3)' }}>
-                {sMin}
-              </span>
-              <span className="mn" aria-hidden="true" style={{ position: 'absolute', left: 0, bottom: -22, fontSize: 12, color: 'var(--vg-ink3)' }}>
-                {formatUsd(Math.round(cMin))}
-              </span>
-              <span className="mn" aria-hidden="true" style={{ position: 'absolute', right: 0, bottom: -22, fontSize: 12, color: 'var(--vg-ink3)' }}>
-                {formatUsd(Math.round(cMax))}
-              </span>
-              {best && (
-                <span aria-hidden="true" style={{ position: 'absolute', right: 4, top: 4, fontSize: 12, color: 'var(--vg-green)' }}>
-                  {shortName(best.name)}
-                </span>
-              )}
-            </div>
-          </div>
+          <ParetoChart
+            points={paretoPoints}
+            frontierPolyline={frontierPolyline}
+            sMin={sMin}
+            sMax={sMax}
+            cMin={cMin}
+            cMax={cMax}
+            defaultSelectedId={best?.id ?? paretoPoints[0]?.modelId ?? null}
+            frontierAriaLabel={`Pareto frontier for ${label}: ${frontier.map((f) => shortName(f.name)).join(', ')} give the best score for their cost.`}
+          />
 
           <div className="card" style={{ borderRadius: 22, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
@@ -329,7 +324,7 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
         </div>
       </section>
 
-      <section id="method" aria-labelledby="mh" style={{ padding: '0 0 96px', scrollMarginTop: 24 }}>
+      <section id="method" aria-labelledby="mh" style={{ padding: '0 0 64px', scrollMarginTop: 24 }}>
         <div className="lbl">§ Methodology</div>
         <h2 id="mh" className="sf" style={{ fontSize: 'clamp(36px,4vw,56px)', lineHeight: 1.02, letterSpacing: '-.022em', margin: '12px 0 28px' }}>
           How the rankings <em className="hi">are made.</em>
@@ -349,6 +344,41 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
               </h3>
               <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>{d}</p>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Cross-linking & FAQ section for users & search indexing */}
+      <section aria-labelledby="lb-faq" style={{ display: 'flex', flexWrap: 'wrap', gap: 40, paddingBottom: 96, borderTop: '1px solid var(--vg-line)', paddingTop: 56 }}>
+        <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+          <div className="lbl">§ {label} · Questions & explore</div>
+          <h2 id="lb-faq" className="sf" style={{ fontSize: 'clamp(34px,3.6vw,48px)', lineHeight: 1.04, margin: '12px 0 16px', letterSpacing: '-.02em' }}>
+            About the <em className="hi">{label.toLowerCase()}</em> board.
+          </h2>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link href={`/tools/category/${catSeo.relatedToolCategory.toLowerCase()}`} className="tag">
+              {catSeo.relatedToolLabel}
+            </Link>
+            <Link href={`/news/category/${catSeo.relatedNewsCategory.toLowerCase()}`} className="tag">
+              {catSeo.relatedNewsCategory} news
+            </Link>
+            <Link href="/models" className="tag">
+              API prices
+            </Link>
+            <Link href="/chat?mode=arena" className="tag">
+              Vote in Arena
+            </Link>
+          </div>
+        </div>
+        <div style={{ flex: '2 1 560px', minWidth: 0 }}>
+          {faqItems.map((f) => (
+            <details key={f.q} style={{ borderTop: '1px solid rgba(239,234,225,.1)', padding: '4px 0' }}>
+              <summary style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '16px 0', fontSize: 17, fontWeight: 500 }}>
+                <h3 style={{ margin: 0, font: 'inherit' }}>{f.q}</h3>
+                <Icon name="plus" size={20} className="pm" style={{ color: 'var(--vg-orange)' }} />
+              </summary>
+              <p style={{ margin: '0 0 18px', color: 'var(--vg-ink2)', maxWidth: 680 }}>{f.a}</p>
+            </details>
           ))}
         </div>
       </section>

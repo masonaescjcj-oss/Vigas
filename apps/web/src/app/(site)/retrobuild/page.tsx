@@ -156,7 +156,7 @@ export default function RetroBuildPage() {
               </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 300px', minWidth: 0, padding: 18, borderRight: line, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="rb-pane" style={{ flex: '1 1 300px', minWidth: 0, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ alignSelf: 'flex-end', maxWidth: '92%', background: 'var(--vg-raised)', border: line, padding: '10px 14px', borderRadius: '14px 14px 4px 14px', fontSize: 14 }}>
                   Build a habit tracker with streaks and a weekly heatmap. Dark theme, big touch targets.
                 </div>
@@ -186,7 +186,7 @@ export default function RetroBuildPage() {
                 </div>
               </div>
 
-              <div style={{ flex: '1.3 1 380px', minWidth: 0, borderRight: line, display: 'flex', flexDirection: 'column' }}>
+              <div className="rb-pane" style={{ flex: '1.3 1 380px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', gap: 2, padding: '8px 10px', borderBottom: line }}>
                   <span className="mn" style={{ fontSize: 12, padding: '6px 10px', borderRadius: 7, background: 'var(--vg-raised)' }}>
                     WeeklyHeatmap.tsx
@@ -278,9 +278,9 @@ export default function RetroBuildPage() {
           <h2 id="how" className="sf" style={{ fontSize: 'clamp(36px,4vw,56px)', lineHeight: 1.02, letterSpacing: '-.022em', margin: '12px 0 30px' }}>
             One key runs <em className="hi">the whole studio.</em>
           </h2>
-          <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 10 }}>
+          <ol className="flow-list">
             {FLOW.map((f, i) => (
-              <li key={f.t} style={{ flex: '1 1 220px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <li key={f.t} className="flow-step">
                 <div style={{ flex: 1, minWidth: 0, background: 'var(--vg-surface)', border: `1px solid ${f.bd}`, borderRadius: 18, padding: 20, height: '100%' }}>
                   <span style={{ width: 42, height: 42, borderRadius: 12, display: 'grid', placeItems: 'center', background: f.ibg, color: f.ic }}>
                     <Icon name={f.icon} size={20} />
@@ -290,7 +290,7 @@ export default function RetroBuildPage() {
                   </h3>
                   <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14 }}>{f.d}</p>
                 </div>
-                {i < FLOW.length - 1 && <Icon name="arrow" size={22} style={{ color: 'var(--vg-orange)' }} />}
+                {i < FLOW.length - 1 && <Icon name="arrow" size={22} className="flow-arrow" />}
               </li>
             ))}
           </ol>

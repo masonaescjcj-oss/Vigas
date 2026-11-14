@@ -1,4 +1,4 @@
-import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import {
   articleInputSchema,
   authorInputSchema,
@@ -9,6 +9,7 @@ import {
   type AuthorInput,
   type ToolInput,
 } from '@vigas/core';
+import { seedArticles } from '@vigas/core/seed';
 import type { Db } from './client';
 import { articles, authors, tools } from './schema';
 
@@ -148,6 +149,14 @@ export async function adminSaveArticle(db: Db, input: ArticleInput, existingSlug
 export async function adminDeleteArticle(db: Db, slug: string): Promise<boolean> {
   const res = await db.delete(articles).where(eq(articles.slug, slug)).returning({ slug: articles.slug });
   return res.length > 0;
+}
+
+/** Deletes all prototype seeded stories while leaving real/editorial articles untouched. */
+export async function adminDeleteDemoArticles(db: Db): Promise<string[]> {
+  const demoSlugs = seedArticles().map((a) => a.slug);
+  if (demoSlugs.length === 0) return [];
+  const removed = await db.delete(articles).where(inArray(articles.slug, demoSlugs)).returning({ slug: articles.slug });
+  return removed.map((r) => r.slug);
 }
 
 /** Creates or updates a tool by slug. User votes are kept. */

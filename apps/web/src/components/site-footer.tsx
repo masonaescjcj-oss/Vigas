@@ -26,17 +26,17 @@ const COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   },
   {
     title: 'News',
-    links: ['Models', 'Agents', 'Analysis', 'Policy', 'Hardware', 'Funding'].map((c) => [c, `/news?category=${c}`] as [string, string]),
+    links: ['Models', 'Agents', 'Analysis', 'Policy', 'Hardware', 'Funding'].map((c) => [c, `/news/category/${c.toLowerCase()}`] as [string, string]),
   },
   {
     title: 'Tools',
     links: [
-      ['AI coding tools', '/tools?category=Coding'],
-      ['AI image generators', '/tools?category=Image'],
-      ['AI video tools', '/tools?category=Video'],
-      ['AI voice & audio', '/tools?category=Audio'],
-      ['Research assistants', '/tools?category=Research'],
-      ['Submit a tool', '/tools#submit'],
+      ['AI coding tools', '/tools/category/coding'],
+      ['AI image generators', '/tools/category/image'],
+      ['AI video tools', '/tools/category/video'],
+      ['AI voice & audio', '/tools/category/audio'],
+      ['Research assistants', '/tools/category/research'],
+      ['Free AI tools', '/tools/collection/free'],
     ],
   },
   {
@@ -119,20 +119,7 @@ export function SiteFooter() {
             </nav>
           ))}
         </div>
-        <div
-          aria-hidden="true"
-          className="sf"
-          style={{
-            fontSize: 'clamp(120px,24vw,340px)',
-            lineHeight: 0.8,
-            letterSpacing: '-.05em',
-            color: 'transparent',
-            WebkitTextStroke: '1px rgba(239,234,225,.14)',
-            textAlign: 'center',
-            margin: '56px 0 36px',
-            userSelect: 'none',
-          }}
-        >
+        <div aria-hidden="true" className="sf footer-wordmark">
           Vigas
         </div>
         <div
@@ -149,7 +136,7 @@ export function SiteFooter() {
           }}
         >
           <span>© 2026 Vigas Labs · Made with sand &amp; signal</span>
-          <span style={{ display: 'flex', gap: 14 }}>
+          <span className="footer-bottom-links">
             <span style={{ color: 'var(--vg-ink)' }}>English</span>
             <span title="Persian edition coming soon">
               <span lang="fa" dir="rtl">
@@ -157,6 +144,15 @@ export function SiteFooter() {
               </span>{' '}
               · soon
             </span>
+            <Link href="/privacy" style={{ color: 'var(--vg-ink3)' }}>
+              Privacy
+            </Link>
+            <Link href="/terms" style={{ color: 'var(--vg-ink3)' }}>
+              Terms
+            </Link>
+            <a href="/feed.xml" style={{ color: 'var(--vg-ink3)' }}>
+              RSS
+            </a>
           </span>
         </div>
       </div>

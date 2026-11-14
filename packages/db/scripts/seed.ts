@@ -6,6 +6,7 @@ const withDemo = process.env.SEED_DEMO_USER !== 'false' && process.env.NODE_ENV 
 const { db, close } = createDb(url, { max: 1 });
 const res = await seedDatabase(db, {
   demoUser: withDemo ? { email: 'demo@vigas.ai', password: process.env.SEED_DEMO_PASSWORD ?? 'vigas-demo-2026' } : null,
+  demoNews: process.env.VIGAS_SEED_DEMO_NEWS === '1' || process.env.VIGAS_SEED_DEMO_NEWS === 'true',
 });
 console.log('Seed complete.');
 if (res.demo) {

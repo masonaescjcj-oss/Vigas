@@ -45,7 +45,7 @@ export function HomeAsk({ models }: { models: Array<{ id: string; name: string }
             style={{ flex: 1, minWidth: 0, background: 'transparent', border: 0, outline: 0, color: 'var(--vg-ink)', font: '16px var(--vg-font-sans)' }}
           />
         </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 4, flexWrap: 'wrap' }}>
+        <div className="home-ask-actions">
           <label className="chip" style={{ position: 'relative', paddingRight: 34 }}>
             <span className="sr-only">Model</span>
             <select
@@ -75,7 +75,7 @@ export function HomeAsk({ models }: { models: Array<{ id: string; name: string }
             <Icon name="arena" size={14} />
             Arena mode in Chat
           </span>
-          <button type="submit" className="btn key" style={{ marginLeft: 'auto', minHeight: 40 }}>
+          <button type="submit" className="btn key home-ask-submit" style={{ marginLeft: 'auto', minHeight: 40 }}>
             Ask Vigas
             <Icon name="arrow" size={16} />
           </button>

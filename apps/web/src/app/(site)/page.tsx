@@ -78,18 +78,18 @@ export default async function HomePage() {
               maskImage: 'radial-gradient(ellipse 55% 75% at 80% 40%,#000 15%,transparent 72%)',
             }}
           />
-          <div className="wrap" style={{ position: 'relative', paddingTop: 76, paddingBottom: 84, display: 'flex', flexWrap: 'wrap', gap: 56, alignItems: 'center' }}>
+          <div className="wrap hero-inner">
             <div style={{ flex: '1 1 540px', minWidth: 0 }}>
               <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                 <span className="led" />
                 {models.length} models · {providers} providers · one endpoint
               </div>
-              <h1 className="sf" style={{ fontSize: 'clamp(52px,7vw,100px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '20px 0 22px' }}>
+              <h1 className="sf" style={{ fontSize: 'clamp(44px,7vw,100px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '20px 0 22px' }}>
                 One key.
                 <br />
                 <em className="hi">Every</em> frontier model.
               </h1>
-              <p style={{ fontSize: 18, color: 'var(--vg-ink2)', maxWidth: 560, margin: 0, lineHeight: 1.6 }}>
+              <p style={{ fontSize: 'clamp(16px,1.5vw,18px)', color: 'var(--vg-ink2)', maxWidth: 560, margin: 0, lineHeight: 1.6 }}>
                 Route to every major model through one OpenAI‑compatible endpoint. Honest per‑token prices, automatic fallbacks — and the
                 same key powers Vigas Chat and RetroBuild.
               </p>
@@ -203,7 +203,7 @@ export default async function HomePage() {
               ['$0', null, 'Markup on first $5'],
             ].map(([big, unit, label]) => (
               <div key={label}>
-                <div className="sf" style={{ fontSize: 52, lineHeight: 1, letterSpacing: '-.02em' }}>
+                <div className="sf stat-val">
                   {big}
                   {unit && <em className="hi">{unit}</em>}
                 </div>
@@ -216,7 +216,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── § 01 Platform ────────────────────────────────────────────── */}
-        <section style={{ padding: '96px 0', borderBottom: line }} aria-labelledby="platform">
+        <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="platform">
           <div className="wrap">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap', marginBottom: 36 }}>
               <SectionHead
@@ -236,14 +236,14 @@ export default async function HomePage() {
               </p>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-              <Link href="/models" className="lift" style={bento('2 1 560px')}>
+              <Link href="/models" className="lift bento-card" style={{ flex: '2 1 560px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                   <span className="lbl">01 · API Gateway</span>
                   <span className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)', background: 'var(--vg-orange-soft)', borderRadius: 6, padding: '3px 8px' }}>
                     OpenAI-compatible
                   </span>
                 </div>
-                <h3 className="sf" style={{ fontSize: 36, lineHeight: 1.04, margin: 0, letterSpacing: '-.016em' }}>
+                <h3 className="sf" style={{ fontSize: 'clamp(28px,3vw,36px)', lineHeight: 1.04, margin: 0, letterSpacing: '-.016em' }}>
                   Every model behind <em className="hi">one endpoint.</em>
                 </h3>
                 <p style={{ margin: 0, color: 'var(--vg-ink2)', maxWidth: 500 }}>
@@ -275,7 +275,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/chat" className="lift" style={bento('1 1 340px')}>
+              <Link href="/chat" className="lift bento-card" style={{ flex: '1 1 340px' }}>
                 <span className="lbl">02 · Vigas Chat</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   Ask any model. <em className="hi">Or two at once.</em>
@@ -304,7 +304,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/leaderboard" className="lift" style={bento('1 1 340px')}>
+              <Link href="/leaderboard" className="lift bento-card" style={{ flex: '1 1 340px' }}>
                 <span className="lbl">03 · Leaderboard</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   Rankings from <em className="hi">real work.</em>
@@ -327,27 +327,38 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/news" className="lift" style={bento('1 1 340px')}>
+              <Link href="/news" className="lift bento-card" style={{ flex: '1 1 340px' }}>
                 <span className="lbl">04 · AI News</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   The news that <em className="hi">moves the models.</em>
                 </h3>
                 <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Breaking stories, deep analysis and a five-minute morning brief.</p>
                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column' }}>
-                  {feed.news.slice(0, 2).map((n) => (
-                    <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
-                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
-                        {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
+                  {feed.news.length > 0 ? (
+                    feed.news.slice(0, 2).map((n) => (
+                      <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
+                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
+                          {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
+                        </div>
+                        <div className="sf" style={{ fontSize: 18, lineHeight: 1.2 }}>
+                          {n.title}
+                        </div>
                       </div>
-                      <div className="sf" style={{ fontSize: 18, lineHeight: 1.2 }}>
-                        {n.title}
+                    ))
+                  ) : (
+                    <div style={{ padding: '12px 0 0', borderTop: line }}>
+                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
+                        VIGAS NEWSROOM
+                      </div>
+                      <div className="sf" style={{ fontSize: 19, lineHeight: 1.2, marginTop: 4 }}>
+                        New dispatches &amp; model briefs publishing soon →
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </Link>
 
-              <Link href="/tools" className="lift" style={bento('1 1 340px')}>
+              <Link href="/tools" className="lift bento-card" style={{ flex: '1 1 340px' }}>
                 <span className="lbl">05 · Tools</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   {tools.length} tools, <em className="hi">ranked by builders.</em>
@@ -374,12 +385,12 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/retrobuild" className="lift" style={{ ...bento('2 1 560px'), flexDirection: 'row', flexWrap: 'wrap', gap: 28, borderColor: 'rgba(255,106,26,.32)' }}>
+              <Link href="/retrobuild" className="lift bento-card" style={{ flex: '2 1 560px', flexDirection: 'row', flexWrap: 'wrap', gap: 28, borderColor: 'rgba(255,106,26,.32)' }}>
                 <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <span className="lbl" style={{ color: 'var(--vg-orange-text)' }}>
                     06 · RetroBuild
                   </span>
-                  <h3 className="sf" style={{ fontSize: 36, lineHeight: 1.04, margin: 0, letterSpacing: '-.016em' }}>
+                  <h3 className="sf" style={{ fontSize: 'clamp(28px,3vw,36px)', lineHeight: 1.04, margin: 0, letterSpacing: '-.016em' }}>
                     Describe an app. <em className="hi">Ship it tonight.</em>
                   </h3>
                   <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>An agent that writes, previews and checkpoints your app — billed to the same Vigas credits.</p>
@@ -403,7 +414,7 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <div style={bento('1 1 340px')}>
+              <div className="bento-card" style={{ flex: '1 1 340px' }}>
                 <span className="lbl">Everywhere · Android</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   Vigas, <em className="hi">in your pocket.</em>
@@ -419,7 +430,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── § 02 Live market ─────────────────────────────────────────── */}
-        <section style={{ padding: '96px 0', borderBottom: line }} aria-labelledby="market">
+        <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="market">
           <div className="wrap">
             <SectionHead id="market" label="§ 02 — Live market" title="Prices and rankings," accent="updated by the minute." style={{ marginBottom: 36 }} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
@@ -433,55 +444,53 @@ export default async function HomePage() {
                     per 1M tokens
                   </span>
                 </div>
-                <div className="tablewrap">
-                  <div style={{ minWidth: 480 }}>
-                    <div
-                      aria-hidden="true"
-                      className="mn"
-                      style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px 84px 84px', gap: 12, padding: '10px 22px', fontSize: 12, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.06em', background: 'var(--vg-bg2)' }}
-                    >
-                      <span>Model</span>
-                      <span style={{ textAlign: 'right' }}>
-                        Input
-                      </span>
-                      <span style={{ textAlign: 'right' }}>
-                        Output
-                      </span>
-                      <span style={{ textAlign: 'right' }}>
-                        24h
-                      </span>
-                    </div>
-                    {feed.prices.map((m) => {
-                      const chg = priceChange(m);
-                      return (
-                        <Link
-                          key={m.id}
-                          href={`/models?q=${encodeURIComponent(m.id)}`}
-                          className="hov"
-                          style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 84px 84px 84px', gap: 12, alignItems: 'center', padding: '13px 22px', borderTop: '1px solid rgba(239,234,225,.06)', color: 'var(--vg-ink)' }}
-                        >
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                            <OrgMark org={m.org} size={30} radius={9} fontSize={15} />
-                            <span style={{ minWidth: 0 }}>
-                              <span style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
-                              <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {m.id}
-                              </span>
+                <div>
+                  <div
+                    aria-hidden="true"
+                    className="mn live-prices-grid"
+                    style={{ paddingTop: 10, paddingBottom: 10, fontSize: 12, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.06em', background: 'var(--vg-bg2)' }}
+                  >
+                    <span>Model</span>
+                    <span style={{ textAlign: 'right' }}>
+                      Input
+                    </span>
+                    <span style={{ textAlign: 'right' }}>
+                      Output
+                    </span>
+                    <span className="col-24h" style={{ textAlign: 'right' }}>
+                      24h
+                    </span>
+                  </div>
+                  {feed.prices.map((m) => {
+                    const chg = priceChange(m);
+                    return (
+                      <Link
+                        key={m.id}
+                        href={`/models?q=${encodeURIComponent(m.id)}`}
+                        className="hov live-prices-grid"
+                        style={{ paddingTop: 13, paddingBottom: 13, borderTop: '1px solid rgba(239,234,225,.06)', color: 'var(--vg-ink)' }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                          <OrgMark org={m.org} size={30} radius={9} fontSize={15} />
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+                            <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {m.id}
                             </span>
                           </span>
-                          <span className="mn" style={{ fontSize: 13, textAlign: 'right' }}>
-                            {formatPricePerMillion(m.inputPerMillionMicros)}
-                          </span>
-                          <span className="mn" style={{ fontSize: 13, textAlign: 'right' }}>
-                            {formatPricePerMillion(m.outputPerMillionMicros)}
-                          </span>
-                          <span className="mn" style={{ fontSize: 12, textAlign: 'right', color: chg.color }}>
-                            {chg.text}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                        </span>
+                        <span className="mn" style={{ fontSize: 13, textAlign: 'right' }}>
+                          {formatPricePerMillion(m.inputPerMillionMicros)}
+                        </span>
+                        <span className="mn" style={{ fontSize: 13, textAlign: 'right' }}>
+                          {formatPricePerMillion(m.outputPerMillionMicros)}
+                        </span>
+                        <span className="mn col-24h" style={{ fontSize: 12, textAlign: 'right', color: chg.color }}>
+                          {chg.text}
+                        </span>
+                      </Link>
+                    );
+                  })}
                 </div>
                 <div style={{ padding: '14px 22px', borderTop: line }}>
                   <ArrowLink href="/models">All {models.length} models and prices</ArrowLink>
@@ -508,7 +517,7 @@ export default async function HomePage() {
 
         {/* ── § 03 News ────────────────────────────────────────────────── */}
         {lead && (
-          <section style={{ padding: '96px 0', borderBottom: line }} aria-labelledby="today">
+          <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="today">
             <div className="wrap">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
                 <SectionHead
@@ -604,7 +613,7 @@ export default async function HomePage() {
         )}
 
         {/* ── § 04 Tools ───────────────────────────────────────────────── */}
-        <section style={{ padding: '96px 0', borderBottom: line }} aria-labelledby="trending">
+        <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="trending">
           <div className="wrap">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
               <SectionHead
@@ -620,7 +629,7 @@ export default async function HomePage() {
                 Tools directory
               </ArrowLink>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 16 }}>
               {feed.trendingTools.slice(0, 4).map((t, i) => (
                 <Link
                   key={t.slug}
@@ -655,7 +664,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── Newsletter ───────────────────────────────────────────────── */}
-        <section style={{ padding: '96px 0' }} aria-labelledby="daily-token">
+        <section className="sec-pad" aria-labelledby="daily-token">
           <div className="wrap">
             <div
               style={{
@@ -685,21 +694,6 @@ export default async function HomePage() {
       </main>
     </>
   );
-}
-
-function bento(flex: string): CSSProperties {
-  return {
-    flex,
-    minWidth: 0,
-    background: 'var(--vg-surface)',
-    border: '1px solid var(--vg-line)',
-    borderRadius: 22,
-    padding: 28,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    color: 'var(--vg-ink)',
-  };
 }
 
 function badge(flag: string): CSSProperties {

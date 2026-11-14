@@ -9,6 +9,8 @@ export const metadata = pageMetadata({
   description:
     'Live rankings of the best AI models and agents, built from real sessions and blind Arena votes on Vigas — with win share, Bradley–Terry scores, confidence intervals and cost per task.',
   path: '/leaderboard',
+  image: '/og/leaderboard/overall',
+  imageAlt: 'Vigas AI Leaderboard — Best models and agents ranked by real use',
 });
 
 export default function LeaderboardPage() {

@@ -29,6 +29,7 @@ import {
   type RecentSession,
   type ToolSort,
 } from '@vigas/db';
+import { loadLocalArticles } from './local-articles';
 import {
   PREVIEW_MODE,
   previewArticle,
@@ -65,11 +66,36 @@ export async function getNews(
   cacheTag('news');
   if (PREVIEW_MODE) return previewNews(opts);
   const db = getDb();
-  const [items, total] = await Promise.all([
-    listArticles(db, { category: opts.category ?? null, limit: opts.limit ?? 20, offset: opts.offset ?? 0 }),
-    countArticles(db, opts.category ?? null),
+  const category = opts.category ?? null;
+  const limit = opts.limit ?? 20;
+  const offset = opts.offset ?? 0;
+  const local = loadLocalArticles()
+    .filter((a) => !category || a.category === category)
+    .map(
+      (a): NewsListItem => ({
+        slug: a.slug,
+        title: a.title,
+        dek: a.dek,
+        category: a.category,
+        flag: a.flag,
+        author: a.author,
+        publishedAt: a.publishedAt,
+        readingMinutes: a.readingMinutes,
+        cover: a.cover,
+      }),
+    );
+  if (local.length === 0) {
+    const [items, total] = await Promise.all([listArticles(db, { category, limit, offset }), countArticles(db, category)]);
+    return { items, total };
+  }
+  const [dbItems, dbTotal] = await Promise.all([
+    listArticles(db, { category, limit: 100, offset: 0 }),
+    countArticles(db, category),
   ]);
-  return { items, total };
+  const dbSlugs = new Set(dbItems.map((a) => a.slug));
+  const extraLocal = local.filter((a) => !dbSlugs.has(a.slug));
+  const merged = [...dbItems, ...extraLocal].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  return { items: merged.slice(offset, offset + limit), total: dbTotal + extraLocal.length };
 }
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
@@ -77,7 +103,9 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   cacheLife('content');
   cacheTag('news', `article:${slug}`);
   if (PREVIEW_MODE) return previewArticle(slug);
-  return getArticle(getDb(), slug);
+  const fromDb = await getArticle(getDb(), slug);
+  if (fromDb) return fromDb;
+  return loadLocalArticles().find((a) => a.slug === slug) ?? null;
 }
 
 export async function getTools(
@@ -165,6 +193,12 @@ export async function getSitemapData(): Promise<{
   cacheTag('news', 'tools');
   if (PREVIEW_MODE) return previewSitemap();
   const db = getDb();
-  const [articles, tools] = await Promise.all([listArticleSitemap(db), listToolSitemap(db)]);
-  return { articles: articles.map((a) => ({ slug: a.slug, updatedAt: a.updatedAt.toISOString() })), tools };
+  const [dbArticles, tools] = await Promise.all([listArticleSitemap(db), listToolSitemap(db)]);
+  const bySlug = new Map<string, string>();
+  for (const a of loadLocalArticles()) bySlug.set(a.slug, a.updatedAt);
+  for (const a of dbArticles) bySlug.set(a.slug, a.updatedAt.toISOString());
+  const articles = [...bySlug.entries()]
+    .map(([slug, updatedAt]) => ({ slug, updatedAt }))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return { articles, tools };
 }

@@ -6,7 +6,8 @@ import { ToolsDirectory } from '@/components/tools/tools-directory';
 import { Breadcrumb, Icon, JsonLd, Mark } from '@/components/ui';
 import { getTools } from '@/lib/data';
 import { absoluteUrl } from '@/lib/env';
-import { breadcrumbLd, pageMetadata } from '@/lib/seo';
+import { breadcrumbLd, faqLd, pageMetadata } from '@/lib/seo';
+import { getToolsDirectoryFaq } from '@/lib/seo-catalog';
 
 export const metadata = pageMetadata({
   title: 'Best AI tools of 2026 — reviewed and ranked by builders',
@@ -35,13 +36,14 @@ export default async function ToolsPage() {
   const trending = tools.slice(0, 6);
   const featured = tools.find((t) => t.slug === 'retrobuild') ?? tools[0];
   const collections: Array<{ t: string; href: string; items: ToolItem[] }> = [
-    { t: 'Best AI coding tools in 2026', href: '/tools?category=Coding#dir', items: tools.filter((t) => t.category === 'Coding') },
-    { t: 'Best AI image generators', href: '/tools?category=Image#dir', items: tools.filter((t) => t.category === 'Image') },
-    { t: 'Free AI tools that are actually good', href: '/tools?pricing=Free#dir', items: tools.filter((t) => t.pricing !== 'Paid') },
-    { t: 'Best AI voice & music tools', href: '/tools?category=Audio#dir', items: tools.filter((t) => t.category === 'Audio') },
-    { t: 'AI research assistants', href: '/tools?category=Research#dir', items: tools.filter((t) => t.category === 'Research') },
-    { t: 'Tools that run on the Vigas API', href: '/tools?vigas=1#dir', items: tools.filter((t) => t.runsOnVigas) },
+    { t: 'Best AI coding tools in 2026', href: '/tools/category/coding', items: tools.filter((t) => t.category === 'Coding') },
+    { t: 'Best AI image generators', href: '/tools/category/image', items: tools.filter((t) => t.category === 'Image') },
+    { t: 'Free AI tools that are actually good', href: '/tools/collection/free', items: tools.filter((t) => t.pricing !== 'Paid') },
+    { t: 'Best AI voice & music tools', href: '/tools/category/audio', items: tools.filter((t) => t.category === 'Audio') },
+    { t: 'AI research assistants', href: '/tools/category/research', items: tools.filter((t) => t.category === 'Research') },
+    { t: 'Tools that run on the Vigas API', href: '/tools/collection/vigas-api', items: tools.filter((t) => t.runsOnVigas) },
   ].filter((c) => c.items.length > 0);
+  const faqItems = getToolsDirectoryFaq(tools);
 
   return (
     <>
@@ -53,11 +55,19 @@ export default async function ToolsPage() {
           ]),
           {
             '@context': 'https://schema.org',
-            '@type': 'ItemList',
-            name: 'AI tools directory',
-            numberOfItems: tools.length,
-            itemListElement: tools.map((t, i) => ({ '@type': 'ListItem', position: i + 1, url: absoluteUrl(`/tools/${t.slug}`), name: t.name })),
+            '@type': 'CollectionPage',
+            name: 'Best AI tools of 2026',
+            description:
+              'Curated directory of AI coding, research, image, video, audio, and agent tools ranked by builder upvotes on Vigas.',
+            url: absoluteUrl('/tools'),
+            mainEntity: {
+              '@type': 'ItemList',
+              name: 'AI tools directory',
+              numberOfItems: tools.length,
+              itemListElement: tools.map((t, i) => ({ '@type': 'ListItem', position: i + 1, url: absoluteUrl(`/tools/${t.slug}`), name: t.name })),
+            },
           },
+          faqLd(faqItems),
         ]}
       />
       <SiteHeader active="tools" />
@@ -130,20 +140,7 @@ export default async function ToolsPage() {
             aria-labelledby="totw"
             style={{ display: 'flex', flexWrap: 'wrap', border: '1px solid rgba(255,106,26,.32)', borderRadius: 26, overflow: 'hidden', background: 'var(--vg-surface)', marginBottom: 56 }}
           >
-            <div
-              aria-hidden="true"
-              style={{
-                flex: '1.1 1 420px',
-                minHeight: 300,
-                position: 'relative',
-                background: '#151411',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(12,minmax(0,1fr))',
-                gap: 6,
-                padding: 28,
-                alignContent: 'center',
-              }}
-            >
+            <div aria-hidden="true" className="totw-heat">
               {heatmap().map((c, i) => (
                 <span key={i} style={{ aspectRatio: '1', borderRadius: 5, background: c }} />
               ))}
@@ -177,9 +174,16 @@ export default async function ToolsPage() {
               </h2>
               <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>{featured.description}</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <Link href={featured.slug === 'retrobuild' ? '/retrobuild' : featured.url} className="btn key">
-                  Try {featured.name}
-                </Link>
+                {featured.slug === 'retrobuild' ? (
+                  <Link href="/retrobuild" className="btn key">
+                    Try {featured.name}
+                  </Link>
+                ) : (
+                  <a href={featured.url} target="_blank" rel="noopener noreferrer" className="btn key">
+                    Try {featured.name}
+                    <Icon name="external" size={15} />
+                  </a>
+                )}
                 <Link href={`/tools/${featured.slug}`} className="btn gh">
                   Read the review
                 </Link>
@@ -195,14 +199,14 @@ export default async function ToolsPage() {
           <ToolsDirectory tools={tools} categories={TOOL_CATEGORIES} />
         </section>
 
-        <section aria-labelledby="col" style={{ paddingBottom: 64 }}>
-          <div className="lbl">§ Collections</div>
+        <section aria-labelledby="col" style={{ paddingBottom: 56 }}>
+          <div className="lbl">§ Collections &amp; categories</div>
           <h2 id="col" className="sf" style={{ fontSize: 'clamp(32px,3.4vw,46px)', margin: '10px 0 22px', letterSpacing: '-.02em', lineHeight: 1.04 }}>
             Hand-picked <em className="hi">shortlists.</em>
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(280px,100%),1fr))', gap: 14 }}>
             {collections.map((c) => (
-              <a key={c.t} href={c.href} className="lift card" style={{ display: 'flex', alignItems: 'center', gap: 16, borderRadius: 18, padding: 18, color: 'var(--vg-ink)' }}>
+              <Link key={c.t} href={c.href} className="lift card" style={{ display: 'flex', alignItems: 'center', gap: 16, borderRadius: 18, padding: 18, color: 'var(--vg-ink)' }}>
                 <span style={{ display: 'flex', flexShrink: 0 }} aria-hidden="true">
                   {c.items.slice(0, 3).map((s) => (
                     <span
@@ -233,7 +237,43 @@ export default async function ToolsPage() {
                   </span>
                 </span>
                 <Icon name="chevRight" size={18} style={{ marginLeft: 'auto', color: 'var(--vg-ink3)' }} />
-              </a>
+              </Link>
+            ))}
+          </div>
+          <nav aria-label="Browse tools by category" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 22 }}>
+            {TOOL_CATEGORIES.map((c) => (
+              <Link key={c} href={`/tools/category/${c.toLowerCase()}`} className="tag">
+                {c} tools
+              </Link>
+            ))}
+            <Link href="/tools/collection/free" className="tag">
+              Free AI tools
+            </Link>
+            <Link href="/tools/collection/vigas-api" className="tag">
+              Vigas API tools
+            </Link>
+            <Link href="/tools/collection/new" className="tag">
+              New launches
+            </Link>
+          </nav>
+        </section>
+
+        <section aria-labelledby="tools-faq" style={{ display: 'flex', flexWrap: 'wrap', gap: 40, padding: '48px 0 64px', borderTop: '1px solid var(--vg-line)' }}>
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <div className="lbl">§ FAQ</div>
+            <h2 id="tools-faq" className="sf" style={{ fontSize: 'clamp(32px,3.4vw,46px)', lineHeight: 1.04, margin: '10px 0 0', letterSpacing: '-.02em' }}>
+              Frequently asked about <em className="hi">the directory.</em>
+            </h2>
+          </div>
+          <div style={{ flex: '2 1 560px', minWidth: 0 }}>
+            {faqItems.map((f) => (
+              <details key={f.q} style={{ borderTop: '1px solid rgba(239,234,225,.1)', padding: '4px 0' }}>
+                <summary style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '16px 0', fontSize: 17, fontWeight: 500 }}>
+                  <h3 style={{ margin: 0, font: 'inherit' }}>{f.q}</h3>
+                  <Icon name="plus" size={20} className="pm" style={{ color: 'var(--vg-orange)' }} />
+                </summary>
+                <p style={{ margin: '0 0 18px', color: 'var(--vg-ink2)', maxWidth: 680 }}>{f.a}</p>
+              </details>
             ))}
           </div>
         </section>

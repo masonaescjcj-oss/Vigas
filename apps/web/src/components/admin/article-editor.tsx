@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { readingMinutes, slugify } from '@vigas/core';
+import { parseArticleMarkdown, serializeArticleMarkdown } from '@/lib/article-markdown';
 import { renderChatMarkdown } from '@/lib/markdown';
 
 export interface EditableArticle {
@@ -47,6 +49,7 @@ export function ArticleEditor({
   models: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [a, setA] = useState<EditableArticle>(
     initial ?? {
       slug: '',
@@ -68,6 +71,61 @@ export function ArticleEditor({
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const set = <K extends keyof EditableArticle>(k: K, v: EditableArticle[K]) => setA((x) => ({ ...x, [k]: v }));
   const preview = useMemo(() => (tab === 'preview' ? renderChatMarkdown(a.body) : ''), [tab, a.body]);
+
+  const wordCount = useMemo(() => a.body.trim().split(/\s+/).filter(Boolean).length, [a.body]);
+  const estMinutes = useMemo(() => readingMinutes(`${a.dek} ${a.body}`), [a.dek, a.body]);
+  const previewSlug = slugify(a.slug.trim() || a.title.trim()) || 'article-slug';
+
+  const importMarkdown = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = parseArticleMarkdown(text, { fallbackSlug: file.name.replace(/\.(md|markdown)$/i, '') });
+      if (!parsed) {
+        setMsg({ kind: 'err', text: 'Could not read Markdown headline or frontmatter.' });
+        return;
+      }
+      const resolvedAuthor = authors.some((au) => au.slug === parsed.authorSlug) ? parsed.authorSlug : (authors[0]?.slug ?? a.authorSlug);
+      setA((prev) => ({
+        ...prev,
+        slug: initial ? prev.slug : parsed.slug,
+        title: parsed.title,
+        dek: parsed.dek,
+        category: categories.includes(parsed.category) ? parsed.category : prev.category,
+        flag: parsed.flag,
+        authorSlug: resolvedAuthor,
+        status: parsed.status,
+        body: parsed.body,
+        cover: parsed.cover,
+        faq: parsed.faq,
+        mentionedModelIds: parsed.mentionedModelIds.filter((id) => models.some((m) => m.id === id)),
+        pullQuote: parsed.pullQuote,
+      }));
+      setMsg({ kind: 'ok', text: `Loaded “${file.name}” into the editor. Review and click Publish when ready.` });
+    } catch {
+      setMsg({ kind: 'err', text: 'Failed to read the selected Markdown file.' });
+    }
+  };
+
+  const exportMarkdown = () => {
+    const md = serializeArticleMarkdown({
+      ...a,
+      slug: previewSlug,
+      faq: a.faq.filter((f) => f.q.trim() && f.a.trim()),
+      pullQuote: a.pullQuote && a.pullQuote.text.trim() ? a.pullQuote : null,
+    });
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${previewSlug}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const save = async (status: 'draft' | 'published') => {
     setBusy(true);
@@ -114,23 +172,82 @@ export function ArticleEditor({
   const toggleModel = (id: string) =>
     set('mentionedModelIds', a.mentionedModelIds.includes(id) ? a.mentionedModelIds.filter((m) => m !== id) : [...a.mentionedModelIds, id]);
 
+  const titleCountColor = a.title.length >= 25 && a.title.length <= 65 ? 'var(--vg-green)' : 'var(--vg-ink3)';
+  const dekCountColor = a.dek.length >= 90 && a.dek.length <= 165 ? 'var(--vg-green)' : 'var(--vg-ink3)';
+
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
       <div className="card" style={{ flex: '999 1 560px', minWidth: 0, borderRadius: 20, padding: 'clamp(16px,2.4vw,24px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Field id="title" title="Headline">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+          <span className="lbl">Markdown workflow</span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input ref={fileRef} type="file" accept=".md,.markdown,text/markdown" onChange={importMarkdown} className="sr-only" aria-label="Import Markdown file" />
+            <button type="button" className="btn gh" onClick={() => fileRef.current?.click()} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
+              Import .md
+            </button>
+            <button type="button" className="btn gh" onClick={exportMarkdown} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
+              Export .md
+            </button>
+          </div>
+        </div>
+
+        <Field
+          id="title"
+          title="Headline"
+          hint={`${a.title.length}/65 chars SEO sweet spot`}
+        >
           <input id="title" className="input" value={a.title} maxLength={200} onChange={(e) => set('title', e.target.value)} />
+          <div className="mn" style={{ marginTop: 4, fontSize: 11, color: titleCountColor }}>
+            {a.title.length === 0 ? 'Aim for 45–65 characters so Google displays the full title cleanly.' : `${a.title.length} characters`}
+          </div>
         </Field>
-        <Field id="dek" title="Dek" hint="one sentence under the headline">
+
+        <Field
+          id="dek"
+          title="Dek"
+          hint={`${a.dek.length}/160 chars meta description`}
+        >
           <textarea id="dek" className="input" rows={2} value={a.dek} maxLength={400} onChange={(e) => set('dek', e.target.value)} style={{ height: 'auto', padding: 12 }} />
+          <div className="mn" style={{ marginTop: 4, fontSize: 11, color: dekCountColor }}>
+            {a.dek.length === 0 ? 'Used verbatim under the headline and as the SEO meta description (120–160 chars best).' : `${a.dek.length} characters`}
+          </div>
         </Field>
+
+        <section
+          aria-label="Search engine preview"
+          style={{
+            borderRadius: 14,
+            border: '1px solid var(--vg-line)',
+            background: 'var(--vg-bg2)',
+            padding: '12px 16px',
+          }}
+        >
+          <div className="lbl" style={{ marginBottom: 8 }}>
+            Google SERP snippet preview
+          </div>
+          <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            vigas.ai › news › {previewSlug}
+          </div>
+          <div style={{ fontSize: 18, lineHeight: 1.3, color: '#8AB4F8', margin: '4px 0 4px', fontWeight: 500 }}>
+            {(a.title.trim() || 'Your article headline').slice(0, 68)}
+            {a.title.trim().length > 68 ? '…' : ''} | Vigas
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--vg-ink2)' }}>
+            {(a.dek.trim() || 'Write a concise one-sentence summary of what readers learn from this article.').slice(0, 160)}
+            {a.dek.trim().length > 160 ? '…' : ''}
+          </div>
+        </section>
+
         <div>
-          <div role="tablist" aria-label="Body" style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          <div role="tablist" aria-label="Body" style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {(['write', 'preview'] as const).map((t) => (
               <button key={t} type="button" role="tab" aria-selected={tab === t} className={`chip${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
                 {t === 'write' ? 'Write' : 'Preview'}
               </button>
             ))}
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-ink3)', alignSelf: 'center' }}>Markdown · ## for subheadings · **bold** · [link](https://…)</span>
+            <span className="mn" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-ink3)' }}>
+              {wordCount.toLocaleString('en-US')} words · ~{estMinutes} min read · ## H2
+            </span>
           </div>
           {tab === 'write' ? (
             <textarea
@@ -170,12 +287,16 @@ export function ArticleEditor({
         </fieldset>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Field id="quote" title="Pull quote" hint="optional">
-            <input id="quote" className="input" value={a.pullQuote?.text ?? ''} onChange={(e) => set('pullQuote', { text: e.target.value, cite: a.pullQuote?.cite ?? '' })} style={{ minWidth: 280 }} />
-          </Field>
-          <Field id="cite" title="Quote source">
-            <input id="cite" className="input" value={a.pullQuote?.cite ?? ''} onChange={(e) => set('pullQuote', { text: a.pullQuote?.text ?? '', cite: e.target.value })} />
-          </Field>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <Field id="quote" title="Pull quote" hint="optional">
+              <input id="quote" className="input" value={a.pullQuote?.text ?? ''} onChange={(e) => set('pullQuote', { text: e.target.value, cite: a.pullQuote?.cite ?? '' })} style={{ width: '100%' }} />
+            </Field>
+          </div>
+          <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+            <Field id="cite" title="Quote source">
+              <input id="cite" className="input" value={a.pullQuote?.cite ?? ''} onChange={(e) => set('pullQuote', { text: a.pullQuote?.text ?? '', cite: e.target.value })} />
+            </Field>
+          </div>
         </div>
       </div>
 
@@ -204,7 +325,7 @@ export function ArticleEditor({
         )}
 
         <Field id="slug" title="URL slug" hint={initial ? 'changing it breaks old links' : 'leave empty to use the headline'}>
-          <input id="slug" className="input mn" value={a.slug} placeholder="auto" onChange={(e) => set('slug', e.target.value.toLowerCase())} style={{ fontSize: 13 }} />
+          <input id="slug" className="input mn" value={a.slug} placeholder={previewSlug} onChange={(e) => set('slug', e.target.value.toLowerCase())} style={{ fontSize: 13 }} />
         </Field>
         <Field id="category" title="Section">
           <select id="category" className="input" value={a.category} onChange={(e) => set('category', e.target.value)}>

@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { LeaderboardEntry } from '@vigas/core';
 import { formatUsd } from '@/lib/fmt';
 import { Icon, Mark } from '../ui';
+import { EmbedModal } from './embed-modal';
 
 type Row = LeaderboardEntry & { color: string; letter: string };
 type SortKey = 'win' | 'score' | 'cost';
@@ -26,8 +28,20 @@ function csv(rows: Row[], category: string): string {
   return [head.join(','), ...body].join('\n');
 }
 
-export function RankingTable({ entries, category, categoryLabel }: { entries: Row[]; category: string; categoryLabel: string }) {
+export function RankingTable({
+  entries,
+  category,
+  categoryLabel,
+  siteUrl,
+}: {
+  entries: Row[];
+  category: string;
+  categoryLabel: string;
+  siteUrl: string;
+}) {
   const [sort, setSort] = useState<SortKey>('win');
+  const [embedOpen, setEmbedOpen] = useState(false);
+
   const rows = useMemo(
     () =>
       [...entries].sort((a, b) =>
@@ -64,12 +78,20 @@ export function RankingTable({ entries, category, categoryLabel }: { entries: Ro
         <h2 className="sf" style={{ fontSize: 28, margin: 0, fontWeight: 400 }}>
           Full ranking
         </h2>
-        <button type="button" className="btn gh" onClick={download} style={{ minHeight: 36, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
-          <Icon name="download" size={15} />
-          CSV
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn gh" onClick={() => setEmbedOpen(true)} style={{ minHeight: 36, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
+            <Icon name="code" size={15} />
+            Embed
+          </button>
+          <button type="button" className="btn gh" onClick={download} style={{ minHeight: 36, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
+            <Icon name="download" size={15} />
+            CSV
+          </button>
+        </div>
       </div>
-      <div className="tablewrap">
+
+      {/* Desktop & tablet table */}
+      <div className="rt-desktop tablewrap">
         <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse' }}>
           <caption className="sr-only">{categoryLabel} leaderboard: win share, score, cost per task and votes</caption>
           <colgroup>
@@ -109,7 +131,7 @@ export function RankingTable({ entries, category, categoryLabel }: { entries: Ro
                     {a.rank}
                   </td>
                   <th scope="row" style={{ ...td, textAlign: 'left', fontWeight: 400 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, color: 'var(--vg-ink)' }}>
                       <Mark color={a.color} letter={a.letter} size={30} radius={9} fontSize={15} ring={false} />
                       <span style={{ minWidth: 0 }}>
                         <b style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</b>
@@ -117,7 +139,7 @@ export function RankingTable({ entries, category, categoryLabel }: { entries: Ro
                           {a.org}
                         </span>
                       </span>
-                    </span>
+                    </Link>
                   </th>
                   <td style={td}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -162,6 +184,71 @@ export function RankingTable({ entries, category, categoryLabel }: { entries: Ro
           </tbody>
         </table>
       </div>
+
+      {/* Zero-scroll mobile cards */}
+      <div className="rt-mobile" style={{ borderTop: '1px solid var(--vg-line)' }}>
+        <div role="group" aria-label="Sort models" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--vg-bg2)' }}>
+          {(
+            [
+              ['win', 'Win share ↓'],
+              ['score', 'Score ↓'],
+              ['cost', '$/task ↑'],
+            ] as Array<[SortKey, string]>
+          ).map(([key, label]) => (
+            <button key={key} type="button" className="chip" aria-pressed={sort === key} onClick={() => setSort(key)} style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {rows.map((a) => (
+          <div key={a.modelId} style={{ padding: '14px 16px', borderTop: '1px solid rgba(239,234,225,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="mn" style={{ width: 24, fontSize: 13, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange)' : 'var(--vg-ink3)', flexShrink: 0 }}>
+                #{a.rank}
+              </span>
+              <Mark color={a.color} letter={a.letter} size={32} radius={9} fontSize={15} ring={false} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'block', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--vg-ink)' }}>
+                  {a.name}
+                </Link>
+                <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)' }}>
+                  {a.org}
+                </span>
+              </div>
+              <span className="mn" style={{ fontSize: 13, fontWeight: 600, color: a.rank === 1 ? 'var(--vg-orange)' : 'var(--vg-ink)' }}>
+                {a.winRate.toFixed(2)}%
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span aria-hidden="true" style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--vg-raised)', overflow: 'hidden' }}>
+                <span
+                  style={{
+                    display: 'block',
+                    height: '100%',
+                    width: `${((a.winRate / max) * 100).toFixed(1)}%`,
+                    background: a.rank === 1 ? 'var(--vg-orange)' : a.rank <= 3 ? 'var(--vg-sand)' : 'var(--vg-blue)',
+                  }}
+                />
+              </span>
+            </div>
+            <div className="mn" style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--vg-ink2)' }}>
+              <span>
+                Score {Math.round(a.rating)} <span style={{ color: 'var(--vg-ink3)' }}>±{Math.round(a.ci)}</span>
+              </span>
+              <span>{formatUsd(a.costPerTaskMicros)}/task</span>
+              <span>{a.votes.toLocaleString('en-US')} votes</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <EmbedModal
+        open={embedOpen}
+        onClose={() => setEmbedOpen(false)}
+        category={category}
+        categoryLabel={categoryLabel}
+        siteUrl={siteUrl}
+      />
     </div>
   );
 }

@@ -22,6 +22,7 @@ const DESCRIPTIONS: Record<LeaderboardCategory, string> = {
 
 /** Unknown params wait for the full render, so missing pages get a real 404 status. */
 export const ensureStatic = 'navigation';
+export const instant = false;
 
 export function generateStaticParams() {
   return LEADERBOARD_CATEGORIES.filter((c) => c.id !== 'overall').map((c) => ({ category: c.id }));
@@ -35,6 +36,8 @@ export async function generateMetadata({ params }: PageProps<'/leaderboard/[cate
     title: `Best ${label} AI models — ${label} leaderboard`,
     description: DESCRIPTIONS[category],
     path: `/leaderboard/${category}`,
+    image: `/og/leaderboard/${category}`,
+    imageAlt: `Best ${label} AI models on Vigas Arena Leaderboard`,
   });
 }
 
