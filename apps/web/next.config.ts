@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Workspace packages ship TypeScript source, so Next compiles them.
   transpilePackages: ['@vigas/core', '@vigas/db', '@vigas/tokens', '@vigas/api-client'],
+  outputFileTracingIncludes: {
+    '/*': ['../../content/articles/**/*'],
+  },
   cacheLife: {
     /** Public content (news, leaderboard, prices): served from cache, refreshed every few minutes. */
     content: { stale: 300, revalidate: 300, expire: 86_400 },
