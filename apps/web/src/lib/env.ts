@@ -12,8 +12,6 @@ export const SITE_NAME = 'Vigas';
 /** The public API base URL shown in docs and quickstarts. */
 export const API_BASE_URL = 'https://api.vigas.ai/v1';
 
-export const RETROBUILD_URL = 'https://retrobuild.space/';
-
 const int = (value: string | undefined, fallback: number) => {
   const n = Number.parseInt(value ?? '', 10);
   return Number.isFinite(n) && n >= 0 ? n : fallback;

@@ -9,6 +9,7 @@ authorSlug: "kian-rahimi"
 status: "published"
 publishedAt: "2026-11-14T07:30:00Z"
 cover: {"big":"-20%","caption":"CARBON INTRO PRICE","color":"#5DB7B0"}
+image: "/news/gemini-4.webp"
 mentionedModelIds: ["google/gemini-4-carbon","google/gemini-4-hydrogen","google/gemini-4-argon"]
 pullQuote: {"text":"Retiring last year’s workhorse models forces every migration team to measure latency and dollar-per-task together, not separately.","cite":"Vigas Infrastructure Brief"}
 faq: [{"q":"When do Gemini 2.5 Pro and Gemini 2.5 Flash shut down?","a":"Google officially sunsets legacy Gemini 2.5 Pro and Gemini 2.5 Flash endpoints on December 1, 2026, prompting developers to upgrade to Gemini 4 Carbon, Hydrogen, or Argon."},{"q":"How much does Gemini 4 Carbon cost right now?","a":"Introductory API pricing through November 30, 2026 is $2.00 per 1M input tokens and $10.00 per 1M output tokens, moving to standard $4/$20 tiers afterward."},{"q":"Where do Gemini 4 Carbon and Hydrogen rank on Vigas Arena?","a":"Gemini 4 Carbon holds #3 Overall (16.90% win share) and #1 in pure Text, while Gemini 4 Hydrogen ranks #5 Overall at 14.80% win share."}]

@@ -9,6 +9,7 @@ authorSlug: "sara-moradi"
 status: "published"
 publishedAt: "2026-11-14T10:30:00Z"
 cover: {"big":"30.5%","caption":"TOP WIN SHARE","color":"#FF6A1A"}
+image: "/news/arena-eval.webp"
 mentionedModelIds: ["anthropic/claude-fable-5.2","anthropic/claude-opus-5.5","google/gemini-4-carbon"]
 pullQuote: {"text":"Evaluating single screenshots misses half the failure modes in AI apps. Real users judge what happens when they actually click around.","cite":"Vigas Benchmark Note, Nov 2026"}
 faq: [{"q":"What did Arena AI open-source in its interaction-as-a-judge release?","a":"Arena released ArenaWebdevPreferences (pairwise human preference logs of live app interactions) and ArenaWebdevCorrectness (189 built apps paired with 362 behavioral requirements)."},{"q":"Which model currently leads the Arena and Vigas overall leaderboard?","a":"Anthropic Claude Fable 5.2 ranks #1 overall with a 30.48% win share (1548 rating) and leads WebDev at 1838 across more than 378 million ranked sessions."},{"q":"How much did self-repair interaction testing improve app pass rates?","a":"Giving coding agents browser interaction feedback before final scoring pushed functional requirement pass rates from 55.4% up to 75.5% in Arena benchmarks."}]

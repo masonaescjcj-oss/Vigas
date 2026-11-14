@@ -42,10 +42,10 @@ const COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   {
     title: 'Developers',
     links: [
-      ['API docs', '/models#quickstart'],
-      ['Model prices', '/models'],
-      ['Vigas Chat', '/chat'],
-      ['RetroBuild', '/retrobuild'],
+      ['API quickstart', '/models#quickstart'],
+      ['Models & live prices', '/models'],
+      ['Free models', '/models?tag=free'],
+      ['Leaderboard', '/leaderboard'],
       ['Dashboard', '/dashboard'],
       ['Create an account', '/signup'],
     ],
@@ -65,7 +65,7 @@ export function SiteFooter() {
               </span>
             </Link>
             <p style={{ color: 'var(--vg-ink2)', maxWidth: 320, margin: '16px 0 18px', fontSize: 14, lineHeight: 1.6 }}>
-              The neutral ground for building with AI — one key, honest prices, and the news that matters.
+              The fastest, lowest-cost AI API gateway — one key, pass-through pricing, live rankings, and bilingual AI news.
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span
@@ -137,11 +137,14 @@ export function SiteFooter() {
         >
           <span>© 2026 Vigas Labs · Made with sand &amp; signal</span>
           <span className="footer-bottom-links">
-            <Link href="/news?lang=en" style={{ color: 'var(--vg-ink)' }}>
+            <Link href="/" style={{ color: 'var(--vg-ink)' }}>
               English
             </Link>
-            <Link href="/news?lang=fa" className="fa-ui" lang="fa" dir="rtl" style={{ color: 'var(--vg-sand)' }}>
+            <Link href="/fa" className="fa-ui" lang="fa" dir="rtl" style={{ color: 'var(--vg-sand)' }}>
               فارسی
+            </Link>
+            <Link href="/news/fa" className="fa-ui" lang="fa" dir="rtl" style={{ color: 'var(--vg-ink2)' }}>
+              اخبار فارسی
             </Link>
             <Link href="/privacy" style={{ color: 'var(--vg-ink3)' }}>
               Privacy

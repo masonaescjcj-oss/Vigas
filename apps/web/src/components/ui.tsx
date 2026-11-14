@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { orgMark, withAlpha } from '@vigas/tokens';
+import { orgIconUrl, toolIconUrl } from '@/lib/media';
 import type { JsonLdObject } from '@/lib/seo';
 
 export const ICONS = {
@@ -130,9 +131,109 @@ export function Mark({
   );
 }
 
-export function OrgMark({ org, ...rest }: { org: string } & Omit<Parameters<typeof Mark>[0], 'color' | 'letter'>) {
+const FULL_BLEED_TOOL_ICONS = new Set(['bolt-new', 'gamma', 'granola', 'higgsfield', 'kilo-code']);
+
+export function OrgMark({
+  org,
+  size = 30,
+  radius,
+  style,
+  ...rest
+}: { org: string } & Omit<Parameters<typeof Mark>[0], 'color' | 'letter'>) {
   const m = orgMark(org);
-  return <Mark color={m.color} letter={m.letter} {...rest} />;
+  const src = orgIconUrl(org);
+  const r = radius ?? Math.round(size * 0.29);
+  if (!src) return <Mark color={m.color} letter={m.letter} size={size} radius={r} style={style} {...rest} />;
+  const pad = Math.max(3, Math.round(size * 0.14));
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: r,
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        background: '#171614',
+        border: '1px solid var(--vg-line2)',
+        padding: pad,
+        overflow: 'hidden',
+        ...style,
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        width={size - pad * 2}
+        height={size - pad * 2}
+        loading="lazy"
+        decoding="async"
+        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+      />
+    </span>
+  );
+}
+
+export function ToolMark({
+  slug,
+  iconUrl,
+  color,
+  letter,
+  size = 30,
+  radius,
+  fontSize,
+  style,
+}: {
+  slug: string;
+  iconUrl?: string | null;
+  color: string;
+  letter: string;
+  size?: number;
+  radius?: number;
+  fontSize?: number;
+  style?: CSSProperties;
+}) {
+  const src = toolIconUrl(slug, iconUrl);
+  const r = radius ?? Math.round(size * 0.27);
+  if (!src) {
+    return <Mark color={color} letter={letter} size={size} radius={r} fontSize={fontSize} style={style} />;
+  }
+  const fullBleed = FULL_BLEED_TOOL_ICONS.has(slug);
+  const pad = fullBleed ? 0 : Math.max(3, Math.round(size * 0.14));
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: r,
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        background: '#171614',
+        border: '1px solid var(--vg-line2)',
+        padding: pad,
+        overflow: 'hidden',
+        ...style,
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        width={size - pad * 2}
+        height={size - pad * 2}
+        loading="lazy"
+        decoding="async"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: fullBleed ? 'cover' : 'contain',
+          display: 'block',
+        }}
+      />
+    </span>
+  );
 }
 
 /** Round initials avatar, e.g. for authors. */

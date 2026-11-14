@@ -9,6 +9,7 @@ authorSlug: "leila-karimi"
 status: "published"
 publishedAt: "2026-11-14T09:15:00Z"
 cover: {"big":"$64.4B","caption":"IPO TARGET RAISE","color":"#E3B65C"}
+image: "/news/anthropic-ipo.webp"
 mentionedModelIds: ["anthropic/claude-fable-5.2","anthropic/claude-opus-5.5","anthropic/claude-sonnet-5.5"]
 pullQuote: {"text":"Enterprise coding and API spend turned foundation labs from R&D cash burners into infrastructure utilities almost overnight.","cite":"Vigas Capital Desk"}
 faq: [{"q":"What ticker symbol and share range did Anthropic set for its Nasdaq IPO?","a":"Anthropic filed to offer 825 million shares at $70 to $78 per share on Nasdaq under ticker ANT, targeting up to $64.4 billion in proceeds."},{"q":"When does Anthropic IPO pricing and public trading begin?","a":"Investor roadshow books are slated to price around November 18, 2026, with public Nasdaq trading expected on November 19, 2026."},{"q":"What drives Anthropic’s revenue growth ahead of listing?","a":"Surging enterprise API traffic and coding-agent adoption across Claude Fable 5.2, Opus 5.5, and Sonnet 5.5 pushed annualized revenue run rate near $81 billion."}]

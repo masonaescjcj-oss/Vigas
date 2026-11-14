@@ -90,7 +90,7 @@ export async function seedDatabase(db: Db, opts: SeedOptions = {}): Promise<Seed
       });
       await completeTopup(db, { accountId: user.accountId, amountMicros: usdToMicros(48.2), feeBps: 0, provider: 'seed' });
       const k1 = await createApiKey(db, user.accountId, 'Production gateway');
-      const k2 = await createApiKey(db, user.accountId, 'RetroBuild mobile agent');
+      const k2 = await createApiKey(db, user.accountId, 'Workspace CLI key');
       result.demo = { ...opts.demoUser, keys: [k1.key, k2.key] };
     } else {
       await db.update(users).set({ role: 'admin' }).where(eq(users.id, existing.id));

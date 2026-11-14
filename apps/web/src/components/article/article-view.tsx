@@ -3,14 +3,14 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { formatPricePerMillion, type Article } from '@vigas/core';
-import { orgMark } from '@vigas/tokens';
 import { getArticleBySlug, getLeaderboardData, getModels, getNews } from '@/lib/data';
 import { absoluteUrl, SITE_NAME, SITE_URL } from '@/lib/env';
 import { markdownToText, renderArticleSections } from '@/lib/markdown';
+import { articleImageUrl, getArticleAlternate } from '@/lib/media';
 import { breadcrumbLd, faqLd } from '@/lib/seo';
 import { shortName } from '../colonnade';
-import { CoverArt, TypoCover } from '../covers';
-import { Avatar, Breadcrumb, Icon, JsonLd, Mark, SplitTitle } from '../ui';
+import { newsCategoryPath } from '../news/news-feed';
+import { Avatar, Breadcrumb, Icon, JsonLd, OrgMark, SplitTitle } from '../ui';
 import { ShareButton } from './share-button';
 
 const DATA_CATEGORIES = new Set(['Models', 'Agents', 'Analysis', 'Tools']);
@@ -56,17 +56,21 @@ export async function ArticleView({ slug }: { slug: string }) {
 
   const article = await getArticleBySlug(slug);
   if (!article) notFound();
-  const [models, board, sameCategory, latest] = await Promise.all([
-    getModels(),
-    getLeaderboardData('overall'),
-    getNews({ category: article.category, limit: 8 }),
-    getNews({ limit: 12 }),
-  ]);
 
   const lang = article.lang ?? 'en';
   const isFa = lang === 'fa';
+  const alt = getArticleAlternate(article.slug);
+
+  const [models, board, sameCategory, latest] = await Promise.all([
+    getModels(),
+    getLeaderboardData('overall'),
+    getNews({ category: article.category, lang, limit: 8 }),
+    getNews({ lang, limit: 12 }),
+  ]);
+
   const categoryLabel = isFa ? (FA_CATEGORIES[article.category] ?? article.category) : article.category;
   const flagLabel = article.flag ? (isFa ? (FA_FLAGS[article.flag] ?? article.flag) : article.flag.toUpperCase()) : null;
+  const coverImage = articleImageUrl(article.slug, article.imageUrl);
 
   const url = absoluteUrl(`/news/${article.slug}`);
   const sections = renderArticleSections(article.body);
@@ -78,8 +82,7 @@ export async function ArticleView({ slug }: { slug: string }) {
     ? mentioned
     : top5.slice(0, 3).flatMap((e) => models.filter((m) => m.id === e.modelId));
   const related = [...sameCategory.items, ...latest.items]
-    .filter((n, i, all) => n.slug !== article.slug && all.findIndex((x) => x.slug === n.slug) === i)
-    .sort((a, b) => Number((b.lang ?? 'en') === lang) - Number((a.lang ?? 'en') === lang))
+    .filter((n, i, all) => (n.lang ?? 'en') === lang && n.slug !== article.slug && all.findIndex((x) => x.slug === n.slug) === i)
     .slice(0, 3);
   const updated = article.updatedAt !== article.publishedAt && new Date(article.updatedAt).getTime() - new Date(article.publishedAt).getTime() > 60_000;
 
@@ -90,7 +93,10 @@ export async function ArticleView({ slug }: { slug: string }) {
   });
   if (article.faq.length) toc.push({ id: 'faq', text: isFa ? 'پرسش‌های متداول' : 'FAQ' });
 
-  const categorySlug = article.category.toLowerCase();
+  const homePath = isFa ? '/fa' : '/';
+  const newsHomePath = isFa ? '/news/fa' : '/news';
+  const catPath = newsCategoryPath(article.category, 1, lang);
+
   const ld = [
     {
       '@context': 'https://schema.org',
@@ -104,14 +110,14 @@ export async function ArticleView({ slug }: { slug: string }) {
       inLanguage: lang,
       mainEntityOfPage: { '@type': 'WebPage', '@id': url },
       url,
-      image: [absoluteUrl(`/og/news/${article.slug}`)],
+      image: [absoluteUrl(coverImage), absoluteUrl(`/og/news/${article.slug}`)],
       author: [{ '@type': 'Person', name: article.author.name, jobTitle: article.author.role }],
       publisher: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL, logo: { '@type': 'ImageObject', url: absoluteUrl('/icon.svg') } },
     },
     breadcrumbLd([
-      { name: isFa ? 'خانه' : 'Home', path: '/' },
-      { name: isFa ? 'اخبار' : 'News', path: '/news' },
-      { name: categoryLabel, path: `/news/category/${categorySlug}` },
+      { name: isFa ? 'خانه' : 'Home', path: homePath },
+      { name: isFa ? 'اخبار' : 'News', path: newsHomePath },
+      { name: categoryLabel, path: catPath },
       { name: article.title, path: `/news/${article.slug}` },
     ]),
     ...(article.faq.length ? [faqLd(article.faq)] : []),
@@ -137,9 +143,9 @@ export async function ArticleView({ slug }: { slug: string }) {
           <Breadcrumb
             center
             items={[
-              { name: isFa ? 'خانه' : 'Home', href: '/' },
-              { name: isFa ? 'اخبار' : 'News', href: isFa ? '/news?lang=fa' : '/news' },
-              { name: categoryLabel, href: isFa ? `/news/category/${categorySlug}?lang=fa` : `/news/category/${categorySlug}`, accent: true },
+              { name: isFa ? 'خانه' : 'Home', href: homePath },
+              { name: isFa ? 'اخبار AI' : 'News', href: newsHomePath },
+              { name: categoryLabel, href: catPath, accent: true },
             ]}
           />
           <div
@@ -162,7 +168,7 @@ export async function ArticleView({ slug }: { slug: string }) {
                 {flagLabel}
               </span>
             )}
-            <Link href={isFa ? `/news/category/${categorySlug}?lang=fa` : `/news/category/${categorySlug}`} style={{ color: 'var(--vg-orange)' }}>
+            <Link href={catPath} style={{ color: 'var(--vg-orange)' }}>
               {isFa ? categoryLabel : article.category.toUpperCase()}
             </Link>
             {showData ? (isFa ? ' · لیدربورد زنده' : ' · LEADERBOARD') : ''}
@@ -201,7 +207,7 @@ export async function ArticleView({ slug }: { slug: string }) {
                 <span className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
                   <time dateTime={article.publishedAt}>
                     {fmtDate(article.publishedAt, isFa)}
-                    {isFa ? ' UTC' : ' UTC'}
+                    {' UTC'}
                   </time>
                   {updated && (
                     <>
@@ -213,35 +219,45 @@ export async function ArticleView({ slug }: { slug: string }) {
                 </span>
               </span>
             </span>
-            <span style={{ display: 'flex', gap: 6 }}>
+            <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <ShareButton title={article.title} url={url} />
-              <Link
-                href={`/chat?q=${encodeURIComponent(isFa ? `خلاصه این گزارش ویگاس را به زبان فارسی بنویس: «${article.title}»` : `Summarize this Vigas News story: "${article.title}"`)}`}
-                className="ib boxed"
-                aria-label={isFa ? 'پرسش از ویگاس چت درباره این خبر' : 'Ask Vigas Chat about this story'}
-                title={isFa ? 'پرسش از ویگاس' : 'Ask Vigas'}
-              >
-                <Icon name="chat" size={17} />
-              </Link>
+              {alt && (
+                <Link
+                  href={`/news/${alt.slug}`}
+                  dir={alt.lang === 'fa' ? 'rtl' : 'ltr'}
+                  lang={alt.lang}
+                  className={alt.lang === 'fa' ? 'pill fa-ui' : 'pill mn'}
+                  style={{
+                    color: 'var(--vg-sand)',
+                    minHeight: 36,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '0 12px',
+                    border: '1px solid rgba(227,182,92,.35)',
+                  }}
+                >
+                  <Icon name="globe" size={14} />
+                  {alt.label}
+                </Link>
+              )}
             </span>
           </div>
         </header>
 
         <figure style={{ maxWidth: 1180, margin: '0 auto 48px', padding: '0 var(--vg-gutter)' }}>
-          <div dir="ltr" style={{ position: 'relative', aspectRatio: '21/9', borderRadius: 20, overflow: 'hidden', border: '1px solid var(--vg-line)', background: '#151411' }}>
-            <CoverArt seed={article.slug} color={article.cover.color} category={article.category} wide />
-            <span
-              aria-hidden="true"
-              className="sf"
-              style={{ position: 'absolute', right: 'clamp(12px,3vw,28px)', bottom: 'clamp(8px,2vw,18px)', fontSize: 'clamp(36px,6vw,72px)', lineHeight: 1, color: 'var(--vg-ink)', textShadow: '0 2px 24px rgba(0,0,0,.6)' }}
-            >
-              {article.cover.big}
-            </span>
+          <div style={{ position: 'relative', aspectRatio: '16/9', maxHeight: 540, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--vg-line)', background: '#151411' }}>
+            <img
+              src={coverImage}
+              alt={article.title}
+              decoding="async"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
           </div>
           <figcaption className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 10 }}>
             {isFa
-              ? `تصویرسازی — استودیو ویگاس · ${article.cover.big} (${article.cover.caption})`
-              : `Illustration — Vigas Studio · ${article.cover.big} ${article.cover.caption.toLowerCase()}`}
+              ? `تحریریه ویگاس · ${article.cover.caption}`
+              : `Vigas Newsroom · ${article.cover.caption}`}
           </figcaption>
         </figure>
 
@@ -309,11 +325,10 @@ export async function ArticleView({ slug }: { slug: string }) {
                   {mentioned.length ? (isFa ? 'مدل‌های این گزارش' : 'Models in this story') : isFa ? 'مدل‌های برتر این هفته' : 'Top models right now'}
                 </h2>
                 {sideModels.map((m) => {
-                  const mk = orgMark(m.org);
                   const rank = rankOf.get(m.id);
                   return (
                     <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) auto', gap: 10, alignItems: 'center', padding: '11px 0', borderTop: '1px solid rgba(239,234,225,.06)' }}>
-                      <Mark color={mk.color} letter={mk.letter} size={32} radius={9} fontSize={16} ring={false} />
+                      <OrgMark org={m.org} size={32} radius={9} fontSize={15} />
                       <span style={{ minWidth: 0 }}>
                         <Link
                           href={`/models?q=${encodeURIComponent(m.id)}`}
@@ -330,12 +345,12 @@ export async function ArticleView({ slug }: { slug: string }) {
                         </span>
                       </span>
                       <Link
-                        href={`/chat?model=${encodeURIComponent(m.id)}`}
+                        href={`/models?q=${encodeURIComponent(m.id)}`}
                         className="btn gh"
                         style={{ minHeight: 32, padding: '0 10px', fontSize: 12, borderRadius: 8 }}
-                        aria-label={isFa ? `آزمایش ${m.name} در ویگاس چت` : `Try ${m.name} in Vigas Chat`}
+                        aria-label={isFa ? `مشاهده قیمت API مدل ${m.name}` : `Inspect API pricing for ${m.name}`}
                       >
-                        {isFa ? 'آزمایش' : 'Try'}
+                        {isFa ? 'قیمت API' : 'Rates'}
                       </Link>
                     </div>
                   );
@@ -345,31 +360,25 @@ export async function ArticleView({ slug }: { slug: string }) {
                 </Link>
               </div>
             )}
+
             <div className="card" style={{ padding: 20 }}>
               <h2 className="lbl" style={{ margin: 0 }}>
-                {isFa ? 'درباره این خبر بپرسید' : 'Ask about this story'}
+                {isFa ? 'API پرسرعت و ارزان ویگاس' : 'Fastest & lowest-cost API'}
               </h2>
-              <p style={{ margin: '8px 0 12px', fontSize: 14, color: 'var(--vg-ink2)' }}>
-                {isFa ? 'این گزارش را در ویگاس چت با هر مدلی از لیدربورد تحلیل کنید.' : 'Take the question to Vigas Chat, with any model on the leaderboard.'}
+              <p style={{ margin: '8px 0 14px', fontSize: 14, color: 'var(--vg-ink2)', lineHeight: isFa ? 1.75 : 1.55 }}>
+                {isFa
+                  ? 'همه مدل‌های برتر را از یک اندپوینت OpenAI-compatible با پایین‌ترین تأخیر لبه، Failover خودکار و ۰٪ کارمزد در ۵ دلار اول صدا بزنید.'
+                  : 'Route to any frontier model through api.vigas.ai/v1 with low-latency edge failover and wholesale token rates — $0 markup on your first $5.'}
               </p>
-              {(isFa
-                ? [
-                    sideModels[0] ? `آیا ${sideModels[0].name} برای پروژه من انتخاب به‌صرفه‌ای است؟` : 'این تحول چه تاثیری روی تیم‌های فنی دارد؟',
-                    showData ? 'کدام مدل در ۵ رده اول بیشترین ارزش خرید نسبت به قیمت را دارد؟' : 'این خبر را در سه نکته کلیدی خلاصه کن.',
-                  ]
-                : [
-                    sideModels[0] ? `Is ${sideModels[0].name} worth it for my use case?` : 'What does this mean for developers?',
-                    showData ? 'Which is the cheapest model in the top five?' : 'Explain this story in three bullet points.',
-                  ]
-              ).map((q) => (
-                <Link
-                  key={q}
-                  href={`/chat?q=${encodeURIComponent(`${q} (${isFa ? 'متن خبر ویگاس' : 'Context: Vigas News'} — "${article.title}")`)}`}
-                  style={{ display: 'block', padding: '11px 14px', borderRadius: 11, background: 'var(--vg-bg2)', border: '1px solid rgba(239,234,225,.1)', fontSize: 14, color: 'var(--vg-ink)', marginBottom: 6 }}
-                >
-                  {q}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Link href="/models#quickstart" className="btn key" style={{ width: '100%' }}>
+                  {isFa ? 'مشاهده مدل‌ها و قیمت‌ها' : 'Models & live prices'}
+                  <Icon name="arrow" size={15} />
                 </Link>
-              ))}
+                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ width: '100%' }}>
+                  {isFa ? 'ساخت کلید API رایگان' : 'Get your API key'}
+                </Link>
+              </div>
             </div>
           </aside>
         </div>
@@ -387,44 +396,47 @@ export async function ArticleView({ slug }: { slug: string }) {
             {isFa ? (
               <>
                 گزارش‌های بیشتر در{' '}
-                <Link href={`/news/category/${categorySlug}?lang=fa`} style={{ color: 'var(--vg-sand)' }}>
+                <Link href={catPath} style={{ color: 'var(--vg-sand)' }}>
                   {categoryLabel}
                 </Link>
               </>
             ) : (
               <>
                 More on{' '}
-                <Link href={`/news/category/${categorySlug}`} style={{ color: 'var(--vg-sand)' }}>
+                <Link href={catPath} style={{ color: 'var(--vg-sand)' }}>
                   <em className="hi">{article.category.toLowerCase()}</em>
                 </Link>
               </>
             )}
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 24 }}>
-            {related.map((n) => {
-              const nFa = n.lang === 'fa';
-              return (
-                <Link
-                  key={n.slug}
-                  href={`/news/${n.slug}`}
-                  dir={nFa ? 'rtl' : 'ltr'}
-                  lang={n.lang ?? 'en'}
-                  className={nFa ? 'st fa-ui' : 'st'}
-                  style={{ display: 'block', color: 'var(--vg-ink)' }}
+            {related.map((n) => (
+              <Link
+                key={n.slug}
+                href={`/news/${n.slug}`}
+                className="st"
+                style={{ display: 'block', color: 'var(--vg-ink)' }}
+              >
+                <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--vg-line)', background: '#151411', marginBottom: 14 }}>
+                  <img
+                    src={articleImageUrl(n.slug, n.imageUrl)}
+                    alt={n.title}
+                    loading="lazy"
+                    decoding="async"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                </div>
+                <span className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)' }}>
+                  {isFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}
+                </span>
+                <h3
+                  className={isFa ? 'hl fa-ui' : 'sf hl'}
+                  style={{ fontSize: isFa ? 19 : 23, lineHeight: isFa ? 1.48 : 1.16, margin: '6px 0 0', fontWeight: isFa ? 600 : 400 }}
                 >
-                  <TypoCover cover={n.cover} size="lg" style={{ aspectRatio: '16/10', marginBottom: 14, padding: '14px 16px' }} />
-                  <span className={nFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: nFa ? 0 : '.1em', color: 'var(--vg-orange)' }}>
-                    {nFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}
-                  </span>
-                  <h3
-                    className={nFa ? 'hl fa-ui' : 'sf hl'}
-                    style={{ fontSize: nFa ? 19 : 23, lineHeight: nFa ? 1.45 : 1.16, margin: '6px 0 0', fontWeight: nFa ? 600 : 400 }}
-                  >
-                    {n.title}
-                  </h3>
-                </Link>
-              );
-            })}
+                  {n.title}
+                </h3>
+              </Link>
+            ))}
           </div>
         </section>
       )}

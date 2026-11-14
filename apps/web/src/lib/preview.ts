@@ -18,7 +18,7 @@ import { loadLocalArticles } from './local-articles';
 
 export const PREVIEW_MODE = !process.env.DATABASE_URL;
 
-export const PREVIEW_MESSAGE = 'This is a preview without a database, so accounts, chat and payments are turned off.';
+export const PREVIEW_MESSAGE = 'This is a preview without a database, so accounts, billing and saved votes are turned off.';
 
 /** Prototype stories stay suppressed unless explicitly enabled via VIGAS_DEMO_NEWS=1. */
 export const DEMO_NEWS_ENABLED = process.env.VIGAS_DEMO_NEWS === '1' || process.env.VIGAS_DEMO_NEWS === 'true';
@@ -60,6 +60,7 @@ export function previewNews(
       category: a.category,
       lang: a.lang ?? 'en',
       flag: a.flag,
+      ...(a.imageUrl ? { imageUrl: a.imageUrl } : {}),
       author: a.author,
       publishedAt: a.publishedAt,
       readingMinutes: a.readingMinutes,

@@ -21,10 +21,10 @@ export function AuthPage({ title, intro, crumb, children }: { title: ReactNode; 
             <p style={{ fontSize: 18, color: 'var(--vg-ink2)', maxWidth: 520, margin: 0 }}>{intro}</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '28px 0 0', display: 'flex', flexDirection: 'column', gap: 12, color: 'var(--vg-ink2)' }}>
               {[
-                'One OpenAI-compatible key for every model',
-                'Vigas Chat and Arena with any model',
-                'Zero markup on your first $5 of credits',
-                'The same balance in RetroBuild and the Android app',
+                'One OpenAI-compatible API key for 25+ frontier models',
+                'Lowest pass-through token rates with automatic failover',
+                'Zero markup on your first $5 of prepaid credits',
+                'Compatible with Cursor, OpenCode, Cline & your apps',
               ].map((t) => (
                 <li key={t} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Icon name="check" size={16} style={{ color: 'var(--vg-green)' }} />

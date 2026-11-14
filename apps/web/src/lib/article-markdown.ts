@@ -13,6 +13,7 @@ export interface ParsedArticleMarkdown {
   status: 'draft' | 'published';
   publishedAt: string;
   updatedAt: string;
+  imageUrl?: string;
   cover: Cover;
   faq: FaqItem[];
   mentionedModelIds: string[];
@@ -221,6 +222,8 @@ export function parseArticleMarkdown(rawSource: string, opts: { fallbackSlug?: s
         }
       : DEFAULT_AUTHOR;
 
+  const rawImg = str(meta.image) || str(meta.imageUrl);
+  const imageUrl = rawImg || undefined;
   const coverObj = typeof meta.cover === 'object' && meta.cover !== null ? (meta.cover as Record<string, unknown>) : {};
   const coverBig = (str(meta.coverBig) || str(coverObj.big) || category.slice(0, 4).toUpperCase()).slice(0, 8);
   const coverCaption = (str(meta.coverCaption) || str(coverObj.caption) || category.toUpperCase()).toUpperCase().slice(0, 24);
@@ -271,6 +274,7 @@ export function parseArticleMarkdown(rawSource: string, opts: { fallbackSlug?: s
     status,
     publishedAt,
     updatedAt,
+    ...(imageUrl ? { imageUrl } : {}),
     cover,
     faq,
     mentionedModelIds,
@@ -287,6 +291,7 @@ export function parsedToArticle(parsed: ParsedArticleMarkdown): Article {
     category: parsed.category,
     lang: parsed.lang,
     flag: parsed.flag,
+    ...(parsed.imageUrl ? { imageUrl: parsed.imageUrl } : {}),
     author: parsed.author,
     publishedAt: parsed.publishedAt,
     updatedAt: parsed.updatedAt,
@@ -315,6 +320,7 @@ export function serializeArticleMarkdown(a: {
   status: string;
   publishedAt?: string;
   updatedAt?: string;
+  imageUrl?: string;
   cover: Cover;
   faq: FaqItem[];
   mentionedModelIds: string[];
@@ -333,6 +339,7 @@ export function serializeArticleMarkdown(a: {
     `status: ${yamlQuote(a.status)}`,
     ...(a.publishedAt ? [`publishedAt: ${yamlQuote(a.publishedAt)}`] : []),
     ...(a.updatedAt ? [`updatedAt: ${yamlQuote(a.updatedAt)}`] : []),
+    ...(a.imageUrl ? [`image: ${yamlQuote(a.imageUrl)}`] : []),
     `cover: ${JSON.stringify(a.cover)}`,
     ...(a.mentionedModelIds.length ? [`mentionedModelIds: ${JSON.stringify(a.mentionedModelIds)}`] : []),
     ...(a.pullQuote?.text ? [`pullQuote: ${JSON.stringify(a.pullQuote)}`] : []),

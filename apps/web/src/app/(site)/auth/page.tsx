@@ -17,7 +17,7 @@ export const metadata = pageMetadata({
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /**
- * "Sign in with Vigas" consent page (PKCE). Apps such as RetroBuild send users here with
+ * "Sign in with Vigas" consent page (PKCE). External apps and coding agents send users here with
  * callback_url, code_challenge, code_challenge_method, app and an optional monthly limit in USD.
  * See docs/SIGN-IN-WITH-VIGAS.md.
  */

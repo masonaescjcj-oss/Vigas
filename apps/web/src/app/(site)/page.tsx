@@ -2,22 +2,22 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { formatCompact, formatPricePerMillion, timeAgo, type ModelListItem } from '@vigas/core';
-import { orgMark, withAlpha } from '@vigas/tokens';
 import { Colonnade } from '@/components/colonnade';
-import { CoverArt, TypoCover } from '@/components/covers';
-import { HomeAsk } from '@/components/home-ask';
+import { HeroApiPanel } from '@/components/hero-api-panel';
 import { NewsletterForm } from '@/components/newsletter-form';
 import { SiteHeader } from '@/components/site-header';
-import { ArrowLink, Avatar, Icon, JsonLd, Mark, OrgMark, SectionHead } from '@/components/ui';
+import { ArrowLink, Avatar, Icon, JsonLd, OrgMark, SectionHead, ToolMark } from '@/components/ui';
 import { getHomeFeed, getLeaderboardData, getModels, getNews, getTools } from '@/lib/data';
+import { articleImageUrl } from '@/lib/media';
 import { organizationLd, pageMetadata, websiteLd } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Vigas — One key for every AI model',
+  title: 'Vigas — Fastest & lowest-cost AI API for every frontier model',
   absoluteTitle: true,
   description:
-    'Route to every major AI model through one OpenAI-compatible endpoint with prepaid credits and honest per-token prices. Plus a live AI leaderboard, AI news and the best AI tools.',
+    'Access every frontier AI model through one OpenAI-compatible API at the lowest pass-through token prices and lowest edge latency — plus a live AI leaderboard, AI newsroom, and curated tools.',
   path: '/',
+  alternatesLanguages: { en: '/', fa: '/fa', 'x-default': '/' },
 });
 
 const line = '1px solid var(--vg-line)';
@@ -35,9 +35,9 @@ export default async function HomePage() {
   cacheTag('news', 'leaderboard', 'models', 'tools');
 
   const [feed, models, news, tools, board] = await Promise.all([
-    getHomeFeed(),
+    getHomeFeed({ lang: 'en' }),
     getModels(),
-    getNews({ limit: 9 }),
+    getNews({ lang: 'en', limit: 9 }),
     getTools({ sort: 'votes' }),
     getLeaderboardData('overall'),
   ]);
@@ -63,7 +63,7 @@ export default async function HomePage() {
   return (
     <>
       <JsonLd data={[organizationLd(), websiteLd()]} />
-      <SiteHeader active="home" />
+      <SiteHeader active="home" lang="en" />
       <main id="main">
         {/* ── Hero ─────────────────────────────────────────────────────── */}
         <section style={{ position: 'relative', overflow: 'hidden', borderBottom: line }}>
@@ -82,25 +82,25 @@ export default async function HomePage() {
             <div style={{ flex: '1 1 540px', minWidth: 0 }}>
               <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                 <span className="led" />
-                {models.length} models · {providers} providers · one endpoint
+                {models.length} models · {providers} providers · lowest pass-through rates
               </div>
-              <h1 className="sf" style={{ fontSize: 'clamp(44px,7vw,100px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '20px 0 22px' }}>
-                One key.
+              <h1 className="sf" style={{ fontSize: 'clamp(44px,7vw,96px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '20px 0 22px' }}>
+                Fastest API.
                 <br />
-                <em className="hi">Every</em> frontier model.
+                <em className="hi">Lowest cost</em> per token.
               </h1>
-              <p style={{ fontSize: 'clamp(16px,1.5vw,18px)', color: 'var(--vg-ink2)', maxWidth: 560, margin: 0, lineHeight: 1.6 }}>
-                Route to every major model through one OpenAI‑compatible endpoint. Honest per‑token prices, automatic fallbacks — and the
-                same key powers Vigas Chat and RetroBuild.
+              <p style={{ fontSize: 'clamp(16px,1.5vw,18px)', color: 'var(--vg-ink2)', maxWidth: 560, margin: '0 0 24px', lineHeight: 1.6 }}>
+                Route to every frontier model through one OpenAI‑compatible API with sub‑120ms edge routing, automatic provider failover, and
+                wholesale pass‑through token rates — $0 markup on your first $5.
               </p>
-              <HomeAsk models={models.map((m) => ({ id: m.id, name: m.name }))} />
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
+              <HeroApiPanel models={models} lang="en" />
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
                 <Link href="/signup?next=/dashboard%23keys" className="btn key" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
                   Get your API key
                   <Icon name="arrow" size={16} />
                 </Link>
                 <Link href="/models" className="btn gh" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
-                  Browse {models.length} models
+                  Browse {models.length} models &amp; live prices
                 </Link>
               </div>
             </div>
@@ -148,13 +148,12 @@ export default async function HomePage() {
                 <div style={{ padding: '0 10px 10px' }}>
                   {routeModels.map((m, i) => {
                     const r = routeMeta[i]!;
-                    const mk = orgMark(m.org);
                     return (
                       <div
                         key={m.id}
                         style={{ display: 'grid', gridTemplateColumns: '30px minmax(0,1fr) 92px', gap: 12, alignItems: 'center', padding: '10px 8px', borderRadius: 12, background: r.bg }}
                       >
-                        <Mark color={mk.color} letter={mk.letter} size={30} radius={9} fontSize={13} />
+                        <OrgMark org={m.org} size={30} radius={9} fontSize={13} />
                         <div style={{ minWidth: 0 }}>
                           <div className="mn" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {m.id}
@@ -224,30 +223,29 @@ export default async function HomePage() {
                 label="§ 01 — The platform"
                 title={
                   <>
-                    Six products.
+                    Four pillars.
                     <br />
-                    <em className="hi">One account, one balance.</em>
+                    <em className="hi">One key, lowest rates.</em>
                   </>
                 }
               />
-              <p style={{ maxWidth: 420, color: 'var(--vg-ink2)', margin: 0 }}>
-                Every Vigas product runs on the same credits and the same key — so what you learn on the leaderboard, you can ship through the API
-                tonight.
+              <p style={{ maxWidth: 440, color: 'var(--vg-ink2)', margin: 0 }}>
+                Compare frontier rankings on the live leaderboard, read bilingual AI dispatches, inspect curated apps, and ship on the fastest pass-through API gateway.
               </p>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-              <Link href="/models" className="lift bento-card" style={{ flex: '2 1 560px' }}>
+              <Link href="/models" className="lift bento-card" style={{ flex: '2 1 520px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                   <span className="lbl">01 · API Gateway</span>
                   <span className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)', background: 'var(--vg-orange-soft)', borderRadius: 6, padding: '3px 8px' }}>
-                    OpenAI-compatible
+                    Lowest rates · Auto-failover
                   </span>
                 </div>
                 <h3 className="sf" style={{ fontSize: 'clamp(28px,3vw,36px)', lineHeight: 1.04, margin: 0, letterSpacing: '-.016em' }}>
-                  Every model behind <em className="hi">one endpoint.</em>
+                  Every frontier model behind <em className="hi">one endpoint.</em>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)', maxWidth: 500 }}>
-                  Prepaid credits, provider prices passed through, automatic fallbacks and usage you can read at a glance.
+                <p style={{ margin: 0, color: 'var(--vg-ink2)', maxWidth: 520 }}>
+                  Prepaid credits, wholesale provider prices passed through with zero hidden fees, and automatic edge fallbacks across {providers} labs.
                 </p>
                 <div style={{ marginTop: 'auto', border: line, borderRadius: 14, overflow: 'hidden', background: 'var(--vg-bg2)' }}>
                   {feed.prices.slice(0, 3).map((m, i) => (
@@ -263,7 +261,10 @@ export default async function HomePage() {
                         fontSize: 14,
                       }}
                     >
-                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <OrgMark org={m.org} size={22} radius={6} fontSize={11} />
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</span>
+                      </span>
                       <span className="mn" style={{ fontSize: 13, textAlign: 'right', color: 'var(--vg-ink2)' }}>
                         {formatPricePerMillion(m.inputPerMillionMicros)}
                       </span>
@@ -275,41 +276,12 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/chat" className="lift bento-card" style={{ flex: '1 1 340px' }}>
-                <span className="lbl">02 · Vigas Chat</span>
-                <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
-                  Ask any model. <em className="hi">Or two at once.</em>
-                </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Chat with every model in the gateway. In Arena mode, your vote shapes the leaderboard.</p>
-                <div aria-hidden="true" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ alignSelf: 'flex-end', background: 'var(--vg-raised)', border: line, borderRadius: '14px 14px 4px 14px', padding: '8px 12px', fontSize: 13 }}>
-                    Which model is best for contracts?
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div style={{ border: '1px solid rgba(255,106,26,.5)', background: 'rgba(255,106,26,.07)', borderRadius: 12, padding: 10 }}>
-                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
-                        A · voted
-                      </div>
-                      <div style={{ height: 5, borderRadius: 3, background: 'var(--vg-pillar)', marginTop: 8 }} />
-                      <div style={{ height: 5, width: '70%', borderRadius: 3, background: 'var(--vg-pillar)', marginTop: 5 }} />
-                    </div>
-                    <div style={{ border: '1px solid rgba(239,234,225,.1)', borderRadius: 12, padding: 10 }}>
-                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                        B
-                      </div>
-                      <div style={{ height: 5, borderRadius: 3, background: 'var(--vg-strong)', marginTop: 8 }} />
-                      <div style={{ height: 5, width: '55%', borderRadius: 3, background: 'var(--vg-strong)', marginTop: 5 }} />
-                    </div>
-                  </div>
-                </div>
-              </Link>
-
-              <Link href="/leaderboard" className="lift bento-card" style={{ flex: '1 1 340px' }}>
-                <span className="lbl">03 · Leaderboard</span>
+              <Link href="/leaderboard" className="lift bento-card" style={{ flex: '1 1 320px' }}>
+                <span className="lbl">02 · Leaderboard</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   Rankings from <em className="hi">real work.</em>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Win share from {sessions} real sessions and blind votes — not lab benchmarks.</p>
+                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Win share from {sessions} real sessions and blind Arena evaluations — not stale lab benchmarks.</p>
                 <div
                   aria-hidden="true"
                   style={{ marginTop: 'auto', display: 'flex', alignItems: 'flex-end', gap: 10, height: 112, padding: '0 6px', borderBottom: '1px solid var(--vg-line2)' }}
@@ -327,42 +299,26 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/news" className="lift bento-card" style={{ flex: '1 1 340px' }}>
-                <span className="lbl">04 · AI News</span>
+              <Link href="/news" className="lift bento-card" style={{ flex: '1 1 320px' }}>
+                <span className="lbl">03 · AI News</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   The news that <em className="hi">moves the models.</em>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Breaking stories, deep analysis and a five-minute morning brief.</p>
+                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Original English reporting and dedicated Persian newsroom briefs backed by router telemetry.</p>
                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column' }}>
                   {feed.news.length > 0 ? (
-                    feed.news.slice(0, 2).map((n) => {
-                      const isFa = n.lang === 'fa';
-                      return (
-                        <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
-                          <div
-                            dir={isFa ? 'rtl' : 'ltr'}
-                            lang={n.lang ?? 'en'}
-                            className={isFa ? 'fa-ui' : 'mn'}
-                            style={{ fontSize: 12, color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
-                          >
-                            {isFa ? (
-                              <>
-                                <span>{FA_CATS[n.category] ?? n.category}</span>
-                                <span style={{ color: 'var(--vg-sand)' }}>· فارسی</span>
-                                <span style={{ color: 'var(--vg-ink3)' }}>· {faAgo(n.publishedAt, now)}</span>
-                              </>
-                            ) : (
-                              <span>
-                                {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div className={isFa ? 'fa-ui' : 'sf'} dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} style={{ fontSize: isFa ? 15 : 18, lineHeight: isFa ? 1.45 : 1.2, fontWeight: isFa ? 600 : 400 }}>
-                            {n.title}
-                          </div>
+                    feed.news.slice(0, 2).map((n) => (
+                      <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
+                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span>
+                            {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
+                          </span>
                         </div>
-                      );
-                    })
+                        <div className="sf" style={{ fontSize: 18, lineHeight: 1.2, marginTop: 3 }}>
+                          {n.title}
+                        </div>
+                      </div>
+                    ))
                   ) : (
                     <div style={{ padding: '12px 0 0', borderTop: line }}>
                       <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
@@ -376,68 +332,35 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <Link href="/tools" className="lift bento-card" style={{ flex: '1 1 340px' }}>
-                <span className="lbl">05 · Tools</span>
+              <Link href="/tools" className="lift bento-card" style={{ flex: '1.2 1 340px' }}>
+                <span className="lbl">04 · Tools</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   {tools.length} tools, <em className="hi">ranked by builders.</em>
                 </h3>
                 <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>What&apos;s new, what&apos;s trending and what&apos;s actually worth paying for.</p>
                 <div aria-hidden="true" style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 8 }}>
                   {tools.slice(0, 8).map((t) => (
-                    <span
+                    <ToolMark
                       key={t.slug}
-                      style={{
-                        aspectRatio: '1',
-                        borderRadius: 12,
-                        display: 'grid',
-                        placeItems: 'center',
-                        font: '400 20px var(--vg-font-serif)',
-                        background: withAlpha(t.color, 0.15),
-                        color: t.color,
-                        boxShadow: `inset 0 0 0 1px ${withAlpha(t.color, 0.3)}`,
-                      }}
-                    >
-                      {t.letter}
-                    </span>
+                      slug={t.slug}
+                      iconUrl={t.iconUrl}
+                      color={t.color}
+                      letter={t.letter}
+                      size={44}
+                      radius={12}
+                      fontSize={18}
+                      style={{ width: '100%', height: 'auto', aspectRatio: '1' }}
+                    />
                   ))}
                 </div>
               </Link>
 
-              <Link href="/retrobuild" className="lift bento-card" style={{ flex: '2 1 560px', flexDirection: 'row', flexWrap: 'wrap', gap: 28, borderColor: 'rgba(255,106,26,.32)' }}>
-                <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <span className="lbl" style={{ color: 'var(--vg-orange-text)' }}>
-                    06 · RetroBuild
-                  </span>
-                  <h3 className="sf" style={{ fontSize: 'clamp(28px,3vw,36px)', lineHeight: 1.04, margin: 0, letterSpacing: '-.016em' }}>
-                    Describe an app. <em className="hi">Ship it tonight.</em>
-                  </h3>
-                  <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>An agent that writes, previews and checkpoints your app — billed to the same Vigas credits.</p>
-                </div>
-                <div aria-hidden="true" style={{ flex: '1 1 240px', background: 'var(--vg-bg2)', border: line, borderRadius: 14, padding: '14px 16px', alignSelf: 'stretch' }}>
-                  {['Schema & local store', 'Streak counter'].map((s, i) => (
-                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: i ? '1px dashed rgba(239,234,225,.1)' : undefined }}>
-                      <span style={{ width: 16, height: 16, borderRadius: '50%', background: 'rgba(111,207,115,.18)', color: 'var(--vg-green)', display: 'grid', placeItems: 'center' }}>
-                        <Icon name="check" size={11} />
-                      </span>
-                      <span style={{ fontSize: 13 }}>{s}</span>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderTop: '1px dashed rgba(239,234,225,.1)' }}>
-                    <span className="spin" style={{ width: 16, height: 16, borderColor: 'var(--vg-orange)', borderTopColor: 'transparent' }} />
-                    <span style={{ fontSize: 13 }}>Weekly heatmap…</span>
-                    <span className="mn" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-orange-text)' }}>
-                      v7
-                    </span>
-                  </div>
-                </div>
-              </Link>
-
-              <div className="bento-card" style={{ flex: '1 1 340px' }}>
+              <div className="bento-card" style={{ flex: '1 1 320px' }}>
                 <span className="lbl">Everywhere · Android</span>
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   Vigas, <em className="hi">in your pocket.</em>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Chat, rankings, news and your wallet — native, fast and smooth.</p>
+                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>API usage, rankings, news and your wallet — native, fast and smooth.</p>
                 <span className="btn gh" style={{ marginTop: 'auto', alignSelf: 'flex-start', cursor: 'default' }}>
                   <Icon name="phone" size={16} />
                   Android app · coming soon
@@ -534,169 +457,153 @@ export default async function HomePage() {
         </section>
 
         {/* ── § 03 News ────────────────────────────────────────────────── */}
-        {lead && (() => {
-          const leadFa = lead.lang === 'fa';
-          return (
-            <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="today">
-              <div className="wrap">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
-                  <SectionHead
-                    id="today"
-                    label={`§ 03 — Today in AI · ${today}`}
-                    title={
-                      <>
-                        The <em className="hi">news</em> that moves the models
-                      </>
-                    }
-                  />
-                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Link href="/news?lang=fa" className="fa-ui pill" style={{ color: 'var(--vg-sand)' }}>
-                      اخبار فارسی
-                    </Link>
-                    <ArrowLink href="/news" style={{ fontSize: 15 }}>
-                      Newsroom
-                    </ArrowLink>
-                  </div>
+        {lead && (
+          <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="today">
+            <div className="wrap">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
+                <SectionHead
+                  id="today"
+                  label={`§ 03 — Today in AI · ${today}`}
+                  title={
+                    <>
+                      The <em className="hi">news</em> that moves the models
+                    </>
+                  }
+                />
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Link href="/news/fa" lang="fa" dir="rtl" className="fa-ui pill" style={{ color: 'var(--vg-sand)' }}>
+                    نسخه فارسی اخبار
+                  </Link>
+                  <ArrowLink href="/news" style={{ fontSize: 15 }}>
+                    Newsroom
+                  </ArrowLink>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40 }}>
-                  <article className="st" style={{ flex: '1.5 1 460px', minWidth: 0 }}>
-                    <Link href={`/news/${lead.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
-                      <div style={{ position: 'relative', aspectRatio: '16/10', borderRadius: 16, overflow: 'hidden', border: line, background: '#151411' }}>
-                        <CoverArt seed={lead.slug} color={lead.cover.color} category={lead.category} />
-                        {lead.flag && (
-                          <span className="mn" style={badge(lead.flag)}>
-                            {lead.flag.toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <div dir={leadFa ? 'rtl' : 'ltr'} lang={lead.lang ?? 'en'} className={leadFa ? 'fa-ui' : undefined}>
-                        <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: leadFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span>{leadFa ? (FA_CATS[lead.category] ?? lead.category) : lead.category.toUpperCase()}</span>
-                          {leadFa && (
-                            <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
-                              فارسی
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40 }}>
+                <article className="st" style={{ flex: '1.5 1 460px', minWidth: 0 }}>
+                  <Link href={`/news/${lead.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
+                    <div style={{ position: 'relative', aspectRatio: '16/10', borderRadius: 16, overflow: 'hidden', border: line, background: '#151411' }}>
+                      <img
+                        src={articleImageUrl(lead.slug, lead.imageUrl)}
+                        alt={lead.title}
+                        loading="lazy"
+                        decoding="async"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                      {lead.flag && (
+                        <span className="mn" style={badge(lead.flag)}>
+                          {lead.flag.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span>{lead.category.toUpperCase()}</span>
+                      <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {timeAgo(lead.publishedAt, now).toUpperCase()} AGO</span>
+                    </div>
+                    <h3
+                      className="sf hl"
+                      style={{
+                        fontSize: 'clamp(30px,3vw,42px)',
+                        lineHeight: 1.06,
+                        letterSpacing: '-.02em',
+                        margin: '10px 0',
+                        fontWeight: 400,
+                      }}
+                    >
+                      {lead.title}
+                    </h3>
+                    <p style={{ margin: '0 0 12px', color: 'var(--vg-ink2)', fontSize: 16, lineHeight: 1.55 }}>{lead.dek}</p>
+                    <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Avatar name={lead.author.name} color={lead.author.color} />
+                      {lead.author.name} · {lead.readingMinutes} min read
+                    </div>
+                  </Link>
+                </article>
+                <div style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                  {secondary.map((n) => (
+                    <article key={n.slug} className="st" style={{ padding: '0 0 20px', marginBottom: 20, borderBottom: line }}>
+                      <Link href={`/news/${n.slug}`} style={{ display: 'flex', gap: 16, color: 'var(--vg-ink)', alignItems: 'center' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span>{n.category.toUpperCase()}</span>
+                            <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {timeAgo(n.publishedAt, now).toUpperCase()}</span>
+                          </div>
+                          <h3
+                            className="sf hl"
+                            style={{
+                              fontSize: 22,
+                              lineHeight: 1.15,
+                              margin: '6px 0 8px',
+                              fontWeight: 400,
+                            }}
+                          >
+                            {n.title}
+                          </h3>
+                          <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+                            {n.author.name}
+                          </div>
+                        </div>
+                        <div style={{ width: 112, height: 112, flexShrink: 0, borderRadius: 14, overflow: 'hidden', border: line, background: '#151411' }}>
+                          <img
+                            src={articleImageUrl(n.slug, n.imageUrl)}
+                            alt={n.title}
+                            width={112}
+                            height={112}
+                            loading="lazy"
+                            decoding="async"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                        </div>
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+                {rail.length > 0 && (
+                  <aside style={{ flex: '1 1 280px', minWidth: 0 }} aria-label="More stories">
+                    <div className="lbl" style={{ marginBottom: 6 }}>
+                      § More stories
+                    </div>
+                    <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {rail.map((n, i) => (
+                        <li key={n.slug}>
+                          <Link
+                            href={`/news/${n.slug}`}
+                            style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: 10, padding: '14px 0', borderBottom: line, color: 'var(--vg-ink)' }}
+                          >
+                            <span className="sf" aria-hidden="true" style={{ fontSize: 30, lineHeight: 1, color: 'var(--vg-orange)' }}>
+                              {i + 1}
                             </span>
-                          )}
-                          <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {leadFa ? faAgo(lead.publishedAt, now) : `${timeAgo(lead.publishedAt, now).toUpperCase()} AGO`}</span>
-                        </div>
-                        <h3
-                          className={leadFa ? 'hl fa-ui' : 'sf hl'}
-                          style={{
-                            fontSize: leadFa ? 'clamp(24px,2.5vw,32px)' : 'clamp(30px,3vw,42px)',
-                            lineHeight: leadFa ? 1.38 : 1.06,
-                            letterSpacing: leadFa ? 0 : '-.02em',
-                            margin: '10px 0',
-                            fontWeight: leadFa ? 700 : 400,
-                          }}
-                        >
-                          {lead.title}
-                        </h3>
-                        <p style={{ margin: '0 0 12px', color: 'var(--vg-ink2)', fontSize: 16, lineHeight: leadFa ? 1.7 : 1.55 }}>{lead.dek}</p>
-                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Avatar name={lead.author.name} color={lead.author.color} />
-                          {lead.author.name} · {leadFa ? `${lead.readingMinutes} دقیقه مطالعه` : `${lead.readingMinutes} min read`}
-                        </div>
-                      </div>
-                    </Link>
-                  </article>
-                  <div style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                    {secondary.map((n) => {
-                      const isFa = n.lang === 'fa';
-                      return (
-                        <article key={n.slug} className="st" style={{ padding: '0 0 20px', marginBottom: 20, borderBottom: line }}>
-                          <Link href={`/news/${n.slug}`} style={{ display: 'flex', gap: 16, color: 'var(--vg-ink)' }}>
-                            <div dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} className={isFa ? 'fa-ui' : undefined} style={{ flex: 1, minWidth: 0 }}>
-                              <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <span>{isFa ? (FA_CATS[n.category] ?? n.category) : n.category.toUpperCase()}</span>
-                                {isFa && (
-                                  <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
-                                    فارسی
-                                  </span>
-                                )}
-                                <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {isFa ? faAgo(n.publishedAt, now) : timeAgo(n.publishedAt, now).toUpperCase()}</span>
-                              </div>
-                              <h3
-                                className={isFa ? 'hl fa-ui' : 'sf hl'}
+                            <span>
+                              <span
+                                className="sf"
                                 style={{
-                                  fontSize: isFa ? 18 : 22,
-                                  lineHeight: isFa ? 1.45 : 1.15,
-                                  margin: '6px 0 8px',
-                                  fontWeight: isFa ? 600 : 400,
+                                  display: 'block',
+                                  fontSize: 18,
+                                  lineHeight: 1.22,
+                                  fontWeight: 400,
                                 }}
                               >
                                 {n.title}
-                              </h3>
-                              <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                                {n.author.name}
-                              </div>
-                            </div>
-                            <TypoCover cover={n.cover} style={{ width: 112, height: 112, flexShrink: 0 }} />
-                          </Link>
-                        </article>
-                      );
-                    })}
-                  </div>
-                  {rail.length > 0 && (
-                    <aside style={{ flex: '1 1 280px', minWidth: 0 }} aria-label="More stories">
-                      <div className="lbl" style={{ marginBottom: 6 }}>
-                        § More stories
-                      </div>
-                      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                        {rail.map((n, i) => {
-                          const isFa = n.lang === 'fa';
-                          return (
-                            <li key={n.slug}>
-                              <Link
-                                href={`/news/${n.slug}`}
-                                style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: 10, padding: '14px 0', borderBottom: line, color: 'var(--vg-ink)' }}
+                              </span>
+                              <span
+                                className="mn"
+                                style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--vg-ink3)', marginTop: 6 }}
                               >
-                                <span className="sf" aria-hidden="true" style={{ fontSize: 30, lineHeight: 1, color: 'var(--vg-orange)' }}>
-                                  {i + 1}
-                                </span>
                                 <span>
-                                  <bdi
-                                    dir={isFa ? 'rtl' : 'ltr'}
-                                    lang={n.lang ?? 'en'}
-                                    className={isFa ? 'fa-ui' : 'sf'}
-                                    style={{
-                                      display: 'block',
-                                      fontSize: isFa ? 16 : 18,
-                                      lineHeight: isFa ? 1.48 : 1.22,
-                                      fontWeight: isFa ? 600 : 400,
-                                    }}
-                                  >
-                                    {n.title}
-                                  </bdi>
-                                  <span
-                                    dir={isFa ? 'rtl' : 'ltr'}
-                                    lang={n.lang ?? 'en'}
-                                    className={isFa ? 'fa-ui' : 'mn'}
-                                    style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--vg-ink3)', marginTop: 6 }}
-                                  >
-                                    {isFa ? (
-                                      <>
-                                        <span style={{ color: 'var(--vg-sand)' }}>فارسی</span>
-                                        <span>· {FA_CATS[n.category] ?? n.category} · {faAgo(n.publishedAt, now)}</span>
-                                      </>
-                                    ) : (
-                                      <span>
-                                        {n.category} · {timeAgo(n.publishedAt, now)}
-                                      </span>
-                                    )}
-                                  </span>
+                                  {n.category} · {timeAgo(n.publishedAt, now)}
                                 </span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </aside>
-                  )}
-                </div>
+                              </span>
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ol>
+                  </aside>
+                )}
               </div>
-            </section>
-          );
-        })()}
+            </div>
+          </section>
+        )}
 
         {/* ── § 04 Tools ───────────────────────────────────────────────── */}
         <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="trending">
@@ -734,7 +641,7 @@ export default async function HomePage() {
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Mark color={t.color} letter={t.letter} size={46} radius={13} fontSize={22} />
+                    <ToolMark slug={t.slug} iconUrl={t.iconUrl} color={t.color} letter={t.letter} size={46} radius={13} fontSize={22} />
                     <span>
                       <span style={{ display: 'block', fontWeight: 600, fontSize: 16 }}>{t.name}</span>
                       <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)' }}>
@@ -772,7 +679,7 @@ export default async function HomePage() {
                 <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Launches, price moves and the one chart you need — every weekday morning.</p>
               </div>
               <div style={{ flex: '1 1 380px', minWidth: 0 }}>
-                <NewsletterForm />
+                <NewsletterForm lang="en" />
               </div>
             </div>
           </div>
@@ -780,26 +687,6 @@ export default async function HomePage() {
       </main>
     </>
   );
-}
-
-const FA_CATS: Record<string, string> = {
-  Models: 'مدل‌ها',
-  Agents: 'ایجنت‌ها',
-  Analysis: 'تحلیل',
-  Policy: 'سیاست‌گذاری',
-  Hardware: 'سخت‌افزار',
-  Funding: 'سرمایه‌گذاری',
-  Tools: 'ابزارها',
-};
-
-function faAgo(iso: string, now: Date): string {
-  const t = timeAgo(iso, now);
-  if (t === 'now') return 'هم‌اکنون';
-  const m = /^(\d+)\s*(min|m|h|d|w)$/i.exec(t);
-  if (!m) return t;
-  const units: Record<string, string> = { min: 'دقیقه پیش', m: 'دقیقه پیش', h: 'ساعت پیش', d: 'روز پیش', w: 'هفته پیش' };
-  const faDigits = m[1]!.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!);
-  return `${faDigits} ${units[m[2]!.toLowerCase()] ?? ''}`;
 }
 
 function badge(flag: string): CSSProperties {
@@ -816,3 +703,4 @@ function badge(flag: string): CSSProperties {
     letterSpacing: '.06em',
   };
 }
+

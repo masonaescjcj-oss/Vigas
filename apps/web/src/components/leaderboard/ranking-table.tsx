@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { LeaderboardEntry } from '@vigas/core';
 import { formatUsd } from '@/lib/fmt';
-import { Icon, Mark } from '../ui';
+import { Icon, OrgMark } from '../ui';
 import { EmbedModal } from './embed-modal';
 
 type Row = LeaderboardEntry & { color: string; letter: string };
@@ -132,7 +132,7 @@ export function RankingTable({
                   </td>
                   <th scope="row" style={{ ...td, textAlign: 'left', fontWeight: 400 }}>
                     <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, color: 'var(--vg-ink)' }}>
-                      <Mark color={a.color} letter={a.letter} size={30} radius={9} fontSize={15} ring={false} />
+                      <OrgMark org={a.org} size={30} radius={9} fontSize={15} />
                       <span style={{ minWidth: 0 }}>
                         <b style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</b>
                         <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)' }}>
@@ -206,7 +206,7 @@ export function RankingTable({
               <span className="mn" style={{ width: 24, fontSize: 13, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange)' : 'var(--vg-ink3)', flexShrink: 0 }}>
                 #{a.rank}
               </span>
-              <Mark color={a.color} letter={a.letter} size={32} radius={9} fontSize={15} ring={false} />
+              <OrgMark org={a.org} size={32} radius={9} fontSize={15} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'block', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--vg-ink)' }}>
                   {a.name}

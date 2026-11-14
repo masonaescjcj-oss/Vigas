@@ -21,23 +21,43 @@ function redirect308(request: NextRequest, pathname: string, search = ''): NextR
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Legacy `/news?category=Models&page=2` -> `/news/category/models(/page/2)`
+  if (pathname === '/chat') {
+    return redirect308(request, '/models');
+  }
+
+  // Legacy `/news?lang=fa|en&category=Models&page=2` -> canonical `/news` or `/news/fa` routes
   if (pathname === '/news') {
+    const qLang = searchParams.get('lang');
     const rawCat = searchParams.get('category');
-    if (rawCat) {
-      const cat = parseNewsCategorySlug(rawCat);
-      const page = parsePositivePage(searchParams.get('page'));
+    const cat = rawCat ? parseNewsCategorySlug(rawCat) : null;
+    const page = parsePositivePage(searchParams.get('page'));
+
+    if (qLang === 'fa') {
+      const target = cat ? `/news/fa/category/${cat.toLowerCase()}` : '/news/fa';
+      return redirect308(request, target, page && page > 1 ? `?page=${page}` : '');
+    }
+
+    if (qLang === 'en' || rawCat) {
       if (cat) {
         const target = page && page > 1 ? `/news/category/${cat.toLowerCase()}/page/${page}` : `/news/category/${cat.toLowerCase()}`;
         return redirect308(request, target);
       }
       return redirect308(request, '/news', page && page > 1 ? `?page=${page}` : '');
     }
+
     if (searchParams.get('page') === '1') {
       const sp = new URLSearchParams(searchParams);
       sp.delete('page');
       const qs = sp.toString();
       return redirect308(request, '/news', qs ? `?${qs}` : '');
+    }
+    return NextResponse.next();
+  }
+
+  if (pathname === '/news/fa') {
+    if (searchParams.get('page') === '1' || searchParams.has('lang')) {
+      const page = parsePositivePage(searchParams.get('page'));
+      return redirect308(request, '/news/fa', page && page > 1 ? `?page=${page}` : '');
     }
     return NextResponse.next();
   }
@@ -50,13 +70,34 @@ export function proxy(request: NextRequest) {
     if (!cat) return NextResponse.next();
 
     const lower = cat.toLowerCase();
+    const qLang = searchParams.get('lang');
     const qPage = parsePositivePage(searchParams.get('page'));
+    if (qLang === 'fa') {
+      return redirect308(request, `/news/fa/category/${lower}`, qPage && qPage > 1 ? `?page=${qPage}` : '');
+    }
     if (rest.length === 1) {
       if (qPage && qPage > 1) return redirect308(request, `/news/category/${lower}/page/${qPage}`);
-      if (rawCat !== lower || searchParams.has('page')) return redirect308(request, `/news/category/${lower}`);
+      if (rawCat !== lower || searchParams.has('page') || qLang === 'en') {
+        return redirect308(request, `/news/category/${lower}`);
+      }
     } else if (rest.length === 3 && rest[1] === 'page') {
       if (rest[2] === '1') return redirect308(request, `/news/category/${lower}`);
-      if (rawCat !== lower) return redirect308(request, `/news/category/${lower}/page/${rest[2]}`);
+      if (rawCat !== lower || qLang === 'en') return redirect308(request, `/news/category/${lower}/page/${rest[2]}`);
+    }
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/news/fa/category/')) {
+    const rawCat = pathname.slice('/news/fa/category/'.length);
+    if (!rawCat.includes('/')) {
+      const cat = parseNewsCategorySlug(rawCat);
+      if (cat) {
+        const lower = cat.toLowerCase();
+        const page = parsePositivePage(searchParams.get('page'));
+        if (rawCat !== lower || searchParams.get('page') === '1' || searchParams.has('lang')) {
+          return redirect308(request, `/news/fa/category/${lower}`, page && page > 1 ? `?page=${page}` : '');
+        }
+      }
     }
     return NextResponse.next();
   }
@@ -111,5 +152,15 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/news', '/news/category/:path*', '/tools', '/tools/category/:path*', '/tools/collection/:path*', '/leaderboard/:path*'],
+  matcher: [
+    '/chat',
+    '/news',
+    '/news/fa',
+    '/news/category/:path*',
+    '/news/fa/category/:path*',
+    '/tools',
+    '/tools/category/:path*',
+    '/tools/collection/:path*',
+    '/leaderboard/:path*',
+  ],
 };

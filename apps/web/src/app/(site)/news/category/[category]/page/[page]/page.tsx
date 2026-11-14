@@ -47,11 +47,11 @@ export default async function NewsCategoryPaginatedPage({
 
   return (
     <>
-      <SiteHeader active="news" />
+      <SiteHeader active="news" lang="en" altHref={newsCategoryPath(cat, 1, 'fa')} />
       <main id="main">
-        <NewsMasthead category={cat} />
+        <NewsMasthead category={cat} lang="en" />
         <Suspense fallback={<NewsRiverSkeleton />}>
-          <NewsContent category={cat} page={page} />
+          <NewsContent category={cat} page={page} lang="en" />
         </Suspense>
       </main>
     </>

@@ -504,6 +504,31 @@ details[open] .pm {
   align-items: center;
   gap: 10px;
 }
+.hdr-lang {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--vg-line2);
+  border-radius: 9px;
+  padding: 2px;
+  background: var(--vg-surface);
+  flex-shrink: 0;
+}
+.hdr-lang a {
+  padding: 4px 8px;
+  border-radius: 7px;
+  font: 500 12px/1 var(--vg-font-mono);
+  color: var(--vg-ink2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.hdr-lang a.fa-ui {
+  font-family: var(--vg-font-fa);
+}
+.hdr-lang a[aria-current='page'] {
+  background: var(--vg-raised);
+  color: var(--vg-ink);
+  box-shadow: inset 0 0 0 1px rgba(239, 234, 225, 0.1);
+}
 .hdr-signin {
   font-size: 14px;
   color: var(--vg-ink2);
@@ -646,19 +671,27 @@ details[open] .pm {
   .hdr-menu {
     display: inline-block;
   }
-  .hdr-menu.hdr-menu-pill {
-    display: inline-flex;
-  }
 }
 @media (max-width: 460px) {
+  .hdr-actions {
+    gap: 6px;
+  }
   .hdr-signin {
     display: none;
+  }
+  .hdr-cta {
+    padding: 0 11px;
+    font-size: 13px;
   }
   .hdr-cta .long {
     display: none;
   }
+  .hdr-lang a {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
   .hdr-menu-cur {
-    max-width: 74px;
+    max-width: 68px;
   }
 }
 @media (max-width: 360px) {
@@ -1333,12 +1366,17 @@ details[open] .pm {
   padding-left: 22px;
   padding-right: 22px;
 }
-.home-ask-actions {
+.hero-api-panel {
+  background: var(--vg-surface);
+  border: 1px solid var(--vg-line2);
+}
+.hero-api-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px;
-  flex-wrap: wrap;
+  gap: 12px;
+  padding: 11px 16px;
+  color: var(--vg-ink);
+  text-decoration: none;
 }
 @media (max-width: 560px) {
   .live-prices-grid {
@@ -1349,12 +1387,6 @@ details[open] .pm {
   }
   .live-prices-grid .col-24h {
     display: none;
-  }
-}
-@media (max-width: 460px) {
-  .home-ask-actions .home-ask-submit {
-    flex: 1 0 100%;
-    margin-left: 0 !important;
   }
 }
 
@@ -1491,6 +1523,33 @@ details[open] .pm {
   text-transform: none;
   font-weight: 600;
 }
+[dir='rtl'] .hdr-actions {
+  margin-left: 0;
+  margin-right: auto;
+}
+[dir='rtl'] .hdr-menu-pop {
+  left: auto;
+  right: 0;
+}
+[dir='rtl'] .vote-btn {
+  margin-left: 0;
+  margin-right: auto;
+}
+[dir='rtl'] .ticker-viewport {
+  direction: ltr;
+}
+[dir='rtl'] .stats > div {
+  border-right: 0;
+  border-left: 1px solid var(--vg-line);
+}
+[dir='rtl'] .stats > div:last-child {
+  border-left: 0;
+}
+@media (max-width: 720px) {
+  [dir='rtl'] .stats > div:nth-child(2n) {
+    border-left: 0;
+  }
+}
 [dir='rtl'] .prose {
   font-family: var(--vg-font-fa);
   font-size: 18px;
@@ -1553,9 +1612,35 @@ details[open] .pm {
   unicode-bidi: isolate;
 }
 [lang='fa'] .mn:not([dir='ltr']),
-[dir='rtl'] .mn:not([dir='ltr']) {
+[dir='rtl'] .mn:not([dir='ltr']),
+[lang='fa'] .pill:not([dir='ltr']),
+[dir='rtl'] .pill:not([dir='ltr']),
+[lang='fa'] .tag:not([dir='ltr']),
+[dir='rtl'] .tag:not([dir='ltr']),
+[lang='fa'] .btn:not([dir='ltr']),
+[dir='rtl'] .btn:not([dir='ltr']),
+[lang='fa'] .chip:not([dir='ltr']),
+[dir='rtl'] .chip:not([dir='ltr']),
+[dir='rtl'] .hdr-menu-tag,
+[dir='rtl'] .hdr-menu-cur {
   font-family: var(--vg-font-fa);
   letter-spacing: 0 !important;
+}
+[dir='rtl'] .qs-box {
+  padding: 0 12px 0 8px;
+}
+[dir='rtl'] .qs-box input {
+  font-family: var(--vg-font-fa);
+}
+[dir='rtl'] .qs-pop {
+  left: 0;
+  right: auto;
+}
+[dir='rtl'] .hdr-menu-pill {
+  padding: 5px 10px 5px 11px;
+}
+[dir='rtl'] .link-arrow .i {
+  transform: scaleX(-1);
 }
 @media (max-width: 720px) {
   [dir='rtl'] .prose {
@@ -1701,7 +1786,7 @@ details[open] .pm {
   box-shadow: 0 32px 80px -20px rgba(0, 0, 0, 0.9);
 }
 
-/* ── Tools, Models & RetroBuild responsive ────────────────────────────── */
+/* ── Tools & Models responsive ────────────────────────────────────────── */
 .totw-heat {
   flex: 1.1 1 420px;
   min-height: 300px;
@@ -1760,16 +1845,6 @@ details[open] .pm {
   .models-mobile {
     display: flex;
     flex-direction: column;
-  }
-}
-.rb-pane {
-  border-right: 1px solid var(--vg-line);
-}
-@media (max-width: 1040px) {
-  .rb-pane {
-    flex: 1 1 100% !important;
-    border-right: 0;
-    border-bottom: 1px solid var(--vg-line);
   }
 }
 .flow-list {

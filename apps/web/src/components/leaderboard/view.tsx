@@ -8,7 +8,7 @@ import { absoluteUrl, SITE_NAME, SITE_URL } from '@/lib/env';
 import { breadcrumbLd, faqLd } from '@/lib/seo';
 import { getLeaderboardFaq, LEADERBOARD_CATEGORY_SEO } from '@/lib/seo-catalog';
 import { pillarTone, ROMAN, shortName } from '../colonnade';
-import { Breadcrumb, Icon, JsonLd, Mark, type IconName } from '../ui';
+import { Breadcrumb, Icon, JsonLd, OrgMark, type IconName } from '../ui';
 import { ParetoChart, type ParetoPoint } from './pareto-chart';
 import { RankingTable } from './ranking-table';
 
@@ -184,7 +184,7 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
           {risers.map(({ e, delta }) => (
             <Link
               key={e.modelId}
-              href={`/chat?model=${encodeURIComponent(e.modelId)}`}
+              href={`/models?q=${encodeURIComponent(e.modelId)}`}
               className="hov"
               style={{
                 display: 'grid',
@@ -197,7 +197,7 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
                 borderTop: '1px solid rgba(239,234,225,.06)',
               }}
             >
-              <Mark color={e.color} letter={e.letter} size={38} radius={11} fontSize={18} ring={false} />
+              <OrgMark org={e.org} size={38} radius={11} fontSize={18} />
               <span style={{ minWidth: 0 }}>
                 <b style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shortName(e.name)}</b>
                 <span style={{ fontSize: 13, color: 'var(--vg-ink2)' }}>
@@ -257,7 +257,7 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
             const h = [220, 160, 120][i] ?? 100;
             return (
               <li key={p.modelId} className="podium-col" style={{ order: i === 1 ? 0 : i === 0 ? 1 : 2 }}>
-                <Mark color={p.color} letter={p.letter} size={46} radius={13} fontSize={22} />
+                <OrgMark org={p.org} size={46} radius={13} fontSize={22} />
                 <b className="sf" style={{ fontSize: 'clamp(17px,2vw,26px)', fontWeight: 400, lineHeight: 1.1, marginTop: 10 }}>
                   <span className="sr-only">Rank {p.rank}: </span>
                   <Link href={`/models?q=${encodeURIComponent(p.modelId)}`} style={{ color: 'var(--vg-ink)' }}>
@@ -331,7 +331,7 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 16 }}>
           {[
-            ['I', 'var(--vg-orange)', 'var(--vg-orange)', 'Real sessions, not benchmarks', 'Win share counts how often a model finishes real tasks that users accept — across chat, API and RetroBuild.'],
+            ['I', 'var(--vg-orange)', 'var(--vg-orange)', 'Real sessions, not benchmarks', 'Win share counts how often a model finishes real tasks that users accept — across real API workloads, coding agents, and blind Arena tests.'],
             ['II', 'var(--vg-sand)', 'var(--vg-sand)', 'Blind pairwise votes', 'In Arena, people compare two hidden models and vote. Scores use a Bradley–Terry model with 95% confidence intervals.'],
             ['III', 'var(--vg-ink3)', 'var(--vg-ink2)', 'Cost is part of the score', 'Every ranking shows dollars per completed task, so you can see who is best for the money — not just best.'],
           ].map(([n, border, color, t, d]) => (
@@ -365,8 +365,8 @@ export async function LeaderboardView({ category, live }: { category: Leaderboar
             <Link href="/models" className="tag">
               API prices
             </Link>
-            <Link href="/chat?mode=arena" className="tag">
-              Vote in Arena
+            <Link href="/models#quickstart" className="tag">
+              API quickstart
             </Link>
           </div>
         </div>

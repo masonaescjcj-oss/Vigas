@@ -11,7 +11,7 @@ import { Icon } from '../ui';
 
 const PRESETS = [5, 10, 25, 50, 100];
 const FREE_ALLOWANCE = 5_000_000;
-const SOURCE_LABEL: Record<string, string> = { api: 'API', chat: 'Vigas Chat', arena: 'Arena', retrobuild: 'RetroBuild' };
+const SOURCE_LABEL: Record<string, string> = { api: 'API Gateway', chat: 'Playground', arena: 'Arena', retrobuild: 'Sandbox' };
 const SOURCE_COLOR: Record<string, string> = { api: 'var(--vg-orange)', chat: 'var(--vg-sand)', arena: 'var(--vg-indigo)', retrobuild: 'var(--vg-teal)' };
 
 /** Same rule as quoteTopup in @vigas/core: the first $5 of lifetime top-ups is fee-free. */
@@ -274,7 +274,7 @@ export function DashboardClient({ user, initial, paymentsEnabled }: { user: Publ
             By product · last 30 days
           </h3>
           {wallet.bySource.length === 0 ? (
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--vg-ink2)' }}>No usage yet. Calls from the API, Vigas Chat, Arena and RetroBuild show up here.</p>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--vg-ink2)' }}>No usage yet. Requests through the Vigas API show up here.</p>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {wallet.bySource.map((s) => (

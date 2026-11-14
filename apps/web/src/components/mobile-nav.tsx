@@ -9,13 +9,20 @@ import { Icon, LogoMark } from './ui';
 export function MobileNav({
   active,
   nav,
+  lang = 'en',
+  enHref = '/',
+  faHref = '/fa',
 }: {
   active: string;
   nav: ReadonlyArray<readonly [string, string, string]>;
+  lang?: 'en' | 'fa';
+  enHref?: string;
+  faHref?: string;
 }) {
   const pathname = usePathname();
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const signedIn = useSignedInHint();
+  const isFa = lang === 'fa';
 
   const close = () => {
     if (detailsRef.current) detailsRef.current.open = false;
@@ -49,30 +56,59 @@ export function MobileNav({
 
   return (
     <details ref={detailsRef} className="hdr-menu">
-      <summary className="hdr-menu-pill" aria-label="Toggle navigation menu">
+      <summary className="hdr-menu-pill" aria-label={isFa ? 'باز کردن منو' : 'Toggle navigation menu'}>
         <LogoMark size={20} />
         <span className="sf" style={{ fontSize: 23, lineHeight: 1, letterSpacing: '-.01em' }}>
           Vigas
         </span>
-        {active !== 'home' && active !== 'none' && (
-          <span className="mn hdr-menu-cur">{currentLabel}</span>
-        )}
+        {active !== 'home' && active !== 'none' && <span className="mn hdr-menu-cur">{currentLabel}</span>}
         <Icon name="chevDown" size={14} className="hdr-menu-chev" />
       </summary>
 
-      <nav aria-label="Mobile navigation" className="hdr-menu-pop">
+      <nav aria-label={isFa ? 'منوی موبایل' : 'Mobile navigation'} className="hdr-menu-pop">
         <div className="hdr-menu-links">
-          <Link href="/" aria-current={active === 'home' ? 'page' : undefined} onClick={close}>
-            <span>Home</span>
-            <span className="mn" style={{ fontSize: 11, opacity: 0.65 }}>Overview</span>
+          <Link href={isFa ? '/fa' : '/'} aria-current={active === 'home' ? 'page' : undefined} onClick={close}>
+            <span>{isFa ? 'خانه' : 'Home'}</span>
+            <span className="mn" style={{ fontSize: 11, opacity: 0.65 }}>
+              {isFa ? 'نمای کلی' : 'Overview'}
+            </span>
           </Link>
           {nav.map(([id, label, href]) => (
             <Link key={id} href={href} aria-current={id === active ? 'page' : undefined} onClick={close}>
               <span>{label}</span>
+              {id === 'models' && <span className="mn hdr-menu-tag">{isFa ? 'کمترین نرخ' : 'Lowest rates'}</span>}
               {id === 'leaderboard' && <span className="mn hdr-menu-tag">Arena</span>}
-              {id === 'tools' && <span className="mn hdr-menu-tag">24 apps</span>}
+              {id === 'tools' && <span className="mn hdr-menu-tag">{isFa ? '۲۴ ابزار' : '24 apps'}</span>}
             </Link>
           ))}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: '1px solid var(--vg-line)',
+          }}
+        >
+          <Link
+            href={enHref}
+            className={!isFa ? 'chip on' : 'chip'}
+            style={{ flex: '1 1 0', justifyContent: 'center', minHeight: 34, fontSize: 12 }}
+            onClick={close}
+          >
+            English
+          </Link>
+          <Link
+            href={faHref}
+            lang="fa"
+            className={isFa ? 'chip on fa-ui' : 'chip fa-ui'}
+            style={{ flex: '1 1 0', justifyContent: 'center', minHeight: 34, fontSize: 12 }}
+            onClick={close}
+          >
+            فارسی
+          </Link>
         </div>
 
         <div className="hdr-menu-foot">
@@ -82,7 +118,7 @@ export function MobileNav({
             style={{ flex: '1 1 0', minHeight: 38, fontSize: 13 }}
             onClick={close}
           >
-            {signedIn ? 'Dashboard' : 'Sign in'}
+            {signedIn ? (isFa ? 'داشبورد' : 'Dashboard') : isFa ? 'ورود' : 'Sign in'}
           </Link>
           <Link
             href={signedIn ? '/dashboard#keys' : '/signup?next=/dashboard%23keys'}
@@ -90,11 +126,10 @@ export function MobileNav({
             style={{ flex: '1 1 0', minHeight: 38, fontSize: 13 }}
             onClick={close}
           >
-            Get API key
+            {isFa ? 'دریافت کلید API' : 'Get API key'}
           </Link>
         </div>
       </nav>
     </details>
   );
 }
-

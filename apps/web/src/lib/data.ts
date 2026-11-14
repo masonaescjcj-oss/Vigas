@@ -81,12 +81,14 @@ export async function getNews(
         category: a.category,
         lang: a.lang ?? 'en',
         flag: a.flag,
+        ...(a.imageUrl ? { imageUrl: a.imageUrl } : {}),
         author: a.author,
         publishedAt: a.publishedAt,
         readingMinutes: a.readingMinutes,
         cover: a.cover,
       }),
     );
+  const localImages = new Map(local.filter((a) => a.imageUrl).map((a) => [a.slug, a.imageUrl!]));
   if (local.length === 0) {
     const [items, total] = await Promise.all([listArticles(db, { category, lang, limit, offset }), countArticles(db, category, lang)]);
     return { items, total };
@@ -96,8 +98,9 @@ export async function getNews(
     countArticles(db, category, lang),
   ]);
   const dbSlugs = new Set(dbItems.map((a) => a.slug));
+  const enrichedDbItems = dbItems.map((a) => (a.imageUrl ? a : localImages.has(a.slug) ? { ...a, imageUrl: localImages.get(a.slug) } : a));
   const extraLocal = local.filter((a) => !dbSlugs.has(a.slug));
-  const merged = [...dbItems, ...extraLocal].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  const merged = [...enrichedDbItems, ...extraLocal].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   return { items: merged.slice(offset, offset + limit), total: dbTotal + extraLocal.length };
 }
 
@@ -106,9 +109,12 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   cacheLife('content');
   cacheTag('news', `article:${slug}`);
   if (PREVIEW_MODE) return previewArticle(slug);
+  const localMatch = loadLocalArticles().find((a) => a.slug === slug) ?? null;
   const fromDb = await getArticle(getDb(), slug);
-  if (fromDb) return fromDb;
-  return loadLocalArticles().find((a) => a.slug === slug) ?? null;
+  if (fromDb) {
+    return fromDb.imageUrl || !localMatch?.imageUrl ? fromDb : { ...fromDb, imageUrl: localMatch.imageUrl };
+  }
+  return localMatch;
 }
 
 export async function getTools(
@@ -169,12 +175,12 @@ function featuredPrices(models: ModelListItem[], board: LeaderboardResponse): Mo
   return [...picked.values()].sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999));
 }
 
-export async function getHomeFeed(): Promise<HomeFeed> {
+export async function getHomeFeed({ lang = 'en' }: { lang?: 'en' | 'fa' } = {}): Promise<HomeFeed> {
   'use cache';
   cacheLife('content');
   cacheTag('news', 'leaderboard', 'tools', 'models');
   const [news, board, tools, models] = await Promise.all([
-    getNews({ limit: 6 }),
+    getNews({ lang, limit: 6 }),
     getLeaderboardData('overall'),
     getTools({ sort: 'votes' }),
     getModels(),

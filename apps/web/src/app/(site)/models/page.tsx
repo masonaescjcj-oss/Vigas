@@ -11,17 +11,17 @@ import { API_BASE_URL } from '@/lib/env';
 import { breadcrumbLd, faqLd, pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'AI models & API pricing — every model, one key',
+  title: 'AI models & API pricing — fastest, lowest-cost gateway',
   description:
-    'Compare per-token prices and context windows for Claude, GPT, Gemini, DeepSeek, Kimi and more. One OpenAI-compatible API key, prepaid credits and zero markup on your first $5.',
+    'Compare live pass-through token prices and context windows for Claude, GPT, Gemini, DeepSeek, Kimi and more. Lowest cost per million tokens, edge routing latency, automatic failover and $0 markup on your first $5.',
   path: '/models',
 });
 
 const FEATURES: Array<{ icon: IconName; t: string; d: string }> = [
   { icon: 'refresh', t: 'Automatic fallbacks', d: 'If a provider is down or rate-limited, the request moves to the next one — same response format.' },
-  { icon: 'bolt', t: 'Route by price or speed', d: 'Sort candidates by cost, latency or quality per request, or let vigas/auto decide.' },
-  { icon: 'wallet', t: 'One bill, every provider', d: 'Prepaid credits across every provider. No separate accounts, no surprise invoices.' },
-  { icon: 'chart', t: 'Usage you can read', d: 'Per-key spend, tokens and daily usage — in the dashboard and in the Android app.' },
+  { icon: 'bolt', t: 'Fastest edge routing', d: 'Route requests by latency, lowest price or Arena quality, or let vigas/auto pick the fastest healthy endpoint.' },
+  { icon: 'wallet', t: 'Lowest pass-through prices', d: 'Prepaid credits across every provider with $0 markup on your first $5 and zero hidden surcharges.' },
+  { icon: 'chart', t: 'Usage you can read', d: 'Per-key spend, tokens and daily usage — in your dashboard with optional monthly caps.' },
 ];
 
 const FAQ = [
@@ -31,7 +31,7 @@ const FAQ = [
     a: 'You pay each provider’s per-token price, shown above. The first $5 of credits has no markup; after that a small platform fee is shown before you pay.',
   },
   { q: 'What happens when a provider goes down?', a: 'With fallbacks on, Vigas retries the same request on the next best provider and tells you which one answered.' },
-  { q: 'Can I use the same key in Vigas Chat and RetroBuild?', a: 'Yes. One account, one balance — every Vigas product draws from the same credits.' },
+  { q: 'Which tools and SDKs work with a Vigas API key?', a: 'Any client supporting OpenAI-compatible endpoints works out of the box — including the official Python and TypeScript SDKs, Cursor, Cline, OpenCode, and production backends.' },
 ];
 
 export default async function ModelsPage() {
@@ -78,13 +78,13 @@ export default async function ModelsPage() {
           <div style={{ flex: '1 1 560px', minWidth: 0 }}>
             <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
               <span className="led" />
-              API · OpenAI-compatible
+              API · Lowest pass-through pricing
             </div>
             <h1 className="sf" style={{ fontSize: 'clamp(46px,6vw,84px)', lineHeight: 0.98, letterSpacing: '-.03em', margin: '16px 0' }}>
-              Every model, <em className="hi">one price sheet.</em>
+              Every model, <em className="hi">lowest rate.</em>
             </h1>
             <p style={{ fontSize: 18, color: 'var(--vg-ink2)', maxWidth: 600, margin: 0 }}>
-              Prices per 1M tokens, passed through from each provider. Zero markup on your first $5 — then one simple fee, shown before you pay.
+              Fast edge routing with honest per-1M token prices passed straight from each provider. Zero markup on your first $5 — and instant failover built in.
             </p>
           </div>
           <div style={{ flex: '0 1 auto', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, maxWidth: '100%' }}>

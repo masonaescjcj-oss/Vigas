@@ -117,7 +117,7 @@ export function QuickstartTabs({ baseUrl, exampleModel }: { baseUrl: string; exa
         <CopyButton text={snippets[tab]!.text} label={`Copy ${snippets[tab]!.label} example`} style={{ position: 'absolute', top: 10, right: 10 }} />
       </div>
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 14, color: 'var(--vg-ink2)' }}>
-        {['Works with the OpenAI SDKs', 'Streaming & tool calls', 'Same key in Chat & RetroBuild'].map((t) => (
+        {['Works with the OpenAI SDKs', 'Streaming & tool calls', 'Automatic provider failover'].map((t) => (
           <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Icon name="check" size={16} style={{ color: 'var(--vg-green)' }} />
             {t}

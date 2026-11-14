@@ -107,7 +107,7 @@ export function ToolEditor({ initial, categories }: { initial: EditableTool | nu
       {text('name', 'Name', { max: 80 })}
       {text('slug', initial ? 'Slug (fixed)' : 'URL slug', { mono: true, disabled: !!initial, max: 96 })}
       {text('url', 'Website', { mono: true, max: 500 })}
-      {text('imageUrl', 'Preview image path / URL', { mono: true, max: 500, placeholder: '/tools/cursor.svg' })}
+      {text('imageUrl', 'Preview image path / URL', { mono: true, max: 500, placeholder: '/tools/cursor.webp' })}
       <div style={{ gridColumn: '1 / -1' }}>{text('tagline', 'Tagline', { max: 160 })}</div>
       <div style={{ gridColumn: '1 / -1' }}>
         <label htmlFor="tool-highlights" style={label}>

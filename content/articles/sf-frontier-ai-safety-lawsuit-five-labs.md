@@ -9,6 +9,7 @@ authorSlug: "arman-tehrani"
 status: "published"
 publishedAt: "2026-11-13T21:30:00Z"
 cover: {"big":"5 LABS","caption":"SF COURT FILINGS","color":"#9A9DFA"}
+image: "/news/ai-safety-court.webp"
 mentionedModelIds: ["anthropic/claude-opus-5.5","openai/gpt-6-astra","google/gemini-4-carbon"]
 pullQuote: {"text":"Frontier AI governance is moving out of voluntary safety pledges and directly into discovery, disclosure orders, and commercial tort law.","cite":"Vigas Policy Tracker"}
 faq: [{"q":"Which five AI companies were named in the November San Francisco lawsuits?","a":"Filings in San Francisco Superior Court name Anthropic, Google, Meta, OpenAI, and SpaceXAI over alleged rush-to-market safety gaps and statutory consumer warnings."},{"q":"What is the separate Buist v. Anthropic antitrust claim?","a":"Alongside consumer safety suits, Buist v. Anthropic invokes Sherman Act allegations claiming major labs coordinate release pacing and benchmark disclosures."},{"q":"Does this affect model API availability for developers?","a":"No immediate injunction halted APIs, though mandatory transparency disclosures could reshape how labs publish red-team safety cards and enterprise indemnities."}]

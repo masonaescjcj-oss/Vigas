@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { cacheLife, cacheTag } from 'next/cache';
 import { Suspense } from 'react';
 import { LEADERBOARD_CATEGORIES, formatUsd, type LeaderboardCategory } from '@vigas/core';
-import { orgMark } from '@vigas/tokens';
-import { LogoMark, Mark } from '@/components/ui';
+import { LogoMark, OrgMark } from '@/components/ui';
 import { getLeaderboardData } from '@/lib/data';
 
 export const metadata: Metadata = {
@@ -60,7 +59,6 @@ async function EmbedBoard({ category }: { category: LeaderboardCategory }) {
 
       <div style={{ flex: 1 }}>
         {top.map((e) => {
-          const mk = orgMark(e.org);
           const pct = Math.round((e.winRate / max) * 100);
           return (
             <div
@@ -78,7 +76,7 @@ async function EmbedBoard({ category }: { category: LeaderboardCategory }) {
               <span className="mn" style={{ fontWeight: 600, color: e.rank <= 3 ? 'var(--vg-orange)' : 'var(--vg-ink3)' }}>
                 #{e.rank}
               </span>
-              <Mark color={mk.color} letter={mk.letter} size={26} radius={7} fontSize={13} ring={false} />
+              <OrgMark org={e.org} size={26} radius={7} fontSize={13} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</div>
                 <div aria-hidden="true" style={{ height: 3, borderRadius: 2, background: 'var(--vg-raised)', marginTop: 4, overflow: 'hidden' }}>

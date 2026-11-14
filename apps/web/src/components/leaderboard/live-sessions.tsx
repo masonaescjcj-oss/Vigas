@@ -6,7 +6,7 @@ import { Icon, OrgMark } from '../ui';
 
 const ago = (t: string) => (t === 'now' ? 'just now' : `${t} ago`);
 
-const SOURCE: Record<string, string> = { api: 'API', chat: 'Vigas Chat', arena: 'Arena battle', retrobuild: 'RetroBuild' };
+const SOURCE: Record<string, string> = { api: 'API', chat: 'Gateway session', arena: 'Arena test', retrobuild: 'Sandbox run' };
 
 /** Latest requests across Vigas, anonymized. Re-rendered at most every 30 seconds. */
 export async function LiveSessions() {
@@ -20,7 +20,7 @@ export async function LiveSessions() {
     <>
       {sessions.length === 0 ? (
         <p style={{ margin: '10px 0 0', fontSize: 14, color: 'var(--vg-ink2)', padding: '12px 0', borderTop: '1px solid rgba(239,234,225,.06)' }}>
-          No sessions in the last 24 hours yet. Start one in Vigas Chat or the Arena.
+          No sessions in the last 24 hours yet. Send a request through the Vigas API.
         </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -52,8 +52,8 @@ export async function LiveSessions() {
           })}
         </ul>
       )}
-      <Link href="/chat?mode=arena" className="btn gh" style={{ width: '100%', marginTop: 10 }}>
-        Join the Arena — vote blind
+      <Link href="/models#quickstart" className="btn gh" style={{ width: '100%', marginTop: 10 }}>
+        Connect via API — start in 30s
       </Link>
     </>
   );

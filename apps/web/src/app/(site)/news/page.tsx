@@ -20,29 +20,28 @@ function parse(sp: Record<string, string | string[] | undefined>): { category: N
 }
 
 export async function generateMetadata({ searchParams }: PageProps<'/news'>): Promise<Metadata> {
-  const { category, page, lang } = parse(await searchParams);
-  const base = category
-    ? `${category} AI news`
-    : lang === 'fa'
-      ? 'اخبار هوش مصنوعی ویگاس — فارسی'
-      : 'AI News — models, agents, policy and funding';
+  const { category, page } = parse(await searchParams);
+  const base = category ? `${category} AI news` : 'AI News — models, agents, policy and funding';
   return pageMetadata({
     title: page > 1 ? `${base} · page ${page}` : base,
     description: category
       ? `The latest ${category.toLowerCase()} stories in AI from the Vigas Newsroom: launches, prices, rankings and analysis.`
-      : 'AI news from the Vigas Newsroom: model launches, agents, inference prices, policy, hardware and funding — in English and Persian with live leaderboard data.',
-    path: newsCategoryPath(category, page, lang),
-    locale: lang === 'fa' ? 'fa_IR' : 'en_US',
-    noindex: Boolean(category || lang || page > 1),
+      : 'AI news from the Vigas Newsroom: model launches, agents, inference prices, policy, hardware and funding — backed by live leaderboard data.',
+    path: newsCategoryPath(category, page, 'en'),
+    locale: 'en_US',
+    alternatesLanguages: category
+      ? { en: newsCategoryPath(category, 1, 'en'), fa: newsCategoryPath(category, 1, 'fa'), 'x-default': newsCategoryPath(category, 1, 'en') }
+      : { en: '/news', fa: '/news/fa', 'x-default': '/news' },
+    noindex: Boolean(category || page > 1),
   });
 }
 
 export default function NewsPage({ searchParams }: PageProps<'/news'>) {
   return (
     <>
-      <SiteHeader active="news" />
+      <SiteHeader active="news" lang="en" />
       <main id="main">
-        <NewsMasthead />
+        <NewsMasthead lang="en" />
         <Suspense fallback={<NewsRiverSkeleton />}>
           <NewsBody searchParams={searchParams} />
         </Suspense>
@@ -53,6 +52,7 @@ export default function NewsPage({ searchParams }: PageProps<'/news'>) {
 
 async function NewsBody({ searchParams }: Pick<PageProps<'/news'>, 'searchParams'>) {
   const { category, page, lang } = parse(await searchParams);
-  if (category) permanentRedirect(newsCategoryPath(category, page, lang));
-  return <NewsContent category={null} page={page} lang={lang} />;
+  if (lang === 'fa') permanentRedirect(newsCategoryPath(category, page, 'fa'));
+  if (lang === 'en' || category) permanentRedirect(newsCategoryPath(category, page, 'en'));
+  return <NewsContent category={null} page={page} lang="en" />;
 }

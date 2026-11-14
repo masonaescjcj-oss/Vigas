@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { ModelListItem, ModelTag } from '@vigas/core';
 import { formatContext, formatPricePerMillion } from '@/lib/fmt';
 import { CopyButton } from './copy-button';
-import { Icon, Mark } from './ui';
+import { Icon, OrgMark } from './ui';
 
 type Cat = 'all' | ModelTag;
 type Ctx = 'any' | '128k' | '1m';
@@ -82,7 +82,7 @@ export function ModelsCatalogue({
                   onChange={() => setOff((o) => ({ ...o, [p.name]: !o[p.name] }))}
                   style={{ accentColor: 'var(--vg-orange)', width: 16, height: 16, margin: 0 }}
                 />
-                <Mark color={p.color} letter={p.letter} size={22} radius={6} fontSize={13} ring={false} />
+                <OrgMark org={p.name} size={22} radius={6} fontSize={13} />
                 <span>{p.name}</span>
               </label>
             ))}
@@ -161,7 +161,7 @@ export function ModelsCatalogue({
                 <col style={{ width: 110 }} />
                 <col style={{ width: 110 }} />
                 <col style={{ width: 90 }} />
-                <col style={{ width: 170 }} />
+                <col style={{ width: 184 }} />
               </colgroup>
               <thead>
                 <tr className="mn" style={{ background: 'var(--vg-bg2)', fontSize: 12, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
@@ -182,7 +182,7 @@ export function ModelsCatalogue({
                   </th>
                   <th scope="col" style={th()}>
                     <span className="sr-only">Actions</span>
-                    <span aria-hidden="true">Use it</span>
+                    <span aria-hidden="true">API</span>
                   </th>
                 </tr>
               </thead>
@@ -198,7 +198,7 @@ export function ModelsCatalogue({
                     <tr key={m.id} className="hov" style={{ borderTop: '1px solid rgba(239,234,225,.06)' }}>
                       <th scope="row" style={{ ...td('left'), fontWeight: 400 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                          <Mark color={m.color} letter={m.letter} size={34} radius={10} fontSize={16} />
+                          <OrgMark org={m.org} size={34} radius={10} fontSize={16} />
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <b style={{ fontWeight: 500 }}>{m.name}</b>
@@ -228,14 +228,14 @@ export function ModelsCatalogue({
                       </td>
                       <td style={td()}>
                         <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                          <Link
-                            href={`/chat?model=${encodeURIComponent(m.id)}`}
+                          <a
+                            href="#quickstart"
                             className="btn gh"
                             style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
-                            aria-label={`Try ${m.name} in Vigas Chat`}
+                            aria-label={`Use ${m.name} via Vigas API`}
                           >
-                            Try
-                          </Link>
+                            Use API
+                          </a>
                           <CopyButton text={m.id} label={`Copy model ID ${m.id}`} style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
                             Copy ID
                           </CopyButton>
@@ -262,7 +262,7 @@ export function ModelsCatalogue({
               return (
                 <div key={m.id} style={{ padding: '14px 16px', borderTop: idx ? '1px solid rgba(239,234,225,.06)' : undefined, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <Mark color={m.color} letter={m.letter} size={34} radius={10} fontSize={16} />
+                    <OrgMark org={m.org} size={34} radius={10} fontSize={16} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <b style={{ display: 'block', fontWeight: 500, fontSize: 15 }}>{m.name}</b>
                       <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -296,14 +296,14 @@ export function ModelsCatalogue({
                         </span>
                       ))}
                     </div>
-                    <Link
-                      href={`/chat?model=${encodeURIComponent(m.id)}`}
+                    <a
+                      href="#quickstart"
                       className="btn gh"
                       style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
-                      aria-label={`Try ${m.name} in Vigas Chat`}
+                      aria-label={`Use ${m.name} via Vigas API`}
                     >
-                      Try
-                    </Link>
+                      Use API
+                    </a>
                     <CopyButton text={m.id} label={`Copy model ID ${m.id}`} style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
                       Copy ID
                     </CopyButton>

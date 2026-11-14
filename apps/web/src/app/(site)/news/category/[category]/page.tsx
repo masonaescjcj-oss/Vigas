@@ -21,10 +21,14 @@ export async function generateMetadata({
   const cat = parseNewsCategorySlug(raw);
   if (!cat) return { title: 'Section not found', robots: { index: false } };
   const seo = NEWS_CATEGORY_SEO[cat];
+  const enPath = newsCategoryPath(cat, 1, 'en');
+  const faPath = newsCategoryPath(cat, 1, 'fa');
   return pageMetadata({
     title: seo.title,
     description: seo.description,
-    path: newsCategoryPath(cat),
+    path: enPath,
+    locale: 'en_US',
+    alternatesLanguages: { en: enPath, fa: faPath, 'x-default': enPath },
   });
 }
 
@@ -34,15 +38,15 @@ export default async function NewsCategoryPage({
   const { category: raw } = await params;
   const cat = parseNewsCategorySlug(raw);
   if (!cat) notFound();
-  if (raw !== cat.toLowerCase()) permanentRedirect(newsCategoryPath(cat));
+  if (raw !== cat.toLowerCase()) permanentRedirect(newsCategoryPath(cat, 1, 'en'));
 
   return (
     <>
-      <SiteHeader active="news" />
+      <SiteHeader active="news" lang="en" altHref={newsCategoryPath(cat, 1, 'fa')} />
       <main id="main">
-        <NewsMasthead category={cat} />
+        <NewsMasthead category={cat} lang="en" />
         <Suspense fallback={<NewsRiverSkeleton />}>
-          <NewsContent category={cat} page={1} />
+          <NewsContent category={cat} page={1} lang="en" />
         </Suspense>
       </main>
     </>

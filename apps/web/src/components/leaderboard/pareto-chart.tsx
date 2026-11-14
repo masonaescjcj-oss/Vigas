@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { formatUsd } from '@/lib/fmt';
+import { OrgMark } from '../ui';
 
 export interface ParetoPoint {
   modelId: string;
@@ -124,25 +125,28 @@ export function ParetoChart({
             border: '1px solid var(--vg-line)',
           }}
         >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <b style={{ fontWeight: 600, fontSize: 14 }}>{short(active.name)}</b>
-              {active.onFrontier ? (
-                <span className="pill" style={{ background: 'rgba(111,207,115,.14)', color: 'var(--vg-green)', fontSize: 11 }}>
-                  Pareto optimal
-                </span>
-              ) : (
-                <span className="pill" style={{ fontSize: 11 }}>
-                  Rank #{active.rank}
-                </span>
-              )}
-            </div>
-            <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink2)', marginTop: 3 }}>
-              Score {Math.round(active.rating)} · {active.winRate.toFixed(2)}% win · {formatUsd(active.costPerTaskMicros)}/task
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <OrgMark org={active.org} size={28} radius={8} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <b style={{ fontWeight: 600, fontSize: 14 }}>{short(active.name)}</b>
+                {active.onFrontier ? (
+                  <span className="pill" style={{ background: 'rgba(111,207,115,.14)', color: 'var(--vg-green)', fontSize: 11 }}>
+                    Pareto optimal
+                  </span>
+                ) : (
+                  <span className="pill" style={{ fontSize: 11 }}>
+                    Rank #{active.rank}
+                  </span>
+                )}
+              </div>
+              <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink2)', marginTop: 3 }}>
+                Score {Math.round(active.rating)} · {active.winRate.toFixed(2)}% win · {formatUsd(active.costPerTaskMicros)}/task
+              </div>
             </div>
           </div>
-          <Link href={`/chat?model=${encodeURIComponent(active.modelId)}`} className="btn gh" style={{ minHeight: 34, padding: '0 12px', fontSize: 12, borderRadius: 9 }}>
-            Try model
+          <Link href={`/models?q=${encodeURIComponent(active.modelId)}`} className="btn gh" style={{ minHeight: 34, padding: '0 12px', fontSize: 12, borderRadius: 9 }}>
+            API pricing
           </Link>
         </div>
       )}

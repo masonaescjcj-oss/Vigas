@@ -5,9 +5,10 @@ import { notFound } from 'next/navigation';
 import { withAlpha } from '@vigas/tokens';
 import { SiteHeader } from '@/components/site-header';
 import { ToolVote } from '@/components/tools/vote-button';
-import { Breadcrumb, Icon, JsonLd, Mark } from '@/components/ui';
+import { Breadcrumb, Icon, JsonLd, ToolMark } from '@/components/ui';
 import { getToolBySlug, getTools } from '@/lib/data';
 import { absoluteUrl } from '@/lib/env';
+import { toolImageUrl } from '@/lib/media';
 import { breadcrumbLd, faqLd, pageMetadata } from '@/lib/seo';
 import { getToolDetailFaq } from '@/lib/seo-catalog';
 
@@ -77,6 +78,7 @@ async function ToolView({ slug }: { slug: string }) {
   const similar = [...categoryTools.filter((t) => t.slug !== tool.slug), ...all.filter((t) => t.category !== tool.category)].slice(0, 3);
   const compared = [tool, ...similar];
   const faqItems = getToolDetailFaq(tool, all, rank, categoryRank);
+  const previewUrl = toolImageUrl(tool.slug, tool.imageUrl);
 
   const ld = [
     {
@@ -87,7 +89,7 @@ async function ToolView({ slug }: { slug: string }) {
       applicationCategory: APP_CATEGORY[tool.category] ?? 'WebApplication',
       operatingSystem: 'Web',
       url: tool.url,
-      image: tool.imageUrl ? [absoluteUrl(tool.imageUrl), absoluteUrl(`/og/tool/${tool.slug}`)] : [absoluteUrl(`/og/tool/${tool.slug}`)],
+      image: previewUrl ? [absoluteUrl(previewUrl), absoluteUrl(`/og/tool/${tool.slug}`)] : [absoluteUrl(`/og/tool/${tool.slug}`)],
       offers:
         tool.pricing === 'Paid'
           ? { '@type': 'Offer', availability: 'https://schema.org/InStock', url: tool.url }
@@ -128,7 +130,7 @@ async function ToolView({ slug }: { slug: string }) {
       <section style={{ display: 'flex', flexWrap: 'wrap', gap: 36, padding: '22px 0 48px', alignItems: 'flex-start', borderBottom: '1px solid var(--vg-line)' }}>
         <div style={{ flex: '1.4 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Mark color={tool.color} letter={tool.letter} size={76} radius={20} fontSize={36} />
+            <ToolMark slug={tool.slug} iconUrl={tool.iconUrl} color={tool.color} letter={tool.letter} size={76} radius={20} fontSize={36} />
             <div style={{ minWidth: 0 }}>
               <div className="lbl" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Link href={`/tools/category/${categorySlug}`} style={{ color: 'var(--vg-ink3)' }}>
@@ -167,9 +169,9 @@ async function ToolView({ slug }: { slug: string }) {
         </div>
 
         <aside aria-label="App preview and details" style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {tool.imageUrl && (
+          {previewUrl && (
             <div className="tool-hero-media">
-              <img src={tool.imageUrl} alt={`${tool.name} — ${tool.category} application interface preview`} width={640} height={360} />
+              <img src={previewUrl} alt={`${tool.name} — ${tool.category} application interface preview`} width={640} height={360} />
             </div>
           )}
           <div className="card" style={{ borderRadius: 20, padding: 20 }}>
@@ -264,14 +266,14 @@ async function ToolView({ slug }: { slug: string }) {
                           <th scope="row" style={{ padding: '13px 18px', textAlign: 'left', fontWeight: 500 }}>
                             {current ? (
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                                <Mark color={item.color} letter={item.letter} size={28} radius={8} fontSize={14} ring={false} />
+                                <ToolMark slug={item.slug} iconUrl={item.iconUrl} color={item.color} letter={item.letter} size={28} radius={8} fontSize={14} />
                                 <span>
                                   {item.name} <span className="pill" style={{ marginLeft: 6 }}>Current</span>
                                 </span>
                               </span>
                             ) : (
                               <Link href={`/tools/${item.slug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--vg-ink)' }}>
-                                <Mark color={item.color} letter={item.letter} size={28} radius={8} fontSize={14} ring={false} />
+                                <ToolMark slug={item.slug} iconUrl={item.iconUrl} color={item.color} letter={item.letter} size={28} radius={8} fontSize={14} />
                                 <span>{item.name}</span>
                               </Link>
                             )}
@@ -301,7 +303,7 @@ async function ToolView({ slug }: { slug: string }) {
                   return (
                     <div key={item.slug} style={{ padding: '14px 16px', borderTop: idx ? '1px solid rgba(239,234,225,.06)' : undefined, background: current ? 'rgba(255,106,26,.06)' : undefined, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Mark color={item.color} letter={item.letter} size={30} radius={9} fontSize={15} ring={false} />
+                        <ToolMark slug={item.slug} iconUrl={item.iconUrl} color={item.color} letter={item.letter} size={30} radius={9} fontSize={15} />
                         {current ? (
                           <b style={{ fontWeight: 600 }}>
                             {item.name} <span className="pill" style={{ marginLeft: 4 }}>Current</span>
@@ -335,7 +337,7 @@ async function ToolView({ slug }: { slug: string }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(300px,100%),1fr))', gap: 14 }}>
               {similar.map((t) => (
                 <Link key={t.slug} href={`/tools/${t.slug}`} className="lift card" style={{ borderRadius: 18, padding: 18, display: 'flex', gap: 12, alignItems: 'flex-start', color: 'var(--vg-ink)' }}>
-                  <Mark color={t.color} letter={t.letter} size={48} radius={13} fontSize={21} />
+                  <ToolMark slug={t.slug} iconUrl={t.iconUrl} color={t.color} letter={t.letter} size={48} radius={13} fontSize={21} />
                   <span style={{ minWidth: 0 }}>
                     <b style={{ display: 'block', fontWeight: 600 }}>{t.name}</b>
                     <span style={{ display: 'block', color: 'var(--vg-ink2)', fontSize: 14, lineHeight: 1.45, marginTop: 3 }}>{t.tagline}</span>

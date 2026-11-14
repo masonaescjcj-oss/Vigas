@@ -516,7 +516,7 @@ export function getLeaderboardFaq(category: LeaderboardCategory, label: string, 
   items.push(
     {
       q: 'How are Vigas leaderboard scores and win shares calculated?',
-      a: `Vigas combines real session outcomes across Chat, API, and RetroBuild with blind pairwise Arena votes using a Bradley-Terry statistical model with 95% confidence intervals.`,
+      a: 'Vigas combines real session outcomes across API workloads and agent harnesses with blind pairwise Arena votes using a Bradley-Terry statistical model with 95% confidence intervals.',
     },
     {
       q: `Can I call the top ${label.toLowerCase()} models through one API?`,

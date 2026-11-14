@@ -9,6 +9,7 @@ authorSlug: "nima-farahani"
 status: "published"
 publishedAt: "2026-11-13T17:30:00Z"
 cover: {"big":"164T","caption":"WEEKLY OPENCODE TOKENS","color":"#6FCF73"}
+image: "/news/open-coding-agents.webp"
 mentionedModelIds: ["deepseek/v4.1-flash","anthropic/claude-sonnet-5.5","openai/gpt-6.1-terra"]
 pullQuote: {"text":"When a coding loop burns 50,000 context tokens per commit, price per million matters as much as raw reasoning quality.","cite":"Vigas Systems Desk"}
 faq: [{"q":"How widely are developers using AI coding tools according to CNCF Q3 2026 data?","a":"A CNCF and SlashData Q3 2026 survey reports that 75% of 21.2 million cloud-native developers use AI coding tools, with 49% running production agents."},{"q":"Why is DeepSeek V4.1 Flash seeing 164T+ weekly token volume on OpenCode?","a":"At $0.07 input and $0.28 output per 1M tokens, DeepSeek V4.1 Flash lets open agent harnesses run continuous repo scans and test retries at a fraction of frontier API prices."},{"q":"What is MIT-licensed dsh-superagent?","a":"dsh-superagent is a zero-dependency Unix command-line wrapper built around Claude-style multi-tool workflows and fast container sandbox orchestration."}]
@@ -26,7 +27,7 @@ Three structural shifts drive open-agent adoption right now:
 
 - **Cost elasticity:** At **$0.07 input / $0.28 output per million tokens** on [Vigas pricing](/models), `deepseek/v4.1-flash` costs over 40× less than `anthropic/claude-sonnet-5.5` ($3 / $15) — making multi-retry test loops economically viable across giant monorepos.
 - **Tiered model routing:** Production builders increasingly pair a fast model like **DeepSeek V4.1 Flash** or `openai/gpt-6.1-terra` ($0.60 / $4.80) for file indexing and lint fixes, escalating only subtle architectural bugs to #1 leaderboard leaders ([see Coding rankings](/leaderboard/coding)).
-- **Local + cloud parity:** Developers moving between Cursor, OpenCode, Claude Code, and Vigas’s own [RetroBuild sandbox](/retrobuild) expect identical tool-calling interfaces regardless of which weights execute the patch.
+- **Local + cloud parity:** Developers moving between Cursor, OpenCode, Claude Code, and [Cline](/tools/cline) expect identical tool-calling interfaces regardless of which weights execute the patch.
 
 ## How to architect agent routing for 2027 budgets
 

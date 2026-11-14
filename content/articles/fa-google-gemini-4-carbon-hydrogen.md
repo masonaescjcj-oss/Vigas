@@ -9,6 +9,7 @@ authorSlug: "kian-rahimi"
 status: "published"
 publishedAt: "2026-11-14T06:45:00Z"
 cover: {"big":"-20%","caption":"تخفیف موقت CARBON","color":"#5DB7B0"}
+image: "/news/gemini-4.webp"
 mentionedModelIds: ["google/gemini-4-carbon","google/gemini-4-hydrogen","google/gemini-4-argon"]
 pullQuote: {"text":"خاموشی مدل‌های قدیمی زمانی بهترین نتیجه را می‌دهد که تیم فنی هم‌زمان نرخ موفقیت، تاخیر و هزینه هر وظیفه را بسنجد.","cite":"گزارش زیرساخت ویگاس"}
 faq: [{"q":"مدل‌های Gemini 2.5 Pro و Gemini 2.5 Flash چه تاریخی از دسترس خارج می‌شوند؟","a":"گوگل پشتیبانی و سرویس‌دهی اندپوینت‌های Gemini 2.5 Pro و Flash را به‌طور کامل از تاریخ اول دسامبر ۲۰۲۶ متوقف می‌کند."},{"q":"تعرفه فعلی API مدل Gemini 4 Carbon چقدر است؟","a":"تا ۳۰ نوامبر ۲۰۲۶ قیمت ورودی ۲ دلار و خروجی ۱۰ دلار به ازای هر میلیون توکن محاسبه می‌شود و پس از آن به نرخ استاندارد ۴ و ۲۰ دلار بازمی‌گردد."},{"q":"جایگاه Gemini 4 Carbon و Hydrogen در لیدربورد کجاست؟","a":"مدل Gemini 4 Carbon رتبه ۳ کلی و رتبه ۱ پردازش متن را در اختیار دارد و Gemini 4 Hydrogen نیز با سهم برد ۱۴.۸۰ درصد در رده پنجم جدول کلی قرار گرفته است."}]

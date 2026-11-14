@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '@vigas/api-client';
 import type { ToolCategory, ToolItem } from '@vigas/core';
 import { api, useSignedInHint } from '@/lib/client/session';
-import { Icon, Mark } from '../ui';
+import { toolImageUrl } from '@/lib/media';
+import { Icon, ToolMark } from '../ui';
 import { VoteButton, type VoteState } from './vote-button';
 
 type Sort = 'votes' | 'rating' | 'new';
@@ -227,16 +228,17 @@ export function ToolsDirectory({
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(290px,100%),1fr))', gap: 16 }}>
           {rows.slice(0, limit).map((t) => {
             const st = stateOf(t);
+            const previewUrl = toolImageUrl(t.slug, t.imageUrl);
             return (
               <li key={t.slug} className="lift card" style={{ borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                {t.imageUrl && (
+                {previewUrl && (
                   <Link href={`/tools/${t.slug}`} className="tool-thumb" aria-label={`Open ${t.name} details`}>
-                    <img src={t.imageUrl} alt={`${t.name} — ${t.category} AI app preview`} width={640} height={360} loading="lazy" />
+                    <img src={previewUrl} alt={`${t.name} — ${t.category} AI app preview`} width={640} height={360} loading="lazy" />
                   </Link>
                 )}
                 <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
                   <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-                    <Mark color={t.color} letter={t.letter} size={42} radius={11} fontSize={18} />
+                    <ToolMark slug={t.slug} iconUrl={t.iconUrl} color={t.color} letter={t.letter} size={42} radius={11} fontSize={18} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Link href={`/tools/${t.slug}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

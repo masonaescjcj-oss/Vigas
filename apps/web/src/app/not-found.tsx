@@ -36,8 +36,8 @@ export default function NotFound() {
                 Back to the home page
                 <Icon name="arrow" size={16} />
               </Link>
-              <Link href="/chat" className="btn gh" style={{ minHeight: 50, padding: '0 24px' }}>
-                Ask Vigas Chat
+              <Link href="/models" className="btn gh" style={{ minHeight: 50, padding: '0 24px' }}>
+                Models &amp; API pricing
               </Link>
             </div>
           </div>

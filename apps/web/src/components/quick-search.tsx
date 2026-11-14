@@ -25,9 +25,10 @@ const LEADERBOARDS: Array<[string, string]> = [
 
 const PAGES: Entry[] = [
   ...LEADERBOARDS.map(([label, href]) => ({ type: 'Page' as const, title: `${label} leaderboard`, sub: 'Rankings from real use', href })),
-  { type: 'Page', title: 'Vigas Chat', sub: 'Chat with any model, or two at once in Arena', href: '/chat' },
-  { type: 'Page', title: 'API quickstart', sub: 'Python, TypeScript and cURL', href: '/models#quickstart' },
-  { type: 'Page', title: 'RetroBuild', sub: 'Describe an app, the agent builds it', href: '/retrobuild' },
+  { type: 'Page', title: 'Models & live prices', sub: 'Compare pass-through token costs across 25+ frontier models', href: '/models' },
+  { type: 'Page', title: 'Free AI models', sub: 'Zero-dollar community and open-weight API endpoints', href: '/models?tag=free' },
+  { type: 'Page', title: 'API quickstart', sub: 'Python, TypeScript and cURL setup in 30 seconds', href: '/models#quickstart' },
+  { type: 'Page', title: 'صفحه فارسی و اخبار هوش مصنوعی', sub: 'نسخه فارسی ویگاس (Persian home & news)', href: '/fa' },
   { type: 'Page', title: 'Dashboard', sub: 'Credits, usage and API keys', href: '/dashboard' },
 ];
 
@@ -67,6 +68,7 @@ function SearchResultsList({
   active,
   onHover,
   onSelect,
+  lang = 'en',
 }: {
   id: string;
   loaded: boolean;
@@ -74,19 +76,21 @@ function SearchResultsList({
   active: number;
   onHover: (idx: number) => void;
   onSelect: (href: string) => void;
+  lang?: 'en' | 'fa';
 }) {
+  const isFa = lang === 'fa';
   if (!loaded) {
-    return <div style={{ padding: '12px 10px', fontSize: 13, color: 'var(--vg-ink3)' }}>Loading…</div>;
+    return <div style={{ padding: '12px 10px', fontSize: 13, color: 'var(--vg-ink3)' }}>{isFa ? 'در حال بارگذاری…' : 'Loading…'}</div>;
   }
   if (results.length === 0) {
     return (
       <div style={{ padding: '12px 10px', fontSize: 13, color: 'var(--vg-ink3)' }}>
-        No matches. Press Enter to search the tools directory.
+        {isFa ? 'موردی یافت نشد. برای جستجو در ابزارها Enter بزنید.' : 'No matches. Press Enter to search the tools directory.'}
       </div>
     );
   }
   return (
-    <ul id={id} role="listbox" aria-label="Search results" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+    <ul id={id} role="listbox" aria-label={isFa ? 'نتایج جستجو' : 'Search results'} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
       {results.map((r, i) => (
         <li key={`${r.type}${r.href}`} role="presentation">
           <a
@@ -117,7 +121,8 @@ function SearchResultsList({
   );
 }
 
-export function QuickSearch() {
+export function QuickSearch({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
+  const isFa = lang === 'fa';
   const router = useRouter();
   const listId = useId();
   const modalListId = useId();
@@ -185,7 +190,7 @@ export function QuickSearch() {
         <form role="search" onSubmit={handleSubmit}>
           <label className="qs-box">
             <Icon name="search" size={15} />
-            <span className="sr-only">Search Vigas</span>
+            <span className="sr-only">{isFa ? 'جستجو در ویگاس' : 'Search Vigas'}</span>
             <input
               ref={inputRef}
               type="search"
@@ -194,7 +199,7 @@ export function QuickSearch() {
               aria-controls={listId}
               aria-autocomplete="list"
               aria-activedescendant={open && results[active] ? `${listId}-${active}` : undefined}
-              placeholder="Search models, news, tools"
+              placeholder={isFa ? 'جستجوی مدل، خبر، ابزار' : 'Search models, news, tools'}
               value={q}
               onFocus={() => {
                 warm();
@@ -223,7 +228,7 @@ export function QuickSearch() {
         </form>
         {open && q.trim() && (
           <div className="qs-pop">
-            <SearchResultsList id={listId} loaded={index !== null} results={results} active={active} onHover={setActive} onSelect={go} />
+            <SearchResultsList id={listId} loaded={index !== null} results={results} active={active} onHover={setActive} onSelect={go} lang={lang} />
           </div>
         )}
       </div>
@@ -231,7 +236,7 @@ export function QuickSearch() {
       <button
         type="button"
         className="ib hdr-search-trigger"
-        aria-label="Search Vigas"
+        aria-label={isFa ? 'جستجو در ویگاس' : 'Search Vigas'}
         onClick={() => setModalOpen(true)}
       >
         <Icon name="search" size={18} />
@@ -242,7 +247,7 @@ export function QuickSearch() {
           className="qs-modal"
           role="dialog"
           aria-modal="true"
-          aria-label="Search Vigas"
+          aria-label={isFa ? 'جستجو در ویگاس' : 'Search Vigas'}
           onClick={(e) => {
             if (e.target === e.currentTarget) setModalOpen(false);
           }}
@@ -251,7 +256,7 @@ export function QuickSearch() {
             <form role="search" onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label className="qs-box" style={{ width: 'auto', flex: 1, height: 44 }}>
                 <Icon name="search" size={16} />
-                <span className="sr-only">Search Vigas</span>
+                <span className="sr-only">{isFa ? 'جستجو در ویگاس' : 'Search Vigas'}</span>
                 <input
                   ref={modalInputRef}
                   type="search"
@@ -260,7 +265,7 @@ export function QuickSearch() {
                   aria-controls={modalListId}
                   aria-autocomplete="list"
                   aria-activedescendant={results[active] ? `${modalListId}-${active}` : undefined}
-                  placeholder="Search models, news, tools…"
+                  placeholder={isFa ? 'جستجوی مدل، خبر یا ابزار…' : 'Search models, news, tools…'}
                   value={q}
                   onChange={(e) => {
                     setQ(e.target.value);
@@ -280,13 +285,13 @@ export function QuickSearch() {
                   }}
                 />
               </label>
-              <button type="button" className="ib" aria-label="Close search" onClick={() => setModalOpen(false)}>
+              <button type="button" className="ib" aria-label={isFa ? 'بستن جستجو' : 'Close search'} onClick={() => setModalOpen(false)}>
                 <Icon name="x" size={18} />
               </button>
             </form>
             <div style={{ marginTop: 8, maxHeight: '55vh', overflowY: 'auto' }}>
               {q.trim() ? (
-                <SearchResultsList id={modalListId} loaded={index !== null} results={results} active={active} onHover={setActive} onSelect={go} />
+                <SearchResultsList id={modalListId} loaded={index !== null} results={results} active={active} onHover={setActive} onSelect={go} lang={lang} />
               ) : (
                 <ul role="listbox" aria-label="Quick links" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                   {PAGES.slice(0, 6).map((p) => (

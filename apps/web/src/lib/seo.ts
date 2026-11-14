@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { absoluteUrl, SITE_NAME, SITE_URL } from './env';
 
 export const DEFAULT_DESCRIPTION =
-  'One API key for every frontier AI model, prepaid credits and honest per-token prices — plus a public AI leaderboard built from real use, AI news and the best AI tools.';
+  'Fastest low-latency AI API gateway with the lowest pass-through token prices across every frontier model — plus a public AI leaderboard, multilingual AI news, and curated AI tools.';
 
 interface PageMetaInput {
   title: string;
@@ -14,6 +14,7 @@ interface PageMetaInput {
   type?: 'website' | 'article';
   noindex?: boolean;
   locale?: string;
+  alternatesLanguages?: Record<string, string>;
   image?: string;
   imageAlt?: string;
   article?: { publishedTime: string; modifiedTime: string; authors: string[]; section: string };
@@ -30,6 +31,7 @@ export function pageMetadata(input: PageMetaInput): Metadata {
     description: input.description,
     alternates: {
       canonical: input.path,
+      ...(input.alternatesLanguages ? { languages: input.alternatesLanguages } : {}),
       types: { 'application/rss+xml': [{ url: '/feed.xml', title: `${SITE_NAME} AI News RSS` }] },
     },
     robots: input.noindex ? { index: false, follow: true } : undefined,

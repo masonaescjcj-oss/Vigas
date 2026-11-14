@@ -3,7 +3,7 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { TOOL_CATEGORIES, type ToolItem } from '@vigas/core';
 import { SiteHeader } from '@/components/site-header';
 import { ToolsDirectory } from '@/components/tools/tools-directory';
-import { Breadcrumb, Icon, JsonLd } from '@/components/ui';
+import { Breadcrumb, Icon, JsonLd, ToolMark } from '@/components/ui';
 import { getTools } from '@/lib/data';
 import { absoluteUrl } from '@/lib/env';
 import { breadcrumbLd, faqLd, pageMetadata } from '@/lib/seo';
@@ -93,23 +93,17 @@ export default async function ToolsPage() {
               <Link key={c.t} href={c.href} className="lift card" style={{ display: 'flex', alignItems: 'center', gap: 14, borderRadius: 16, padding: 16, color: 'var(--vg-ink)' }}>
                 <span style={{ display: 'flex', flexShrink: 0 }} aria-hidden="true">
                   {c.items.slice(0, 3).map((s) => (
-                    <span
+                    <ToolMark
                       key={s.slug}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 9,
-                        display: 'grid',
-                        placeItems: 'center',
-                        font: '400 14px var(--vg-font-serif)',
-                        marginRight: -6,
-                        border: '2px solid var(--vg-surface)',
-                        background: 'var(--vg-raised)',
-                        color: s.color,
-                      }}
-                    >
-                      {s.letter}
-                    </span>
+                      slug={s.slug}
+                      iconUrl={s.iconUrl}
+                      color={s.color}
+                      letter={s.letter}
+                      size={30}
+                      radius={9}
+                      fontSize={14}
+                      style={{ marginRight: -6, borderWidth: 2, borderColor: 'var(--vg-surface)' }}
+                    />
                   ))}
                 </span>
                 <span style={{ minWidth: 0, marginLeft: 6 }}>
