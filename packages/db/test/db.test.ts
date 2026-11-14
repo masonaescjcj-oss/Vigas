@@ -60,7 +60,7 @@ async function newUser(email: string) {
 
 describe('catalogue and content', () => {
   it('serves seeded models, endpoints, news, tools and leaderboards', async () => {
-    expect((await listModels(h.db)).length).toBe(13);
+    expect((await listModels(h.db)).length).toBe(25);
     expect((await listEndpoints(h.db)).filter((e) => e.modelId === 'deepseek/v4.1-flash')).toHaveLength(2);
     const news = await listArticles(h.db, { limit: 5 });
     expect(news).toHaveLength(5);
@@ -70,10 +70,10 @@ describe('catalogue and content', () => {
     expect(article?.body.length).toBeGreaterThan(20);
     expect(await getArticle(h.db, 'does-not-exist')).toBeNull();
     const coding = await listTools(h.db, { category: 'Coding' });
-    expect(coding.map((t) => t.slug)).toEqual(['cursor', 'v0']);
+    expect(coding.map((t) => t.slug)).toEqual(['cursor', 'claude-code', 'openai-codex', 'opencode', 'windsurf', 'v0', 'kilo-code']);
     expect((await listTools(h.db, { q: 'video' })).map((t) => t.slug)).toContain('runway');
     const lb = await getLeaderboard(h.db, 'overall');
-    expect(lb.entries[0]!.modelId).toBe('anthropic/claude-opus-5.5');
+    expect(lb.entries[0]!.modelId).toBe('anthropic/claude-fable-5.2');
     expect(lb.totalSessions).toBeGreaterThan(0);
   });
 });

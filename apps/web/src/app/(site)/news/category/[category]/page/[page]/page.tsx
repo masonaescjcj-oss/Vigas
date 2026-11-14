@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { Suspense } from 'react';
 import { NEWS_CATEGORIES } from '@vigas/core';
-import { newsCategoryPath, NewsContent, NewsMasthead } from '@/components/news/news-feed';
+import { newsCategoryPath, NewsContent, NewsMasthead, NewsRiverSkeleton } from '@/components/news/news-feed';
 import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 import { NEWS_CATEGORY_SEO, parseNewsCategorySlug } from '@/lib/seo-catalog';
@@ -49,7 +50,9 @@ export default async function NewsCategoryPaginatedPage({
       <SiteHeader active="news" />
       <main id="main">
         <NewsMasthead category={cat} />
-        <NewsContent category={cat} page={page} />
+        <Suspense fallback={<NewsRiverSkeleton />}>
+          <NewsContent category={cat} page={page} />
+        </Suspense>
       </main>
     </>
   );

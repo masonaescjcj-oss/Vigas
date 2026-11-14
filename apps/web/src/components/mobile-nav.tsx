@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSignedInHint } from '@/lib/client/session';
 import { Icon, LogoMark } from './ui';
 
@@ -14,80 +14,72 @@ export function MobileNav({
   nav: ReadonlyArray<readonly [string, string, string]>;
 }) {
   const pathname = usePathname();
-  const [openedAtPath, setOpenedAtPath] = useState<string | null>(null);
-  const open = openedAtPath === pathname;
-  const drawerId = useId();
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   const signedIn = useSignedInHint();
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenedAtPath(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  const close = () => {
+    if (detailsRef.current) detailsRef.current.open = false;
+  };
 
-  const close = () => setOpenedAtPath(null);
+  useEffect(() => {
+    close();
+  }, [pathname]);
+
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const el = detailsRef.current;
+      if (el?.open && e.target instanceof Node && !el.contains(e.target)) {
+        el.open = false;
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && detailsRef.current?.open) {
+        detailsRef.current.open = false;
+      }
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+
+  const currentLabel = active === 'home' ? 'Vigas' : (nav.find(([id]) => id === active)?.[1] ?? 'Vigas');
 
   return (
-    <>
-      <button
-        type="button"
-        className="ib hdr-toggle"
-        aria-expanded={open}
-        aria-controls={drawerId}
-        aria-label="Open navigation menu"
-        onClick={() => setOpenedAtPath((prev) => (prev === pathname ? null : pathname))}
-      >
-        <Icon name={open ? 'x' : 'menu'} size={20} />
-      </button>
+    <details ref={detailsRef} className="hdr-menu">
+      <summary className="hdr-menu-pill" aria-label="Toggle navigation menu">
+        <LogoMark size={20} />
+        <span className="sf" style={{ fontSize: 23, lineHeight: 1, letterSpacing: '-.01em' }}>
+          Vigas
+        </span>
+        {active !== 'home' && active !== 'none' && (
+          <span className="mn hdr-menu-cur">{currentLabel}</span>
+        )}
+        <Icon name="chevDown" size={14} className="hdr-menu-chev" />
+      </summary>
 
-      {open && (
-        <button
-          type="button"
-          className="hdr-drawer-scrim"
-          data-open="true"
-          aria-label="Close navigation menu"
-          onClick={close}
-        />
-      )}
-
-      <aside
-        id={drawerId}
-        className="hdr-drawer"
-        data-open={open}
-        aria-hidden={!open}
-        aria-label="Navigation menu"
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid var(--vg-line)' }}>
-          <Link href="/" onClick={close} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--vg-ink)' }}>
-            <LogoMark />
-            <span className="sf" style={{ fontSize: 25, lineHeight: 1 }}>
-              Vigas
-            </span>
-          </Link>
-          <button type="button" className="ib" aria-label="Close navigation menu" onClick={close}>
-            <Icon name="x" size={18} />
-          </button>
-        </div>
-
-        <nav aria-label="Mobile navigation" className="hdr-drawer-nav">
+      <nav aria-label="Mobile navigation" className="hdr-menu-pop">
+        <div className="hdr-menu-links">
           <Link href="/" aria-current={active === 'home' ? 'page' : undefined} onClick={close}>
-            Home
+            <span>Home</span>
+            <span className="mn" style={{ fontSize: 11, opacity: 0.65 }}>Overview</span>
           </Link>
           {nav.map(([id, label, href]) => (
             <Link key={id} href={href} aria-current={id === active ? 'page' : undefined} onClick={close}>
-              {label}
+              <span>{label}</span>
+              {id === 'leaderboard' && <span className="mn hdr-menu-tag">Arena</span>}
+              {id === 'tools' && <span className="mn hdr-menu-tag">24 apps</span>}
             </Link>
           ))}
-        </nav>
+        </div>
 
-        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 14, borderTop: '1px solid var(--vg-line)' }}>
+        <div className="hdr-menu-foot">
           <Link
             href={signedIn ? '/dashboard' : '/signin'}
             className="btn gh"
-            style={{ width: '100%' }}
+            style={{ flex: '1 1 0', minHeight: 38, fontSize: 13 }}
             onClick={close}
           >
             {signedIn ? 'Dashboard' : 'Sign in'}
@@ -95,13 +87,14 @@ export function MobileNav({
           <Link
             href={signedIn ? '/dashboard#keys' : '/signup?next=/dashboard%23keys'}
             className="btn key"
-            style={{ width: '100%' }}
+            style={{ flex: '1 1 0', minHeight: 38, fontSize: 13 }}
             onClick={close}
           >
             Get API key
           </Link>
         </div>
-      </aside>
-    </>
+      </nav>
+    </details>
   );
 }
+

@@ -81,6 +81,7 @@ export async function adminGetArticle(db: Db, slug: string) {
     title: row.title,
     dek: row.dek,
     category: row.category,
+    lang: row.lang,
     flag: row.flag as 'Breaking' | 'Analysis' | 'Exclusive' | null,
     authorSlug: row.authorSlug,
     status: row.status,
@@ -109,6 +110,7 @@ export async function adminSaveArticle(db: Db, input: ArticleInput, existingSlug
     title: a.title,
     dek: a.dek,
     category: a.category,
+    lang: a.lang,
     flag: a.flag,
     authorSlug: a.authorSlug,
     status: a.status,
@@ -162,10 +164,11 @@ export async function adminDeleteDemoArticles(db: Db): Promise<string[]> {
 /** Creates or updates a tool by slug. User votes are kept. */
 export async function adminSaveTool(db: Db, input: ToolInput): Promise<{ slug: string }> {
   const t = parse(toolInputSchema, input);
+  const values = { ...t, imageUrl: t.imageUrl ? t.imageUrl : null };
   await db
     .insert(tools)
-    .values({ ...t, baseVotes: 0 })
-    .onConflictDoUpdate({ target: tools.slug, set: { ...t } });
+    .values({ ...values, baseVotes: 0 })
+    .onConflictDoUpdate({ target: tools.slug, set: values });
   return { slug: t.slug };
 }
 

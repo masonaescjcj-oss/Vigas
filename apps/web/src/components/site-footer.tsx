@@ -137,13 +137,12 @@ export function SiteFooter() {
         >
           <span>© 2026 Vigas Labs · Made with sand &amp; signal</span>
           <span className="footer-bottom-links">
-            <span style={{ color: 'var(--vg-ink)' }}>English</span>
-            <span title="Persian edition coming soon">
-              <span lang="fa" dir="rtl">
-                فارسی
-              </span>{' '}
-              · soon
-            </span>
+            <Link href="/news?lang=en" style={{ color: 'var(--vg-ink)' }}>
+              English
+            </Link>
+            <Link href="/news?lang=fa" className="fa-ui" lang="fa" dir="rtl" style={{ color: 'var(--vg-sand)' }}>
+              فارسی
+            </Link>
             <Link href="/privacy" style={{ color: 'var(--vg-ink3)' }}>
               Privacy
             </Link>

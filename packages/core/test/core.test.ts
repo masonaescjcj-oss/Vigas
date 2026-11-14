@@ -64,7 +64,7 @@ describe('routing', () => {
   it('routes vigas/auto by quality, price or latency across auto-eligible models', () => {
     const ratings = Object.fromEntries(seedLeaderboard('overall').map((e) => [e.modelId, e.rating]));
     const byQuality = planRoute({ model: AUTO_MODEL_ID, catalog: seedModels, endpoints: seedEndpoints, ratings });
-    expect(byQuality[0]!.model.id).toBe('anthropic/claude-opus-5.5');
+    expect(byQuality[0]!.model.id).toBe('anthropic/claude-fable-5.2');
     expect(byQuality).toHaveLength(3);
 
     const byPrice = planRoute({ model: AUTO_MODEL_ID, catalog: seedModels, endpoints: seedEndpoints, options: { sort: 'price' } });
@@ -123,7 +123,7 @@ describe('ranking', () => {
     const pts = seedLeaderboard('overall').map((e) => ({ id: e.modelId, cost: e.costPerTaskMicros, score: e.rating }));
     const front = paretoFrontier(pts).map((p) => p.id);
     expect(front[0]).toBe('deepseek/v4.1-flash');
-    expect(front.at(-1)).toBe('anthropic/claude-opus-5.5');
+    expect(front.at(-1)).toBe('anthropic/claude-fable-5.2');
     expect(front).not.toContain('openai/gpt-6-astra');
   });
 });

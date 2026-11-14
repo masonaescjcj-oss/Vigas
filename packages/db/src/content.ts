@@ -11,6 +11,7 @@ const toListItem = (a: ArticleRow, au: AuthorRow): NewsListItem => ({
   title: a.title,
   dek: a.dek,
   category: a.category as NewsCategory,
+  lang: a.lang,
   flag: (a.flag as NewsListItem['flag']) ?? null,
   author: { slug: au.slug, name: au.name, role: au.role, color: au.color } satisfies Author,
   publishedAt: a.publishedAt.toISOString(),
@@ -20,10 +21,11 @@ const toListItem = (a: ArticleRow, au: AuthorRow): NewsListItem => ({
 
 export async function listArticles(
   db: Db,
-  opts: { category?: NewsCategory | null; limit?: number; offset?: number } = {},
+  opts: { category?: NewsCategory | null; lang?: 'en' | 'fa' | null; limit?: number; offset?: number } = {},
 ): Promise<NewsListItem[]> {
   const where: SQL[] = [eq(articles.status, 'published')];
   if (opts.category) where.push(eq(articles.category, opts.category));
+  if (opts.lang) where.push(eq(articles.lang, opts.lang));
   const rows = await db
     .select()
     .from(articles)
@@ -35,9 +37,10 @@ export async function listArticles(
   return rows.map((r) => toListItem(r.articles, r.authors));
 }
 
-export async function countArticles(db: Db, category?: NewsCategory | null): Promise<number> {
+export async function countArticles(db: Db, category?: NewsCategory | null, lang?: 'en' | 'fa' | null): Promise<number> {
   const where: SQL[] = [eq(articles.status, 'published')];
   if (category) where.push(eq(articles.category, category));
+  if (lang) where.push(eq(articles.lang, lang));
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(articles).where(and(...where));
   return row?.n ?? 0;
 }
@@ -114,6 +117,8 @@ export async function listTools(
     votes: t.baseVotes + Number(userVotes),
     color: t.color,
     letter: t.letter,
+    imageUrl: t.imageUrl ?? undefined,
+    highlights: t.highlights?.length ? t.highlights : undefined,
     url: t.url,
     runsOnVigas: t.runsOnVigas,
     isNew: t.isNew,

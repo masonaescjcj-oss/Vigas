@@ -42,6 +42,8 @@ async function Editor({ params }: { params: Params }) {
           rating: tool.rating,
           color: tool.color,
           letter: tool.letter,
+          imageUrl: tool.imageUrl ?? '',
+          highlights: tool.highlights ?? [],
           url: tool.url,
           runsOnVigas: tool.runsOnVigas,
           isNew: tool.isNew,

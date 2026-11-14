@@ -87,7 +87,7 @@ async function ToolView({ slug }: { slug: string }) {
       applicationCategory: APP_CATEGORY[tool.category] ?? 'WebApplication',
       operatingSystem: 'Web',
       url: tool.url,
-      image: [absoluteUrl(`/og/tool/${tool.slug}`)],
+      image: tool.imageUrl ? [absoluteUrl(tool.imageUrl), absoluteUrl(`/og/tool/${tool.slug}`)] : [absoluteUrl(`/og/tool/${tool.slug}`)],
       offers:
         tool.pricing === 'Paid'
           ? { '@type': 'Offer', availability: 'https://schema.org/InStock', url: tool.url }
@@ -122,13 +122,13 @@ async function ToolView({ slug }: { slug: string }) {
           { name: tool.category, href: `/tools/category/${categorySlug}` },
           { name: tool.name },
         ]}
-        style={{ paddingTop: 28 }}
+        style={{ paddingTop: 22 }}
       />
 
-      <section style={{ display: 'flex', flexWrap: 'wrap', gap: 40, padding: '28px 0 56px', alignItems: 'stretch', borderBottom: '1px solid var(--vg-line)' }}>
+      <section style={{ display: 'flex', flexWrap: 'wrap', gap: 36, padding: '22px 0 48px', alignItems: 'flex-start', borderBottom: '1px solid var(--vg-line)' }}>
         <div style={{ flex: '1.4 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Mark color={tool.color} letter={tool.letter} size={84} radius={22} fontSize={40} />
+            <Mark color={tool.color} letter={tool.letter} size={76} radius={20} fontSize={36} />
             <div style={{ minWidth: 0 }}>
               <div className="lbl" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Link href={`/tools/category/${categorySlug}`} style={{ color: 'var(--vg-ink3)' }}>
@@ -138,29 +138,44 @@ async function ToolView({ slug }: { slug: string }) {
                 {tool.pricing}
                 {tool.isNew && <span style={{ color: 'var(--vg-sand)' }}>· New</span>}
               </div>
-              <h1 className="sf" style={{ fontSize: 'clamp(44px,6vw,84px)', lineHeight: 0.96, letterSpacing: '-.03em', margin: '8px 0 0' }}>
+              <h1 className="sf" style={{ fontSize: 'clamp(40px,5.2vw,68px)', lineHeight: 0.98, letterSpacing: '-.03em', margin: '8px 0 0' }}>
                 {tool.name}
               </h1>
             </div>
           </div>
-          <p className="sf" style={{ fontSize: 'clamp(22px,2.2vw,28px)', lineHeight: 1.3, color: 'var(--vg-ink)', margin: 0, maxWidth: 680 }}>
+          <p className="sf" style={{ fontSize: 'clamp(20px,2vw,26px)', lineHeight: 1.3, color: 'var(--vg-ink)', margin: 0, maxWidth: 680 }}>
             <em className="hi">{tool.tagline}</em>
           </p>
-          <p style={{ fontSize: 17, color: 'var(--vg-ink2)', margin: 0, maxWidth: 640 }}>{tool.description}</p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
-            <a href={tool.url} className="btn key" target="_blank" rel="noopener noreferrer" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <a href={tool.url} className="btn key" target="_blank" rel="noopener noreferrer" style={{ minHeight: 48, padding: '0 22px', fontSize: 15 }}>
               Visit {host(tool.url)}
               <Icon name="external" size={16} />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
             <ToolVote slug={tool.slug} name={tool.name} votes={tool.votes} />
           </div>
+          {tool.highlights && tool.highlights.length > 0 && (
+            <ul style={{ listStyle: 'none', margin: '2px 0 0', padding: 0, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {tool.highlights.map((h) => (
+                <li key={h} className="pill" style={{ background: 'var(--vg-surface)', border: '1px solid var(--vg-line)', padding: '6px 11px', color: 'var(--vg-ink2)', fontFamily: 'var(--vg-font-sans)' }}>
+                  ✓ {h}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p style={{ fontSize: 16, lineHeight: 1.65, color: 'var(--vg-ink2)', margin: 0, maxWidth: 640 }}>{tool.description}</p>
         </div>
 
-        <aside aria-label="At a glance" className="card" style={{ flex: '1 1 320px', minWidth: 0, borderRadius: 22, padding: 22, alignSelf: 'flex-start' }}>
-          <h2 className="lbl" style={{ margin: '0 0 6px' }}>
-            At a glance
-          </h2>
+        <aside aria-label="App preview and details" style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tool.imageUrl && (
+            <div className="tool-hero-media">
+              <img src={tool.imageUrl} alt={`${tool.name} — ${tool.category} application interface preview`} width={640} height={360} />
+            </div>
+          )}
+          <div className="card" style={{ borderRadius: 20, padding: 20 }}>
+            <h2 className="lbl" style={{ margin: '0 0 6px' }}>
+              At a glance
+            </h2>
           <dl style={{ margin: 0 }}>
             {facts.map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: '1px solid rgba(239,234,225,.06)', fontSize: 14 }}>
@@ -185,6 +200,7 @@ async function ToolView({ slug }: { slug: string }) {
               </p>
             </div>
           )}
+          </div>
         </aside>
       </section>
 

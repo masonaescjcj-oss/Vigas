@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" fill="none">
+  <defs>
+    <radialGradient id="g_midjourney" cx="82%" cy="18%" r="72%">
+      <stop offset="0%" stop-color="#9A9DFA" stop-opacity="0.24" />
+      <stop offset="100%" stop-color="#141210" stop-opacity="0" />
+    </radialGradient>
+    <pattern id="p_midjourney" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(239,234,225,0.035)" stroke-width="1" />
+    </pattern>
+  </defs>
+
+  <rect width="640" height="360" fill="#141210" />
+  <rect width="640" height="360" fill="url(#p_midjourney)" />
+  <rect width="640" height="360" fill="url(#g_midjourney)" />
+
+  <!-- App Window Frame -->
+  <rect x="24" y="22" width="592" height="316" rx="16" fill="#1B1916" stroke="rgba(239,234,225,0.11)" />
+  <rect x="24" y="22" width="592" height="58" rx="16" fill="#171512" />
+  <line x1="24" y1="80" x2="616" y2="80" stroke="rgba(239,234,225,0.08)" />
+
+  <!-- Top App Chrome Bar -->
+  <rect x="44" y="37" width="28" height="28" rx="8" fill="#9A9DFA" fill-opacity="0.18" stroke="#9A9DFA" stroke-opacity="0.45" />
+  <text x="58" y="56" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#9A9DFA">M</text>
+  <text x="84" y="50" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="15" fill="#EFEAE1">Midjourney</text>
+  <text x="84" y="65" font-family="ui-monospace, SFMono-Regular, monospace" font-size="10.5" fill="rgba(239,234,225,0.5)">midjourney.com · IMAGE</text>
+
+  <!-- Pricing & Rating Pills -->
+  <rect x="424" y="39" width="84" height="24" rx="7" fill="#23201C" stroke="rgba(239,234,225,0.1)" />
+  <text x="466" y="55" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#EFEAE1">PAID</text>
+
+  <rect x="518" y="39" width="78" height="24" rx="7" fill="#9A9DFA" fill-opacity="0.16" stroke="#9A9DFA" stroke-opacity="0.38" />
+  <text x="557" y="55" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#E3B65C">★ 4.7</text>
+
+  
+      <!-- Viewport Canvas -->
+      <rect x="44" y="96" width="388" height="214" rx="12" fill="#181613" stroke="rgba(239,234,225,0.08)" />
+      <defs>
+        <linearGradient id="g_midjourney_art" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#9A9DFA" stop-opacity="0.45" />
+          <stop offset="55%" stop-color="#2B2520" stop-opacity="0.85" />
+          <stop offset="100%" stop-color="#141210" stop-opacity="0.95" />
+        </linearGradient>
+      </defs>
+      <rect x="56" y="108" width="364" height="190" rx="8" fill="url(#g_midjourney_art)" />
+      <circle cx="290" cy="162" r="46" fill="#9A9DFA" fill-opacity="0.28" />
+      <circle cx="290" cy="162" r="24" fill="#9A9DFA" fill-opacity="0.6" />
+      <polygon points="68,284 162,158 240,214 316,144 408,284" fill="rgba(20,18,16,0.68)" />
+      
+
+      <!-- Right Studio Inspector -->
+      <rect x="446" y="96" width="150" height="214" rx="12" fill="#181613" stroke="rgba(239,234,225,0.08)" />
+      <text x="462" y="120" font-family="ui-monospace, monospace" font-size="10" fill="rgba(239,234,225,0.5)">STYLE · CANVAS</text>
+      <rect x="462" y="134" width="118" height="28" rx="7" fill="#12110F" stroke="rgba(239,234,225,0.08)" />
+      <rect x="472" y="145" width="68" height="6" rx="3" fill="#9A9DFA" fill-opacity="0.7" />
+      <rect x="462" y="174" width="54" height="32" rx="7" fill="#9A9DFA" fill-opacity="0.2" stroke="#9A9DFA" stroke-opacity="0.5" />
+      <rect x="524" y="174" width="56" height="32" rx="7" fill="#12110F" stroke="rgba(239,234,225,0.08)" />
+      <rect x="462" y="218" width="118" height="8" rx="4" fill="rgba(239,234,225,0.14)" />
+      <rect x="462" y="218" width="82" height="8" rx="4" fill="#9A9DFA" />
+      <rect x="462" y="264" width="118" height="30" rx="8" fill="#9A9DFA" />
+      <text x="521" y="283" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="11" fill="#141210">Generate</text>
+    
+</svg>

@@ -20,18 +20,29 @@ function safeHref(href: string | null | undefined): string | null {
 export function headingId(text: string): string {
   return (
     text
-      .normalize('NFKD')
-      .replace(/[̀-ͯ]/g, '')
+      .normalize('NFC')
+      .replace(/[\u0300-\u036f\u064b-\u0652\u0670]/g, '')
       .toLowerCase()
-      .replace(/[’'"]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/[’'"«»]/g, '')
+      .replace(/[^\p{L}\p{N}]+/gu, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 60) || 'section'
   );
 }
 
-function createMarked(opts: { headingIds: boolean }): Marked {
+function makeIdAllocator() {
+  const counts = new Map<string, number>();
+  return (text: string): string => {
+    const base = headingId(text);
+    const n = (counts.get(base) ?? 0) + 1;
+    counts.set(base, n);
+    return n === 1 ? base : `${base}-${n}`;
+  };
+}
+
+function createMarked(opts: { headingIds: boolean; allocId?: (text: string) => string; onH2?: (id: string) => void }): Marked {
   const m = new Marked({ gfm: true, breaks: false });
+  const alloc = opts.allocId ?? headingId;
   m.use({
     renderer: {
       html({ text }: Tokens.HTML | Tokens.Tag) {
@@ -56,8 +67,10 @@ function createMarked(opts: { headingIds: boolean }): Marked {
       heading({ tokens, depth, text }: Tokens.Heading) {
         const inner = this.parser.parseInline(tokens);
         const level = Math.min(6, Math.max(2, depth));
-        const id = opts.headingIds ? ` id="${headingId(text)}"` : '';
-        return `<h${level}${id}>${inner}</h${level}>\n`;
+        if (!opts.headingIds) return `<h${level}>${inner}</h${level}>\n`;
+        const id = alloc(text);
+        if (depth === 2) opts.onH2?.(id);
+        return `<h${level} id="${id}">${inner}</h${level}>\n`;
       },
     },
   });
@@ -80,7 +93,15 @@ export interface ArticleSection {
 
 /** Splits an article body at its `##` headings so the page can place figures between sections. */
 export function renderArticleSections(src: string): ArticleSection[] {
-  const m = createMarked({ headingIds: true });
+  const alloc = makeIdAllocator();
+  let currentH2Id: string | null = null;
+  const m = createMarked({
+    headingIds: true,
+    allocId: alloc,
+    onH2: (id) => {
+      if (!currentH2Id) currentH2Id = id;
+    },
+  });
   const tokens = m.lexer(src);
   const groups: Array<{ heading: Tokens.Heading | null; tokens: Token[] }> = [{ heading: null, tokens: [] }];
   for (const t of tokens) {
@@ -90,10 +111,12 @@ export function renderArticleSections(src: string): ArticleSection[] {
   return groups
     .filter((g) => g.tokens.length > 0)
     .map((g) => {
+      currentH2Id = null;
       const list = Object.assign(g.tokens, { links: tokens.links }) as TokensList;
+      const html = m.parser(list);
       return {
-        heading: g.heading ? { id: headingId(g.heading.text), text: g.heading.text } : null,
-        html: m.parser(list),
+        heading: g.heading ? { id: currentH2Id ?? alloc(g.heading.text), text: g.heading.text } : null,
+        html,
       };
     });
 }

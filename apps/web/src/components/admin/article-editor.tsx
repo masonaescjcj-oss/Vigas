@@ -12,6 +12,7 @@ export interface EditableArticle {
   title: string;
   dek: string;
   category: string;
+  lang: 'en' | 'fa';
   flag: 'Breaking' | 'Analysis' | 'Exclusive' | null;
   authorSlug: string;
   status: 'draft' | 'published';
@@ -56,6 +57,7 @@ export function ArticleEditor({
       title: '',
       dek: '',
       category: categories[0] ?? 'Models',
+      lang: 'en',
       flag: null,
       authorSlug: authors[0]?.slug ?? '',
       status: 'draft',
@@ -94,6 +96,7 @@ export function ArticleEditor({
         title: parsed.title,
         dek: parsed.dek,
         category: categories.includes(parsed.category) ? parsed.category : prev.category,
+        lang: parsed.lang,
         flag: parsed.flag,
         authorSlug: resolvedAuthor,
         status: parsed.status,
@@ -260,8 +263,10 @@ export function ArticleEditor({
             />
           ) : (
             <div
-              className="sf"
-              style={{ minHeight: 300, padding: '8px 4px', fontSize: 19, lineHeight: 1.65, color: '#E6E0D6' }}
+              dir={a.lang === 'fa' ? 'rtl' : 'ltr'}
+              lang={a.lang}
+              className={a.lang === 'fa' ? 'fa-ui' : 'sf'}
+              style={{ minHeight: 300, padding: '8px 4px', fontSize: a.lang === 'fa' ? 17 : 19, lineHeight: a.lang === 'fa' ? 1.9 : 1.65, color: '#E6E0D6' }}
               // renderChatMarkdown escapes raw HTML and filters link targets.
               dangerouslySetInnerHTML={{ __html: preview }}
             />
@@ -332,6 +337,12 @@ export function ArticleEditor({
             {categories.map((c) => (
               <option key={c}>{c}</option>
             ))}
+          </select>
+        </Field>
+        <Field id="lang" title="Language">
+          <select id="lang" className="input" value={a.lang} onChange={(e) => set('lang', e.target.value as 'en' | 'fa')}>
+            <option value="en">English (en)</option>
+            <option value="fa">فارسی (fa · RTL)</option>
           </select>
         </Field>
         <Field id="flag" title="Flag">

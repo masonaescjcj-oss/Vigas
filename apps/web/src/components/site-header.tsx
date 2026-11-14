@@ -25,8 +25,12 @@ export function SiteHeader({ active = 'none', ticker = true }: { active?: NavKey
         <div className="hdr">
           <Suspense
             fallback={
-              <span className="ib hdr-toggle" aria-hidden="true">
-                <Icon name="menu" size={20} />
+              <span className="hdr-menu hdr-menu-pill" aria-hidden="true">
+                <LogoMark size={20} />
+                <span className="sf" style={{ fontSize: 23, lineHeight: 1 }}>
+                  Vigas
+                </span>
+                <Icon name="chevDown" size={14} className="hdr-menu-chev" />
               </span>
             }
           >
@@ -61,6 +65,7 @@ interface TickerItem {
   c: string;
   text: string;
   href: string;
+  lang?: 'en' | 'fa';
 }
 
 async function Ticker() {
@@ -70,17 +75,17 @@ async function Ticker() {
   const [feed, models] = await Promise.all([getHomeFeed(), getModels()]);
   const items: TickerItem[] = [];
   const news = feed.news;
-  if (news[0]) items.push({ k: news[0].category.toUpperCase(), c: 'var(--vg-orange)', text: news[0].title, href: `/news/${news[0].slug}` });
+  if (news[0]) items.push({ k: news[0].category.toUpperCase(), c: 'var(--vg-orange)', text: news[0].title, href: `/news/${news[0].slug}`, lang: news[0].lang });
   const drop = [...models].sort((a, b) => a.priceChange24h - b.priceChange24h)[0];
   if (drop && drop.priceChange24h < 0) {
     items.push({ k: `▼ ${Math.abs(drop.priceChange24h)}%`, c: 'var(--vg-green)', text: `${drop.name} input price`, href: '/models' });
   }
   const top = feed.topAgents[0];
   if (top) items.push({ k: '#1', c: 'var(--vg-sand)', text: `${top.name.replace(/ \(.*\)$/, '')} · ${top.winRate.toFixed(2)}% win share`, href: '/leaderboard' });
-  if (news[1]) items.push({ k: news[1].category.toUpperCase(), c: 'var(--vg-orange)', text: news[1].title, href: `/news/${news[1].slug}` });
+  if (news[1]) items.push({ k: news[1].category.toUpperCase(), c: 'var(--vg-orange)', text: news[1].title, href: `/news/${news[1].slug}`, lang: news[1].lang });
   const tool = feed.trendingTools[0];
   if (tool) items.push({ k: 'TOOLS', c: 'var(--vg-teal)', text: `${tool.name} tops the tools directory this week`, href: `/tools/${tool.slug}` });
-  for (const n of news.slice(2, 4)) items.push({ k: n.category.toUpperCase(), c: 'var(--vg-orange)', text: n.title, href: `/news/${n.slug}` });
+  for (const n of news.slice(2, 4)) items.push({ k: n.category.toUpperCase(), c: 'var(--vg-orange)', text: n.title, href: `/news/${n.slug}`, lang: n.lang });
   if (items.length === 0) return null;
 
   const row = (copy: boolean) =>
@@ -89,7 +94,9 @@ async function Ticker() {
         <b className="mn" style={{ fontSize: 12, fontWeight: 500, marginRight: 8, color: t.c }}>
           {t.k}
         </b>
-        {t.text}
+        <bdi dir={t.lang === 'fa' ? 'rtl' : 'ltr'} lang={t.lang ?? 'en'} className={t.lang === 'fa' ? 'fa-ui' : undefined}>
+          {t.text}
+        </bdi>
       </Link>
     ));
 

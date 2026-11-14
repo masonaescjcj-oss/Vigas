@@ -65,7 +65,11 @@ export const orgMarks: Record<string, { color: string; letter: string }> = {
   NVIDIA: { color: '#76B900', letter: 'N' },
   Microsoft: { color: '#5DB7B0', letter: 'M' },
   xAI: { color: '#A9A298', letter: 'X' },
+  SpaceXAI: { color: '#A9A298', letter: 'X' },
   Mistral: { color: '#FF6A1A', letter: 'M' },
+  Alibaba: { color: '#FF8A4C', letter: 'Q' },
+  'Z.ai': { color: '#5DB7B0', letter: 'Z' },
+  MiniMax: { color: '#9A9DFA', letter: 'MM' },
 };
 
 export function orgMark(org: string): { color: string; letter: string } {

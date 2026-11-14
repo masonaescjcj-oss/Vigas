@@ -92,25 +92,24 @@ async function ToolCollectionView({ slug }: { slug: ToolCollectionSlug }) {
       />
       <Breadcrumb
         items={[{ name: 'Home', href: '/' }, { name: 'Tools', href: '/tools' }, { name: col.name }]}
-        style={{ paddingTop: 28 }}
+        style={{ paddingTop: 18 }}
       />
-      <header style={{ padding: '22px 0 32px', display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div style={{ flex: '1 1 560px', minWidth: 0 }}>
-          <div className="lbl">
-            § Collection · {colTools.length} {colTools.length === 1 ? 'tool' : 'tools'}
-          </div>
-          <h1 className="sf" style={{ fontSize: 'clamp(42px,5.6vw,78px)', lineHeight: 0.98, letterSpacing: '-.03em', margin: '14px 0 14px' }}>
-            {col.heading} <em className="hi">{col.accent}</em>
+      <header style={{ padding: '10px 0 18px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <h1 className="sf" style={{ fontSize: 'clamp(30px,3.6vw,44px)', lineHeight: 1, letterSpacing: '-.025em', margin: 0 }}>
+            {col.name}
           </h1>
-          <p style={{ fontSize: 17, color: 'var(--vg-ink2)', maxWidth: 640, margin: 0 }}>{col.intro}</p>
+          <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+            {colTools.length} {colTools.length === 1 ? 'app' : 'apps'}
+          </span>
         </div>
-        <Link href="/tools" className="btn gh">
-          All tools
-          <Icon name="arrow" size={15} />
+        <Link href="/tools" className="btn gh" style={{ minHeight: 38, padding: '0 14px', fontSize: 13 }}>
+          All apps
+          <Icon name="arrow" size={14} />
         </Link>
       </header>
 
-      <section aria-label={col.name} style={{ paddingBottom: 64 }}>
+      <section aria-label={col.name} style={{ paddingBottom: 56 }}>
         <ToolsDirectory
           key={slug}
           tools={colTools}
@@ -119,12 +118,13 @@ async function ToolCollectionView({ slug }: { slug: ToolCollectionSlug }) {
         />
       </section>
 
-      <section aria-labelledby="col-explore" style={{ display: 'flex', flexWrap: 'wrap', gap: 40, padding: '48px 0 88px', borderTop: '1px solid var(--vg-line)' }}>
+      <section aria-labelledby="col-explore" style={{ display: 'flex', flexWrap: 'wrap', gap: 36, padding: '44px 0 84px', borderTop: '1px solid var(--vg-line)' }}>
         <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-          <div className="lbl">§ Collections &amp; categories</div>
-          <h2 id="col-explore" className="sf" style={{ fontSize: 'clamp(30px,3.2vw,42px)', lineHeight: 1.04, margin: '10px 0 16px', letterSpacing: '-.02em' }}>
-            More curated <em className="hi">shortlists.</em>
+          <div className="lbl">§ About this collection</div>
+          <h2 id="col-explore" className="sf" style={{ fontSize: 'clamp(28px,3vw,38px)', lineHeight: 1.04, margin: '8px 0 12px', letterSpacing: '-.02em' }}>
+            {col.heading} <em className="hi">{col.accent}</em>
           </h2>
+          <p style={{ fontSize: 15, color: 'var(--vg-ink2)', margin: '0 0 18px', maxWidth: 460 }}>{col.intro}</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {(Object.keys(TOOL_COLLECTIONS) as ToolCollectionSlug[]).map((key) => (
               <Link key={key} href={`/tools/collection/${key}`} className="tag">

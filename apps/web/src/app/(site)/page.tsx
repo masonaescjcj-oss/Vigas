@@ -335,16 +335,34 @@ export default async function HomePage() {
                 <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Breaking stories, deep analysis and a five-minute morning brief.</p>
                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column' }}>
                   {feed.news.length > 0 ? (
-                    feed.news.slice(0, 2).map((n) => (
-                      <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
-                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
-                          {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
+                    feed.news.slice(0, 2).map((n) => {
+                      const isFa = n.lang === 'fa';
+                      return (
+                        <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
+                          <div
+                            dir={isFa ? 'rtl' : 'ltr'}
+                            lang={n.lang ?? 'en'}
+                            className={isFa ? 'fa-ui' : 'mn'}
+                            style={{ fontSize: 12, color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}
+                          >
+                            {isFa ? (
+                              <>
+                                <span>{FA_CATS[n.category] ?? n.category}</span>
+                                <span style={{ color: 'var(--vg-sand)' }}>· فارسی</span>
+                                <span style={{ color: 'var(--vg-ink3)' }}>· {faAgo(n.publishedAt, now)}</span>
+                              </>
+                            ) : (
+                              <span>
+                                {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className={isFa ? 'fa-ui' : 'sf'} dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} style={{ fontSize: isFa ? 15 : 18, lineHeight: isFa ? 1.45 : 1.2, fontWeight: isFa ? 600 : 400 }}>
+                            {n.title}
+                          </div>
                         </div>
-                        <div className="sf" style={{ fontSize: 18, lineHeight: 1.2 }}>
-                          {n.title}
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div style={{ padding: '12px 0 0', borderTop: line }}>
                       <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
@@ -516,101 +534,169 @@ export default async function HomePage() {
         </section>
 
         {/* ── § 03 News ────────────────────────────────────────────────── */}
-        {lead && (
-          <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="today">
-            <div className="wrap">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
-                <SectionHead
-                  id="today"
-                  label={`§ 03 — Today in AI · ${today}`}
-                  title={
-                    <>
-                      The <em className="hi">news</em> that moves the models
-                    </>
-                  }
-                />
-                <ArrowLink href="/news" style={{ fontSize: 15 }}>
-                  Newsroom
-                </ArrowLink>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40 }}>
-                <article className="st" style={{ flex: '1.5 1 460px', minWidth: 0 }}>
-                  <Link href={`/news/${lead.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
-                    <div style={{ position: 'relative', aspectRatio: '16/10', borderRadius: 16, overflow: 'hidden', border: line, background: '#151411' }}>
-                      <CoverArt seed={lead.slug} color={lead.cover.color} category={lead.category} />
-                      {lead.flag && (
-                        <span className="mn" style={badge(lead.flag)}>
-                          {lead.flag.toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)' }}>
-                      {lead.category.toUpperCase()}{' '}
-                      <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {timeAgo(lead.publishedAt, now).toUpperCase()} AGO</span>
-                    </div>
-                    <h3 className="sf hl" style={{ fontSize: 'clamp(30px,3vw,42px)', lineHeight: 1.06, letterSpacing: '-.02em', margin: '10px 0' }}>
-                      {lead.title}
-                    </h3>
-                    <p style={{ margin: '0 0 12px', color: 'var(--vg-ink2)', fontSize: 16 }}>{lead.dek}</p>
-                    <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar name={lead.author.name} color={lead.author.color} />
-                      {lead.author.name} · {lead.readingMinutes} min read
-                    </div>
-                  </Link>
-                </article>
-                <div style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                  {secondary.map((n) => (
-                    <article key={n.slug} className="st" style={{ padding: '0 0 20px', marginBottom: 20, borderBottom: line }}>
-                      <Link href={`/news/${n.slug}`} style={{ display: 'flex', gap: 16, color: 'var(--vg-ink)' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)' }}>
-                            {n.category.toUpperCase()} <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {timeAgo(n.publishedAt, now).toUpperCase()}</span>
-                          </div>
-                          <h3 className="sf hl" style={{ fontSize: 22, lineHeight: 1.15, margin: '6px 0 8px' }}>
-                            {n.title}
-                          </h3>
-                          <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                            {n.author.name}
-                          </div>
-                        </div>
-                        <TypoCover cover={n.cover} style={{ width: 112, height: 112, flexShrink: 0 }} />
-                      </Link>
-                    </article>
-                  ))}
+        {lead && (() => {
+          const leadFa = lead.lang === 'fa';
+          return (
+            <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="today">
+              <div className="wrap">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
+                  <SectionHead
+                    id="today"
+                    label={`§ 03 — Today in AI · ${today}`}
+                    title={
+                      <>
+                        The <em className="hi">news</em> that moves the models
+                      </>
+                    }
+                  />
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Link href="/news?lang=fa" className="fa-ui pill" style={{ color: 'var(--vg-sand)' }}>
+                      اخبار فارسی
+                    </Link>
+                    <ArrowLink href="/news" style={{ fontSize: 15 }}>
+                      Newsroom
+                    </ArrowLink>
+                  </div>
                 </div>
-                {rail.length > 0 && (
-                  <aside style={{ flex: '1 1 280px', minWidth: 0 }} aria-label="More stories">
-                    <div className="lbl" style={{ marginBottom: 6 }}>
-                      § More stories
-                    </div>
-                    <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                      {rail.map((n, i) => (
-                        <li key={n.slug}>
-                          <Link
-                            href={`/news/${n.slug}`}
-                            style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: 10, padding: '14px 0', borderBottom: line, color: 'var(--vg-ink)' }}
-                          >
-                            <span className="sf" aria-hidden="true" style={{ fontSize: 30, lineHeight: 1, color: 'var(--vg-orange)' }}>
-                              {i + 1}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40 }}>
+                  <article className="st" style={{ flex: '1.5 1 460px', minWidth: 0 }}>
+                    <Link href={`/news/${lead.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
+                      <div style={{ position: 'relative', aspectRatio: '16/10', borderRadius: 16, overflow: 'hidden', border: line, background: '#151411' }}>
+                        <CoverArt seed={lead.slug} color={lead.cover.color} category={lead.category} />
+                        {lead.flag && (
+                          <span className="mn" style={badge(lead.flag)}>
+                            {lead.flag.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div dir={leadFa ? 'rtl' : 'ltr'} lang={lead.lang ?? 'en'} className={leadFa ? 'fa-ui' : undefined}>
+                        <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: leadFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span>{leadFa ? (FA_CATS[lead.category] ?? lead.category) : lead.category.toUpperCase()}</span>
+                          {leadFa && (
+                            <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
+                              فارسی
                             </span>
-                            <span>
-                              <span className="sf" style={{ display: 'block', fontSize: 18, lineHeight: 1.22 }}>
+                          )}
+                          <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {leadFa ? faAgo(lead.publishedAt, now) : `${timeAgo(lead.publishedAt, now).toUpperCase()} AGO`}</span>
+                        </div>
+                        <h3
+                          className={leadFa ? 'hl fa-ui' : 'sf hl'}
+                          style={{
+                            fontSize: leadFa ? 'clamp(24px,2.5vw,32px)' : 'clamp(30px,3vw,42px)',
+                            lineHeight: leadFa ? 1.38 : 1.06,
+                            letterSpacing: leadFa ? 0 : '-.02em',
+                            margin: '10px 0',
+                            fontWeight: leadFa ? 700 : 400,
+                          }}
+                        >
+                          {lead.title}
+                        </h3>
+                        <p style={{ margin: '0 0 12px', color: 'var(--vg-ink2)', fontSize: 16, lineHeight: leadFa ? 1.7 : 1.55 }}>{lead.dek}</p>
+                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Avatar name={lead.author.name} color={lead.author.color} />
+                          {lead.author.name} · {leadFa ? `${lead.readingMinutes} دقیقه مطالعه` : `${lead.readingMinutes} min read`}
+                        </div>
+                      </div>
+                    </Link>
+                  </article>
+                  <div style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    {secondary.map((n) => {
+                      const isFa = n.lang === 'fa';
+                      return (
+                        <article key={n.slug} className="st" style={{ padding: '0 0 20px', marginBottom: 20, borderBottom: line }}>
+                          <Link href={`/news/${n.slug}`} style={{ display: 'flex', gap: 16, color: 'var(--vg-ink)' }}>
+                            <div dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} className={isFa ? 'fa-ui' : undefined} style={{ flex: 1, minWidth: 0 }}>
+                              <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <span>{isFa ? (FA_CATS[n.category] ?? n.category) : n.category.toUpperCase()}</span>
+                                {isFa && (
+                                  <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
+                                    فارسی
+                                  </span>
+                                )}
+                                <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {isFa ? faAgo(n.publishedAt, now) : timeAgo(n.publishedAt, now).toUpperCase()}</span>
+                              </div>
+                              <h3
+                                className={isFa ? 'hl fa-ui' : 'sf hl'}
+                                style={{
+                                  fontSize: isFa ? 18 : 22,
+                                  lineHeight: isFa ? 1.45 : 1.15,
+                                  margin: '6px 0 8px',
+                                  fontWeight: isFa ? 600 : 400,
+                                }}
+                              >
                                 {n.title}
-                              </span>
-                              <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', marginTop: 6 }}>
-                                {n.category} · {timeAgo(n.publishedAt, now)}
-                              </span>
-                            </span>
+                              </h3>
+                              <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+                                {n.author.name}
+                              </div>
+                            </div>
+                            <TypoCover cover={n.cover} style={{ width: 112, height: 112, flexShrink: 0 }} />
                           </Link>
-                        </li>
-                      ))}
-                    </ol>
-                  </aside>
-                )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                  {rail.length > 0 && (
+                    <aside style={{ flex: '1 1 280px', minWidth: 0 }} aria-label="More stories">
+                      <div className="lbl" style={{ marginBottom: 6 }}>
+                        § More stories
+                      </div>
+                      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                        {rail.map((n, i) => {
+                          const isFa = n.lang === 'fa';
+                          return (
+                            <li key={n.slug}>
+                              <Link
+                                href={`/news/${n.slug}`}
+                                style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: 10, padding: '14px 0', borderBottom: line, color: 'var(--vg-ink)' }}
+                              >
+                                <span className="sf" aria-hidden="true" style={{ fontSize: 30, lineHeight: 1, color: 'var(--vg-orange)' }}>
+                                  {i + 1}
+                                </span>
+                                <span>
+                                  <bdi
+                                    dir={isFa ? 'rtl' : 'ltr'}
+                                    lang={n.lang ?? 'en'}
+                                    className={isFa ? 'fa-ui' : 'sf'}
+                                    style={{
+                                      display: 'block',
+                                      fontSize: isFa ? 16 : 18,
+                                      lineHeight: isFa ? 1.48 : 1.22,
+                                      fontWeight: isFa ? 600 : 400,
+                                    }}
+                                  >
+                                    {n.title}
+                                  </bdi>
+                                  <span
+                                    dir={isFa ? 'rtl' : 'ltr'}
+                                    lang={n.lang ?? 'en'}
+                                    className={isFa ? 'fa-ui' : 'mn'}
+                                    style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--vg-ink3)', marginTop: 6 }}
+                                  >
+                                    {isFa ? (
+                                      <>
+                                        <span style={{ color: 'var(--vg-sand)' }}>فارسی</span>
+                                        <span>· {FA_CATS[n.category] ?? n.category} · {faAgo(n.publishedAt, now)}</span>
+                                      </>
+                                    ) : (
+                                      <span>
+                                        {n.category} · {timeAgo(n.publishedAt, now)}
+                                      </span>
+                                    )}
+                                  </span>
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </aside>
+                  )}
+                </div>
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          );
+        })()}
 
         {/* ── § 04 Tools ───────────────────────────────────────────────── */}
         <section className="sec-pad" style={{ borderBottom: line }} aria-labelledby="trending">
@@ -694,6 +780,26 @@ export default async function HomePage() {
       </main>
     </>
   );
+}
+
+const FA_CATS: Record<string, string> = {
+  Models: 'مدل‌ها',
+  Agents: 'ایجنت‌ها',
+  Analysis: 'تحلیل',
+  Policy: 'سیاست‌گذاری',
+  Hardware: 'سخت‌افزار',
+  Funding: 'سرمایه‌گذاری',
+  Tools: 'ابزارها',
+};
+
+function faAgo(iso: string, now: Date): string {
+  const t = timeAgo(iso, now);
+  if (t === 'now') return 'هم‌اکنون';
+  const m = /^(\d+)\s*(min|m|h|d|w)$/i.exec(t);
+  if (!m) return t;
+  const units: Record<string, string> = { min: 'دقیقه پیش', m: 'دقیقه پیش', h: 'ساعت پیش', d: 'روز پیش', w: 'هفته پیش' };
+  const faDigits = m[1]!.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!);
+  return `${faDigits} ${units[m[2]!.toLowerCase()] ?? ''}`;
 }
 
 function badge(flag: string): CSSProperties {

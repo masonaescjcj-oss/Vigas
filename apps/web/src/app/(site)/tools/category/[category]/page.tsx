@@ -92,27 +92,26 @@ async function ToolCategoryView({ category }: { category: ToolCategory }) {
       />
       <Breadcrumb
         items={[{ name: 'Home', href: '/' }, { name: 'Tools', href: '/tools' }, { name: category }]}
-        style={{ paddingTop: 28 }}
+        style={{ paddingTop: 18 }}
       />
-      <header style={{ padding: '22px 0 32px', display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div style={{ flex: '1 1 560px', minWidth: 0 }}>
-          <div className="lbl">
-            § Tools · {category} · {catTools.length} {catTools.length === 1 ? 'tool' : 'tools'}
-          </div>
-          <h1 className="sf" style={{ fontSize: 'clamp(42px,5.6vw,78px)', lineHeight: 0.98, letterSpacing: '-.03em', margin: '14px 0 14px' }}>
-            {seo.heading} <em className="hi">{seo.accent}</em>
+      <header style={{ padding: '10px 0 18px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <h1 className="sf" style={{ fontSize: 'clamp(30px,3.6vw,44px)', lineHeight: 1, letterSpacing: '-.025em', margin: 0 }}>
+            {category} <em className="hi">AI tools</em>
           </h1>
-          <p style={{ fontSize: 17, color: 'var(--vg-ink2)', maxWidth: 640, margin: 0 }}>{seo.intro}</p>
+          <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+            {catTools.length} {catTools.length === 1 ? 'app' : 'apps'}
+          </span>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link href={lbHref} className="btn gh">
-            See related leaderboard
-            <Icon name="arrow" size={15} />
+          <Link href={lbHref} className="btn gh" style={{ minHeight: 38, padding: '0 14px', fontSize: 13 }}>
+            Leaderboard
+            <Icon name="arrow" size={14} />
           </Link>
         </div>
       </header>
 
-      <section aria-label={`${category} tools`} style={{ paddingBottom: 64 }}>
+      <section aria-label={`${category} tools`} style={{ paddingBottom: 56 }}>
         <ToolsDirectory
           key={category}
           tools={tools}
@@ -122,12 +121,13 @@ async function ToolCategoryView({ category }: { category: ToolCategory }) {
         />
       </section>
 
-      <section aria-labelledby="cat-explore" style={{ display: 'flex', flexWrap: 'wrap', gap: 40, padding: '48px 0 88px', borderTop: '1px solid var(--vg-line)' }}>
+      <section aria-labelledby="cat-explore" style={{ display: 'flex', flexWrap: 'wrap', gap: 36, padding: '44px 0 84px', borderTop: '1px solid var(--vg-line)' }}>
         <div style={{ flex: '1 1 320px', minWidth: 0 }}>
-          <div className="lbl">§ Related guides &amp; collections</div>
-          <h2 id="cat-explore" className="sf" style={{ fontSize: 'clamp(30px,3.2vw,42px)', lineHeight: 1.04, margin: '10px 0 16px', letterSpacing: '-.02em' }}>
-            Explore more <em className="hi">AI tools.</em>
+          <div className="lbl">§ {category} guide &amp; links</div>
+          <h2 id="cat-explore" className="sf" style={{ fontSize: 'clamp(28px,3vw,38px)', lineHeight: 1.04, margin: '8px 0 12px', letterSpacing: '-.02em' }}>
+            {seo.heading} <em className="hi">{seo.accent}</em>
           </h2>
+          <p style={{ fontSize: 15, color: 'var(--vg-ink2)', margin: '0 0 18px', maxWidth: 460 }}>{seo.intro}</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link href={lbHref} className="tag">
               Model leaderboard

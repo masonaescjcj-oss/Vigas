@@ -59,7 +59,7 @@ export async function getModels(): Promise<ModelListItem[]> {
 }
 
 export async function getNews(
-  opts: { category?: NewsCategory | null; limit?: number; offset?: number } = {},
+  opts: { category?: NewsCategory | null; lang?: 'en' | 'fa' | null; limit?: number; offset?: number } = {},
 ): Promise<{ items: NewsListItem[]; total: number }> {
   'use cache';
   cacheLife('content');
@@ -67,16 +67,19 @@ export async function getNews(
   if (PREVIEW_MODE) return previewNews(opts);
   const db = getDb();
   const category = opts.category ?? null;
+  const lang = opts.lang ?? null;
   const limit = opts.limit ?? 20;
   const offset = opts.offset ?? 0;
   const local = loadLocalArticles()
     .filter((a) => !category || a.category === category)
+    .filter((a) => !lang || (a.lang ?? 'en') === lang)
     .map(
       (a): NewsListItem => ({
         slug: a.slug,
         title: a.title,
         dek: a.dek,
         category: a.category,
+        lang: a.lang ?? 'en',
         flag: a.flag,
         author: a.author,
         publishedAt: a.publishedAt,
@@ -85,12 +88,12 @@ export async function getNews(
       }),
     );
   if (local.length === 0) {
-    const [items, total] = await Promise.all([listArticles(db, { category, limit, offset }), countArticles(db, category)]);
+    const [items, total] = await Promise.all([listArticles(db, { category, lang, limit, offset }), countArticles(db, category, lang)]);
     return { items, total };
   }
   const [dbItems, dbTotal] = await Promise.all([
-    listArticles(db, { category, limit: 100, offset: 0 }),
-    countArticles(db, category),
+    listArticles(db, { category, lang, limit: 100, offset: 0 }),
+    countArticles(db, category, lang),
   ]);
   const dbSlugs = new Set(dbItems.map((a) => a.slug));
   const extraLocal = local.filter((a) => !dbSlugs.has(a.slug));

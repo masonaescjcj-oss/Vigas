@@ -13,6 +13,7 @@ interface PageMetaInput {
   absoluteTitle?: boolean;
   type?: 'website' | 'article';
   noindex?: boolean;
+  locale?: string;
   image?: string;
   imageAlt?: string;
   article?: { publishedTime: string; modifiedTime: string; authors: string[]; section: string };
@@ -34,7 +35,7 @@ export function pageMetadata(input: PageMetaInput): Metadata {
     robots: input.noindex ? { index: false, follow: true } : undefined,
     openGraph: {
       siteName: SITE_NAME,
-      locale: 'en_US',
+      locale: input.locale ?? 'en_US',
       url,
       title: fullTitle,
       description: input.description,

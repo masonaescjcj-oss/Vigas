@@ -45,8 +45,12 @@ export function previewModels(): ModelListItem[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function previewNews(opts: { category?: NewsCategory | null; limit?: number; offset?: number }): { items: NewsListItem[]; total: number } {
-  const all = resolvedPreviewArticles().filter((a) => !opts.category || a.category === opts.category);
+export function previewNews(
+  opts: { category?: NewsCategory | null; lang?: 'en' | 'fa' | null; limit?: number; offset?: number },
+): { items: NewsListItem[]; total: number } {
+  const all = resolvedPreviewArticles()
+    .filter((a) => !opts.category || a.category === opts.category)
+    .filter((a) => !opts.lang || (a.lang ?? 'en') === opts.lang);
   const offset = opts.offset ?? 0;
   const items = all.slice(offset, offset + (opts.limit ?? 20)).map(
     (a): NewsListItem => ({
@@ -54,6 +58,7 @@ export function previewNews(opts: { category?: NewsCategory | null; limit?: numb
       title: a.title,
       dek: a.dek,
       category: a.category,
+      lang: a.lang ?? 'en',
       flag: a.flag,
       author: a.author,
       publishedAt: a.publishedAt,

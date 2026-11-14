@@ -27,7 +27,7 @@ export async function GET() {
         '    <news:news>',
         '      <news:publication>',
         `        <news:name>${escapeXml(SITE_NAME)}</news:name>`,
-        '        <news:language>en</news:language>',
+        `        <news:language>${escapeXml(item.lang ?? 'en')}</news:language>`,
         '      </news:publication>',
         `      <news:publication_date>${escapeXml(pubIso)}</news:publication_date>`,
         `      <news:title>${escapeXml(item.title)}</news:title>`,

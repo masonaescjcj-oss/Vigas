@@ -6,6 +6,7 @@ export interface ParsedArticleMarkdown {
   title: string;
   dek: string;
   category: NewsCategory;
+  lang: 'en' | 'fa';
   flag: Article['flag'];
   authorSlug: string;
   author: Author;
@@ -157,6 +158,16 @@ function normalizeFlag(raw: unknown): Article['flag'] {
   return null;
 }
 
+function normalizeLang(raw: unknown, sample: string): 'en' | 'fa' {
+  if (typeof raw === 'string') {
+    const s = raw.trim().toLowerCase();
+    if (s === 'fa' || s === 'farsi' || s === 'persian' || s === 'fa-ir') return 'fa';
+    if (s === 'en' || s === 'english' || s === 'en-us') return 'en';
+  }
+  const faChars = (sample.match(/[\u0600-\u06FF]/g) ?? []).length;
+  return faChars >= 12 ? 'fa' : 'en';
+}
+
 function normalizeIso(raw: unknown, fallbackIso: string): string {
   if (typeof raw !== 'string' || !raw.trim()) return fallbackIso;
   const parsed = new Date(raw.trim());
@@ -193,6 +204,7 @@ export function parseArticleMarkdown(rawSource: string, opts: { fallbackSlug?: s
   const slug = slugify(str(meta.slug) || opts.fallbackSlug || title) || 'article';
   const rawDek = str(meta.dek) || str(meta.description) || body.split(/\n{2,}/)[0]?.replace(/[#>*_`]/g, '').trim().slice(0, 200) || title;
   const dek = rawDek.slice(0, 400);
+  const lang = normalizeLang(meta.lang ?? meta.language, `${title} ${dek} ${body.slice(0, 400)}`);
 
   const authorSlugInput = str(meta.authorSlug) || str(meta.author);
   const knownAuthor = seedAuthors.find(
@@ -252,6 +264,7 @@ export function parseArticleMarkdown(rawSource: string, opts: { fallbackSlug?: s
     title,
     dek,
     category,
+    lang,
     flag: normalizeFlag(meta.flag),
     authorSlug: author.slug,
     author,
@@ -272,6 +285,7 @@ export function parsedToArticle(parsed: ParsedArticleMarkdown): Article {
     title: parsed.title,
     dek: parsed.dek,
     category: parsed.category,
+    lang: parsed.lang,
     flag: parsed.flag,
     author: parsed.author,
     publishedAt: parsed.publishedAt,
@@ -295,6 +309,7 @@ export function serializeArticleMarkdown(a: {
   title: string;
   dek: string;
   category: string;
+  lang?: 'en' | 'fa';
   flag: string | null;
   authorSlug: string;
   status: string;
@@ -312,6 +327,7 @@ export function serializeArticleMarkdown(a: {
     ...(a.slug ? [`slug: ${yamlQuote(a.slug)}`] : []),
     `dek: ${yamlQuote(a.dek)}`,
     `category: ${yamlQuote(a.category)}`,
+    `lang: ${yamlQuote(a.lang ?? 'en')}`,
     `flag: ${a.flag ? yamlQuote(a.flag) : 'null'}`,
     `authorSlug: ${yamlQuote(a.authorSlug)}`,
     `status: ${yamlQuote(a.status)}`,

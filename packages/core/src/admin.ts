@@ -18,6 +18,7 @@ export const articleInputSchema = z.object({
   title: z.string().trim().min(8).max(200),
   dek: z.string().trim().min(8).max(400),
   category: z.enum(NEWS_CATEGORIES as unknown as [string, ...string[]]),
+  lang: z.enum(['en', 'fa']).default('en'),
   flag: z.enum(['Breaking', 'Analysis', 'Exclusive']).nullable().default(null),
   authorSlug: slug,
   status: z.enum(['draft', 'published']).default('draft'),
@@ -42,6 +43,14 @@ export const toolInputSchema = z.object({
   rating: z.number().min(0).max(5).default(0),
   color: hexColor,
   letter: z.string().trim().min(1).max(3),
+  imageUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === '' || v.startsWith('/') || /^https?:\/\//i.test(v), 'Use a relative /tools/... path or http(s) URL')
+    .nullable()
+    .optional(),
+  highlights: z.array(z.string().trim().min(2).max(200)).max(6).default([]),
   url: z.url().max(500),
   runsOnVigas: z.boolean().default(false),
   isNew: z.boolean().default(false),

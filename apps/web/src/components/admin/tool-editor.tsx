@@ -13,6 +13,8 @@ export interface EditableTool {
   rating: number;
   color: string;
   letter: string;
+  imageUrl?: string;
+  highlights?: string[];
   url: string;
   runsOnVigas: boolean;
   isNew: boolean;
@@ -33,6 +35,8 @@ export function ToolEditor({ initial, categories }: { initial: EditableTool | nu
       rating: 0,
       color: '#5DB7B0',
       letter: '',
+      imageUrl: '',
+      highlights: [],
       url: 'https://',
       runsOnVigas: false,
       isNew: true,
@@ -49,7 +53,12 @@ export function ToolEditor({ initial, categories }: { initial: EditableTool | nu
       const res = await fetch('/api/admin/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...t, letter: t.letter || t.name.slice(0, 1).toUpperCase() }),
+        body: JSON.stringify({
+          ...t,
+          imageUrl: t.imageUrl?.trim() ? t.imageUrl.trim() : null,
+          highlights: (t.highlights ?? []).map((h) => h.trim()).filter(Boolean),
+          letter: t.letter || t.name.slice(0, 1).toUpperCase(),
+        }),
       });
       const body = (await res.json()) as { slug?: string; error?: { message?: string } };
       if (!res.ok || !body.slug) throw new Error(body.error?.message ?? `Save failed (${res.status})`);
@@ -76,7 +85,7 @@ export function ToolEditor({ initial, categories }: { initial: EditableTool | nu
     }
   };
 
-  const text = (k: 'name' | 'tagline' | 'url' | 'letter' | 'slug', title: string, extra?: { mono?: boolean; disabled?: boolean; max?: number }) => (
+  const text = (k: 'name' | 'tagline' | 'url' | 'letter' | 'slug' | 'imageUrl', title: string, extra?: { mono?: boolean; disabled?: boolean; max?: number; placeholder?: string }) => (
     <div>
       <label htmlFor={`tool-${k}`} style={label}>
         {title}
@@ -84,7 +93,8 @@ export function ToolEditor({ initial, categories }: { initial: EditableTool | nu
       <input
         id={`tool-${k}`}
         className={`input${extra?.mono ? ' mn' : ''}`}
-        value={t[k]}
+        value={t[k] ?? ''}
+        placeholder={extra?.placeholder}
         maxLength={extra?.max}
         disabled={extra?.disabled}
         onChange={(e) => set(k, k === 'slug' ? e.target.value.toLowerCase() : e.target.value)}
@@ -97,7 +107,21 @@ export function ToolEditor({ initial, categories }: { initial: EditableTool | nu
       {text('name', 'Name', { max: 80 })}
       {text('slug', initial ? 'Slug (fixed)' : 'URL slug', { mono: true, disabled: !!initial, max: 96 })}
       {text('url', 'Website', { mono: true, max: 500 })}
-      {text('tagline', 'Tagline', { max: 160 })}
+      {text('imageUrl', 'Preview image path / URL', { mono: true, max: 500, placeholder: '/tools/cursor.svg' })}
+      <div style={{ gridColumn: '1 / -1' }}>{text('tagline', 'Tagline', { max: 160 })}</div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <label htmlFor="tool-highlights" style={label}>
+          Key highlights (one per line)
+        </label>
+        <textarea
+          id="tool-highlights"
+          className="input"
+          rows={3}
+          value={(t.highlights ?? []).join('\n')}
+          onChange={(e) => set('highlights', e.target.value.split('\n'))}
+          style={{ height: 'auto', padding: 12 }}
+        />
+      </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <label htmlFor="tool-description" style={label}>
           Review / description

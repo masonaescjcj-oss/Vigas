@@ -113,8 +113,8 @@ export function ToolsDirectory({
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
-        <label className="field" style={{ flex: '1 1 280px', minWidth: 0, height: 48 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <label className="field" style={{ flex: '1 1 280px', minWidth: 0, height: 46 }}>
           <Icon name="search" size={17} />
           <span className="sr-only">Search tools</span>
           <input
@@ -124,7 +124,7 @@ export function ToolsDirectory({
               setQ(e.target.value);
               setLimit(PAGE);
             }}
-            placeholder={`Search ${tools.length} tools — “video”, “free”, “coding agent”…`}
+            placeholder={`Search ${tools.length} AI apps — “coding”, “video”, “free”…`}
             style={{ font: '15px var(--vg-font-sans)' }}
           />
         </label>
@@ -133,7 +133,7 @@ export function ToolsDirectory({
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            style={{ height: 48, borderRadius: 12, background: 'var(--vg-surface)', border: '1px solid var(--vg-line2)', color: 'var(--vg-ink)', padding: '0 12px', font: '14px var(--vg-font-sans)' }}
+            style={{ height: 46, borderRadius: 12, background: 'var(--vg-surface)', border: '1px solid var(--vg-line2)', color: 'var(--vg-ink)', padding: '0 12px', font: '14px var(--vg-font-sans)' }}
           >
             <option value="votes">Most upvoted</option>
             <option value="rating">Top rated</option>
@@ -141,7 +141,7 @@ export function ToolsDirectory({
           </select>
         </label>
       </div>
-      <div role="group" aria-label="Category" className="scroll-x" style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
+      <div role="group" aria-label="Category and app filters" className="scroll-x" style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
         {(['All', ...categories] as const).map((c) =>
           categoryMode === 'link' ? (
             <Link
@@ -149,7 +149,7 @@ export function ToolsDirectory({
               href={c === 'All' ? '/tools#dir' : `/tools/category/${c.toLowerCase()}`}
               className="chip"
               aria-current={cat === c ? 'page' : undefined}
-              style={{ minHeight: 38, padding: '0 15px' }}
+              style={{ minHeight: 36, padding: '0 14px' }}
             >
               {c}
             </Link>
@@ -163,13 +163,41 @@ export function ToolsDirectory({
                 setCat(c);
                 setLimit(PAGE);
               }}
-              style={{ minHeight: 38, padding: '0 15px' }}
+              style={{ minHeight: 36, padding: '0 14px' }}
             >
               {c}
             </button>
           ),
         )}
-        {filtersOn && (
+        {categoryMode === 'filter' && (
+          <>
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={pricing === 'free'}
+              onClick={() => {
+                setPricing((p) => (p === 'free' ? null : 'free'));
+                setLimit(PAGE);
+              }}
+              style={{ minHeight: 36, padding: '0 14px' }}
+            >
+              Free / Freemium
+            </button>
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={vigasOnly}
+              onClick={() => {
+                setVigasOnly((v) => !v);
+                setLimit(PAGE);
+              }}
+              style={{ minHeight: 36, padding: '0 14px' }}
+            >
+              Vigas API
+            </button>
+          </>
+        )}
+        {filtersOn && pricing && pricing !== 'free' && (
           <button
             type="button"
             className="chip"
@@ -177,9 +205,9 @@ export function ToolsDirectory({
               setPricing(null);
               setVigasOnly(false);
             }}
-            style={{ minHeight: 38, padding: '0 15px', color: 'var(--vg-orange-text)', borderColor: 'rgba(255,106,26,.5)' }}
+            style={{ minHeight: 36, padding: '0 14px', color: 'var(--vg-orange-text)', borderColor: 'rgba(255,106,26,.5)' }}
           >
-            {pricing ? `${pricing} tools` : 'Runs on Vigas'}
+            {pricing} tools
             <Icon name="x" size={13} />
             <span className="sr-only">Clear filter</span>
           </button>
@@ -196,43 +224,65 @@ export function ToolsDirectory({
       {rows.length === 0 ? (
         <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--vg-ink2)' }}>No tools match. Try another search or category.</p>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(300px,100%),1fr))', gap: 14 }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(290px,100%),1fr))', gap: 16 }}>
           {rows.slice(0, limit).map((t) => {
             const st = stateOf(t);
             return (
-              <li key={t.slug} className="lift card" style={{ borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  <Mark color={t.color} letter={t.letter} size={48} radius={13} fontSize={21} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Link href={`/tools/${t.slug}`}>{t.name}</Link>
-                      {t.runsOnVigas && <Icon name="verified" size={15} style={{ color: 'var(--vg-blue)' }} label="Runs on the Vigas API" />}
-                    </h3>
-                    <p style={{ margin: '3px 0 0', color: 'var(--vg-ink2)', fontSize: 14, lineHeight: 1.45 }}>{t.tagline}</p>
-                  </div>
-                  <VoteButton name={t.name} state={st} busy={busy === t.slug} onClick={() => vote(t)} />
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 'auto' }}>
-                  <Link href={`/tools/category/${t.category.toLowerCase()}`} className="pill" style={{ color: 'var(--vg-ink2)' }}>
-                    {t.category}
+              <li key={t.slug} className="lift card" style={{ borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                {t.imageUrl && (
+                  <Link href={`/tools/${t.slug}`} className="tool-thumb" aria-label={`Open ${t.name} details`}>
+                    <img src={t.imageUrl} alt={`${t.name} — ${t.category} AI app preview`} width={640} height={360} loading="lazy" />
                   </Link>
-                  <span className="pill" style={{ color: t.pricing === 'Free' ? 'var(--vg-green)' : undefined }}>
-                    {t.pricing}
-                  </span>
-                  {t.runsOnVigas && (
-                    <Link href="/tools/collection/vigas-api" className="pill" style={{ background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
-                      Vigas API
+                )}
+                <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                  <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+                    <Mark color={t.color} letter={t.letter} size={42} radius={11} fontSize={18} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Link href={`/tools/${t.slug}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {t.name}
+                        </Link>
+                        {t.runsOnVigas && <Icon name="verified" size={14} style={{ color: 'var(--vg-blue)' }} label="Runs on the Vigas API" />}
+                      </h3>
+                      <p
+                        style={{
+                          margin: '3px 0 0',
+                          color: 'var(--vg-ink2)',
+                          fontSize: 13.5,
+                          lineHeight: 1.42,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {t.tagline}
+                      </p>
+                    </div>
+                    <VoteButton name={t.name} state={st} busy={busy === t.slug} onClick={() => vote(t)} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 'auto', paddingTop: 2 }}>
+                    <Link href={`/tools/category/${t.category.toLowerCase()}`} className="pill" style={{ color: 'var(--vg-ink2)' }}>
+                      {t.category}
                     </Link>
-                  )}
-                  {t.isNew && (
-                    <span className="pill" style={{ color: 'var(--vg-sand)' }}>
-                      New
+                    <span className="pill" style={{ color: t.pricing === 'Free' ? 'var(--vg-green)' : undefined }}>
+                      {t.pricing}
                     </span>
-                  )}
-                  <span className="mn" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-sand)' }}>
-                    <span aria-hidden="true">★</span> {t.rating.toFixed(1)}
-                    <span className="sr-only"> out of 5</span>
-                  </span>
+                    {t.runsOnVigas && (
+                      <Link href="/tools/collection/vigas-api" className="pill" style={{ background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
+                        Vigas API
+                      </Link>
+                    )}
+                    {t.isNew && (
+                      <span className="pill" style={{ color: 'var(--vg-sand)' }}>
+                        New
+                      </span>
+                    )}
+                    <span className="mn" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-sand)' }}>
+                      <span aria-hidden="true">★</span> {t.rating.toFixed(1)}
+                      <span className="sr-only"> out of 5</span>
+                    </span>
+                  </div>
                 </div>
               </li>
             );

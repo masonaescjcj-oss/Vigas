@@ -42,6 +42,7 @@ export async function seedDatabase(db: Db, opts: SeedOptions = {}): Promise<Seed
         title: a.title,
         dek: a.dek,
         category: a.category,
+        lang: a.lang ?? ('en' as const),
         flag: a.flag,
         authorSlug: a.author.slug,
         status: 'published' as const,
@@ -58,11 +59,17 @@ export async function seedDatabase(db: Db, opts: SeedOptions = {}): Promise<Seed
     }
   }
   for (const t of seedTools) {
-    const { votes, voted: _voted, ...rest } = t;
+    const { votes, voted: _voted, imageUrl, highlights, ...rest } = t;
+    const toolValues = {
+      ...rest,
+      imageUrl: imageUrl ?? null,
+      highlights: highlights ?? [],
+      baseVotes: votes,
+    };
     await db
       .insert(tools)
-      .values({ ...rest, baseVotes: votes })
-      .onConflictDoUpdate({ target: tools.slug, set: { ...rest, baseVotes: votes } });
+      .values(toolValues)
+      .onConflictDoUpdate({ target: tools.slug, set: toolValues });
   }
   for (const c of LEADERBOARD_CATEGORIES) {
     const [existing] = await db.execute<{ n: number }>(

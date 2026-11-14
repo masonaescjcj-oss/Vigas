@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" fill="none">
+  <defs>
+    <radialGradient id="g_suno" cx="82%" cy="18%" r="72%">
+      <stop offset="0%" stop-color="#E3B65C" stop-opacity="0.24" />
+      <stop offset="100%" stop-color="#141210" stop-opacity="0" />
+    </radialGradient>
+    <pattern id="p_suno" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(239,234,225,0.035)" stroke-width="1" />
+    </pattern>
+  </defs>
+
+  <rect width="640" height="360" fill="#141210" />
+  <rect width="640" height="360" fill="url(#p_suno)" />
+  <rect width="640" height="360" fill="url(#g_suno)" />
+
+  <!-- App Window Frame -->
+  <rect x="24" y="22" width="592" height="316" rx="16" fill="#1B1916" stroke="rgba(239,234,225,0.11)" />
+  <rect x="24" y="22" width="592" height="58" rx="16" fill="#171512" />
+  <line x1="24" y1="80" x2="616" y2="80" stroke="rgba(239,234,225,0.08)" />
+
+  <!-- Top App Chrome Bar -->
+  <rect x="44" y="37" width="28" height="28" rx="8" fill="#E3B65C" fill-opacity="0.18" stroke="#E3B65C" stroke-opacity="0.45" />
+  <text x="58" y="56" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#E3B65C">S</text>
+  <text x="84" y="50" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="15" fill="#EFEAE1">Suno</text>
+  <text x="84" y="65" font-family="ui-monospace, SFMono-Regular, monospace" font-size="10.5" fill="rgba(239,234,225,0.5)">suno.com · AUDIO</text>
+
+  <!-- Pricing & Rating Pills -->
+  <rect x="424" y="39" width="84" height="24" rx="7" fill="#23201C" stroke="rgba(239,234,225,0.1)" />
+  <text x="466" y="55" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#EFEAE1">FREEMIUM</text>
+
+  <rect x="518" y="39" width="78" height="24" rx="7" fill="#E3B65C" fill-opacity="0.16" stroke="#E3B65C" stroke-opacity="0.38" />
+  <text x="557" y="55" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#E3B65C">★ 4.5</text>
+
+  
+      <rect x="44" y="96" width="552" height="162" rx="12" fill="#181613" stroke="rgba(239,234,225,0.08)" />
+      <line x1="60" y1="212" x2="580" y2="212" stroke="rgba(239,234,225,0.08)" />
+      <rect x="68" y="166.5" width="10" height="91" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="86" y="164" width="10" height="96" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="104" y="162.5" width="10" height="99" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="122" y="161.5" width="10" height="101" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="140" y="161" width="10" height="102" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="158" y="161.5" width="10" height="101" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="176" y="162.5" width="10" height="99" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="194" y="164.5" width="10" height="95" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="212" y="167" width="10" height="90" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="230" y="170" width="10" height="84" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="248" y="173.5" width="10" height="77" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="266" y="178" width="10" height="68" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="284" y="182.5" width="10" height="59" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="302" y="187.5" width="10" height="49" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="320" y="193" width="10" height="38" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="338" y="198.5" width="10" height="27" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="356" y="202" width="10" height="20" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="374" y="196.5" width="10" height="31" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="392" y="191.5" width="10" height="41" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="410" y="186" width="10" height="52" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="428" y="181" width="10" height="62" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="446" y="176.5" width="10" height="71" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="464" y="172.5" width="10" height="79" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="482" y="169" width="10" height="86" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="500" y="166" width="10" height="92" rx="5" fill="#E3B65C" fill-opacity="0.92" /><rect x="518" y="164" width="10" height="96" rx="5" fill="#E3B65C" fill-opacity="0.35" /><rect x="536" y="162" width="10" height="100" rx="5" fill="#E3B65C" fill-opacity="0.62" /><rect x="554" y="161" width="10" height="102" rx="5" fill="#E3B65C" fill-opacity="0.92" />
+      <text x="68" y="122" font-family="ui-monospace, monospace" font-size="11" fill="#E3B65C">SYNTHESIS STREAM · 48kHz STEREO</text>
+      <rect x="478" y="110" width="98" height="22" rx="7" fill="#E3B65C" fill-opacity="0.16" />
+      <text x="527" y="125" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#E3B65C">LIVE AUDIO</text>
+
+      <!-- Transport Bar -->
+      <rect x="44" y="270" width="552" height="40" rx="10" fill="#181613" stroke="rgba(239,234,225,0.08)" />
+      <circle cx="70" cy="290" r="11" fill="#E3B65C" />
+      <polygon points="67,285 67,295 75,290" fill="#141210" />
+      <rect x="96" y="287" width="380" height="6" rx="3" fill="rgba(239,234,225,0.12)" />
+      <rect x="96" y="287" width="220" height="6" rx="3" fill="#E3B65C" />
+      <text x="546" y="294" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="rgba(239,234,225,0.6)">01:42 / 03:15</text>
+    
+</svg>

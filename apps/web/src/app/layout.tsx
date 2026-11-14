@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Instrument_Serif, Inter, JetBrains_Mono } from 'next/font/google';
+import { Instrument_Serif, Inter, JetBrains_Mono, Vazirmatn } from 'next/font/google';
 import { colors, cssVariables } from '@vigas/tokens';
 import { SITE_NAME, SITE_URL } from '@/lib/env';
 import { PREVIEW_MESSAGE, PREVIEW_MODE } from '@/lib/preview';
@@ -15,6 +15,7 @@ const serif = Instrument_Serif({
 });
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
+const fa = Vazirmatn({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700'], variable: '--font-fa', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -42,7 +43,7 @@ const SHOW_PREVIEW_BANNER = process.env.VIGAS_PREVIEW_BANNER === '1';
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" dir="ltr" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang="en" dir="ltr" className={`${serif.variable} ${sans.variable} ${mono.variable} ${fa.variable}`}>
       <head>
         <style dangerouslySetInnerHTML={{ __html: tokenCss }} />
       </head>

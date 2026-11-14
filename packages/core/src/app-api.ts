@@ -42,6 +42,7 @@ export interface NewsListItem {
   title: string;
   dek: string;
   category: NewsCategory;
+  lang?: 'en' | 'fa';
   flag: 'Breaking' | 'Analysis' | 'Exclusive' | null;
   author: Author;
   publishedAt: string;
@@ -74,6 +75,8 @@ export interface ToolItem {
   votes: number;
   color: string;
   letter: string;
+  imageUrl?: string;
+  highlights?: string[];
   url: string;
   runsOnVigas: boolean;
   isNew: boolean;

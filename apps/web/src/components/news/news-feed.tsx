@@ -16,12 +16,18 @@ const TOP = 4;
 
 const line = '1px solid var(--vg-line)';
 
-export function newsCategoryPath(category: NewsCategory | null, page = 1): string {
-  if (category) {
-    const base = `/news/category/${category.toLowerCase()}`;
-    return page > 1 ? `${base}/page/${page}` : base;
+export function newsCategoryPath(category: NewsCategory | null, page = 1, lang: 'en' | 'fa' | null = null): string {
+  const basePath = category
+    ? page > 1
+      ? `/news/category/${category.toLowerCase()}/page/${page}`
+      : `/news/category/${category.toLowerCase()}`
+    : page > 1
+      ? `/news?page=${page}`
+      : '/news';
+  if (lang === 'en' || lang === 'fa') {
+    return basePath.includes('?') ? `${basePath}&lang=${lang}` : `${basePath}?lang=${lang}`;
   }
-  return page > 1 ? `/news?page=${page}` : '/news';
+  return basePath;
 }
 
 export async function NewsMasthead({ category = null }: { category?: NewsCategory | null }) {
@@ -81,7 +87,15 @@ export async function NewsMasthead({ category = null }: { category?: NewsCategor
   );
 }
 
-export async function NewsContent({ category, page }: { category: NewsCategory | null; page: number }) {
+export async function NewsContent({
+  category,
+  page,
+  lang = null,
+}: {
+  category: NewsCategory | null;
+  page: number;
+  lang?: 'en' | 'fa' | null;
+}) {
   'use cache';
   cacheLife('content');
   cacheTag('news');
@@ -90,10 +104,10 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
   const showTop = !category && page === 1;
   const skip = category ? 0 : TOP;
   const [river, top, analysis, pool] = await Promise.all([
-    getNews({ category, limit: PAGE_SIZE, offset: skip + (page - 1) * PAGE_SIZE }),
-    showTop ? getNews({ limit: TOP }) : Promise.resolve(null),
-    showTop ? getNews({ category: 'Analysis', limit: 3 }) : Promise.resolve(null),
-    getNews({ limit: 30 }),
+    getNews({ category, lang, limit: PAGE_SIZE, offset: skip + (page - 1) * PAGE_SIZE }),
+    showTop ? getNews({ lang, limit: TOP }) : Promise.resolve(null),
+    showTop ? getNews({ category: 'Analysis', lang, limit: 3 }) : Promise.resolve(null),
+    getNews({ lang, limit: 30 }),
   ]);
 
   const pages = Math.max(1, Math.ceil(Math.max(0, river.total - skip) / PAGE_SIZE));
@@ -101,12 +115,12 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
   const brief = pool.items.slice(0, 4);
   const listed = [...(top?.items ?? []), ...river.items];
   const catSeo = category ? NEWS_CATEGORY_SEO[category] : null;
-  const sectionUrl = absoluteUrl(newsCategoryPath(category));
+  const sectionUrl = absoluteUrl(newsCategoryPath(category, 1, lang));
 
   const crumbs = [
     { name: 'Home', path: '/' },
-    { name: 'News', path: '/news' },
-    ...(category ? [{ name: category, path: newsCategoryPath(category) }] : []),
+    { name: 'News', path: newsCategoryPath(null, 1, lang) },
+    ...(category ? [{ name: category, path: newsCategoryPath(category, 1, lang) }] : []),
   ];
 
   const jsonLdItems = [
@@ -114,9 +128,14 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
     {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
-      name: catSeo ? catSeo.title : 'AI News — models, agents, policy and funding',
+      name: catSeo
+        ? catSeo.title
+        : lang === 'fa'
+          ? 'اخبار هوش مصنوعی ویگاس — فارسی'
+          : 'AI News — models, agents, policy and funding',
       description: catSeo ? catSeo.description : 'AI news from the Vigas Newsroom: model launches, agents, inference prices, policy, hardware and funding.',
       url: sectionUrl,
+      inLanguage: lang ?? ['en', 'fa'],
       mainEntity: {
         '@type': 'ItemList',
         name: category ? `${category} AI news` : 'AI news',
@@ -136,15 +155,46 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
     <>
       <JsonLd data={jsonLdItems} />
       <nav aria-label="News sections" style={{ borderBottom: line, background: 'rgba(18,17,15,.92)' }}>
-        <div className="wrap scroll-x" style={{ paddingTop: 12, paddingBottom: 12, display: 'flex', gap: 6 }}>
-          <Link href="/news" className="chip" aria-current={!category ? 'page' : undefined} style={{ minHeight: 38, padding: '0 15px' }}>
-            All
-          </Link>
-          {NEWS_CATEGORIES.map((c) => (
-            <Link key={c} href={newsCategoryPath(c)} className="chip" aria-current={category === c ? 'page' : undefined} style={{ minHeight: 38, padding: '0 15px' }}>
-              {c}
+        <div
+          className="wrap"
+          style={{
+            paddingTop: 12,
+            paddingBottom: 12,
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div className="scroll-x" style={{ display: 'flex', gap: 6, flex: '1 1 520px', minWidth: 0 }}>
+            <Link href={newsCategoryPath(null, 1, lang)} className="chip" aria-current={!category ? 'page' : undefined} style={{ minHeight: 38, padding: '0 15px' }}>
+              All
             </Link>
-          ))}
+            {NEWS_CATEGORIES.map((c) => (
+              <Link key={c} href={newsCategoryPath(c)} className="chip" aria-current={category === c ? 'page' : undefined} style={{ minHeight: 38, padding: '0 15px' }}>
+                {c}
+              </Link>
+            ))}
+          </div>
+          <div role="group" aria-label="Article language" style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <Link href={newsCategoryPath(null, 1, null)} className="chip" aria-current={!category && !lang ? 'page' : undefined} style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}>
+              All languages
+            </Link>
+            <Link href={newsCategoryPath(null, 1, 'en')} className="chip" aria-current={lang === 'en' ? 'page' : undefined} style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}>
+              English
+            </Link>
+            <Link
+              href={newsCategoryPath(null, 1, 'fa')}
+              className="chip fa-ui"
+              dir="rtl"
+              lang="fa"
+              aria-current={lang === 'fa' ? 'page' : undefined}
+              style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}
+            >
+              فارسی
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -159,30 +209,43 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
             </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(280px,100%),1fr))', gap: 16 }}>
-            {analysis.items.map((x) => (
-              <Link
-                key={x.slug}
-                href={`/news/${x.slug}`}
-                className="st card"
-                style={{ borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 280, color: 'var(--vg-ink)' }}
-              >
-                <span className="sf" aria-hidden="true" style={{ fontSize: 72, lineHeight: 0.5, height: 28, color: 'var(--vg-sand)' }}>
-                  “
-                </span>
-                <h3 className="sf hl" style={{ fontSize: 27, lineHeight: 1.14, margin: 0, fontWeight: 400 }}>
-                  {x.title}
-                </h3>
-                <span style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                  <Avatar name={x.author.name} color={x.author.color} size={32} />
-                  <span>
-                    <b style={{ fontWeight: 500, display: 'block' }}>{x.author.name}</b>
-                    <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                      {x.readingMinutes} min read
+            {analysis.items.map((x) => {
+              const xFa = x.lang === 'fa';
+              return (
+                <Link
+                  key={x.slug}
+                  href={`/news/${x.slug}`}
+                  dir={xFa ? 'rtl' : 'ltr'}
+                  lang={x.lang ?? 'en'}
+                  className={xFa ? 'st card fa-ui' : 'st card'}
+                  style={{ borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 280, color: 'var(--vg-ink)' }}
+                >
+                  <span className="sf" aria-hidden="true" style={{ fontSize: 72, lineHeight: 0.5, height: 28, color: 'var(--vg-sand)' }}>
+                    {xFa ? '«' : '“'}
+                  </span>
+                  <h3
+                    className={xFa ? 'hl fa-ui' : 'sf hl'}
+                    style={{
+                      fontSize: xFa ? 21 : 27,
+                      lineHeight: xFa ? 1.45 : 1.14,
+                      margin: 0,
+                      fontWeight: xFa ? 600 : 400,
+                    }}
+                  >
+                    {x.title}
+                  </h3>
+                  <span style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                    <Avatar name={x.author.name} color={x.author.color} size={32} />
+                    <span>
+                      <b style={{ fontWeight: 500, display: 'block' }}>{x.author.name}</b>
+                      <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+                        {xFa ? `${x.readingMinutes} دقیقه مطالعه` : `${x.readingMinutes} min read`}
+                      </span>
                     </span>
                   </span>
-                </span>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}
@@ -192,6 +255,16 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <h2 className="sf" style={{ fontSize: 34, margin: 0, fontWeight: 400, letterSpacing: '-.015em' }}>
               Latest · <em className="hi">{category ?? 'all sections'}</em>
+              {lang === 'fa' && (
+                <span className="fa-ui" style={{ fontSize: 16, marginLeft: 10, color: 'var(--vg-sand)', verticalAlign: 'middle' }}>
+                  (فارسی)
+                </span>
+              )}
+              {lang === 'en' && (
+                <span className="mn" style={{ fontSize: 13, marginLeft: 10, color: 'var(--vg-ink3)', verticalAlign: 'middle' }}>
+                  (EN)
+                </span>
+              )}
             </h2>
             <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
               {river.total} {river.total === 1 ? 'story' : 'stories'}
@@ -200,25 +273,34 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
           </div>
           {river.items.length === 0 ? (
             <div style={{ padding: '44px 0', color: 'var(--vg-ink2)', borderTop: line }}>
-              <h3 className="sf" style={{ fontSize: 30, margin: '0 0 10px', fontWeight: 400, color: 'var(--vg-ink)' }}>
+              <h3 className={lang === 'fa' ? 'fa-ui' : 'sf'} dir={lang === 'fa' ? 'rtl' : 'ltr'} style={{ fontSize: lang === 'fa' ? 24 : 30, margin: '0 0 10px', fontWeight: lang === 'fa' ? 700 : 400, color: 'var(--vg-ink)' }}>
                 {page > 1
                   ? 'No more stories on this page.'
-                  : category
-                    ? `No ${category.toLowerCase()} dispatches published yet.`
-                    : 'No articles published yet.'}
+                  : lang === 'fa'
+                    ? 'هنوز خبری با این فیلتر به زبان فارسی منتشر نشده است.'
+                    : category
+                      ? `No ${category.toLowerCase()} dispatches published yet.`
+                      : 'No articles published yet.'}
               </h3>
-              <p style={{ margin: '0 0 20px', maxWidth: 560, lineHeight: 1.6 }}>
+              <p dir={lang === 'fa' ? 'rtl' : 'ltr'} className={lang === 'fa' ? 'fa-ui' : undefined} style={{ margin: '0 0 20px', maxWidth: 560, lineHeight: 1.7 }}>
                 {page > 1
                   ? 'Head back to the first page to see published stories.'
-                  : 'Vigas Newsroom publishes real reporting paired with live model leaderboards, API pricing moves, and builder tools.'}
+                  : lang === 'fa'
+                    ? 'می‌توانید فیلتر زبان را روی همه زبان‌ها بگذارید یا سایر بخش‌های تحریریه ویگاس را مرور کنید.'
+                    : 'Vigas Newsroom publishes real reporting paired with live model leaderboards, API pricing moves, and builder tools.'}
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {lang && (
+                  <Link href={newsCategoryPath(category, 1, null)} className="btn gh">
+                    Show all languages
+                  </Link>
+                )}
                 {page > 1 ? (
-                  <Link href={newsCategoryPath(category)} className="btn gh">
+                  <Link href={newsCategoryPath(category, 1, lang)} className="btn gh">
                     Back to latest stories
                   </Link>
                 ) : category ? (
-                  <Link href="/news" className="btn gh">
+                  <Link href={newsCategoryPath(null, 1, lang)} className="btn gh">
                     All news sections
                   </Link>
                 ) : null}
@@ -238,12 +320,12 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
           {pages > 1 && (
             <nav aria-label="Pagination" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', borderTop: line, paddingTop: 22 }}>
               {page < pages ? (
-                <Link href={newsCategoryPath(category, page + 1)} className="btn key" rel="next">
+                <Link href={newsCategoryPath(category, page + 1, lang)} className="btn key" rel="next">
                   More stories
                   <Icon name="arrow" size={16} />
                 </Link>
               ) : (
-                <Link href={newsCategoryPath(category, page - 1)} className="btn gh" rel="prev">
+                <Link href={newsCategoryPath(category, page - 1, lang)} className="btn gh" rel="prev">
                   Newer stories
                 </Link>
               )}
@@ -251,7 +333,7 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
                 {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
                   <Link
                     key={p}
-                    href={newsCategoryPath(category, p)}
+                    href={newsCategoryPath(category, p, lang)}
                     aria-current={p === page ? 'page' : undefined}
                     aria-label={`Page ${p}`}
                     style={{
@@ -302,7 +384,9 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
                 {brief.map((n) => (
                   <li key={n.slug}>
                     <Link href={`/news/${n.slug}`} style={{ color: 'var(--vg-ink2)' }}>
-                      {n.title}
+                      <bdi dir={n.lang === 'fa' ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} className={n.lang === 'fa' ? 'fa-ui' : undefined}>
+                        {n.title}
+                      </bdi>
                     </Link>
                   </li>
                 ))}
@@ -327,7 +411,10 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
                         {i + 1}
                       </span>
                       <span style={{ fontSize: 14, lineHeight: 1.38 }}>
-                        {m.title} <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>· {m.readingMinutes} min</span>
+                        <bdi dir={m.lang === 'fa' ? 'rtl' : 'ltr'} lang={m.lang ?? 'en'} className={m.lang === 'fa' ? 'fa-ui' : undefined}>
+                          {m.title}
+                        </bdi>{' '}
+                        <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>· {m.readingMinutes} min</span>
                       </span>
                     </Link>
                   </li>
@@ -342,7 +429,7 @@ export async function NewsContent({ category, page }: { category: NewsCategory |
             </h2>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {NEWS_CATEGORIES.map((c) => (
-                <Link key={c} href={newsCategoryPath(c)} className="tag">
+                <Link key={c} href={newsCategoryPath(c, 1, lang)} className="tag">
                   {c}
                 </Link>
               ))}
@@ -401,6 +488,7 @@ export function NewsRiverSkeleton() {
 function TopStories({ items, now }: { items: NewsListItem[]; now: Date }) {
   const [lead, ...second] = items;
   if (!lead) return null;
+  const leadFa = lead.lang === 'fa';
   return (
     <section aria-label="Top stories" className="wrap" style={{ paddingTop: 36, paddingBottom: 56, display: 'flex', flexWrap: 'wrap', gap: 40, borderBottom: line }}>
       <article className="st" style={{ flex: '1.6 1 520px', minWidth: 0 }}>
@@ -413,36 +501,70 @@ function TopStories({ items, now }: { items: NewsListItem[]; now: Date }) {
               </span>
             )}
           </div>
-          <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)' }}>
-            {lead.category.toUpperCase()} <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {ago(lead.publishedAt, now)}</span>
-          </div>
-          <h2 className="sf hl" style={{ fontSize: 'clamp(32px,3.4vw,48px)', lineHeight: 1.04, letterSpacing: '-.022em', margin: '10px 0' }}>
-            {lead.title}
-          </h2>
-          <p style={{ margin: '0 0 12px', color: 'var(--vg-ink2)', fontSize: 17 }}>{lead.dek}</p>
-          <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Avatar name={lead.author.name} color={lead.author.color} />
-            {lead.author.name} · {lead.readingMinutes} min read
+          <div dir={leadFa ? 'rtl' : 'ltr'} lang={lead.lang ?? 'en'} className={leadFa ? 'fa-ui' : undefined}>
+            <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: leadFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>{leadFa ? (FA_CATEGORIES[lead.category] ?? lead.category) : lead.category.toUpperCase()}</span>
+              {leadFa && (
+                <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
+                  فارسی
+                </span>
+              )}
+              <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {ago(lead.publishedAt, now, leadFa)}</span>
+            </div>
+            <h2
+              className={leadFa ? 'hl fa-ui' : 'sf hl'}
+              style={{
+                fontSize: leadFa ? 'clamp(26px,2.8vw,36px)' : 'clamp(32px,3.4vw,48px)',
+                lineHeight: leadFa ? 1.38 : 1.04,
+                letterSpacing: leadFa ? 0 : '-.022em',
+                margin: '10px 0',
+                fontWeight: leadFa ? 700 : 400,
+              }}
+            >
+              {lead.title}
+            </h2>
+            <p style={{ margin: '0 0 12px', color: 'var(--vg-ink2)', fontSize: leadFa ? 15.5 : 17, lineHeight: leadFa ? 1.7 : 1.55 }}>{lead.dek}</p>
+            <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Avatar name={lead.author.name} color={lead.author.color} />
+              {lead.author.name} · {leadFa ? `${lead.readingMinutes} دقیقه مطالعه` : `${lead.readingMinutes} min read`}
+            </div>
           </div>
         </Link>
       </article>
       <div style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 22 }}>
-        {second.map((n) => (
-          <article key={n.slug} className="st" style={{ paddingBottom: 22, borderBottom: line }}>
-            <Link href={`/news/${n.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
-              <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)' }}>
-                {n.category.toUpperCase()} <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {ago(n.publishedAt, now)}</span>
-              </div>
-              <h3 className="sf hl" style={{ fontSize: 25, lineHeight: 1.12, margin: '8px 0' }}>
-                {n.title}
-              </h3>
-              <p style={{ margin: '0 0 8px', color: 'var(--vg-ink2)', fontSize: 14 }}>{n.dek}</p>
-              <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                {n.author.name} · {n.readingMinutes} min
-              </div>
-            </Link>
-          </article>
-        ))}
+        {second.map((n) => {
+          const isFa = n.lang === 'fa';
+          return (
+            <article key={n.slug} className="st" dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} style={{ paddingBottom: 22, borderBottom: line }}>
+              <Link href={`/news/${n.slug}`} className={isFa ? 'fa-ui' : undefined} style={{ display: 'block', color: 'var(--vg-ink)' }}>
+                <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span>{isFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}</span>
+                  {isFa && (
+                    <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
+                      فارسی
+                    </span>
+                  )}
+                  <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {ago(n.publishedAt, now, isFa)}</span>
+                </div>
+                <h3
+                  className={isFa ? 'hl fa-ui' : 'sf hl'}
+                  style={{
+                    fontSize: isFa ? 20 : 25,
+                    lineHeight: isFa ? 1.42 : 1.12,
+                    margin: '8px 0',
+                    fontWeight: isFa ? 600 : 400,
+                  }}
+                >
+                  {n.title}
+                </h3>
+                <p style={{ margin: '0 0 8px', color: 'var(--vg-ink2)', fontSize: 14, lineHeight: isFa ? 1.7 : 1.5 }}>{n.dek}</p>
+                <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+                  {n.author.name} · {isFa ? `${n.readingMinutes} دقیقه` : `${n.readingMinutes} min`}
+                </div>
+              </Link>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -450,6 +572,7 @@ function TopStories({ items, now }: { items: NewsListItem[]; now: Date }) {
 
 function RiverItem({ n, now }: { n: NewsListItem; now: Date }) {
   const t = timeAgo(n.publishedAt, now);
+  const isFa = n.lang === 'fa';
   return (
     <article className="st" style={{ borderTop: line }}>
       <Link href={`/news/${n.slug}`} className="river-link">
@@ -459,22 +582,35 @@ function RiverItem({ n, now }: { n: NewsListItem; now: Date }) {
             {t === 'now' ? 'now' : 'ago'}
           </time>
         </div>
-        <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-          <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)' }}>
-            {n.category.toUpperCase()}
+        <div dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} className={isFa ? 'fa-ui' : undefined} style={{ flex: '1 1 300px', minWidth: 0 }}>
+          <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span>{isFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}</span>
             {n.flag && (
-              <span style={{ marginLeft: 8, padding: '1px 7px', borderRadius: 5, background: n.flag === 'Analysis' ? 'var(--vg-sand)' : 'var(--vg-orange)', color: 'var(--vg-on-orange)' }}>
+              <span style={{ padding: '1px 7px', borderRadius: 5, background: n.flag === 'Analysis' ? 'var(--vg-sand)' : 'var(--vg-orange)', color: 'var(--vg-on-orange)' }}>
                 {n.flag}
               </span>
             )}
+            {isFa && (
+              <span className="fa-ui" style={{ padding: '1px 7px', borderRadius: 5, border: '1px solid rgba(227,182,92,.4)', color: 'var(--vg-sand)', fontSize: 11 }}>
+                فارسی
+              </span>
+            )}
           </div>
-          <h3 className="sf hl" style={{ fontSize: 'clamp(22px,2vw,28px)', lineHeight: 1.14, margin: '8px 0' }}>
+          <h3
+            className={isFa ? 'hl fa-ui' : 'sf hl'}
+            style={{
+              fontSize: isFa ? 'clamp(19px,1.9vw,23px)' : 'clamp(22px,2vw,28px)',
+              lineHeight: isFa ? 1.45 : 1.14,
+              margin: '8px 0',
+              fontWeight: isFa ? 600 : 400,
+            }}
+          >
             {n.title}
           </h3>
-          <p style={{ margin: '0 0 10px', color: 'var(--vg-ink2)' }}>{n.dek}</p>
+          <p style={{ margin: '0 0 10px', color: 'var(--vg-ink2)', lineHeight: isFa ? 1.75 : 1.55 }}>{n.dek}</p>
           <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Avatar name={n.author.name} color={n.author.color} size={22} />
-            {n.author.name} · {n.readingMinutes} min read
+            {n.author.name} · {isFa ? `${n.readingMinutes} دقیقه مطالعه` : `${n.readingMinutes} min read`}
           </div>
         </div>
         <TypoCover cover={n.cover} size="md" className="river-cover" />
@@ -483,9 +619,25 @@ function RiverItem({ n, now }: { n: NewsListItem; now: Date }) {
   );
 }
 
-const ago = (iso: string, now: Date) => {
+const FA_CATEGORIES: Record<string, string> = {
+  Models: 'مدل‌ها',
+  Agents: 'ایجنت‌ها',
+  Analysis: 'تحلیل',
+  Policy: 'سیاست‌گذاری',
+  Hardware: 'سخت‌افزار',
+  Funding: 'سرمایه‌گذاری',
+  Tools: 'ابزارها',
+};
+
+const ago = (iso: string, now: Date, isFa = false) => {
   const t = timeAgo(iso, now);
-  return t === 'now' ? 'JUST NOW' : `${t.toUpperCase()} AGO`;
+  if (!isFa) return t === 'now' ? 'JUST NOW' : `${t.toUpperCase()} AGO`;
+  if (t === 'now') return 'هم‌اکنون';
+  const m = /^(\d+)\s*(min|m|h|d|w)$/i.exec(t);
+  if (!m) return t;
+  const units: Record<string, string> = { min: 'دقیقه پیش', m: 'دقیقه پیش', h: 'ساعت پیش', d: 'روز پیش', w: 'هفته پیش' };
+  const faDigits = m[1]!.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!);
+  return `${faDigits} ${units[m[2]!.toLowerCase()] ?? ''}`;
 };
 
 function flagBadge(flag: string): CSSProperties {
