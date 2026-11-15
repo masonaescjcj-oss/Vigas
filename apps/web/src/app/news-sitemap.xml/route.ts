@@ -15,7 +15,8 @@ const NEWS_WINDOW_MS = 48 * 60 * 60 * 1000;
 export async function GET() {
   const { items } = await getNews({ limit: 50 });
   const cutoff = Date.now() - NEWS_WINDOW_MS;
-  const recent = items.filter((item) => new Date(item.publishedAt).getTime() >= cutoff);
+  const fresh = items.filter((item) => new Date(item.publishedAt).getTime() >= cutoff);
+  const recent = fresh.length > 0 ? fresh : items.slice(0, 10);
 
   const urlNodes = recent
     .map((item) => {

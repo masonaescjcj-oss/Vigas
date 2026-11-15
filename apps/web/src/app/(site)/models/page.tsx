@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from 'next/cache';
+import { formatContext, formatPricePerMillion } from '@vigas/core';
 import { orgMark } from '@vigas/tokens';
 import { CopyButton } from '@/components/copy-button';
 import { CreditsCard } from '@/components/credits-card';
@@ -7,13 +8,13 @@ import { QuickstartTabs } from '@/components/quickstart-tabs';
 import { SiteHeader } from '@/components/site-header';
 import { Breadcrumb, Icon, JsonLd, type IconName } from '@/components/ui';
 import { getModels } from '@/lib/data';
-import { API_BASE_URL } from '@/lib/env';
+import { absoluteUrl, API_BASE_URL } from '@/lib/env';
 import { breadcrumbLd, faqLd, pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
   title: 'AI models & API pricing — fastest, lowest-cost gateway',
   description:
-    'Compare live pass-through token prices and context windows for Claude, GPT, Gemini, DeepSeek, Kimi and more. Lowest cost per million tokens, edge routing latency, automatic failover and $0 markup on your first $5.',
+    'Compare live AI API token prices, context windows, and edge latency for Claude, GPT, Gemini & DeepSeek. One OpenAI-compatible key with $0 markup on your first $5.',
   path: '/models',
 });
 
@@ -50,6 +51,26 @@ export default async function ModelsPage() {
   const median = blended.length ? blended[Math.floor(blended.length / 2)]! : 0;
   const example = models.find((m) => m.id === 'anthropic/claude-opus-5.5')?.id ?? models[0]?.id ?? 'vigas/auto';
 
+  const modelsListLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'AI Models & Live API Token Pricing',
+    description: 'Live pass-through token pricing and context windows across frontier AI models on the Vigas OpenAI-compatible API gateway.',
+    url: absoluteUrl('/models'),
+    mainEntity: {
+      '@type': 'ItemList',
+      name: 'Frontier AI API models',
+      numberOfItems: models.length,
+      itemListElement: models.map((m, idx) => ({
+        '@type': 'ListItem',
+        position: idx + 1,
+        name: `${m.name} (${m.id})`,
+        url: absoluteUrl(`/models?q=${encodeURIComponent(m.id)}`),
+        description: `${m.org} · ${formatContext(m.contextLength)} context · ${formatPricePerMillion(m.inputPerMillionMicros)} input / ${formatPricePerMillion(m.outputPerMillionMicros)} output per 1M tokens`,
+      })),
+    },
+  };
+
   return (
     <>
       <JsonLd
@@ -58,6 +79,7 @@ export default async function ModelsPage() {
             { name: 'Home', path: '/' },
             { name: 'Models', path: '/models' },
           ]),
+          modelsListLd,
           faqLd(FAQ),
         ]}
       />

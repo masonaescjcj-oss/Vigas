@@ -43,9 +43,12 @@ export async function generateMetadata({ params }: PageProps<'/tools/[slug]'>): 
   const { slug } = await params;
   const tool = await getToolBySlug(slug);
   if (!tool) return { title: 'Tool not found', robots: { index: false } };
+  const tagline = tool.tagline.replace(/\.$/, '');
+  const rawDesc = `${tool.name} (${tool.pricing}, ★ ${tool.rating.toFixed(1)}/5): ${tagline}. Compare pricing, features, and ${tool.category.toLowerCase()} alternatives on Vigas.`;
+  const description = rawDesc.length > 160 ? `${rawDesc.slice(0, 157).trimEnd()}...` : rawDesc;
   return pageMetadata({
-    title: `${tool.name} — ${tool.tagline.replace(/\.$/, '')}`,
-    description: `${tool.name} review: ${tool.description} Pricing: ${tool.pricing}. Rated ${tool.rating.toFixed(1)}/5 by builders on Vigas.`,
+    title: `${tool.name} — ${tagline}`,
+    description,
     path: `/tools/${tool.slug}`,
     image: `/og/tool/${tool.slug}`,
     imageAlt: `${tool.name} — ${tool.category} AI tool review on Vigas`,
@@ -90,10 +93,14 @@ async function ToolView({ slug }: { slug: string }) {
       operatingSystem: 'Web',
       url: tool.url,
       image: previewUrl ? [absoluteUrl(previewUrl), absoluteUrl(`/og/tool/${tool.slug}`)] : [absoluteUrl(`/og/tool/${tool.slug}`)],
-      offers:
-        tool.pricing === 'Paid'
-          ? { '@type': 'Offer', availability: 'https://schema.org/InStock', url: tool.url }
-          : { '@type': 'Offer', price: '0', priceCurrency: 'USD', url: tool.url },
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        description: tool.pricing,
+        url: tool.url,
+      },
       aggregateRating: { '@type': 'AggregateRating', ratingValue: tool.rating.toFixed(1), bestRating: '5', worstRating: '1', ratingCount: tool.votes },
     },
     breadcrumbLd([

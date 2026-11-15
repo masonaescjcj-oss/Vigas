@@ -83,22 +83,31 @@ export function faqLd(items: Array<{ q: string; a: string }>): JsonLdObject {
   };
 }
 
-export const organizationLd = (): JsonLdObject => ({
+export const organizationLd = (lang: 'en' | 'fa' = 'en'): JsonLdObject => ({
   '@context': 'https://schema.org',
   '@type': 'Organization',
   '@id': `${SITE_URL}/#organization`,
-  name: SITE_NAME,
-  url: SITE_URL,
-  logo: absoluteUrl('/icon.svg'),
-  description: DEFAULT_DESCRIPTION,
+  name: lang === 'fa' ? 'ویگاس (Vigas)' : SITE_NAME,
+  url: lang === 'fa' ? `${SITE_URL}/fa` : SITE_URL,
+  logo: {
+    '@type': 'ImageObject',
+    url: absoluteUrl('/icon.svg'),
+    width: 512,
+    height: 512,
+  },
+  description:
+    lang === 'fa'
+      ? 'سریع‌ترین و ارزان‌ترین گیت‌وی API هوش مصنوعی برای دسترسی یکپارچه به مدل‌های پیشتاز، همراه با لیدربورد زنده Arena، اخبار تخصصی AI و دایرکتوری ابزارها.'
+      : DEFAULT_DESCRIPTION,
 });
 
-export const websiteLd = (): JsonLdObject => ({
+export const websiteLd = (lang: 'en' | 'fa' = 'en'): JsonLdObject => ({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  '@id': `${SITE_URL}/#website`,
-  name: SITE_NAME,
-  url: SITE_URL,
+  '@id': lang === 'fa' ? `${SITE_URL}/fa#website` : `${SITE_URL}/#website`,
+  name: lang === 'fa' ? 'ویگاس — API هوش مصنوعی، لیدربورد و اخبار AI' : SITE_NAME,
+  url: lang === 'fa' ? `${SITE_URL}/fa` : SITE_URL,
+  inLanguage: lang === 'fa' ? 'fa-IR' : 'en-US',
   publisher: { '@id': `${SITE_URL}/#organization` },
   potentialAction: {
     '@type': 'SearchAction',

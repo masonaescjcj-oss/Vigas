@@ -81,7 +81,7 @@ export default async function PersianHomePage() {
 
   return (
     <div dir="rtl" lang="fa" className="fa-ui">
-      <JsonLd data={[organizationLd(), websiteLd()]} />
+      <JsonLd data={[organizationLd('fa'), websiteLd('fa')]} />
       <SiteHeader active="home" lang="fa" />
       <main id="main">
         {/* ── Hero ─────────────────────────────────────────────────────── */}

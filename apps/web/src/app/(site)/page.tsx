@@ -15,7 +15,7 @@ export const metadata = pageMetadata({
   title: 'Vigas — Fastest & lowest-cost AI API for every frontier model',
   absoluteTitle: true,
   description:
-    'Access every frontier AI model through one OpenAI-compatible API at the lowest pass-through token prices and lowest edge latency — plus a live AI leaderboard, AI newsroom, and curated tools.',
+    'Fastest, lowest-cost OpenAI-compatible AI API for Claude, GPT, Gemini & DeepSeek — plus live Arena leaderboards, AI newsroom, and curated AI tools.',
   path: '/',
   alternatesLanguages: { en: '/', fa: '/fa', 'x-default': '/' },
 });

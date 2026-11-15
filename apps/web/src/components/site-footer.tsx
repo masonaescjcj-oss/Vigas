@@ -3,14 +3,14 @@ import { Icon, LogoMark } from './ui';
 
 const COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   {
-    title: 'Models',
+    title: 'Models & API',
     links: [
-      ['Anthropic models', '/models?org=Anthropic'],
-      ['OpenAI models', '/models?org=OpenAI'],
-      ['Google models', '/models?org=Google'],
-      ['Open-weight models', '/models?org=NVIDIA'],
-      ['Free models', '/models?tag=free'],
-      ['Pricing', '/models'],
+      ['All models & pricing', '/models'],
+      ['API quickstart', '/models#quickstart'],
+      ['Free AI models', '/models?tag=free'],
+      ['Vigas API apps', '/tools/collection/vigas-api'],
+      ['New AI tools', '/tools/collection/new'],
+      ['Create API account', '/signup'],
     ],
   },
   {
@@ -20,34 +20,32 @@ const COLS: Array<{ title: string; links: Array<[string, string]> }> = [
       ['Best coding agents', '/leaderboard/coding'],
       ['Best WebDev models', '/leaderboard/webdev'],
       ['Best text models', '/leaderboard/text'],
+      ['Best vision models', '/leaderboard/vision'],
       ['Best image edit', '/leaderboard/image-edit'],
-      ['Methodology', '/leaderboard#method'],
+      ['Aligned & safe AI', '/leaderboard/aligned'],
+      ['Knowledge work AI', '/leaderboard/work'],
     ],
   },
   {
-    title: 'News',
-    links: ['Models', 'Agents', 'Analysis', 'Policy', 'Hardware', 'Funding'].map((c) => [c, `/news/category/${c.toLowerCase()}`] as [string, string]),
+    title: 'Newsroom',
+    links: [
+      ...(['Models', 'Agents', 'Analysis', 'Policy', 'Hardware', 'Funding', 'Tools'].map(
+        (c) => [c, `/news/category/${c.toLowerCase()}`] as [string, string],
+      )),
+      ['اخبار هوش مصنوعی (FA)', '/news/fa'],
+    ],
   },
   {
-    title: 'Tools',
+    title: 'Tools Directory',
     links: [
+      ['AI agent tools', '/tools/category/agents'],
       ['AI coding tools', '/tools/category/coding'],
+      ['AI research tools', '/tools/category/research'],
       ['AI image generators', '/tools/category/image'],
       ['AI video tools', '/tools/category/video'],
       ['AI voice & audio', '/tools/category/audio'],
-      ['Research assistants', '/tools/category/research'],
+      ['AI productivity', '/tools/category/productivity'],
       ['Free AI tools', '/tools/collection/free'],
-    ],
-  },
-  {
-    title: 'Developers',
-    links: [
-      ['API quickstart', '/models#quickstart'],
-      ['Models & live prices', '/models'],
-      ['Free models', '/models?tag=free'],
-      ['Leaderboard', '/leaderboard'],
-      ['Dashboard', '/dashboard'],
-      ['Create an account', '/signup'],
     ],
   },
 ];
