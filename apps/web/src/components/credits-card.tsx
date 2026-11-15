@@ -10,7 +10,8 @@ import { Icon } from './ui';
 const AMOUNTS = [10, 25, 50, 100];
 
 /** Balance, top-up shortcut and keys. Actions happen on the dashboard. */
-export function CreditsCard({ blendedPerMillionMicros }: { blendedPerMillionMicros: number }) {
+export function CreditsCard({ blendedPerMillionMicros, lang = 'en' }: { blendedPerMillionMicros: number; lang?: 'en' | 'fa' }) {
+  const isFa = lang === 'fa';
   const signedIn = useSignedInHint();
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [failed, setFailed] = useState(false);
@@ -35,18 +36,36 @@ export function CreditsCard({ blendedPerMillionMicros }: { blendedPerMillionMicr
 
   return (
     <div className="card" style={{ flex: '1 1 360px', minWidth: 0, borderRadius: 22, padding: 24, display: 'flex', flexDirection: 'column' }}>
-      <div className="lbl">{showAccount ? 'Available credits' : 'Prepaid credits'}</div>
-      <div className="sf" aria-live="polite" style={{ fontSize: 64, lineHeight: 1, letterSpacing: '-.03em', margin: '10px 0 6px' }}>
-        {showAccount ? (wallet ? formatUsd(balance) : '—') : '$0 markup'}
+      <div className="lbl">{showAccount ? (isFa ? 'اعتبار موجود' : 'Available credits') : isFa ? 'اعتبار پیش‌پرداخت' : 'Prepaid credits'}</div>
+      <div
+        className={isFa ? 'fa-ui' : 'sf'}
+        aria-live="polite"
+        dir={showAccount ? 'ltr' : undefined}
+        style={{
+          fontSize: isFa ? 'clamp(36px,4vw,48px)' : 64,
+          lineHeight: isFa ? 1.18 : 1,
+          fontWeight: isFa ? 700 : 400,
+          letterSpacing: isFa ? 0 : '-.03em',
+          margin: '10px 0 6px',
+          textAlign: isFa ? 'right' : undefined,
+        }}
+      >
+        {showAccount ? (wallet ? formatUsd(balance) : '—') : isFa ? '۰٪ کارمزد' : '$0 markup'}
       </div>
-      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+      <div className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
         {showAccount
           ? wallet
-            ? `≈ ${formatCompact(Math.round(tokens))} tokens at the catalogue's median blended rate`
-            : 'Loading your balance…'
-          : 'on your first $5 · then a small fee shown before you pay'}
+            ? isFa
+              ? `≈ ${formatCompact(Math.round(tokens))} توکن بر اساس میانگین تعرفه کاتالوگ`
+              : `≈ ${formatCompact(Math.round(tokens))} tokens at the catalogue's median blended rate`
+            : isFa
+              ? 'در حال بارگذاری موجودی…'
+              : 'Loading your balance…'
+          : isFa
+            ? 'تا ۵ دلار اول بدون کارمزد · کارمزد ناچیز بعدی پیش از پرداخت نمایش داده می‌شود'
+            : 'on your first $5 · then a small fee shown before you pay'}
       </div>
-      <div role="group" aria-label="Top-up amount" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 6, margin: '18px 0 12px' }}>
+      <div role="group" aria-label={isFa ? 'مبلغ شارژ' : 'Top-up amount'} dir="ltr" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 6, margin: '18px 0 12px' }}>
         {AMOUNTS.map((a) => (
           <button
             key={a}
@@ -74,40 +93,62 @@ export function CreditsCard({ blendedPerMillionMicros }: { blendedPerMillionMicr
         className="btn key"
         style={{ width: '100%', minHeight: 50, fontSize: 15 }}
       >
-        Add ${amt}.00 in credits
+        {isFa ? (
+          <>
+            افزودن <span dir="ltr">${amt}.00</span> اعتبار
+          </>
+        ) : (
+          `Add $${amt}.00 in credits`
+        )}
       </Link>
-      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', textAlign: 'center', marginTop: 8 }}>
-        {signedIn ? 'Opens your dashboard to confirm' : 'Create a free account to add credits'}
+      <div className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, color: 'var(--vg-ink3)', textAlign: 'center', marginTop: 8 }}>
+        {signedIn ? (isFa ? 'برای تأیید به داشبورد هدایت می‌شوید' : 'Opens your dashboard to confirm') : isFa ? 'برای شارژ اعتبار، حساب رایگان بسازید' : 'Create a free account to add credits'}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--vg-line)' }}>
-        <b style={{ fontWeight: 600 }}>API keys</b>
+        <b style={{ fontWeight: 600 }}>{isFa ? 'کلیدهای API' : 'API keys'}</b>
         <Link
           href={signedIn ? '/dashboard#keys' : '/signup?next=/dashboard%23keys'}
           className="btn gh"
           style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
         >
           <Icon name="plus" size={15} />
-          New key
+          {isFa ? 'کلید جدید' : 'New key'}
         </Link>
       </div>
       {showAccount && wallet ? (
         wallet.keys.length ? (
           wallet.keys.slice(0, 3).map((k) => (
-            <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderTop: '1px solid rgba(239,234,225,.06)' }}>
+            <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderTop: '1px solid var(--vg-line-soft)' }}>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.name}</span>
-                <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)' }}>
-                  {k.display} · {k.spentThisMonthMicros ? `${formatUsd(k.spentThisMonthMicros)} this month` : 'Not used this month'}
+                <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', textAlign: isFa ? 'right' : undefined }}>
+                  {k.display} · {k.spentThisMonthMicros ? `${formatUsd(k.spentThisMonthMicros)} ${isFa ? 'این ماه' : 'this month'}` : isFa ? 'بدون مصرف در این ماه' : 'Not used this month'}
                 </span>
               </span>
             </div>
           ))
         ) : (
-          <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--vg-ink2)' }}>No keys yet. Create one to call the API.</p>
+          <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--vg-ink2)' }}>
+            {isFa ? 'هنوز کلیدی ندارید. برای استفاده از API یک کلید بسازید.' : 'No keys yet. Create one to call the API.'}
+          </p>
         )
       ) : (
         <p style={{ margin: '12px 0 0', fontSize: 14, color: 'var(--vg-ink2)' }}>
-          {signedIn ? 'Your keys appear here.' : (
+          {signedIn ? (
+            isFa ? (
+              'کلیدهای شما اینجا نمایش داده می‌شوند.'
+            ) : (
+              'Your keys appear here.'
+            )
+          ) : isFa ? (
+            <>
+              برای مشاهده موجودی و کلیدها{' '}
+              <Link href="/signin?next=/models" style={{ color: 'var(--vg-indigo)' }}>
+                وارد شوید
+              </Link>
+              .
+            </>
+          ) : (
             <>
               <Link href="/signin?next=/models" style={{ color: 'var(--vg-indigo)' }}>
                 Sign in

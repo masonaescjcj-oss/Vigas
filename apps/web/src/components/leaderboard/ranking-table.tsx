@@ -33,14 +33,17 @@ export function RankingTable({
   category,
   categoryLabel,
   siteUrl,
+  lang = 'en',
 }: {
   entries: Row[];
   category: string;
   categoryLabel: string;
   siteUrl: string;
+  lang?: 'en' | 'fa';
 }) {
   const [sort, setSort] = useState<SortKey>('win');
   const [embedOpen, setEmbedOpen] = useState(false);
+  const isFa = lang === 'fa';
 
   const rows = useMemo(
     () =>
@@ -63,11 +66,11 @@ export function RankingTable({
     URL.revokeObjectURL(url);
   };
 
-  const sortHeader = (key: SortKey, label: string, align: 'left' | 'right', arrow: string) => (
+  const sortHeader = (key: SortKey, label: string, align: 'start' | 'end', arrow: string) => (
     <th scope="col" aria-sort={sort === key ? (key === 'cost' ? 'ascending' : 'descending') : 'none'} style={{ ...th, textAlign: align }}>
       <button type="button" className="sortb" onClick={() => setSort(key)} style={{ color: sort === key ? 'var(--vg-ink)' : 'var(--vg-ink3)' }}>
         {label} {sort === key ? arrow : ''}
-        <span className="sr-only">{sort === key ? '(sorted)' : '(sort by this column)'}</span>
+        <span className="sr-only">{sort === key ? (isFa ? '(مرتب‌شده)' : '(sorted)') : isFa ? '(مرتب‌سازی با این ستون)' : '(sort by this column)'}</span>
       </button>
     </th>
   );
@@ -75,13 +78,13 @@ export function RankingTable({
   return (
     <div className="card" style={{ flex: '2 1 640px', minWidth: 0, borderRadius: 22, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 20px', flexWrap: 'wrap' }}>
-        <h2 className="sf" style={{ fontSize: 28, margin: 0, fontWeight: 400 }}>
-          Full ranking
+        <h2 className="sf" style={{ fontSize: isFa ? 24 : 28, margin: 0, fontWeight: isFa ? 700 : 400 }}>
+          {isFa ? 'رتبه‌بندی کامل' : 'Full ranking'}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn gh" onClick={() => setEmbedOpen(true)} style={{ minHeight: 36, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
             <Icon name="code" size={15} />
-            Embed
+            {isFa ? 'کد جاسازی' : 'Embed'}
           </button>
           <button type="button" className="btn gh" onClick={download} style={{ minHeight: 36, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
             <Icon name="download" size={15} />
@@ -93,7 +96,9 @@ export function RankingTable({
       {/* Desktop & tablet table */}
       <div className="rt-desktop tablewrap">
         <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse' }}>
-          <caption className="sr-only">{categoryLabel} leaderboard: win share, score, cost per task and votes</caption>
+          <caption className="sr-only">
+            {isFa ? `لیدربورد ${categoryLabel}: سهم برد، امتیاز، هزینه هر تسک و آرا` : `${categoryLabel} leaderboard: win share, score, cost per task and votes`}
+          </caption>
           <colgroup>
             <col style={{ width: 64 }} />
             <col />
@@ -104,21 +109,21 @@ export function RankingTable({
             <col style={{ width: 100 }} />
           </colgroup>
           <thead>
-            <tr className="mn" style={{ background: 'var(--vg-bg2)', fontSize: 12, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-              <th scope="col" style={{ ...th, textAlign: 'left' }}>
+            <tr className="mn" style={{ background: 'var(--vg-bg2)', fontSize: 12, color: 'var(--vg-ink3)', textTransform: isFa ? undefined : 'uppercase', letterSpacing: isFa ? 0 : '.07em' }}>
+              <th scope="col" style={{ ...th, textAlign: 'start' }}>
                 #
               </th>
-              <th scope="col" style={{ ...th, textAlign: 'left' }}>
-                Model
+              <th scope="col" style={{ ...th, textAlign: 'start' }}>
+                {isFa ? 'مدل' : 'Model'}
               </th>
-              {sortHeader('win', 'Win share', 'left', '↓')}
-              {sortHeader('score', 'Score', 'right', '↓')}
-              {sortHeader('cost', '$/task', 'right', '↑')}
-              <th scope="col" style={{ ...th, textAlign: 'right' }}>
-                Votes
+              {sortHeader('win', isFa ? 'سهم برد' : 'Win share', 'start', '↓')}
+              {sortHeader('score', isFa ? 'امتیاز' : 'Score', 'end', '↓')}
+              {sortHeader('cost', isFa ? '$/تسک' : '$/task', 'end', '↑')}
+              <th scope="col" style={{ ...th, textAlign: 'end' }}>
+                {isFa ? 'آرا' : 'Votes'}
               </th>
-              <th scope="col" style={{ ...th, textAlign: 'right' }}>
-                7 days
+              <th scope="col" style={{ ...th, textAlign: 'end' }}>
+                {isFa ? '۷ روز' : '7 days'}
               </th>
             </tr>
           </thead>
@@ -126,30 +131,32 @@ export function RankingTable({
             {rows.map((a) => {
               const s = spark(a.trend);
               return (
-                <tr key={a.modelId} className="hov" style={{ borderTop: '1px solid rgba(239,234,225,.06)' }}>
-                  <td className="mn" style={{ ...td, fontSize: 14, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange)' : 'var(--vg-ink3)' }}>
+                <tr key={a.modelId} className="hov" style={{ borderTop: '1px solid var(--vg-line-soft)' }}>
+                  <td className="mn" dir="ltr" style={{ ...td, textAlign: 'start', fontSize: 14, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange-text)' : 'var(--vg-ink3)' }}>
                     {a.rank}
                   </td>
-                  <th scope="row" style={{ ...td, textAlign: 'left', fontWeight: 400 }}>
+                  <th scope="row" style={{ ...td, textAlign: 'start', fontWeight: 400 }}>
                     <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, color: 'var(--vg-ink)' }}>
                       <OrgMark org={a.org} size={30} radius={9} fontSize={15} />
                       <span style={{ minWidth: 0 }}>
-                        <b style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</b>
-                        <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)' }}>
+                        <b dir="ltr" style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : 'left' }}>
+                          {a.name}
+                        </b>
+                        <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', textAlign: isFa ? 'right' : 'left' }}>
                           {a.org}
                         </span>
                       </span>
                     </Link>
                   </th>
                   <td style={td}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span aria-hidden="true" style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--vg-raised)', overflow: 'hidden' }}>
                         <span
                           style={{
                             display: 'block',
                             height: '100%',
                             width: `${((a.winRate / max) * 100).toFixed(1)}%`,
-                            background: a.rank === 1 ? 'var(--vg-orange)' : a.rank <= 3 ? 'var(--vg-sand)' : 'var(--vg-blue)',
+                            background: a.rank === 1 ? 'var(--vg-orange)' : a.rank <= 3 ? 'var(--vg-sand-fill)' : 'var(--vg-blue)',
                             borderRadius: 3,
                           }}
                         />
@@ -159,17 +166,17 @@ export function RankingTable({
                       </span>
                     </span>
                   </td>
-                  <td className="mn" style={{ ...td, fontSize: 13, textAlign: 'right' }}>
+                  <td className="mn" dir="ltr" style={{ ...td, fontSize: 13, textAlign: isFa ? 'left' : 'right' }}>
                     {Math.round(a.rating)} <span style={{ color: 'var(--vg-ink3)' }}>±{Math.round(a.ci)}</span>
                   </td>
-                  <td className="mn" style={{ ...td, fontSize: 13, textAlign: 'right' }}>
+                  <td className="mn" dir="ltr" style={{ ...td, fontSize: 13, textAlign: isFa ? 'left' : 'right' }}>
                     {formatUsd(a.costPerTaskMicros)}
                   </td>
-                  <td className="mn" style={{ ...td, fontSize: 13, textAlign: 'right', color: 'var(--vg-ink2)' }}>
+                  <td className="mn" dir="ltr" style={{ ...td, fontSize: 13, textAlign: isFa ? 'left' : 'right', color: 'var(--vg-ink2)' }}>
                     {a.votes.toLocaleString('en-US')}
                   </td>
-                  <td style={{ ...td, textAlign: 'right' }}>
-                    <svg viewBox="0 0 80 24" width="72" height="22" role="img" aria-label={`7-day trend ${s.up ? 'up' : 'down'}`} style={{ verticalAlign: 'middle' }}>
+                  <td style={{ ...td, textAlign: 'end' }}>
+                    <svg viewBox="0 0 80 24" width="72" height="22" role="img" aria-label={isFa ? `روند ۷ روزه ${s.up ? 'صعودی' : 'نزولی'}` : `7-day trend ${s.up ? 'up' : 'down'}`} style={{ verticalAlign: 'middle' }}>
                       <polyline
                         points={s.points}
                         fill="none"
@@ -187,12 +194,12 @@ export function RankingTable({
 
       {/* Zero-scroll mobile cards */}
       <div className="rt-mobile" style={{ borderTop: '1px solid var(--vg-line)' }}>
-        <div role="group" aria-label="Sort models" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--vg-bg2)' }}>
+        <div role="group" aria-label={isFa ? 'مرتب‌سازی مدل‌ها' : 'Sort models'} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--vg-bg2)' }}>
           {(
             [
-              ['win', 'Win share ↓'],
-              ['score', 'Score ↓'],
-              ['cost', '$/task ↑'],
+              ['win', isFa ? 'سهم برد ↓' : 'Win share ↓'],
+              ['score', isFa ? 'امتیاز ↓' : 'Score ↓'],
+              ['cost', isFa ? '$/تسک ↑' : '$/task ↑'],
             ] as Array<[SortKey, string]>
           ).map(([key, label]) => (
             <button key={key} type="button" className="chip" aria-pressed={sort === key} onClick={() => setSort(key)} style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}>
@@ -201,42 +208,48 @@ export function RankingTable({
           ))}
         </div>
         {rows.map((a) => (
-          <div key={a.modelId} style={{ padding: '14px 16px', borderTop: '1px solid rgba(239,234,225,.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div key={a.modelId} style={{ padding: '14px 16px', borderTop: '1px solid var(--vg-line-soft)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className="mn" style={{ width: 24, fontSize: 13, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange)' : 'var(--vg-ink3)', flexShrink: 0 }}>
+              <span className="mn" dir="ltr" style={{ width: 24, fontSize: 13, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange-text)' : 'var(--vg-ink3)', flexShrink: 0 }}>
                 #{a.rank}
               </span>
               <OrgMark org={a.org} size={32} radius={9} fontSize={15} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'block', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--vg-ink)' }}>
+                <Link
+                  href={`/models?q=${encodeURIComponent(a.modelId)}`}
+                  dir="ltr"
+                  style={{ display: 'block', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--vg-ink)', textAlign: isFa ? 'right' : 'left' }}
+                >
                   {a.name}
                 </Link>
-                <span className="mn" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)' }}>
+                <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', textAlign: isFa ? 'right' : 'left' }}>
                   {a.org}
                 </span>
               </div>
-              <span className="mn" style={{ fontSize: 13, fontWeight: 600, color: a.rank === 1 ? 'var(--vg-orange)' : 'var(--vg-ink)' }}>
+              <span className="mn" dir="ltr" style={{ fontSize: 13, fontWeight: 600, color: a.rank === 1 ? 'var(--vg-orange-text)' : 'var(--vg-ink)' }}>
                 {a.winRate.toFixed(2)}%
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span aria-hidden="true" style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--vg-raised)', overflow: 'hidden' }}>
                 <span
                   style={{
                     display: 'block',
                     height: '100%',
                     width: `${((a.winRate / max) * 100).toFixed(1)}%`,
-                    background: a.rank === 1 ? 'var(--vg-orange)' : a.rank <= 3 ? 'var(--vg-sand)' : 'var(--vg-blue)',
+                    background: a.rank === 1 ? 'var(--vg-orange)' : a.rank <= 3 ? 'var(--vg-sand-fill)' : 'var(--vg-blue)',
                   }}
                 />
               </span>
             </div>
             <div className="mn" style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--vg-ink2)' }}>
               <span>
-                Score {Math.round(a.rating)} <span style={{ color: 'var(--vg-ink3)' }}>±{Math.round(a.ci)}</span>
+                {isFa ? 'امتیاز' : 'Score'} {Math.round(a.rating)} <span style={{ color: 'var(--vg-ink3)' }}>±{Math.round(a.ci)}</span>
               </span>
-              <span>{formatUsd(a.costPerTaskMicros)}/task</span>
-              <span>{a.votes.toLocaleString('en-US')} votes</span>
+              <span dir="ltr">{formatUsd(a.costPerTaskMicros)}/{isFa ? 'تسک' : 'task'}</span>
+              <span>
+                {a.votes.toLocaleString('en-US')} {isFa ? 'رأی' : 'votes'}
+              </span>
             </div>
           </div>
         ))}
@@ -248,6 +261,7 @@ export function RankingTable({
         category={category}
         categoryLabel={categoryLabel}
         siteUrl={siteUrl}
+        lang={lang}
       />
     </div>
   );

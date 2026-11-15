@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cacheLife, cacheTag } from 'next/cache';
 import type { CSSProperties } from 'react';
 import { NEWS_CATEGORIES, timeAgo, type NewsCategory, type NewsListItem } from '@vigas/core';
+import { LanguageSwitch } from '@/components/language-switch';
 import { NewsletterForm } from '@/components/newsletter-form';
 import { Avatar, Breadcrumb, Icon, JsonLd } from '@/components/ui';
 import { getNews } from '@/lib/data';
@@ -58,6 +59,7 @@ export async function NewsMasthead({ category = null, lang = 'en' }: { category?
     <header className="wrap" style={{ paddingTop: 28 }}>
       {category && (
         <Breadcrumb
+          lang={lang}
           items={[
             { name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' },
             { name: isFa ? 'اخبار AI' : 'News', href: isFa ? '/news/fa' : '/news' },
@@ -210,7 +212,7 @@ export async function NewsContent({
   return (
     <>
       <JsonLd data={jsonLdItems} />
-      <nav aria-label={isFa ? 'بخش‌های خبری' : 'News sections'} style={{ borderBottom: line, background: 'rgba(18,17,15,.92)' }}>
+      <nav aria-label={isFa ? 'بخش‌های خبری' : 'News sections'} style={{ borderBottom: line, background: 'var(--vg-hdr-bg)' }}>
         <div
           className="wrap"
           style={{
@@ -239,28 +241,7 @@ export async function NewsContent({
               </Link>
             ))}
           </div>
-          <div role="group" aria-label={isFa ? 'زبان مقالات' : 'Article language'} style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <Link
-              href={newsCategoryPath(category, 1, 'en')}
-              dir="ltr"
-              lang="en"
-              className="chip"
-              aria-current={!isFa ? 'page' : undefined}
-              style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}
-            >
-              English
-            </Link>
-            <Link
-              href={newsCategoryPath(category, 1, 'fa')}
-              className="chip fa-ui"
-              dir="rtl"
-              lang="fa"
-              aria-current={isFa ? 'page' : undefined}
-              style={{ minHeight: 34, padding: '0 12px', fontSize: 12 }}
-            >
-              فارسی
-            </Link>
-          </div>
+          <LanguageSwitch variant="chips" lang={lang} altHref={newsCategoryPath(category, 1, isFa ? 'en' : 'fa')} />
         </div>
       </nav>
 
@@ -401,7 +382,7 @@ export async function NewsContent({
                 ) : null}
                 <Link href="/models" className="btn key">
                   {isFa ? 'مشاهده مدل‌ها و قیمت API' : 'Explore models & API pricing'}
-                  <Icon name="arrow" size={16} />
+                  <Icon name="arrow" size={16} style={isFa ? { transform: 'scaleX(-1)' } : undefined} />
                 </Link>
                 <Link href="/leaderboard" className="btn gh">
                   {isFa ? 'لیدربورد زنده Arena' : 'Live leaderboard'}
@@ -417,7 +398,7 @@ export async function NewsContent({
               {page < pages ? (
                 <Link href={newsCategoryPath(category, page + 1, lang)} className="btn key" rel="next">
                   {isFa ? 'گزارش‌های بیشتر' : 'More stories'}
-                  <Icon name="arrow" size={16} />
+                  <Icon name="arrow" size={16} style={isFa ? { transform: 'scaleX(-1)' } : undefined} />
                 </Link>
               ) : (
                 <Link href={newsCategoryPath(category, page - 1, lang)} className="btn gh" rel="prev">
@@ -456,10 +437,10 @@ export async function NewsContent({
                 {catSeo.heading}
               </h2>
               {catSeo.faqs.map((f) => (
-                <details key={f.q} style={{ borderTop: '1px solid rgba(239,234,225,.1)' }}>
+                <details key={f.q} style={{ borderTop: '1px solid var(--vg-line-faq)' }}>
                   <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, padding: '15px 0', fontWeight: 500 }}>
                     <h3 style={{ margin: 0, font: 'inherit' }}>{f.q}</h3>
-                    <Icon name="plus" size={18} className="pm" style={{ color: 'var(--vg-orange)' }} />
+                    <Icon name="plus" size={18} className="pm" style={{ color: 'var(--vg-orange-text)' }} />
                   </summary>
                   <p style={{ margin: '0 0 16px', color: 'var(--vg-ink2)', lineHeight: 1.6 }}>{f.a}</p>
                 </details>
@@ -510,7 +491,7 @@ export async function NewsContent({
               <ol style={{ listStyle: 'none', margin: '6px 0 0', padding: 0 }}>
                 {longReads.map((m, i) => (
                   <li key={m.slug}>
-                    <Link href={`/news/${m.slug}`} style={{ display: 'grid', gridTemplateColumns: '30px 1fr', gap: 10, padding: '12px 0', borderTop: '1px solid rgba(239,234,225,.06)', color: 'var(--vg-ink)' }}>
+                    <Link href={`/news/${m.slug}`} style={{ display: 'grid', gridTemplateColumns: '30px 1fr', gap: 10, padding: '12px 0', borderTop: '1px solid var(--vg-line-soft)', color: 'var(--vg-ink)' }}>
                       <span className={isFa ? 'mn' : 'sf'} aria-hidden="true" style={{ fontSize: isFa ? 19 : 26, lineHeight: 1.2, color: 'var(--vg-ink3)', fontWeight: 600 }}>
                         {isFa ? toFaDigits(i + 1) : i + 1}
                       </span>
@@ -594,7 +575,7 @@ function TopStories({ items, now }: { items: NewsListItem[]; now: Date }) {
     <section aria-label={leadFa ? 'خبرهای برگزیده' : 'Top stories'} className="wrap" style={{ paddingTop: 36, paddingBottom: 56, display: 'flex', flexWrap: 'wrap', gap: 40, borderBottom: line }}>
       <article className="st" style={{ flex: '1.6 1 520px', minWidth: 0 }}>
         <Link href={`/news/${lead.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
-          <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 18, overflow: 'hidden', border: line, background: '#151411' }}>
+          <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 18, overflow: 'hidden', border: line, background: 'var(--vg-media-bg)' }}>
             <img
               src={articleImageUrl(lead.slug, lead.imageUrl)}
               alt={lead.title}
@@ -609,7 +590,7 @@ function TopStories({ items, now }: { items: NewsListItem[]; now: Date }) {
             )}
           </div>
           <div dir={leadFa ? 'rtl' : 'ltr'} lang={lead.lang ?? 'en'} className={leadFa ? 'fa-ui' : undefined}>
-            <div className={leadFa ? 'fa-ui' : 'mn'} style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: leadFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className={leadFa ? 'fa-ui' : 'mn'} style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: leadFa ? 0 : '.1em', color: 'var(--vg-orange-text)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span>{leadFa ? (FA_CATEGORIES[lead.category] ?? lead.category) : lead.category.toUpperCase()}</span>
               <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {ago(lead.publishedAt, now, leadFa)}</span>
             </div>
@@ -639,7 +620,7 @@ function TopStories({ items, now }: { items: NewsListItem[]; now: Date }) {
           return (
             <article key={n.slug} className="st" dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} style={{ paddingBottom: 22, borderBottom: line }}>
               <Link href={`/news/${n.slug}`} className={isFa ? 'fa-ui' : undefined} style={{ display: 'block', color: 'var(--vg-ink)' }}>
-                <div className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange-text)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span>{isFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}</span>
                   <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {ago(n.publishedAt, now, isFa)}</span>
                 </div>
@@ -686,10 +667,10 @@ function RiverItem({ n, now }: { n: NewsListItem; now: Date }) {
           </time>
         </div>
         <div dir={isFa ? 'rtl' : 'ltr'} lang={n.lang ?? 'en'} className={isFa ? 'fa-ui' : undefined} style={{ flex: '1 1 300px', minWidth: 0 }}>
-          <div className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange-text)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span>{isFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}</span>
             {n.flag && (
-              <span style={{ padding: '1px 7px', borderRadius: 5, background: n.flag === 'Analysis' ? 'var(--vg-sand)' : 'var(--vg-orange)', color: 'var(--vg-on-orange)' }}>
+              <span style={{ padding: '1px 7px', borderRadius: 5, background: n.flag === 'Analysis' ? 'var(--vg-sand-fill)' : 'var(--vg-orange)', color: 'var(--vg-on-orange)' }}>
                 {isFa ? (FA_FLAGS[n.flag] ?? n.flag) : n.flag}
               </span>
             )}
@@ -711,7 +692,7 @@ function RiverItem({ n, now }: { n: NewsListItem; now: Date }) {
             {n.author.name} · {isFa ? `${toFaDigits(n.readingMinutes)} دقیقه مطالعه` : `${n.readingMinutes} min read`}
           </div>
         </div>
-        <div className="river-cover" style={{ borderRadius: 14, overflow: 'hidden', border: line, background: '#151411' }}>
+        <div className="river-cover" style={{ borderRadius: 14, overflow: 'hidden', border: line, background: 'var(--vg-media-bg)' }}>
           <img
             src={articleImageUrl(n.slug, n.imageUrl)}
             alt={n.title}
@@ -760,7 +741,7 @@ function flagBadge(flag: string, isFa = false): CSSProperties {
     fontWeight: 600,
     padding: '3px 9px',
     borderRadius: 6,
-    background: flag === 'Analysis' ? 'var(--vg-sand)' : 'var(--vg-orange)',
+    background: flag === 'Analysis' ? 'var(--vg-sand-fill)' : 'var(--vg-orange)',
     color: 'var(--vg-on-orange)',
     letterSpacing: isFa ? 0 : '.06em',
   };

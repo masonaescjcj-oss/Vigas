@@ -8,10 +8,12 @@ interface Props {
   codeChallengeMethod: 'S256' | 'plain';
   app: string;
   limitMicros: number | null;
+  lang?: 'en' | 'fa';
 }
 
 /** Approve / Cancel for the Sign in with Vigas consent page. */
 export function ConsentButtons(props: Props) {
+  const isFa = props.lang === 'fa';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,10 +33,10 @@ export function ConsentButtons(props: Props) {
         }),
       });
       const body = (await res.json()) as { redirectUrl?: string; error?: { message?: string } };
-      if (!res.ok || !body.redirectUrl) throw new Error(body.error?.message ?? 'Authorization failed.');
+      if (!res.ok || !body.redirectUrl) throw new Error(body.error?.message ?? (isFa ? 'احراز مجوز انجام نشد.' : 'Authorization failed.'));
       window.location.assign(body.redirectUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authorization failed.');
+      setError(err instanceof Error ? err.message : isFa ? 'احراز مجوز انجام نشد.' : 'Authorization failed.');
       setBusy(false);
     }
   };
@@ -49,10 +51,10 @@ export function ConsentButtons(props: Props) {
     <div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button type="button" className="btn key" onClick={approve} disabled={busy} style={{ flex: '1 1 180px', minHeight: 50 }}>
-          {busy ? 'Authorizing…' : `Allow ${props.app}`}
+          {busy ? (isFa ? 'در حال تایید…' : 'Authorizing…') : isFa ? `تایید دسترسی ${props.app}` : `Allow ${props.app}`}
         </button>
         <button type="button" className="btn gh" onClick={cancel} disabled={busy} style={{ flex: '1 1 140px', minHeight: 50 }}>
-          Cancel
+          {isFa ? 'لغو' : 'Cancel'}
         </button>
       </div>
       {error && (

@@ -231,7 +231,7 @@ export function ArticleEditor({
           <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             vigas.ai › news › {previewSlug}
           </div>
-          <div style={{ fontSize: 18, lineHeight: 1.3, color: '#8AB4F8', margin: '4px 0 4px', fontWeight: 500 }}>
+          <div style={{ fontSize: 18, lineHeight: 1.3, color: 'var(--vg-serp-link)', margin: '4px 0 4px', fontWeight: 500 }}>
             {(a.title.trim() || 'Your article headline').slice(0, 68)}
             {a.title.trim().length > 68 ? '…' : ''} | Vigas
           </div>
@@ -266,7 +266,7 @@ export function ArticleEditor({
               dir={a.lang === 'fa' ? 'rtl' : 'ltr'}
               lang={a.lang}
               className={a.lang === 'fa' ? 'fa-ui' : 'sf'}
-              style={{ minHeight: 300, padding: '8px 4px', fontSize: a.lang === 'fa' ? 17 : 19, lineHeight: a.lang === 'fa' ? 1.9 : 1.65, color: '#E6E0D6' }}
+              style={{ minHeight: 300, padding: '8px 4px', fontSize: a.lang === 'fa' ? 17 : 19, lineHeight: a.lang === 'fa' ? 1.9 : 1.65, color: 'var(--vg-prose)' }}
               // renderChatMarkdown escapes raw HTML and filters link targets.
               dangerouslySetInnerHTML={{ __html: preview }}
             />

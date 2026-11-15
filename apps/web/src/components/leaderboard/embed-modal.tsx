@@ -12,14 +12,17 @@ export function EmbedModal({
   category,
   categoryLabel,
   siteUrl,
+  lang = 'en',
 }: {
   open: boolean;
   onClose: () => void;
   category: string;
   categoryLabel: string;
   siteUrl: string;
+  lang?: 'en' | 'fa';
 }) {
   const [height, setHeight] = useState<number>(480);
+  const isFa = lang === 'fa';
 
   useEffect(() => {
     if (!open) return;
@@ -50,22 +53,24 @@ export function EmbedModal({
       <div className="vg-modal" role="dialog" aria-modal="true" aria-labelledby="embed-modal-title">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
           <div>
-            <div className="lbl">Embed · {categoryLabel}</div>
-            <h3 id="embed-modal-title" className="sf" style={{ fontSize: 30, margin: '4px 0 0', fontWeight: 400 }}>
-              Embed this leaderboard
+            <div className="lbl">{isFa ? `جاسازی · ${categoryLabel}` : `Embed · ${categoryLabel}`}</div>
+            <h3 id="embed-modal-title" className="sf" style={{ fontSize: isFa ? 24 : 30, margin: '4px 0 0', fontWeight: isFa ? 700 : 400 }}>
+              {isFa ? 'قرار دادن این جدول در سایت شما' : 'Embed this leaderboard'}
             </h3>
           </div>
-          <button type="button" className="ib boxed" aria-label="Close embed dialog" onClick={onClose}>
+          <button type="button" className="ib boxed" aria-label={isFa ? 'بستن پنجره جاسازی' : 'Close embed dialog'} onClick={onClose}>
             <Icon name="x" size={18} />
           </button>
         </div>
-        <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--vg-ink2)' }}>
-          Drop live Vigas Arena rankings into docs, blog posts, or internal dashboards. The widget refreshes automatically with the latest scores and win shares.
+        <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--vg-ink2)', lineHeight: isFa ? 1.75 : undefined }}>
+          {isFa
+            ? 'جدول زنده رده‌بندی Vigas Arena را در مستندات، وبلاگ یا داشبورد داخلی خود قرار دهید. آمار و امتیازها به‌صورت خودکار به‌روز می‌شوند.'
+            : 'Drop live Vigas Arena rankings into docs, blog posts, or internal dashboards. The widget refreshes automatically with the latest scores and win shares.'}
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <span className="lbl">Widget height</span>
-          <div role="group" aria-label="Iframe height" style={{ display: 'flex', gap: 6 }}>
+          <span className="lbl">{isFa ? 'ارتفاع ویجت' : 'Widget height'}</span>
+          <div role="group" aria-label={isFa ? 'ارتفاع آیفریم' : 'Iframe height'} dir="ltr" style={{ display: 'flex', gap: 6 }}>
             {HEIGHTS.map((h) => (
               <button key={h} type="button" className="chip" aria-pressed={height === h} onClick={() => setHeight(h)} style={{ minHeight: 32, padding: '0 12px' }}>
                 {h}px
@@ -75,6 +80,7 @@ export function EmbedModal({
         </div>
 
         <pre
+          dir="ltr"
           className="mn"
           style={{
             margin: 0,
@@ -84,7 +90,8 @@ export function EmbedModal({
             border: '1px solid var(--vg-line)',
             fontSize: 12,
             lineHeight: 1.65,
-            color: '#D9D3C7',
+            color: 'var(--vg-code-ink)',
+            textAlign: 'left',
             overflowX: 'auto',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-all',
@@ -95,11 +102,17 @@ export function EmbedModal({
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginTop: 14 }}>
           <a href={embedPath} target="_blank" rel="noopener noreferrer" className="link-arrow" style={{ fontSize: 13 }}>
-            Preview widget in new tab
+            {isFa ? 'پیش‌نمایش در تب جدید' : 'Preview widget in new tab'}
             <Icon name="external" size={14} />
           </a>
-          <CopyButton text={iframeCode} label="Copy embed HTML snippet" className="btn key" style={{ minHeight: 40 }}>
-            Copy embed code
+          <CopyButton
+            text={iframeCode}
+            label={isFa ? 'کپی کد HTML جاسازی' : 'Copy embed HTML snippet'}
+            copiedText={isFa ? 'کپی شد' : undefined}
+            className="btn key"
+            style={{ minHeight: 40 }}
+          >
+            {isFa ? 'کپی کد جاسازی' : 'Copy embed code'}
           </CopyButton>
         </div>
       </div>

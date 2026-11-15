@@ -9,7 +9,16 @@ const S = ({ children }: { children: ReactNode }) => <span style={{ color: '#A6D
 const F = ({ children }: { children: ReactNode }) => <span style={{ color: '#A5A8FF' }}>{children}</span>;
 const C = ({ children }: { children: ReactNode }) => <span style={{ color: '#7E776E' }}>{children}</span>;
 
-export function QuickstartTabs({ baseUrl, exampleModel }: { baseUrl: string; exampleModel: string }) {
+export function QuickstartTabs({
+  baseUrl,
+  exampleModel,
+  lang = 'en',
+}: {
+  baseUrl: string;
+  exampleModel: string;
+  lang?: 'en' | 'fa';
+}) {
+  const isFa = lang === 'fa';
   const id = useId();
   const [tab, setTab] = useState(0);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -66,12 +75,30 @@ export function QuickstartTabs({ baseUrl, exampleModel }: { baseUrl: string; exa
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <div className="lbl">§ Quickstart</div>
-          <h2 id="quickstart-title" className="sf" style={{ fontSize: 34, margin: '6px 0 0', letterSpacing: '-.015em', lineHeight: 1.05 }}>
-            Live in <em className="hi">30 seconds.</em>
+          <div className="lbl">{isFa ? '§ شروع سریع' : '§ Quickstart'}</div>
+          <h2
+            id="quickstart-title"
+            className="sf"
+            style={{
+              fontSize: isFa ? 28 : 34,
+              margin: '6px 0 0',
+              letterSpacing: isFa ? 0 : '-.015em',
+              lineHeight: isFa ? 1.25 : 1.05,
+              fontWeight: isFa ? 700 : 400,
+            }}
+          >
+            {isFa ? (
+              <>
+                اتصال در <em className="hi">۳۰ ثانیه.</em>
+              </>
+            ) : (
+              <>
+                Live in <em className="hi">30 seconds.</em>
+              </>
+            )}
           </h2>
         </div>
-        <div role="tablist" aria-label="Language" className="seg">
+        <div role="tablist" aria-label={isFa ? 'زبان برنامه‌نویسی' : 'Language'} className="seg" dir="ltr">
           {snippets.map((s, i) => (
             <button
               key={s.label}
@@ -95,9 +122,10 @@ export function QuickstartTabs({ baseUrl, exampleModel }: { baseUrl: string; exa
           ))}
         </div>
       </div>
-      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${tab}`} style={{ position: 'relative' }}>
+      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${tab}`} dir="ltr" style={{ position: 'relative' }}>
         <pre
           className="mn"
+          dir="ltr"
           tabIndex={0}
           style={{
             margin: 0,
@@ -108,16 +136,25 @@ export function QuickstartTabs({ baseUrl, exampleModel }: { baseUrl: string; exa
             paddingRight: 56,
             fontSize: 13.5,
             lineHeight: 1.75,
-            color: '#D9D3C7',
+            color: 'var(--vg-code-ink)',
             overflowX: 'auto',
+            textAlign: 'left',
           }}
         >
           {snippets[tab]!.code}
         </pre>
-        <CopyButton text={snippets[tab]!.text} label={`Copy ${snippets[tab]!.label} example`} style={{ position: 'absolute', top: 10, right: 10 }} />
+        <CopyButton
+          text={snippets[tab]!.text}
+          label={isFa ? `کپی نمونه کد ${snippets[tab]!.label}` : `Copy ${snippets[tab]!.label} example`}
+          copiedText={isFa ? 'کپی شد' : 'Copied'}
+          style={{ position: 'absolute', top: 10, right: 10 }}
+        />
       </div>
       <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 14, color: 'var(--vg-ink2)' }}>
-        {['Works with the OpenAI SDKs', 'Streaming & tool calls', 'Automatic provider failover'].map((t) => (
+        {(isFa
+          ? ['سازگار با SDKهای رسمی OpenAI', 'پشتیبانی از Stream و فراخوانی ابزار', 'Failover خودکار بین ارائه‌دهندگان']
+          : ['Works with the OpenAI SDKs', 'Streaming & tool calls', 'Automatic provider failover']
+        ).map((t) => (
           <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Icon name="check" size={16} style={{ color: 'var(--vg-green)' }} />
             {t}

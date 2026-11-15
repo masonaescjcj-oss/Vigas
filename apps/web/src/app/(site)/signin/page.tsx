@@ -12,6 +12,7 @@ export const metadata = pageMetadata({
 export default function SignInPage() {
   return (
     <AuthPage
+      lang="en"
       crumb="Sign in"
       title={
         <>
@@ -20,7 +21,7 @@ export default function SignInPage() {
       }
       intro="Sign in to manage your credits, API keys, and live usage analytics across every connected coding app and server."
     >
-      <AuthForm mode="signin" />
+      <AuthForm mode="signin" lang="en" />
     </AuthPage>
   );
 }

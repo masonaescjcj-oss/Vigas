@@ -9,6 +9,7 @@ import { markdownToText, renderArticleSections } from '@/lib/markdown';
 import { articleImageUrl, getArticleAlternate } from '@/lib/media';
 import { breadcrumbLd, faqLd } from '@/lib/seo';
 import { shortName } from '../colonnade';
+import { LanguageSwitch } from '../language-switch';
 import { newsCategoryPath } from '../news/news-feed';
 import { Avatar, Breadcrumb, Icon, JsonLd, OrgMark, SplitTitle } from '../ui';
 import { ShareButton } from './share-button';
@@ -142,6 +143,7 @@ export async function ArticleView({ slug }: { slug: string }) {
         <header style={{ maxWidth: 900, margin: '0 auto', padding: '40px var(--vg-gutter) 28px', textAlign: 'center' }}>
           <Breadcrumb
             center
+            lang={lang}
             items={[
               { name: isFa ? 'خانه' : 'Home', href: homePath },
               { name: isFa ? 'اخبار AI' : 'News', href: newsHomePath },
@@ -155,7 +157,7 @@ export async function ArticleView({ slug }: { slug: string }) {
               fontSize: 12,
               fontWeight: 600,
               letterSpacing: isFa ? 0 : '.12em',
-              color: 'var(--vg-orange)',
+              color: 'var(--vg-orange-text)',
               display: 'flex',
               gap: 10,
               justifyContent: 'center',
@@ -164,11 +166,11 @@ export async function ArticleView({ slug }: { slug: string }) {
             }}
           >
             {flagLabel && (
-              <span style={{ padding: '2px 8px', borderRadius: 5, background: article.flag === 'Analysis' ? 'var(--vg-sand)' : 'var(--vg-orange)', color: 'var(--vg-on-orange)' }}>
+              <span style={{ padding: '2px 8px', borderRadius: 5, background: article.flag === 'Analysis' ? 'var(--vg-sand-fill)' : 'var(--vg-orange)', color: 'var(--vg-on-orange)' }}>
                 {flagLabel}
               </span>
             )}
-            <Link href={catPath} style={{ color: 'var(--vg-orange)' }}>
+            <Link href={catPath} style={{ color: 'var(--vg-orange-text)' }}>
               {isFa ? categoryLabel : article.category.toUpperCase()}
             </Link>
             {showData ? (isFa ? ' · لیدربورد زنده' : ' · LEADERBOARD') : ''}
@@ -220,12 +222,14 @@ export async function ArticleView({ slug }: { slug: string }) {
               </span>
             </span>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <ShareButton title={article.title} url={url} />
+              <ShareButton title={article.title} url={url} lang={lang} />
               {alt && (
-                <Link
-                  href={`/news/${alt.slug}`}
+                <LanguageSwitch
+                  variant="link"
+                  targetLang={alt.lang}
+                  altHref={`/news/${alt.slug}`}
                   dir={alt.lang === 'fa' ? 'rtl' : 'ltr'}
-                  lang={alt.lang}
+                  langAttr={alt.lang}
                   className={alt.lang === 'fa' ? 'pill fa-ui' : 'pill mn'}
                   style={{
                     color: 'var(--vg-sand)',
@@ -234,19 +238,19 @@ export async function ArticleView({ slug }: { slug: string }) {
                     alignItems: 'center',
                     gap: 6,
                     padding: '0 12px',
-                    border: '1px solid rgba(227,182,92,.35)',
+                    border: '1px solid var(--vg-sand-edge)',
                   }}
                 >
                   <Icon name="globe" size={14} />
                   {alt.label}
-                </Link>
+                </LanguageSwitch>
               )}
             </span>
           </div>
         </header>
 
         <figure style={{ maxWidth: 1180, margin: '0 auto 48px', padding: '0 var(--vg-gutter)' }}>
-          <div style={{ position: 'relative', aspectRatio: '16/9', maxHeight: 540, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--vg-line)', background: '#151411' }}>
+          <div style={{ position: 'relative', aspectRatio: '16/9', maxHeight: 540, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--vg-line)', background: 'var(--vg-media-bg)' }}>
             <img
               src={coverImage}
               alt={article.title}
@@ -291,10 +295,10 @@ export async function ArticleView({ slug }: { slug: string }) {
                   {isFa ? 'پرسش‌های متداول' : 'Frequently asked'}
                 </h2>
                 {article.faq.map((f) => (
-                  <details key={f.q} style={{ borderTop: '1px solid rgba(239,234,225,.1)' }}>
+                  <details key={f.q} style={{ borderTop: '1px solid var(--vg-line-faq)' }}>
                     <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, padding: '15px 0', fontWeight: 500 }}>
                       <h3 style={{ margin: 0, font: 'inherit' }}>{f.q}</h3>
-                      <Icon name="plus" size={18} className="pm" style={{ color: 'var(--vg-orange)' }} />
+                      <Icon name="plus" size={18} className="pm" style={{ color: 'var(--vg-orange-text)' }} />
                     </summary>
                     <p style={{ margin: '0 0 16px', color: 'var(--vg-ink2)', lineHeight: isFa ? 1.85 : 1.6 }}>{f.a}</p>
                   </details>
@@ -327,7 +331,7 @@ export async function ArticleView({ slug }: { slug: string }) {
                 {sideModels.map((m) => {
                   const rank = rankOf.get(m.id);
                   return (
-                    <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) auto', gap: 10, alignItems: 'center', padding: '11px 0', borderTop: '1px solid rgba(239,234,225,.06)' }}>
+                    <div key={m.id} style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) auto', gap: 10, alignItems: 'center', padding: '11px 0', borderTop: '1px solid var(--vg-line-soft)' }}>
                       <OrgMark org={m.org} size={32} radius={9} fontSize={15} />
                       <span style={{ minWidth: 0 }}>
                         <Link
@@ -373,7 +377,7 @@ export async function ArticleView({ slug }: { slug: string }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Link href="/models#quickstart" className="btn key" style={{ width: '100%' }}>
                   {isFa ? 'مشاهده مدل‌ها و قیمت‌ها' : 'Models & live prices'}
-                  <Icon name="arrow" size={15} />
+                  <Icon name="arrow" size={15} style={isFa ? { transform: 'scaleX(-1)' } : undefined} />
                 </Link>
                 <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ width: '100%' }}>
                   {isFa ? 'ساخت کلید API رایگان' : 'Get your API key'}
@@ -417,7 +421,7 @@ export async function ArticleView({ slug }: { slug: string }) {
                 className="st"
                 style={{ display: 'block', color: 'var(--vg-ink)' }}
               >
-                <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--vg-line)', background: '#151411', marginBottom: 14 }}>
+                <div style={{ aspectRatio: '16/10', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--vg-line)', background: 'var(--vg-media-bg)', marginBottom: 14 }}>
                   <img
                     src={articleImageUrl(n.slug, n.imageUrl)}
                     alt={n.title}
@@ -426,7 +430,7 @@ export async function ArticleView({ slug }: { slug: string }) {
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 </div>
-                <span className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange)' }}>
+                <span className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, fontWeight: 600, letterSpacing: isFa ? 0 : '.1em', color: 'var(--vg-orange-text)' }}>
                   {isFa ? (FA_CATEGORIES[n.category] ?? n.category) : n.category.toUpperCase()}
                 </span>
                 <h3
@@ -454,7 +458,7 @@ function WinShareFigure({ entries, isFa }: { entries: Array<{ modelId: string; n
         fontFamily: isFa ? 'var(--vg-font-fa)' : 'var(--vg-font-sans)',
         fontSize: 14,
         background: 'var(--vg-surface)',
-        border: '1px solid rgba(239,234,225,.1)',
+        border: '1px solid var(--vg-line-faq)',
         borderRadius: 18,
         padding: '20px 22px',
         scrollMarginTop: 24,

@@ -6,7 +6,8 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 import { ApiError } from '@vigas/api-client';
 import { api, notifyAuthChanged, safeNext } from '@/lib/client/session';
 
-export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
+export function AuthForm({ mode, lang = 'en' }: { mode: 'signin' | 'signup'; lang?: 'en' | 'fa' }) {
+  const isFa = lang === 'fa';
   const router = useRouter();
   const id = useId();
   const [name, setName] = useState('');
@@ -28,7 +29,7 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
     if (busy) return;
     setError(null);
     if (signup && password.length < 8) {
-      setError({ message: 'Password must be at least 8 characters.' });
+      setError({ message: isFa ? 'رمز عبور باید حداقل ۸ کاراکتر باشد.' : 'Password must be at least 8 characters.' });
       return;
     }
     setBusy(true);
@@ -40,7 +41,13 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
       router.refresh();
     } catch (err) {
       if (err instanceof ApiError) setError({ message: err.message, code: err.code });
-      else setError({ message: 'Could not reach Vigas. Check your connection and try again.' });
+      else {
+        setError({
+          message: isFa
+            ? 'اتصال به سرور ویگاس برقرار نشد. اینترنت خود را بررسی کرده و دوباره تلاش کنید.'
+            : 'Could not reach Vigas. Check your connection and try again.',
+        });
+      }
       setBusy(false);
     }
   };
@@ -52,19 +59,21 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
       {signup && (
         <div>
           <label htmlFor={`${id}-name`} style={label}>
-            Name <span style={{ color: 'var(--vg-ink3)' }}>(optional)</span>
+            {isFa ? 'نام ' : 'Name '}
+            <span style={{ color: 'var(--vg-ink3)' }}>{isFa ? '(اختیاری)' : '(optional)'}</span>
           </label>
           <input id={`${id}-name`} className="input" autoComplete="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
       )}
       <div>
         <label htmlFor={`${id}-email`} style={label}>
-          Email
+          {isFa ? 'ایمیل' : 'Email'}
         </label>
         <input
           id={`${id}-email`}
           className="input"
           type="email"
+          dir="ltr"
           required
           autoComplete="email"
           inputMode="email"
@@ -76,12 +85,13 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
       </div>
       <div>
         <label htmlFor={`${id}-pw`} style={label}>
-          Password
+          {isFa ? 'رمز عبور' : 'Password'}
         </label>
         <input
           id={`${id}-pw`}
           className="input"
           type="password"
+          dir="ltr"
           required
           minLength={signup ? 8 : 1}
           autoComplete={signup ? 'new-password' : 'current-password'}
@@ -91,7 +101,7 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
           aria-describedby={`${error ? `${id}-err ` : ''}${id}-pwhint`}
         />
         <p id={`${id}-pwhint`} className="mn" style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--vg-ink3)' }}>
-          {signup ? 'At least 8 characters.' : ' '}
+          {signup ? (isFa ? 'حداقل ۸ کاراکتر.' : 'At least 8 characters.') : ' '}
         </p>
       </div>
       {error && (
@@ -102,7 +112,7 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
               <>
                 {' '}
                 <Link href={`/signin${nextQs}`} style={{ color: 'var(--vg-ink)', textDecoration: 'underline' }}>
-                  Sign in
+                  {isFa ? 'ورود به حساب' : 'Sign in'}
                 </Link>
               </>
             )}
@@ -110,12 +120,26 @@ export function AuthForm({ mode }: { mode: 'signin' | 'signup' }) {
         </div>
       )}
       <button type="submit" className="btn key" disabled={busy} style={{ minHeight: 50, fontSize: 15 }}>
-        {busy ? (signup ? 'Creating your account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in'}
+        {busy
+          ? signup
+            ? isFa
+              ? 'در حال ساخت حساب…'
+              : 'Creating your account…'
+            : isFa
+              ? 'در حال ورود…'
+              : 'Signing in…'
+          : signup
+            ? isFa
+              ? 'ساخت حساب کاربری'
+              : 'Create account'
+            : isFa
+              ? 'ورود'
+              : 'Sign in'}
       </button>
       <p style={{ margin: 0, fontSize: 14, color: 'var(--vg-ink2)', textAlign: 'center' }}>
-        {signup ? 'Already have an account? ' : 'New to Vigas? '}
+        {signup ? (isFa ? 'قبلاً حساب ساخته‌اید؟ ' : 'Already have an account? ') : isFa ? 'کاربر جدید هستید؟ ' : 'New to Vigas? '}
         <Link href={`${signup ? '/signin' : '/signup'}${nextQs}`} style={{ color: 'var(--vg-indigo)', fontWeight: 500 }}>
-          {signup ? 'Sign in' : 'Create an account'}
+          {signup ? (isFa ? 'ورود' : 'Sign in') : isFa ? 'ساخت حساب کاربری' : 'Create an account'}
         </Link>
       </p>
     </form>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Suspense, type ReactNode } from 'react';
 import { getAdminUser } from '@/lib/admin';
+import { SiteFooter } from '../site-footer';
 import { SiteHeader } from '../site-header';
 import { Breadcrumb } from '../ui';
 
@@ -25,6 +26,7 @@ export function AdminPage(props: ShellProps) {
           <main id="main" className="wrap" style={{ paddingTop: 28, paddingBottom: 96 }}>
             <AdminSkeleton />
           </main>
+          <SiteFooter />
         </>
       }
     >
@@ -72,6 +74,7 @@ export function AdminShell({
         </nav>
         {children}
       </main>
+      <SiteFooter />
     </>
   );
 }

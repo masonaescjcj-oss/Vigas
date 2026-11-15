@@ -7,9 +7,9 @@ export const shortName = (name: string) => name.replace(/ \(.*\)$/, '');
 
 /** Fill colours by rank: first is signal orange, then sand, then stone. */
 export function pillarTone(i: number) {
-  if (i === 0) return { fill: 'var(--vg-orange)', groove: 'var(--vg-orange-deep)', vc: 'var(--vg-orange)' };
-  if (i < 3) return { fill: 'var(--vg-sand)', groove: 'var(--vg-sand-deep)', vc: 'var(--vg-sand)' };
-  return { fill: 'var(--vg-pillar)', groove: '#2A2724', vc: 'var(--vg-ink2)' };
+  if (i === 0) return { fill: 'var(--vg-orange)', groove: 'var(--vg-orange-deep)', vc: 'var(--vg-orange-text)' };
+  if (i < 3) return { fill: 'var(--vg-sand-fill)', groove: 'var(--vg-sand-deep)', vc: 'var(--vg-sand)' };
+  return { fill: 'var(--vg-pillar)', groove: 'var(--vg-pillar-groove)', vc: 'var(--vg-ink2)' };
 }
 
 /** "The colonnade": win share drawn as classical pillars. */

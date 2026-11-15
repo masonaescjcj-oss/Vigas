@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ArticleView } from '@/components/article/article-view';
 import { ReadingProgress } from '@/components/article/reading-progress';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { getArticleBySlug, getSitemapData } from '@/lib/data';
 import { getArticleAlternate } from '@/lib/media';
@@ -54,13 +55,15 @@ export default async function ArticlePage({ params }: PageProps<'/news/[slug]'>)
   const lang = article.lang ?? 'en';
   const isFa = lang === 'fa';
   const alt = getArticleAlternate(article.slug);
+  const altHref = alt ? `/news/${alt.slug}` : isFa ? '/news' : '/news/fa';
   const content = (
     <>
-      <SiteHeader active="news" ticker={false} lang={lang} altHref={alt ? `/news/${alt.slug}` : undefined} />
+      <SiteHeader active="news" ticker={false} lang={lang} altHref={altHref} />
       <ReadingProgress />
       <main id="main">
         <ArticleView slug={slug} />
       </main>
+      <SiteFooter lang={lang} altHref={altHref} />
     </>
   );
   return isFa ? (

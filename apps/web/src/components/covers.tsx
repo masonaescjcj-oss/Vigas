@@ -129,8 +129,8 @@ export function TypoCover({
       className={className}
       style={{
         borderRadius: 14,
-        backgroundColor: '#151411',
-        backgroundImage: 'radial-gradient(rgba(239,234,225,.1) 1px,transparent 1.2px)',
+        backgroundColor: 'var(--vg-media-bg)',
+        backgroundImage: 'radial-gradient(var(--vg-dot) 1px,transparent 1.2px)',
         backgroundSize: '12px 12px',
         border: '1px solid var(--vg-line)',
         display: 'flex',

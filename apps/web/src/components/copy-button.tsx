@@ -26,12 +26,14 @@ async function copyText(text: string): Promise<boolean> {
 export function CopyButton({
   text,
   label,
+  copiedText = 'Copied',
   children,
   className,
   style,
 }: {
   text: string;
   label: string;
+  copiedText?: string;
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
@@ -45,8 +47,8 @@ export function CopyButton({
   };
   if (children) {
     return (
-      <button type="button" className={className ?? 'btn gh'} style={style} onClick={onClick} aria-label={copied ? `${label}: copied` : label}>
-        {copied ? 'Copied' : children}
+      <button type="button" className={className ?? 'btn gh'} style={style} onClick={onClick} aria-label={copied ? `${label}: ${copiedText}` : label}>
+        {copied ? copiedText : children}
       </button>
     );
   }
@@ -56,8 +58,8 @@ export function CopyButton({
       className={className ?? 'ib solid'}
       style={style}
       onClick={onClick}
-      aria-label={copied ? `${label}: copied` : label}
-      title={copied ? 'Copied' : label}
+      aria-label={copied ? `${label}: ${copiedText}` : label}
+      title={copied ? copiedText : label}
     >
       <Icon name={copied ? 'check' : 'copy'} size={16} style={copied ? { color: 'var(--vg-green)' } : undefined} />
     </button>

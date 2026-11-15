@@ -10,14 +10,26 @@ import { Icon, OrgMark } from './ui';
 type Cat = 'all' | ModelTag;
 type Ctx = 'any' | '128k' | '1m';
 
-const CATS: Array<[Cat, string]> = [
-  ['all', 'All'],
-  ['agents', 'Agents'],
-  ['coding', 'Coding'],
-  ['reasoning', 'Reasoning'],
-  ['vision', 'Vision'],
-  ['free', 'Free'],
+const CATS: Array<{ id: Cat; en: string; fa: string }> = [
+  { id: 'all', en: 'All', fa: 'همه' },
+  { id: 'agents', en: 'Agents', fa: 'ایجنت‌ها' },
+  { id: 'coding', en: 'Coding', fa: 'کدنویسی' },
+  { id: 'reasoning', en: 'Reasoning', fa: 'استدلال' },
+  { id: 'vision', en: 'Vision', fa: 'بینایی' },
+  { id: 'free', en: 'Free', fa: 'رایگان' },
 ];
+
+const FA_TAGS: Record<string, string> = {
+  agents: 'ایجنت',
+  coding: 'کدنویسی',
+  reasoning: 'استدلال',
+  vision: 'بینایی',
+  free: 'رایگان',
+};
+
+function toFaDigits(value: string | number): string {
+  return String(value).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!);
+}
 
 export interface ProviderOption {
   name: string;
@@ -28,10 +40,13 @@ export interface ProviderOption {
 export function ModelsCatalogue({
   models,
   providers,
+  lang = 'en',
 }: {
   models: Array<ModelListItem & { color: string; letter: string }>;
   providers: ProviderOption[];
+  lang?: 'en' | 'fa';
 }) {
+  const isFa = lang === 'fa';
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<Cat>('all');
   const [ctx, setCtx] = useState<Ctx>('any');
@@ -48,7 +63,7 @@ export function ModelsCatalogue({
     if (org && providers.some((p) => p.name === org)) {
       setOff(Object.fromEntries(providers.filter((p) => p.name !== org).map((p) => [p.name, true])));
     }
-    if (tag && CATS.some(([c]) => c === tag)) setCat(tag);
+    if (tag && CATS.some((c) => c.id === tag)) setCat(tag);
     if (query) setQ(query.slice(0, 100));
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [providers]);
@@ -65,13 +80,14 @@ export function ModelsCatalogue({
   }, [models, off, cat, ctx, q]);
 
   const activeFilterCount = Object.values(off).filter(Boolean).length + (ctx !== 'any' ? 1 : 0);
+  const priceLabel = (micros: number) => (isFa && micros === 0 ? 'رایگان' : formatPricePerMillion(micros));
 
   return (
-    <section aria-label="Model catalogue" style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '32px 0 72px' }}>
-      <aside id="models-filters-panel" aria-label="Filters" className="models-filters" data-open={filtersOpen}>
+    <section aria-label={isFa ? 'فهرست مدل‌ها' : 'Model catalogue'} style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '32px 0 72px' }}>
+      <aside id="models-filters-panel" aria-label={isFa ? 'فیلترها' : 'Filters'} className="models-filters" data-open={filtersOpen}>
         <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
           <legend className="lbl" style={{ marginBottom: 12, padding: 0 }}>
-            Providers
+            {isFa ? 'ارائه‌دهندگان' : 'Providers'}
           </legend>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {providers.map((p) => (
@@ -90,29 +106,41 @@ export function ModelsCatalogue({
         </fieldset>
         <div role="group" aria-labelledby="ctx-label">
           <div id="ctx-label" className="lbl" style={{ marginBottom: 12 }}>
-            Context window
+            {isFa ? 'پنجره متنی (Context)' : 'Context window'}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {(
               [
-                ['any', 'Any'],
+                ['any', isFa ? 'هر مقدار' : 'Any'],
                 ['128k', '128K+'],
                 ['1m', '1M+'],
               ] as Array<[Ctx, string]>
             ).map(([id, label]) => (
-              <button key={id} type="button" className="chip" aria-pressed={ctx === id} onClick={() => setCtx(id)}>
+              <button key={id} type="button" className="chip" dir={id === 'any' ? undefined : 'ltr'} aria-pressed={ctx === id} onClick={() => setCtx(id)}>
                 {label}
               </button>
             ))}
           </div>
         </div>
         <div className="card" style={{ borderRadius: 16, padding: 18 }}>
-          <div className="lbl">Not sure which?</div>
-          <p style={{ margin: '8px 0 14px', fontSize: 14, color: 'var(--vg-ink2)' }}>
-            Use <span className="mn" style={{ color: 'var(--vg-ink)' }}>vigas/auto</span> and we route each request by price, speed or quality.
+          <div className="lbl">{isFa ? 'مطمئن نیستید کدام مدل؟' : 'Not sure which?'}</div>
+          <p style={{ margin: '8px 0 14px', fontSize: 14, color: 'var(--vg-ink2)', lineHeight: isFa ? 1.7 : undefined }}>
+            {isFa ? (
+              <>
+                از{' '}
+                <span className="mn" dir="ltr" style={{ color: 'var(--vg-ink)' }}>
+                  vigas/auto
+                </span>{' '}
+                استفاده کنید تا هر درخواست خودکار بر اساس قیمت، سرعت یا کیفیت مسیریابی شود.
+              </>
+            ) : (
+              <>
+                Use <span className="mn" style={{ color: 'var(--vg-ink)' }}>vigas/auto</span> and we route each request by price, speed or quality.
+              </>
+            )}
           </p>
           <Link href="/leaderboard" className="link-arrow">
-            Compare on the leaderboard
+            {isFa ? 'مقایسه در لیدربورد' : 'Compare on the leaderboard'}
             <Icon name="arrow" size={15} />
           </Link>
         </div>
@@ -122,13 +150,17 @@ export function ModelsCatalogue({
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <label className="field" style={{ flex: '1 1 240px', minWidth: 0, height: 46 }}>
             <Icon name="search" size={17} />
-            <span className="sr-only">Search models</span>
+            <span className="sr-only">{isFa ? 'جستجوی مدل‌ها' : 'Search models'}</span>
             <input
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder={`Search ${models.length} models by name, provider or ID`}
-              style={{ font: '15px var(--vg-font-sans)' }}
+              placeholder={
+                isFa
+                  ? `جستجوی ${toFaDigits(models.length)} مدل بر اساس نام، آزمایشگاه یا شناسه`
+                  : `Search ${models.length} models by name, provider or ID`
+              }
+              style={{ font: `15px ${isFa ? 'var(--vg-font-fa)' : 'var(--vg-font-sans)'}` }}
             />
           </label>
           <button
@@ -139,13 +171,14 @@ export function ModelsCatalogue({
             onClick={() => setFiltersOpen((v) => !v)}
             style={{ minHeight: 46, padding: '0 14px', borderRadius: 12 }}
           >
-            Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            {isFa ? 'فیلترها' : 'Filters'}
+            {activeFilterCount > 0 ? ` (${isFa ? toFaDigits(activeFilterCount) : activeFilterCount})` : ''}
             <Icon name={filtersOpen ? 'x' : 'chevDown'} size={15} />
           </button>
-          <div role="group" aria-label="Category" className="scroll-x" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: '100%' }}>
-            {CATS.map(([id, label]) => (
-              <button key={id} type="button" className="chip" aria-pressed={cat === id} onClick={() => setCat(id)}>
-                {label}
+          <div role="group" aria-label={isFa ? 'دسته‌بندی' : 'Category'} className="scroll-x" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: '100%' }}>
+            {CATS.map((c) => (
+              <button key={c.id} type="button" className="chip" aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>
+                {isFa ? c.fa : c.en}
               </button>
             ))}
           </div>
@@ -154,34 +187,43 @@ export function ModelsCatalogue({
         <div style={{ border: '1px solid var(--vg-line)', borderRadius: 20, overflow: 'hidden', background: 'var(--vg-surface)' }}>
           <div className="models-desktop tablewrap">
             <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse' }}>
-              <caption className="sr-only">AI models with context window and price per 1M tokens</caption>
+              <caption className="sr-only">{isFa ? 'مدل‌های هوش مصنوعی با پنجره متنی و قیمت هر ۱ میلیون توکن' : 'AI models with context window and price per 1M tokens'}</caption>
               <colgroup>
                 <col />
                 <col style={{ width: 94 }} />
                 <col style={{ width: 110 }} />
                 <col style={{ width: 110 }} />
                 <col style={{ width: 90 }} />
-                <col style={{ width: 184 }} />
+                <col style={{ width: 196 }} />
               </colgroup>
               <thead>
-                <tr className="mn" style={{ background: 'var(--vg-bg2)', fontSize: 12, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
-                  <th scope="col" style={th('left')}>
-                    Model
+                <tr
+                  className={isFa ? 'fa-ui' : 'mn'}
+                  style={{
+                    background: 'var(--vg-bg2)',
+                    fontSize: 12,
+                    color: 'var(--vg-ink3)',
+                    textTransform: isFa ? 'none' : 'uppercase',
+                    letterSpacing: isFa ? 0 : '.07em',
+                  }}
+                >
+                  <th scope="col" style={th('start')}>
+                    {isFa ? 'مدل' : 'Model'}
                   </th>
                   <th scope="col" style={th()}>
-                    Context
+                    {isFa ? 'کانتکست' : 'Context'}
                   </th>
                   <th scope="col" style={th()}>
-                    Input / 1M
+                    {isFa ? 'ورودی / ۱M' : 'Input / 1M'}
                   </th>
                   <th scope="col" style={th()}>
-                    Output / 1M
+                    {isFa ? 'خروجی / ۱M' : 'Output / 1M'}
                   </th>
                   <th scope="col" style={th()}>
-                    24h
+                    {isFa ? '۲۴ ساعت' : '24h'}
                   </th>
                   <th scope="col" style={th()}>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{isFa ? 'عملیات' : 'Actions'}</span>
                     <span aria-hidden="true">API</span>
                   </th>
                 </tr>
@@ -195,35 +237,37 @@ export function ModelsCatalogue({
                         ? { t: `▲ ${m.priceChange24h}%`, c: 'var(--vg-red)' }
                         : { t: '—', c: 'var(--vg-ink3)' };
                   return (
-                    <tr key={m.id} className="hov" style={{ borderTop: '1px solid rgba(239,234,225,.06)' }}>
-                      <th scope="row" style={{ ...td('left'), fontWeight: 400 }}>
+                    <tr key={m.id} className="hov" style={{ borderTop: '1px solid var(--vg-line-soft)' }}>
+                      <th scope="row" style={{ ...td('start'), fontWeight: 400 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                           <OrgMark org={m.org} size={34} radius={10} fontSize={16} />
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <b style={{ fontWeight: 500 }}>{m.name}</b>
+                              <b dir="ltr" style={{ fontWeight: 500 }}>
+                                {m.name}
+                              </b>
                               {m.tags.map((t) => (
                                 <span key={t} className="mn" style={{ fontSize: 12, padding: '1px 6px', borderRadius: 5, background: 'var(--vg-raised)', color: 'var(--vg-ink2)' }}>
-                                  {t}
+                                  {isFa ? (FA_TAGS[t] ?? t) : t}
                                 </span>
                               ))}
                             </div>
-                            <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : undefined }}>
                               {m.id}
                             </div>
                           </div>
                         </div>
                       </th>
-                      <td className="mn" style={{ ...td(), fontSize: 13, color: 'var(--vg-ink2)' }}>
+                      <td className="mn" dir="ltr" style={{ ...td(), fontSize: 13, color: 'var(--vg-ink2)', textAlign: isFa ? 'left' : 'right' }}>
                         {formatContext(m.contextLength)}
                       </td>
-                      <td className="mn" style={{ ...td(), fontSize: 13 }}>
-                        {formatPricePerMillion(m.inputPerMillionMicros)}
+                      <td className="mn" dir={isFa && m.inputPerMillionMicros === 0 ? 'rtl' : 'ltr'} style={{ ...td(), fontSize: 13, textAlign: isFa ? 'left' : 'right' }}>
+                        {priceLabel(m.inputPerMillionMicros)}
                       </td>
-                      <td className="mn" style={{ ...td(), fontSize: 13 }}>
-                        {formatPricePerMillion(m.outputPerMillionMicros)}
+                      <td className="mn" dir={isFa && m.outputPerMillionMicros === 0 ? 'rtl' : 'ltr'} style={{ ...td(), fontSize: 13, textAlign: isFa ? 'left' : 'right' }}>
+                        {priceLabel(m.outputPerMillionMicros)}
                       </td>
-                      <td className="mn" style={{ ...td(), fontSize: 12, color: chg.c }}>
+                      <td className="mn" dir="ltr" style={{ ...td(), fontSize: 12, color: chg.c, textAlign: isFa ? 'left' : 'right' }}>
                         {chg.t}
                       </td>
                       <td style={td()}>
@@ -232,12 +276,17 @@ export function ModelsCatalogue({
                             href="#quickstart"
                             className="btn gh"
                             style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
-                            aria-label={`Use ${m.name} via Vigas API`}
+                            aria-label={isFa ? `استفاده از ${m.name} با Vigas API` : `Use ${m.name} via Vigas API`}
                           >
-                            Use API
+                            {isFa ? 'کد API' : 'Use API'}
                           </a>
-                          <CopyButton text={m.id} label={`Copy model ID ${m.id}`} style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
-                            Copy ID
+                          <CopyButton
+                            text={m.id}
+                            label={isFa ? `کپی شناسه ${m.id}` : `Copy model ID ${m.id}`}
+                            copiedText={isFa ? 'کپی شد' : 'Copied'}
+                            style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                          >
+                            {isFa ? 'کپی شناسه' : 'Copy ID'}
                           </CopyButton>
                         </span>
                       </td>
@@ -247,7 +296,9 @@ export function ModelsCatalogue({
               </tbody>
             </table>
             {rows.length === 0 && (
-              <p style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vg-ink2)', margin: 0 }}>No models match. Try another filter.</p>
+              <p style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vg-ink2)', margin: 0 }}>
+                {isFa ? 'مدلی مطابق جستجو پیدا نشد. فیلتر دیگری را امتحان کنید.' : 'No models match. Try another filter.'}
+              </p>
             )}
           </div>
 
@@ -260,39 +311,49 @@ export function ModelsCatalogue({
                     ? { t: `▲ ${m.priceChange24h}%`, c: 'var(--vg-red)' }
                     : { t: '—', c: 'var(--vg-ink3)' };
               return (
-                <div key={m.id} style={{ padding: '14px 16px', borderTop: idx ? '1px solid rgba(239,234,225,.06)' : undefined, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div key={m.id} style={{ padding: '14px 16px', borderTop: idx ? '1px solid var(--vg-line-soft)' : undefined, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                     <OrgMark org={m.org} size={34} radius={10} fontSize={16} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <b style={{ display: 'block', fontWeight: 500, fontSize: 15 }}>{m.name}</b>
-                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <b dir="ltr" style={{ display: 'block', fontWeight: 500, fontSize: 15, textAlign: isFa ? 'right' : undefined }}>
+                        {m.name}
+                      </b>
+                      <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : undefined }}>
                         {m.id}
                       </div>
                     </div>
                   </div>
-                  <div className="mn" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 6, fontSize: 12, padding: '8px 10px', borderRadius: 10, background: 'var(--vg-bg2)' }}>
+                  <div className="mn" dir="ltr" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 6, fontSize: 12, padding: '8px 10px', borderRadius: 10, background: 'var(--vg-bg2)' }}>
                     <div>
-                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>CTX</span>
+                      <span className={isFa ? 'fa-ui' : undefined} style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>
+                        {isFa ? 'کانتکست' : 'CTX'}
+                      </span>
                       {formatContext(m.contextLength)}
                     </div>
                     <div>
-                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>IN/1M</span>
-                      {formatPricePerMillion(m.inputPerMillionMicros)}
+                      <span className={isFa ? 'fa-ui' : undefined} style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>
+                        {isFa ? 'ورودی/۱M' : 'IN/1M'}
+                      </span>
+                      {priceLabel(m.inputPerMillionMicros)}
                     </div>
                     <div>
-                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>OUT/1M</span>
-                      {formatPricePerMillion(m.outputPerMillionMicros)}
+                      <span className={isFa ? 'fa-ui' : undefined} style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>
+                        {isFa ? 'خروجی/۱M' : 'OUT/1M'}
+                      </span>
+                      {priceLabel(m.outputPerMillionMicros)}
                     </div>
                     <div>
-                      <span style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>24H</span>
+                      <span className={isFa ? 'fa-ui' : undefined} style={{ display: 'block', color: 'var(--vg-ink3)', fontSize: 10 }}>
+                        {isFa ? '۲۴ ساعت' : '24H'}
+                      </span>
                       <span style={{ color: chg.c }}>{chg.t}</span>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginRight: 'auto' }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginInlineEnd: 'auto' }}>
                       {m.tags.map((t) => (
                         <span key={t} className="mn" style={{ fontSize: 11, padding: '2px 6px', borderRadius: 5, background: 'var(--vg-raised)', color: 'var(--vg-ink2)' }}>
-                          {t}
+                          {isFa ? (FA_TAGS[t] ?? t) : t}
                         </span>
                       ))}
                     </div>
@@ -300,33 +361,42 @@ export function ModelsCatalogue({
                       href="#quickstart"
                       className="btn gh"
                       style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
-                      aria-label={`Use ${m.name} via Vigas API`}
+                      aria-label={isFa ? `استفاده از ${m.name} با Vigas API` : `Use ${m.name} via Vigas API`}
                     >
-                      Use API
+                      {isFa ? 'کد API' : 'Use API'}
                     </a>
-                    <CopyButton text={m.id} label={`Copy model ID ${m.id}`} style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}>
-                      Copy ID
+                    <CopyButton
+                      text={m.id}
+                      label={isFa ? `کپی شناسه ${m.id}` : `Copy model ID ${m.id}`}
+                      copiedText={isFa ? 'کپی شد' : 'Copied'}
+                      style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                    >
+                      {isFa ? 'کپی شناسه' : 'Copy ID'}
                     </CopyButton>
                   </div>
                 </div>
               );
             })}
             {rows.length === 0 && (
-              <p style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vg-ink2)', margin: 0 }}>No models match. Try another filter.</p>
+              <p style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--vg-ink2)', margin: 0 }}>
+                {isFa ? 'مدلی مطابق جستجو پیدا نشد. فیلتر دیگری را امتحان کنید.' : 'No models match. Try another filter.'}
+              </p>
             )}
           </div>
         </div>
-        <p className="mn" role="status" style={{ fontSize: 12, color: 'var(--vg-ink3)', margin: '12px 0 0' }}>
-          Showing {rows.length} of {models.length} · prices refresh every 5 minutes
+        <p className={isFa ? 'fa-ui' : 'mn'} role="status" style={{ fontSize: 12, color: 'var(--vg-ink3)', margin: '12px 0 0' }}>
+          {isFa
+            ? `نمایش ${toFaDigits(rows.length)} از ${toFaDigits(models.length)} مدل · به‌روزرسانی قیمت‌ها هر ۵ دقیقه`
+            : `Showing ${rows.length} of ${models.length} · prices refresh every 5 minutes`}
         </p>
       </div>
     </section>
   );
 }
 
-function th(align: 'left' | 'right' = 'right'): CSSProperties {
+function th(align: 'start' | 'end' = 'end'): CSSProperties {
   return { padding: '12px 20px', textAlign: align, fontWeight: 500 };
 }
-function td(align: 'left' | 'right' = 'right'): CSSProperties {
+function td(align: 'start' | 'end' = 'end'): CSSProperties {
   return { padding: '14px 20px', textAlign: align, verticalAlign: 'middle' };
 }

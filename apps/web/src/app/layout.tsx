@@ -30,21 +30,28 @@ export const metadata: Metadata = {
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Vigas — One key for every AI model' }],
   },
   twitter: { card: 'summary_large_image', images: ['/opengraph-image'] },
+  verification: { google: '2gNWri09hWdHTOaGbcc0ZWM_vBD8IhSU-1fGUqZ1ZZY' },
   formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: colors.bg,
-  colorScheme: 'dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: colors.bg },
+    { media: '(prefers-color-scheme: light)', color: '#FBF8F3' },
+  ],
+  colorScheme: 'dark light',
 };
 
 const tokenCss = cssVariables();
 const SHOW_PREVIEW_BANNER = process.env.VIGAS_PREVIEW_BANNER === '1';
 
+const INIT_THEME_SCRIPT = `(function(){try{var d=document.documentElement;var m=document.cookie.match(/(?:^|;\\s*)vg_theme=(light|dark)(?:;|$)/);var t=m?m[1]:localStorage.getItem('vg_theme');if(t!=='light'&&t!=='dark')t='dark';d.dataset.theme=t;d.style.colorScheme=t;var p=location.pathname;var lm=document.cookie.match(/(?:^|;\\s*)vg_lang=(fa|en)(?:;|$)/);var fa=p==='/fa'||p==='/news/fa'||p.indexOf('/news/fa/')===0||(lm&&lm[1]==='fa'&&p.indexOf('/news/')!==0&&p.indexOf('/admin')!==0&&p.indexOf('/embed')!==0&&p!=='/');if(fa){d.lang='fa';d.dir='rtl';}}catch(_){}})();`;
+
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" dir="ltr" className={`${serif.variable} ${sans.variable} ${mono.variable} ${fa.variable}`}>
+    <html lang="en" dir="ltr" suppressHydrationWarning className={`${serif.variable} ${sans.variable} ${mono.variable} ${fa.variable}`}>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: INIT_THEME_SCRIPT }} />
         <style dangerouslySetInnerHTML={{ __html: tokenCss }} />
       </head>
       <body>
@@ -55,7 +62,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <div
             role="note"
             className="mn"
-            style={{ background: 'var(--vg-sand)', color: 'var(--vg-on-orange)', fontSize: 12, padding: '6px 16px', textAlign: 'center', letterSpacing: '.04em' }}
+            style={{ background: 'var(--vg-sand-fill)', color: 'var(--vg-on-orange)', fontSize: 12, padding: '6px 16px', textAlign: 'center', letterSpacing: '.04em' }}
           >
             PREVIEW · sample data · {PREVIEW_MESSAGE}
           </div>

@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { NEWS_CATEGORIES } from '@vigas/core';
 import { newsCategoryPath, NewsContent, NewsMasthead, NewsRiverSkeleton } from '@/components/news/news-feed';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 import { NEWS_CATEGORY_SEO, parseNewsCategorySlug } from '@/lib/seo-catalog';
@@ -54,6 +55,7 @@ export default async function NewsCategoryPaginatedPage({
           <NewsContent category={cat} page={page} lang="en" />
         </Suspense>
       </main>
+      <SiteFooter lang="en" altHref={newsCategoryPath(cat, 1, 'fa')} />
     </>
   );
 }

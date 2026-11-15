@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { LiveSessions, LiveSessionsFallback } from '@/components/leaderboard/live-sessions';
 import { LeaderboardView } from '@/components/leaderboard/view';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
@@ -16,17 +17,19 @@ export const metadata = pageMetadata({
 export default function LeaderboardPage() {
   return (
     <>
-      <SiteHeader active="leaderboard" />
+      <SiteHeader active="leaderboard" lang="en" />
       <main id="main" className="wrap">
         <LeaderboardView
           category="overall"
+          lang="en"
           live={
             <Suspense fallback={<LiveSessionsFallback />}>
-              <LiveSessions />
+              <LiveSessions lang="en" />
             </Suspense>
           }
         />
       </main>
+      <SiteFooter lang="en" />
     </>
   );
 }

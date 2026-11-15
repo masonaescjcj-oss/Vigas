@@ -4,7 +4,9 @@ import { cacheLife, cacheTag } from 'next/cache';
 import { formatCompact, formatPricePerMillion, timeAgo, type ModelListItem } from '@vigas/core';
 import { Colonnade } from '@/components/colonnade';
 import { HeroApiPanel } from '@/components/hero-api-panel';
+import { LanguageSwitch } from '@/components/language-switch';
 import { NewsletterForm } from '@/components/newsletter-form';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { ArrowLink, Avatar, Icon, JsonLd, OrgMark, SectionHead, ToolMark } from '@/components/ui';
 import { getHomeFeed, getLeaderboardData, getModels, getNews, getTools } from '@/lib/data';
@@ -63,7 +65,7 @@ export default async function HomePage() {
             style={{
               position: 'absolute',
               inset: 0,
-              backgroundImage: 'radial-gradient(rgba(239,234,225,.13) 1px,transparent 1.3px)',
+              backgroundImage: 'radial-gradient(var(--vg-dot) 1px,transparent 1.3px)',
               backgroundSize: '24px 24px',
               WebkitMaskImage: 'radial-gradient(ellipse 55% 75% at 80% 40%,#000 15%,transparent 72%)',
               maskImage: 'radial-gradient(ellipse 55% 75% at 80% 40%,#000 15%,transparent 72%)',
@@ -152,7 +154,7 @@ export default async function HomePage() {
               <Link href="/models" className="lift bento-card" style={{ flex: '2 1 520px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                   <span className="lbl">01 · API Gateway</span>
-                  <span className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)', background: 'var(--vg-orange-soft)', borderRadius: 6, padding: '3px 8px' }}>
+                  <span className="mn" style={{ fontSize: 12, color: 'var(--vg-orange-text)', background: 'var(--vg-orange-soft)', borderRadius: 6, padding: '3px 8px' }}>
                     Lowest rates · Auto-failover
                   </span>
                 </div>
@@ -172,7 +174,7 @@ export default async function HomePage() {
                         gap: 10,
                         alignItems: 'center',
                         padding: '11px 16px',
-                        borderTop: i ? '1px solid rgba(239,234,225,.06)' : undefined,
+                        borderTop: i ? '1px solid var(--vg-line-soft)' : undefined,
                         fontSize: 14,
                       }}
                     >
@@ -224,7 +226,7 @@ export default async function HomePage() {
                   {feed.news.length > 0 ? (
                     feed.news.slice(0, 2).map((n) => (
                       <div key={n.slug} style={{ padding: '9px 0', borderTop: line }}>
-                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange-text)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           <span>
                             {n.category.toUpperCase()} · {timeAgo(n.publishedAt, now).toUpperCase()}
                           </span>
@@ -236,7 +238,7 @@ export default async function HomePage() {
                     ))
                   ) : (
                     <div style={{ padding: '12px 0 0', borderTop: line }}>
-                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange)' }}>
+                      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-orange-text)' }}>
                         VIGAS NEWSROOM
                       </div>
                       <div className="sf" style={{ fontSize: 19, lineHeight: 1.2, marginTop: 4 }}>
@@ -324,7 +326,7 @@ export default async function HomePage() {
                         key={m.id}
                         href={`/models?q=${encodeURIComponent(m.id)}`}
                         className="hov live-prices-grid"
-                        style={{ paddingTop: 13, paddingBottom: 13, borderTop: '1px solid rgba(239,234,225,.06)', color: 'var(--vg-ink)' }}
+                        style={{ paddingTop: 13, paddingBottom: 13, borderTop: '1px solid var(--vg-line-soft)', color: 'var(--vg-ink)' }}
                       >
                         <span style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                           <OrgMark org={m.org} size={30} radius={9} fontSize={15} />
@@ -386,9 +388,9 @@ export default async function HomePage() {
                   }
                 />
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Link href="/news/fa" lang="fa" dir="rtl" className="fa-ui pill" style={{ color: 'var(--vg-sand)' }}>
+                  <LanguageSwitch variant="link" targetLang="fa" altHref="/news/fa" langAttr="fa" dir="rtl" className="fa-ui pill" style={{ color: 'var(--vg-sand)' }}>
                     نسخه فارسی اخبار
-                  </Link>
+                  </LanguageSwitch>
                   <ArrowLink href="/news" style={{ fontSize: 15 }}>
                     Newsroom
                   </ArrowLink>
@@ -397,7 +399,7 @@ export default async function HomePage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40 }}>
                 <article className="st" style={{ flex: '1.5 1 460px', minWidth: 0 }}>
                   <Link href={`/news/${lead.slug}`} style={{ display: 'block', color: 'var(--vg-ink)' }}>
-                    <div style={{ position: 'relative', aspectRatio: '16/10', borderRadius: 16, overflow: 'hidden', border: line, background: '#151411' }}>
+                    <div style={{ position: 'relative', aspectRatio: '16/10', borderRadius: 16, overflow: 'hidden', border: line, background: 'var(--vg-media-bg)' }}>
                       <img
                         src={articleImageUrl(lead.slug, lead.imageUrl)}
                         alt={lead.title}
@@ -411,7 +413,7 @@ export default async function HomePage() {
                         </span>
                       )}
                     </div>
-                    <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div className="mn" style={{ marginTop: 18, fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange-text)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span>{lead.category.toUpperCase()}</span>
                       <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {timeAgo(lead.publishedAt, now).toUpperCase()} AGO</span>
                     </div>
@@ -439,7 +441,7 @@ export default async function HomePage() {
                     <article key={n.slug} className="st" style={{ padding: '0 0 20px', marginBottom: 20, borderBottom: line }}>
                       <Link href={`/news/${n.slug}`} style={{ display: 'flex', gap: 16, color: 'var(--vg-ink)', alignItems: 'center' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div className="mn" style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.1em', color: 'var(--vg-orange-text)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                             <span>{n.category.toUpperCase()}</span>
                             <span style={{ color: 'var(--vg-ink3)', fontWeight: 500 }}>· {timeAgo(n.publishedAt, now).toUpperCase()}</span>
                           </div>
@@ -458,7 +460,7 @@ export default async function HomePage() {
                             {n.author.name}
                           </div>
                         </div>
-                        <div style={{ width: 112, height: 112, flexShrink: 0, borderRadius: 14, overflow: 'hidden', border: line, background: '#151411' }}>
+                        <div style={{ width: 112, height: 112, flexShrink: 0, borderRadius: 14, overflow: 'hidden', border: line, background: 'var(--vg-media-bg)' }}>
                           <img
                             src={articleImageUrl(n.slug, n.imageUrl)}
                             alt={n.title}
@@ -485,7 +487,7 @@ export default async function HomePage() {
                             href={`/news/${n.slug}`}
                             style={{ display: 'grid', gridTemplateColumns: '36px 1fr', gap: 10, padding: '14px 0', borderBottom: line, color: 'var(--vg-ink)' }}
                           >
-                            <span className="sf" aria-hidden="true" style={{ fontSize: 30, lineHeight: 1, color: 'var(--vg-orange)' }}>
+                            <span className="sf" aria-hidden="true" style={{ fontSize: 30, lineHeight: 1, color: 'var(--vg-orange-text)' }}>
                               {i + 1}
                             </span>
                             <span>
@@ -600,6 +602,7 @@ export default async function HomePage() {
           </div>
         </section>
       </main>
+      <SiteFooter lang="en" />
     </>
   );
 }
@@ -613,7 +616,7 @@ function badge(flag: string): CSSProperties {
     fontWeight: 600,
     padding: '3px 9px',
     borderRadius: 6,
-    background: flag === 'Analysis' ? 'var(--vg-sand)' : 'var(--vg-orange)',
+    background: flag === 'Analysis' ? 'var(--vg-sand-fill)' : 'var(--vg-orange)',
     color: 'var(--vg-on-orange)',
     letterSpacing: '.06em',
   };

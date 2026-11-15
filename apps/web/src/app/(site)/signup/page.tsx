@@ -12,6 +12,7 @@ export const metadata = pageMetadata({
 export default function SignUpPage() {
   return (
     <AuthPage
+      lang="en"
       crumb="Create account"
       title={
         <>
@@ -20,7 +21,7 @@ export default function SignUpPage() {
       }
       intro="Create a free account to generate your API key, add prepaid credits with $0 markup on your first $5, and call 25+ models."
     >
-      <AuthForm mode="signup" />
+      <AuthForm mode="signup" lang="en" />
     </AuthPage>
   );
 }

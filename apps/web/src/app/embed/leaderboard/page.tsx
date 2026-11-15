@@ -69,18 +69,18 @@ async function EmbedBoard({ category }: { category: LeaderboardCategory }) {
                 gap: 8,
                 alignItems: 'center',
                 padding: '9px 14px',
-                borderTop: '1px solid rgba(239,234,225,.06)',
+                borderTop: '1px solid var(--vg-line-soft)',
                 fontSize: 13,
               }}
             >
-              <span className="mn" style={{ fontWeight: 600, color: e.rank <= 3 ? 'var(--vg-orange)' : 'var(--vg-ink3)' }}>
+              <span className="mn" style={{ fontWeight: 600, color: e.rank <= 3 ? 'var(--vg-orange-text)' : 'var(--vg-ink3)' }}>
                 #{e.rank}
               </span>
               <OrgMark org={e.org} size={26} radius={7} fontSize={13} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.name}</div>
                 <div aria-hidden="true" style={{ height: 3, borderRadius: 2, background: 'var(--vg-raised)', marginTop: 4, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: e.rank === 1 ? 'var(--vg-orange)' : e.rank <= 3 ? 'var(--vg-sand)' : 'var(--vg-blue)' }} />
+                  <div style={{ height: '100%', width: `${pct}%`, background: e.rank === 1 ? 'var(--vg-orange)' : e.rank <= 3 ? 'var(--vg-sand-fill)' : 'var(--vg-blue)' }} />
                 </div>
               </div>
               <span className="mn" style={{ textAlign: 'right', fontSize: 12 }}>

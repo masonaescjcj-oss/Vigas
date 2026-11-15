@@ -33,8 +33,8 @@ export function NewsletterForm({ variant = 'card', lang = 'en' }: { variant?: 'c
           autoComplete="email"
           dir="ltr"
           placeholder="you@company.com"
-          className="input"
-          style={orange ? { height: 46, border: 0, background: 'var(--vg-on-orange)', borderRadius: 11 } : { height: 50 }}
+          className={orange ? 'input input-on-dark' : 'input'}
+          style={orange ? { height: 46, border: 0, background: 'var(--vg-on-orange)', color: '#EFEAE1', borderRadius: 11 } : { height: 50 }}
         />
       </label>
       <button

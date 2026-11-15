@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
-import { SiteFooter } from '@/components/site-footer';
 
-/** Marketing and account pages: each page renders its own header (active tab, ticker on/off). */
+/** Marketing and account pages: each page renders its own header and localized footer. */
 export default function SiteLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      {children}
-      <SiteFooter />
-    </>
-  );
+  return <>{children}</>;
 }

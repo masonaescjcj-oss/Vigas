@@ -7,11 +7,21 @@ import { ApiError } from '@vigas/api-client';
 import type { ToolCategory, ToolItem } from '@vigas/core';
 import { api, useSignedInHint } from '@/lib/client/session';
 import { toolImageUrl } from '@/lib/media';
+import { TOOL_CATEGORY_LABELS_FA } from '@/lib/seo-catalog';
 import { Icon, ToolMark } from '../ui';
 import { VoteButton, type VoteState } from './vote-button';
 
 type Sort = 'votes' | 'rating' | 'new';
 const PAGE = 24;
+
+const PRICING_FA: Record<string, string> = {
+  Free: 'رایگان',
+  Freemium: 'فریمیوم',
+  Paid: 'پولی',
+  free: 'رایگان',
+  freemium: 'فریمیوم',
+  paid: 'پولی',
+};
 
 export function ToolsDirectory({
   tools,
@@ -21,6 +31,7 @@ export function ToolsDirectory({
   initialVigasOnly = false,
   initialSort = 'votes',
   categoryMode = 'filter',
+  lang = 'en',
 }: {
   tools: ToolItem[];
   categories: readonly ToolCategory[];
@@ -29,7 +40,9 @@ export function ToolsDirectory({
   initialVigasOnly?: boolean;
   initialSort?: Sort;
   categoryMode?: 'filter' | 'link';
+  lang?: 'en' | 'fa';
 }) {
+  const isFa = lang === 'fa';
   const router = useRouter();
   const signedIn = useSignedInHint();
   const [cat, setCat] = useState<ToolCategory | 'All'>(initialCategory);
@@ -41,6 +54,13 @@ export function ToolsDirectory({
   const [votes, setVotes] = useState<Record<string, VoteState>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const catLabel = (c: ToolCategory | 'All') => {
+    if (!isFa) return c;
+    return c === 'All' ? 'همه' : (TOOL_CATEGORY_LABELS_FA[c] ?? c);
+  };
+
+  const pricingLabel = (p: string) => (isFa ? (PRICING_FA[p] ?? PRICING_FA[p.toLowerCase()] ?? p) : p);
 
   // Deep links: ?category=, ?q=, ?sort=, ?pricing=, ?vigas=1
   useEffect(() => {
@@ -80,7 +100,7 @@ export function ToolsDirectory({
         (cat === 'All' || t.category === cat) &&
         (!pricing || t.pricing.toLowerCase() === pricing.toLowerCase() || (pricing.toLowerCase() === 'free' && t.pricing === 'Freemium')) &&
         (!vigasOnly || t.runsOnVigas) &&
-        (!s || `${t.name} ${t.tagline} ${t.category} ${t.pricing}`.toLowerCase().includes(s)),
+        (!s || `${t.name} ${t.tagline} ${t.category} ${TOOL_CATEGORY_LABELS_FA[t.category] ?? ''} ${t.pricing}`.toLowerCase().includes(s)),
     );
     const v = (t: ToolItem) => votes[t.slug]?.votes ?? t.votes;
     return list.sort((a, b) =>
@@ -104,7 +124,7 @@ export function ToolsDirectory({
     } catch (e) {
       setVotes((m) => ({ ...m, [t.slug]: prev }));
       if (e instanceof ApiError && e.status === 401) router.push(`/signin?next=${encodeURIComponent('/tools#dir')}`);
-      else setError(e instanceof Error ? e.message : 'Could not save your vote.');
+      else setError(e instanceof Error ? e.message : isFa ? 'خطا در ثبت رأی.' : 'Could not save your vote.');
     } finally {
       setBusy(null);
     }
@@ -117,7 +137,7 @@ export function ToolsDirectory({
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
         <label className="field" style={{ flex: '1 1 280px', minWidth: 0, height: 46 }}>
           <Icon name="search" size={17} />
-          <span className="sr-only">Search tools</span>
+          <span className="sr-only">{isFa ? 'جستجوی ابزارها' : 'Search tools'}</span>
           <input
             type="search"
             value={q}
@@ -125,24 +145,36 @@ export function ToolsDirectory({
               setQ(e.target.value);
               setLimit(PAGE);
             }}
-            placeholder={`Search ${tools.length} AI apps — “coding”, “video”, “free”…`}
-            style={{ font: '15px var(--vg-font-sans)' }}
+            placeholder={
+              isFa
+                ? `جستجو بین ${tools.length} ابزار AI — “coding”, “video”, “free”…`
+                : `Search ${tools.length} AI apps — “coding”, “video”, “free”…`
+            }
+            style={{ font: isFa ? '14.5px var(--vg-font-fa)' : '15px var(--vg-font-sans)' }}
           />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--vg-ink2)' }}>
-          Sort
+          {isFa ? 'مرتب‌سازی' : 'Sort'}
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            style={{ height: 46, borderRadius: 12, background: 'var(--vg-surface)', border: '1px solid var(--vg-line2)', color: 'var(--vg-ink)', padding: '0 12px', font: '14px var(--vg-font-sans)' }}
+            style={{
+              height: 46,
+              borderRadius: 12,
+              background: 'var(--vg-surface)',
+              border: '1px solid var(--vg-line2)',
+              color: 'var(--vg-ink)',
+              padding: '0 12px',
+              font: isFa ? '14px var(--vg-font-fa)' : '14px var(--vg-font-sans)',
+            }}
           >
-            <option value="votes">Most upvoted</option>
-            <option value="rating">Top rated</option>
-            <option value="new">Newest</option>
+            <option value="votes">{isFa ? 'پررأی‌ترین' : 'Most upvoted'}</option>
+            <option value="rating">{isFa ? 'بالاترین امتیاز' : 'Top rated'}</option>
+            <option value="new">{isFa ? 'جدیدترین' : 'Newest'}</option>
           </select>
         </label>
       </div>
-      <div role="group" aria-label="Category and app filters" className="scroll-x" style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+      <div role="group" aria-label={isFa ? 'فیلترهای دسته‌بندی و ابزارها' : 'Category and app filters'} className="scroll-x" style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
         {(['All', ...categories] as const).map((c) =>
           categoryMode === 'link' ? (
             <Link
@@ -152,7 +184,7 @@ export function ToolsDirectory({
               aria-current={cat === c ? 'page' : undefined}
               style={{ minHeight: 36, padding: '0 14px' }}
             >
-              {c}
+              {catLabel(c)}
             </Link>
           ) : (
             <button
@@ -166,7 +198,7 @@ export function ToolsDirectory({
               }}
               style={{ minHeight: 36, padding: '0 14px' }}
             >
-              {c}
+              {catLabel(c)}
             </button>
           ),
         )}
@@ -182,7 +214,7 @@ export function ToolsDirectory({
               }}
               style={{ minHeight: 36, padding: '0 14px' }}
             >
-              Free / Freemium
+              {isFa ? 'رایگان / فریمیوم' : 'Free / Freemium'}
             </button>
             <button
               type="button"
@@ -206,11 +238,11 @@ export function ToolsDirectory({
               setPricing(null);
               setVigasOnly(false);
             }}
-            style={{ minHeight: 36, padding: '0 14px', color: 'var(--vg-orange-text)', borderColor: 'rgba(255,106,26,.5)' }}
+            style={{ minHeight: 36, padding: '0 14px', color: 'var(--vg-orange-text)', borderColor: 'var(--vg-orange-edge)' }}
           >
-            {pricing} tools
+            {isFa ? `ابزارهای ${pricingLabel(pricing)}` : `${pricing} tools`}
             <Icon name="x" size={13} />
-            <span className="sr-only">Clear filter</span>
+            <span className="sr-only">{isFa ? 'حذف فیلتر' : 'Clear filter'}</span>
           </button>
         )}
       </div>
@@ -220,10 +252,12 @@ export function ToolsDirectory({
         </p>
       )}
       <p className="sr-only" role="status">
-        {rows.length} tools shown
+        {isFa ? `${rows.length} ابزار نمایش داده شد` : `${rows.length} tools shown`}
       </p>
       {rows.length === 0 ? (
-        <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--vg-ink2)' }}>No tools match. Try another search or category.</p>
+        <p style={{ padding: '40px 0', textAlign: 'center', color: 'var(--vg-ink2)' }}>
+          {isFa ? 'ابزاری با این مشخصات پیدا نشد. عبارت یا دسته دیگری را امتحان کنید.' : 'No tools match. Try another search or category.'}
+        </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(290px,100%),1fr))', gap: 16 }}>
           {rows.slice(0, limit).map((t) => {
@@ -232,7 +266,7 @@ export function ToolsDirectory({
             return (
               <li key={t.slug} className="lift card" style={{ borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 {previewUrl && (
-                  <Link href={`/tools/${t.slug}`} className="tool-thumb" aria-label={`Open ${t.name} details`}>
+                  <Link href={`/tools/${t.slug}`} className="tool-thumb" aria-label={isFa ? `مشاهده جزئیات ${t.name}` : `Open ${t.name} details`}>
                     <img src={previewUrl} alt={`${t.name} — ${t.category} AI app preview`} width={640} height={360} loading="lazy" />
                   </Link>
                 )}
@@ -244,14 +278,16 @@ export function ToolsDirectory({
                         <Link href={`/tools/${t.slug}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {t.name}
                         </Link>
-                        {t.runsOnVigas && <Icon name="verified" size={14} style={{ color: 'var(--vg-blue)' }} label="Runs on the Vigas API" />}
+                        {t.runsOnVigas && <Icon name="verified" size={14} style={{ color: 'var(--vg-blue)' }} label={isFa ? 'متصل به Vigas API' : 'Runs on the Vigas API'} />}
                       </h3>
                       <p
+                        dir="ltr"
                         style={{
                           margin: '3px 0 0',
                           color: 'var(--vg-ink2)',
                           fontSize: 13.5,
                           lineHeight: 1.42,
+                          textAlign: isFa ? 'right' : undefined,
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
@@ -261,28 +297,28 @@ export function ToolsDirectory({
                         {t.tagline}
                       </p>
                     </div>
-                    <VoteButton name={t.name} state={st} busy={busy === t.slug} onClick={() => vote(t)} />
+                    <VoteButton name={t.name} state={st} busy={busy === t.slug} onClick={() => vote(t)} lang={lang} />
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 'auto', paddingTop: 2 }}>
                     <Link href={`/tools/category/${t.category.toLowerCase()}`} className="pill" style={{ color: 'var(--vg-ink2)' }}>
-                      {t.category}
+                      {catLabel(t.category)}
                     </Link>
                     <span className="pill" style={{ color: t.pricing === 'Free' ? 'var(--vg-green)' : undefined }}>
-                      {t.pricing}
+                      {pricingLabel(t.pricing)}
                     </span>
                     {t.runsOnVigas && (
-                      <Link href="/tools/collection/vigas-api" className="pill" style={{ background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
+                      <Link href="/tools/collection/vigas-api" className="pill" dir="ltr" style={{ background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
                         Vigas API
                       </Link>
                     )}
                     {t.isNew && (
                       <span className="pill" style={{ color: 'var(--vg-sand)' }}>
-                        New
+                        {isFa ? 'جدید' : 'New'}
                       </span>
                     )}
-                    <span className="mn" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-sand)' }}>
+                    <span className="mn" dir="ltr" style={{ marginInlineStart: 'auto', fontSize: 12, color: 'var(--vg-sand)' }}>
                       <span aria-hidden="true">★</span> {t.rating.toFixed(1)}
-                      <span className="sr-only"> out of 5</span>
+                      <span className="sr-only">{isFa ? ' از ۵' : ' out of 5'}</span>
                     </span>
                   </div>
                 </div>
@@ -294,7 +330,7 @@ export function ToolsDirectory({
       {rows.length > limit && (
         <div style={{ textAlign: 'center', marginTop: 24 }}>
           <button type="button" className="btn gh" onClick={() => setLimit((l) => l + PAGE)}>
-            Show {Math.min(PAGE, rows.length - limit)} more
+            {isFa ? `نمایش ${Math.min(PAGE, rows.length - limit)} مورد بیشتر` : `Show ${Math.min(PAGE, rows.length - limit)} more`}
           </button>
         </div>
       )}

@@ -3,8 +3,10 @@ import { Suspense } from 'react';
 import { cacheLife, cacheTag } from 'next/cache';
 import { getHomeFeed, getModels } from '@/lib/data';
 import { HeaderAccount } from './header-account';
+import { LanguageSwitch } from './language-switch';
 import { MobileNav } from './mobile-nav';
 import { QuickSearch } from './quick-search';
+import { ThemeToggle } from './theme-toggle';
 import { Icon, LogoMark } from './ui';
 
 export type NavKey = 'home' | 'models' | 'leaderboard' | 'news' | 'tools' | 'none';
@@ -37,8 +39,6 @@ export function SiteHeader({
   const isFa = lang === 'fa';
   const nav = isFa ? FA_NAV : EN_NAV;
   const homeHref = isFa ? '/fa' : '/';
-  const enHref = isFa ? (altHref ?? (active === 'news' ? '/news' : '/')) : active === 'news' ? '/news' : '/';
-  const faHref = isFa ? (active === 'news' ? '/news/fa' : '/fa') : (altHref ?? (active === 'news' ? '/news/fa' : '/fa'));
 
   return (
     <>
@@ -55,7 +55,7 @@ export function SiteHeader({
               </span>
             }
           >
-            <MobileNav active={active} nav={nav} lang={lang} enHref={enHref} faHref={faHref} />
+            <MobileNav active={active} nav={nav} lang={lang} altHref={altHref} />
           </Suspense>
           <Link href={homeHref} aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'} className="hdr-logo">
             <LogoMark />
@@ -71,14 +71,8 @@ export function SiteHeader({
             ))}
           </nav>
           <div className="hdr-actions">
-            <div className="hdr-lang" role="group" aria-label={isFa ? 'انتخاب زبان' : 'Language switcher'}>
-              <Link href={enHref} aria-current={!isFa ? 'page' : undefined} title="English">
-                EN
-              </Link>
-              <Link href={faHref} lang="fa" className="fa-ui" aria-current={isFa ? 'page' : undefined} title="نسخه فارسی">
-                فا
-              </Link>
-            </div>
+            <ThemeToggle variant="icon" lang={lang} />
+            <LanguageSwitch variant="header" lang={lang} altHref={altHref} />
             <QuickSearch lang={lang} />
             <HeaderAccount lang={lang} />
           </div>
@@ -105,7 +99,7 @@ async function Ticker({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
   const isFa = lang === 'fa';
   const items: TickerItem[] = [];
   const news = feed.news;
-  if (news[0]) items.push({ k: news[0].category.toUpperCase(), c: 'var(--vg-orange)', text: news[0].title, href: `/news/${news[0].slug}`, lang: news[0].lang });
+  if (news[0]) items.push({ k: news[0].category.toUpperCase(), c: 'var(--vg-orange-text)', text: news[0].title, href: `/news/${news[0].slug}`, lang: news[0].lang });
   const drop = [...models].sort((a, b) => a.priceChange24h - b.priceChange24h)[0];
   if (drop && drop.priceChange24h < 0) {
     items.push({
@@ -126,7 +120,7 @@ async function Ticker({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
       lang,
     });
   }
-  if (news[1]) items.push({ k: news[1].category.toUpperCase(), c: 'var(--vg-orange)', text: news[1].title, href: `/news/${news[1].slug}`, lang: news[1].lang });
+  if (news[1]) items.push({ k: news[1].category.toUpperCase(), c: 'var(--vg-orange-text)', text: news[1].title, href: `/news/${news[1].slug}`, lang: news[1].lang });
   const tool = feed.trendingTools[0];
   if (tool) {
     items.push({
@@ -137,7 +131,7 @@ async function Ticker({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
       lang,
     });
   }
-  for (const n of news.slice(2, 4)) items.push({ k: n.category.toUpperCase(), c: 'var(--vg-orange)', text: n.title, href: `/news/${n.slug}`, lang: n.lang });
+  for (const n of news.slice(2, 4)) items.push({ k: n.category.toUpperCase(), c: 'var(--vg-orange-text)', text: n.title, href: `/news/${n.slug}`, lang: n.lang });
   if (items.length === 0) return null;
 
   const row = (copy: boolean) =>

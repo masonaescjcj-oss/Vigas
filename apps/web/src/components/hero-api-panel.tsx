@@ -41,7 +41,7 @@ export function HeroApiPanel({
             {isFa ? 'تعرفه‌های زنده API' : 'Live API rates'}
           </span>
         </div>
-        <span className="pill" style={{ color: 'var(--vg-green)', background: 'rgba(111,207,115,0.12)', fontSize: 11.5 }}>
+        <span className="pill" style={{ color: 'var(--vg-green)', background: 'var(--vg-green-soft)', fontSize: 11.5 }}>
           {isFa ? '۰٪ کارمزد تا ۵ دلار' : '$0 fee · first $5'}
         </span>
       </div>
@@ -68,7 +68,7 @@ export function HeroApiPanel({
                       fontSize: 10.5,
                       padding: '1px 6px',
                       color: isFree ? 'var(--vg-green)' : 'var(--vg-sand)',
-                      background: isFree ? 'rgba(111,207,115,0.12)' : 'rgba(227,182,92,0.1)',
+                      background: isFree ? 'var(--vg-green-soft)' : 'var(--vg-sand-soft)',
                     }}
                   >
                     {isFa ? spec.faTag : spec.enTag}

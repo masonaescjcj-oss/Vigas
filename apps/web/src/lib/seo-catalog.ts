@@ -473,6 +473,320 @@ export const LEADERBOARD_CATEGORY_SEO: Record<LeaderboardCategory, LeaderboardCa
   },
 };
 
+export const TOOL_CATEGORY_LABELS_FA: Record<ToolCategory, string> = {
+  Agents: 'ایجنت‌های AI',
+  Coding: 'کدنویسی',
+  Research: 'پژوهش و جستجو',
+  Image: 'تولید تصویر',
+  Video: 'ساخت ویدیو',
+  Audio: 'صوت و موسیقی',
+  Productivity: 'بهره‌وری',
+};
+
+export const TOOL_CATEGORY_SEO_FA: Record<ToolCategory, ToolCategorySeo> = {
+  Agents: {
+    category: 'Agents',
+    slug: 'agents',
+    label: 'ایجنت‌های هوشمند و ابزارهای خودکار AI',
+    title: 'بهترین ایجنت‌های هوش مصنوعی و ابزارهای خودکار (۲۰۲۶)',
+    heading: 'بهترین ابزارهای ایجنتی،',
+    accent: 'با رأی توسعه‌دهندگان.',
+    description:
+      'مقایسه برترین ایجنت‌های خودکار هوش مصنوعی، اپلیکیشن‌سازها و ابزارهای ارکستراسیون گردش‌کار بر اساس رأی سازندگان و امتیاز واقعی در ویگاس.',
+    intro:
+      'ایجنت‌های خودکار تغییرات چندمرحله‌ای را برنامه‌ریزی می‌کنند، با APIهای بیرونی کار می‌کنند و پیش از انتشار خروجی را راستی‌آزمایی می‌کنند.',
+    relatedLeaderboard: 'overall',
+    relatedNewsCategory: 'Agents',
+    faqs: [
+      {
+        q: 'کدام ابزارهای ایجنتی با یک کلید Vigas API کار می‌کنند؟',
+        a: 'ابزارهایی که نشان «Vigas API» دارند مستقیماً به آدرس api.vigas.ai/v1 متصل می‌شوند تا بدون نیاز به کلیدهای متعدد، میان مدل‌های پیشتاز جابه‌جا شوید.',
+      },
+      {
+        q: 'ویگاس ابزارهای ایجنتی را چطور رتبه‌بندی می‌کند؟',
+        a: 'رتبه‌بندی ترکیبی از رأی توسعه‌دهندگان، بررسی تحریریه، شفافیت قیمت‌گذاری و پشتیبانی از مسیریابی چندمدلی است.',
+      },
+    ],
+  },
+  Coding: {
+    category: 'Coding',
+    slug: 'coding',
+    label: 'دستیارها و ادیتورهای کدنویسی AI',
+    title: 'بهترین ابزارهای کدنویسی، ادیتور و IDE هوش مصنوعی (۲۰۲۶)',
+    heading: 'بهترین ابزارهای کدنویسی،',
+    accent: 'آزموده‌شده در تولید.',
+    description:
+      'برترین ادیتورهای کد هوش مصنوعی، ایجنت‌های ترمینال و مولدهای رابط کاربری با رتبه‌بندی توسعه‌دهندگان در ویگاس — مقایسه قیمت و پشتیبانی مدل.',
+    intro:
+      'از IDEهای تمام‌هوشمند تا مولدهای رابط کاربری و دستیارهای بازبینی کد که به تیم‌ها کمک می‌کنند سریع‌تر و با هزینه توکن کنترل‌شده محصول بسازند.',
+    relatedLeaderboard: 'coding',
+    relatedNewsCategory: 'Models',
+    faqs: [
+      {
+        q: 'کدام ابزارهای کدنویسی از طریق ویگاس به مدل‌های پیشتاز وصل می‌شوند؟',
+        a: 'هر ادیتور یا CLI سازگار با استاندارد OpenAI می‌تواند آدرس پایه https://api.vigas.ai/v1 را تنظیم کرده و به مدل‌های Claude، GPT، Gemini و DeepSeek متصل شود.',
+      },
+      {
+        q: 'آیا ابزارهای رایگان کدنویسی در این بخش وجود دارد؟',
+        a: 'بله — با فیلتر رایگان / فریمیوم یا کلکسیون ابزارهای رایگان می‌توانید گزینه‌های بدون هزینه اولیه را مشاهده کنید.',
+      },
+    ],
+  },
+  Research: {
+    category: 'Research',
+    slug: 'research',
+    label: 'موتورهای جستجو و پژوهش استنادی AI',
+    title: 'بهترین دستیارهای پژوهش و جستجوی استنادی هوش مصنوعی (۲۰۲۶)',
+    heading: 'بهترین ابزارهای پژوهش،',
+    accent: 'با منابع قابل راستی‌آزمایی.',
+    description:
+      'مقایسه برترین موتورهای پاسخ هوشمند، ابزارهای تحلیل PDF و دستیارهای ادبیات علمی با رتبه‌بندی پژوهشگران در ویگاس.',
+    intro:
+      'ابزارهای پژوهش جستجوی زنده وب و ایندکس اسناد طولانی را با مدل‌های استدلال‌گر ترکیب می‌کنند تا هر ادعا به منبع معتبر متصل باشد.',
+    relatedLeaderboard: 'text',
+    relatedNewsCategory: 'Analysis',
+    faqs: [
+      {
+        q: 'یک ابزار پژوهش هوش مصنوعی خوب چه ویژگی‌هایی دارد؟',
+        a: 'ارجاع دقیق به منابع درون‌متنی، استخراج وفادار از مقالات و PDFهای طولانی و هزینه قابل پیش‌بینی برای هر تحقیق عمیق.',
+      },
+      {
+        q: 'آیا می‌توانم دستیار پژوهش اختصاصی خودم را با ویگاس بسازم؟',
+        a: 'بله — جدول رده‌بندی متن و مدل‌های با پنجره متنی بالای ۱ میلیون توکن در بخش مدل‌ها را ببینید.',
+      },
+    ],
+  },
+  Image: {
+    category: 'Image',
+    slug: 'image',
+    label: 'استودیوهای طراحی و تولید تصویر AI',
+    title: 'بهترین مولدهای تصویر و ابزارهای طراحی بصری هوش مصنوعی (۲۰۲۶)',
+    heading: 'بهترین ابزارهای تولید تصویر،',
+    accent: 'به انتخاب طراحان.',
+    description:
+      'معرفی و مقایسه برترین مولدهای تصویر هوش مصنوعی، استودیوهای عکاسی محصول و ابزارهای رندر تایپوگرافی دقیق در ویگاس.',
+    intro:
+      'ابزارهای تصویرسازی مدرن واقع‌گرایی، خوانایی متن داخل تصویر، وفاداری به پرامپت و قیمت شفاف به‌ازای هر رندر را کنار هم قرار می‌دهند.',
+    relatedLeaderboard: 'image-edit',
+    relatedNewsCategory: 'Tools',
+    faqs: [
+      {
+        q: 'مولدهای تصویر در ویگاس چگونه رتبه‌بندی می‌شوند؟',
+        a: 'رتبه‌ها ترکیبی از رأی سازندگان و سیگنال‌های کیفیت زنده در لیدربورد ویرایش تصویر است.',
+      },
+      {
+        q: 'کدام ابزارهای تصویر سطح رایگان دارند؟',
+        a: 'ابزارهای دارای برچسب رایگان یا فریمیوم امکان تست خروجی را بدون پرداخت اولیه فراهم می‌کنند.',
+      },
+    ],
+  },
+  Video: {
+    category: 'Video',
+    slug: 'video',
+    label: 'ابزارهای ساخت و تدوین ویدیو AI',
+    title: 'بهترین مولدهای ویدیو و پلتفرم‌های تدوین هوش مصنوعی (۲۰۲۶)',
+    heading: 'بهترین ابزارهای ویدیو AI،',
+    accent: 'با کنترل فریم‌به‌فریم.',
+    description:
+      'مقایسه پیشروترین پلتفرم‌های تولید ویدیو، استوری‌برد و تدوین آنلاین با هوش مصنوعی بر اساس رأی کاربران ویگاس.',
+    intro:
+      'مولدهای ویدیو متن و فریم‌های کلیدی را به نماهای پیوسته با هماهنگی لب، کنترل دوربین و تدوین خط زمانی تبدیل می‌کنند.',
+    relatedLeaderboard: 'vision',
+    relatedNewsCategory: 'Hardware',
+    faqs: [
+      {
+        q: 'پیش از انتخاب ابزار ویدیوی AI چه معیارهایی را باید مقایسه کرد؟',
+        a: 'ثبات کاراکتر در نماهای مختلف، وضوح خروجی، سرعت رندر و هزینه هر ثانیه ویدیو.',
+      },
+      {
+        q: 'آیا تست رایگان برای ابزارهای ویدیو وجود دارد؟',
+        a: 'بیشتر پلتفرم‌های فریمیوم اعتبار اولیه برای پیش‌نمایش ارائه می‌دهند.',
+      },
+    ],
+  },
+  Audio: {
+    category: 'Audio',
+    slug: 'audio',
+    label: 'تولید صدا، موسیقی و گفتار بلادرنگ AI',
+    title: 'بهترین ابزارهای صدا، دوبله و تولید موسیقی هوش مصنوعی (۲۰۲۶)',
+    heading: 'بهترین ابزارهای صوت و موسیقی،',
+    accent: 'با کیفیت استودیویی.',
+    description:
+      'کشف برترین ابزارهای کلون صدا، ایجنت‌های مکالمه صوتی با تأخیر پایین، دوبله چندزبانه و ساخت موسیقی AI در ویگاس.',
+    intro:
+      'پلتفرم‌های صوتی مدرن لحن طبیعی، دوبله چندزبانه و گفتگوی زیر ۳۰۰ میلی‌ثانیه برای ایجنت‌های صوتی زنده ارائه می‌دهند.',
+    relatedLeaderboard: 'aligned',
+    relatedNewsCategory: 'Tools',
+    faqs: [
+      {
+        q: 'کدام ابزارهای صوتی برای ایجنت‌های مکالمه بلادرنگ مناسب‌اند؟',
+        a: 'ابزارهایی که استریم WebRTC یا WebSocket با تأخیر پایین و تشخیص نوبت مکالمه دارند.',
+      },
+      {
+        q: 'آیا استفاده تجاری از صدا و موسیقی تولیدشده مجاز است؟',
+        a: 'در بیشتر پلن‌های حرفه‌ای و پولی مجوز کامل تجاری صادر می‌شود؛ همیشه لایسنس ابزار را بررسی کنید.',
+      },
+    ],
+  },
+  Productivity: {
+    category: 'Productivity',
+    slug: 'productivity',
+    label: 'خلاصه‌سازی جلسات، اسلاید و بهره‌وری کاری AI',
+    title: 'بهترین ابزارهای بهره‌وری هوش مصنوعی برای تیم‌ها (۲۰۲۶)',
+    heading: 'بهترین ابزارهای بهره‌وری،',
+    accent: 'بدون کارهای تکراری.',
+    description:
+      'مقایسه برترین ابزارهای هوش مصنوعی برای یادداشت جلسات، ساخت اسلاید، صفحات گسترده و مدیریت کارهای روزانه در ویگاس.',
+    intro:
+      'ابزارهای کارآمد بهره‌وری به‌آرامی در جریان کار تیم جا می‌گیرند و گزارش جلسات، مستندات و پیگیری‌ها را خودکار می‌کنند.',
+    relatedLeaderboard: 'work',
+    relatedNewsCategory: 'Funding',
+    faqs: [
+      {
+        q: 'ابزارهای بهره‌وری در ویگاس چطور ارزیابی می‌شوند؟',
+        a: 'تمرکز بر سازگاری با جریان کار واقعی تیم‌ها و پیوند با معیارهای لیدربورد «کار و پژوهش» است.',
+      },
+      {
+        q: 'تفاوت ابزارهای مبتنی بر Vigas API با SaaS مستقل چیست؟',
+        a: 'در ابزارهای متصل به ویگاس می‌توانید مدل دلخواه را انتخاب کرده و دقیقاً به‌ازای مصرف واقعی توکن هزینه بپردازید.',
+      },
+    ],
+  },
+};
+
+export const TOOL_COLLECTIONS_FA: Record<ToolCollectionSlug, Omit<ToolCollectionSeo, 'filter'>> = {
+  free: {
+    slug: 'free',
+    name: 'ابزارهای رایگان و فریمیوم AI',
+    title: 'بهترین ابزارهای رایگان هوش مصنوعی که واقعاً کاربردی هستند (۲۰۲۶)',
+    heading: 'ابزارهای رایگان AI،',
+    accent: 'تأییدشده توسط سازندگان.',
+    description:
+      'فهرست منتخب بهترین ابزارهای رایگان و پلن‌های فریمیوم سخاوتمندانه در کدنویسی، پژوهش، تصویر، صدا و بهره‌وری در ویگاس.',
+    intro:
+      'هر ابزاری در این مجموعه دسترسی رایگان واقعی یا سطح فریمیوم کاربردی بدون تله‌های تبلیغاتی دارد و بر اساس رأی کاربران مرتب شده است.',
+    faqs: [
+      {
+        q: 'آیا تمام ابزارهای این فهرست کاملاً رایگان هستند؟',
+        a: 'ابزارهای با برچسب Free بدون نیاز به خرید پلن رایگان‌اند و ابزارهای Freemium سهمیه رایگان دائمی برای استفاده روزمره دارند.',
+      },
+      {
+        q: 'چطور از مدل‌های رایگان در API استفاده کنم؟',
+        a: 'در صفحه مدل‌ها و تعرفه‌ها فیلتر «مدل‌های رایگان» را انتخاب کنید تا به مدل‌های بدون هزینه ویگاس دسترسی داشته باشید.',
+      },
+    ],
+  },
+  'vigas-api': {
+    slug: 'vigas-api',
+    name: 'ابزارهای متصل به Vigas API',
+    title: 'بهترین ابزارهای هوش مصنوعی سازگار با Vigas API (۲۰۲۶)',
+    heading: 'ساخته‌شده روی ویگاس،',
+    accent: 'یک کلید و یک کیف‌پول.',
+    description:
+      'ایجنت‌ها، ادیتورهای کد و اپلیکیشن‌هایی که مستقیماً با کلید API یکپارچه ویگاس و نرخ مستقیم توکن کار می‌کنند.',
+    intro:
+      'محصولات این فهرست به کلید ویگاس شما متصل می‌شوند تا تمام ابزارها از یک اعتبار مشترک بدون خرید اشتراک‌های جداگانه استفاده کنند.',
+    faqs: [
+      {
+        q: 'آیا برای ابزارهای سازگار با ویگاس باید اشتراک جداگانه بخرم؟',
+        a: 'خیر. با اتصال کلید Vigas API فقط هزینه واقعی توکن‌های مصرفی از اعتبار کیف‌پول ویگاس شما کسر می‌شود.',
+      },
+      {
+        q: 'آیا می‌توانم اپلیکیشن خودم را در این مجموعه ثبت کنم؟',
+        a: 'بله — ابزار خود را روی api.vigas.ai/v1 راه‌اندازی کنید و از طریق ایمیل برای ثبت در دایرکتوری ارسال نمایید.',
+      },
+    ],
+  },
+  new: {
+    slug: 'new',
+    name: 'تازه‌ترین ابزارهای هوش مصنوعی',
+    title: 'جدیدترین ابزارهای هوش مصنوعی و محصولات تازه‌وارد (۲۰۲۶)',
+    heading: 'معرفی‌های تازه AI،',
+    accent: 'آماده آزمون و بررسی.',
+    description:
+      'جدیدترین ابزارهای هوش مصنوعی، ایجنت‌های کدنویسی و پلتفرم‌های پژوهش اضافه‌شده به دایرکتوری ویگاس.',
+    intro: 'ابزارهای تازه‌منتشرشده که پیش از فراگیر شدن، توسط تحریریه ویگاس بررسی و تست شده‌اند.',
+    faqs: [
+      {
+        q: 'هر چند وقت یک‌بار ابزارهای جدید به ویگاس اضافه می‌شوند؟',
+        a: 'تحریریه ویگاس هر هفته محصولات ارسالی سازندگان را آزمایش کرده و برترین‌ها را به این بخش و خبرنامه اضافه می‌کند.',
+      },
+    ],
+  },
+};
+
+export const NEWS_CATEGORY_LABELS_FA: Record<NewsCategory, string> = {
+  Models: 'مدل‌ها',
+  Agents: 'ایجنت‌ها',
+  Analysis: 'تحلیل',
+  Policy: 'سیاست‌گذاری',
+  Hardware: 'سخت‌افزار',
+  Funding: 'سرمایه‌گذاری',
+  Tools: 'ابزارها',
+};
+
+export const LEADERBOARD_CATEGORIES_FA: Record<LeaderboardCategory, string> = {
+  overall: 'کلی',
+  coding: 'کدنویسی',
+  webdev: 'توسعه وب',
+  text: 'متن و استدلال',
+  vision: 'بینایی',
+  'image-edit': 'ویرایش تصویر',
+  aligned: 'ایمن و هم‌راستا',
+  work: 'کار و پژوهش',
+};
+
+export const LEADERBOARD_CATEGORY_SEO_FA: Record<LeaderboardCategory, LeaderboardCategorySeo> = {
+  overall: {
+    intro: 'لیدربورد ترکیبی که انجام موفق کارهای واقعی چندمرحله‌ای را همراه با مقایسه‌های کور Arena در همه حوزه‌ها می‌سنجد.',
+    relatedToolCategory: 'Agents',
+    relatedToolLabel: 'ابزارهای ایجنتی AI',
+    relatedNewsCategory: 'Models',
+  },
+  coding: {
+    intro: 'متمرکز بر پیمایش مخزن کد، دیباگ، بازنویسی، تست‌نویسی و اجرای دستورات ترمینال در پروژه‌های نرم‌افزاری واقعی.',
+    relatedToolCategory: 'Coding',
+    relatedToolLabel: 'ابزارهای کدنویسی AI',
+    relatedNewsCategory: 'Agents',
+  },
+  webdev: {
+    intro: 'ارزیابی کیفیت رابط کاربری فول‌استک، چیدمان واکنش‌گرا در CSS، دسترس‌پذیری و معماری کامپوننت‌های تعاملی.',
+    relatedToolCategory: 'Coding',
+    relatedToolLabel: 'ابزارهای ساخت وب و UI',
+    relatedNewsCategory: 'Tools',
+  },
+  text: {
+    intro: 'سنجش کیفیت نگارش طولانی، استدلال ساخت‌یافته، خلاصه‌سازی و پیروی دقیق از دستورالعمل‌های چندزبانه.',
+    relatedToolCategory: 'Research',
+    relatedToolLabel: 'ابزارهای پژوهش و نگارش',
+    relatedNewsCategory: 'Analysis',
+  },
+  vision: {
+    intro: 'اندازه‌گیری دقت چندرسانه‌ای در تحلیل اسکرین‌شات UI، نمودارها، اسناد اسکن‌شده، دیاگرام‌ها و تصاویر واقعی.',
+    relatedToolCategory: 'Video',
+    relatedToolLabel: 'ابزارهای ویدیو و بینایی',
+    relatedNewsCategory: 'Models',
+  },
+  'image-edit': {
+    intro: 'مقایسه وفاداری فضایی به دستور، خوانایی تایپوگرافی، حذف سوژه و ویرایش تصویر با حفظ سبک.',
+    relatedToolCategory: 'Image',
+    relatedToolLabel: 'ابزارهای تولید و ویرایش تصویر',
+    relatedNewsCategory: 'Tools',
+  },
+  aligned: {
+    intro: 'سنجش دقت رفتار ایمن، پرهیز از امتناع‌های بی‌مورد، بیان صادقانه عدم قطعیت و مفید بودن در پرامپت‌های مبهم.',
+    relatedToolCategory: 'Audio',
+    relatedToolLabel: 'ابزارهای صوتی و مکالمه',
+    relatedNewsCategory: 'Policy',
+  },
+  work: {
+    intro: 'ردیابی وظایف روزمره تخصصی از بررسی قراردادها و استخراج داده‌های ساخت‌یافته تا نگارش ایمیل، اکسل و برنامه‌ریزی.',
+    relatedToolCategory: 'Productivity',
+    relatedToolLabel: 'ابزارهای بهره‌وری کاری',
+    relatedNewsCategory: 'Funding',
+  },
+};
+
 export function parseToolCategorySlug(raw: string): ToolCategory | null {
   const normalized = raw.trim().toLowerCase();
   return TOOL_CATEGORIES.find((c) => c.toLowerCase() === normalized) ?? null;
@@ -493,12 +807,44 @@ export function shortModelName(name: string): string {
   return name.replace(/ \(.*\)$/, '');
 }
 
-export function getLeaderboardFaq(category: LeaderboardCategory, label: string, entries: LeaderboardEntry[]): FaqItem[] {
+export function getLeaderboardFaq(
+  category: LeaderboardCategory,
+  label: string,
+  entries: LeaderboardEntry[],
+  lang: 'en' | 'fa' = 'en',
+): FaqItem[] {
   const leader = entries[0];
   const runnerUp = entries[1];
   const valuePick = [...entries]
     .filter((e) => e.costPerTaskMicros > 0 && e.rank <= 10)
     .sort((a, b) => a.costPerTaskMicros - b.costPerTaskMicros)[0];
+
+  if (lang === 'fa') {
+    const items: FaqItem[] = [];
+    if (leader) {
+      items.push({
+        q: `در حال حاضر رتبه اول لیدربورد ${label} کدام مدل است؟`,
+        a: `مدل ${shortModelName(leader.name)} (${leader.org}) با سهم برد ${leader.winRate.toFixed(2)}% و امتیاز برادلی-تری ${Math.round(leader.rating)} در صدر بخش ${label} قرار دارد${runnerUp ? ` و جلوتر از رتبه دوم یعنی ${shortModelName(runnerUp.name)} (${runnerUp.winRate.toFixed(2)}%) است` : ''}.`,
+      });
+    }
+    if (valuePick) {
+      items.push({
+        q: `کدام مدل در جمع ۱۰ مدل برتر ${label} کمترین هزینه به‌ازای هر کار را دارد؟`,
+        a: `مدل ${shortModelName(valuePick.name)} با رتبه #${valuePick.rank} (امتیاز ${Math.round(valuePick.rating)}) و میانگین هزینه ${formatUsd(valuePick.costPerTaskMicros)} به‌ازای هر تسک تکمیل‌شده، بهترین توازن ارزش را دارد.`,
+      });
+    }
+    items.push(
+      {
+        q: 'امتیاز و سهم برد لیدربورد ویگاس چگونه محاسبه می‌شود؟',
+        a: 'ویگاس نتایج واقعی اجرای تسک‌ها در درخواست‌های API و ایجنت‌ها را با آرای کور جفتی Arena ترکیب کرده و از مدل آماری Bradley-Terry با بازه اطمینان ۹۵٪ استفاده می‌کند.',
+      },
+      {
+        q: `آیا می‌توانم همه مدل‌های برتر بخش ${label} را با یک کلید API فراخوانی کنم؟`,
+        a: 'بله. هر کلاینت سازگار با OpenAI را به https://api.vigas.ai/v1 متصل کنید یا مدل vigas/auto را انتخاب نمایید تا روتر به‌صورت خودکار بهترین گره را انتخاب کند.',
+      },
+    );
+    return items;
+  }
 
   const items: FaqItem[] = [];
   if (leader) {
@@ -526,10 +872,26 @@ export function getLeaderboardFaq(category: LeaderboardCategory, label: string, 
   return items;
 }
 
-export function getToolsDirectoryFaq(tools: ToolItem[]): FaqItem[] {
+export function getToolsDirectoryFaq(tools: ToolItem[], lang: 'en' | 'fa' = 'en'): FaqItem[] {
   const freeCount = tools.filter((t) => t.pricing !== 'Paid').length;
   const vigasCount = tools.filter((t) => t.runsOnVigas).length;
   const top = tools[0];
+  if (lang === 'fa') {
+    return [
+      {
+        q: 'ابزارهای هوش مصنوعی در دایرکتوری ویگاس چگونه رتبه‌بندی می‌شوند؟',
+        a: `ابزارها بر اساس رأی تاییدشده سازندگان، امتیاز تحریریه و ارزش یکپارچه‌سازی مرتب می‌شوند.${top ? ` هم‌اکنون ${top.name} با ${top.votes.toLocaleString('en-US')} رأی در صدر دایرکتوری قرار دارد.` : ''}`,
+      },
+      {
+        q: 'چند ابزار رایگان یا فریمیوم در ویگاس ثبت شده است؟',
+        a: `از مجموع ${tools.length} ابزار، هم‌اکنون ${freeCount} ابزار رایگان یا فریمیوم در فهرست موجود است که در کلکسیون ابزارهای رایگان یکجا قابل مشاهده هستند.`,
+      },
+      {
+        q: 'نشان «Vigas API» روی کارت یک ابزار به چه معناست؟',
+        a: `${vigasCount} ابزار از فهرست از اتصال مستقیم با کلید Vigas API پشتیبانی می‌کنند تا هزینه توکن‌ها به‌صورت شفاف از یک کیف‌پول واحد کسر شود.`,
+      },
+    ];
+  }
   return [
     {
       q: 'How are AI tools ranked in the Vigas directory?',
@@ -546,9 +908,48 @@ export function getToolsDirectoryFaq(tools: ToolItem[]): FaqItem[] {
   ];
 }
 
-export function getToolDetailFaq(tool: ToolItem, all: ToolItem[], rank: number, categoryRank: number): FaqItem[] {
+export function getToolDetailFaq(
+  tool: ToolItem,
+  all: ToolItem[],
+  rank: number,
+  categoryRank: number,
+  lang: 'en' | 'fa' = 'en',
+): FaqItem[] {
   const inCat = all.filter((t) => t.category === tool.category);
   const topAlt = inCat.find((t) => t.slug !== tool.slug);
+  if (lang === 'fa') {
+    const catFa = TOOL_CATEGORY_LABELS_FA[tool.category] ?? tool.category;
+    const pricingFa = tool.pricing === 'Free' ? 'رایگان' : tool.pricing === 'Freemium' ? 'فریمیوم' : 'پولی';
+    return [
+      {
+        q: `هزینه استفاده از ${tool.name} چقدر است؟`,
+        a:
+          tool.pricing === 'Free'
+            ? `${tool.name} به‌صورت رایگان و بدون نیاز به اشتراک پولی قابل استفاده است.`
+            : tool.pricing === 'Freemium'
+              ? `${tool.name} مدل قیمت‌گذاری فریمیوم دارد و می‌توانید ابتدا رایگان شروع کرده و در صورت نیاز به سقف بالاتر ارتقا دهید.`
+              : `${tool.name} یک ابزار پولی برای جریان‌های کاری حرفه‌ای و سازمانی است.`,
+      },
+      {
+        q: `جایگاه ${tool.name} در دسته ${catFa} کجاست؟`,
+        a: `${tool.name} هم‌اکنون رتبه #${categoryRank} از ${inCat.length} ابزار در دسته ${catFa} و رتبه #${rank} از ${all.length} ابزار در کل ویگاس را با امتیاز ${tool.rating.toFixed(1)}/5 و ${tool.votes.toLocaleString('en-US')} رأی دارد.`,
+      },
+      {
+        q: `آیا ${tool.name} با Vigas API کار می‌کند؟`,
+        a: tool.runsOnVigas
+          ? `بله. ${tool.name} از اندپوینت یکپارچه ویگاس پشتیبانی می‌کند و می‌توانید از اعتبار پیش‌پرداخت خود روی مدل‌های مختلف استفاده کنید.`
+          : `${tool.name} به‌صورت یک محصول مستقل (${pricingFa}) ارائه می‌شود. برای ساخت جریان کار مشابه می‌توانید از Vigas API استفاده کنید.`,
+      },
+      ...(topAlt
+        ? [
+            {
+              q: `نزدیک‌ترین جایگزین برای ${tool.name} چیست؟`,
+              a: `${topAlt.name} یکی از بهترین جایگزین‌ها در دسته ${catFa} با امتیاز ★ ${topAlt.rating.toFixed(1)}/5 و ${topAlt.votes.toLocaleString('en-US')} رأی در ویگاس است.`,
+            },
+          ]
+        : []),
+    ];
+  }
   return [
     {
       q: `How much does ${tool.name} cost?`,

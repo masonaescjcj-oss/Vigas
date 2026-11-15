@@ -4,20 +4,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSignedInHint } from '@/lib/client/session';
+import { LanguageSwitch } from './language-switch';
+import { ThemeToggle } from './theme-toggle';
 import { Icon, LogoMark } from './ui';
 
 export function MobileNav({
   active,
   nav,
   lang = 'en',
-  enHref = '/',
-  faHref = '/fa',
+  altHref,
 }: {
   active: string;
   nav: ReadonlyArray<readonly [string, string, string]>;
   lang?: 'en' | 'fa';
-  enHref?: string;
-  faHref?: string;
+  altHref?: string;
 }) {
   const pathname = usePathname();
   const detailsRef = useRef<HTMLDetailsElement>(null);
@@ -83,33 +83,8 @@ export function MobileNav({
           ))}
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            marginTop: 8,
-            paddingTop: 8,
-            borderTop: '1px solid var(--vg-line)',
-          }}
-        >
-          <Link
-            href={enHref}
-            className={!isFa ? 'chip on' : 'chip'}
-            style={{ flex: '1 1 0', justifyContent: 'center', minHeight: 34, fontSize: 12 }}
-            onClick={close}
-          >
-            English
-          </Link>
-          <Link
-            href={faHref}
-            lang="fa"
-            className={isFa ? 'chip on fa-ui' : 'chip fa-ui'}
-            style={{ flex: '1 1 0', justifyContent: 'center', minHeight: 34, fontSize: 12 }}
-            onClick={close}
-          >
-            فارسی
-          </Link>
-        </div>
+        <LanguageSwitch variant="mobile" lang={lang} altHref={altHref} onNavigate={close} />
+        <ThemeToggle variant="drawer" lang={lang} />
 
         <div className="hdr-menu-foot">
           <Link

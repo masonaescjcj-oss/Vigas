@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { NewsContent, NewsMasthead, NewsRiverSkeleton } from '@/components/news/news-feed';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
@@ -32,6 +33,7 @@ export default function PersianNewsPage({ searchParams }: PageProps<'/news/fa'>)
           <PersianNewsBody searchParams={searchParams} />
         </Suspense>
       </main>
+      <SiteFooter lang="fa" altHref="/news" />
     </div>
   );
 }

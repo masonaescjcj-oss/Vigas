@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { LEADERBOARD_CATEGORIES, type LeaderboardCategory } from '@vigas/core';
 import { LiveSessions, LiveSessionsFallback } from '@/components/leaderboard/live-sessions';
 import { categoryLabel, LeaderboardView } from '@/components/leaderboard/view';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
@@ -47,17 +48,19 @@ export default async function CategoryLeaderboardPage({ params }: PageProps<'/le
   if (!isCategory(category)) notFound();
   return (
     <>
-      <SiteHeader active="leaderboard" />
+      <SiteHeader active="leaderboard" lang="en" />
       <main id="main" className="wrap">
         <LeaderboardView
           category={category}
+          lang="en"
           live={
             <Suspense fallback={<LiveSessionsFallback />}>
-              <LiveSessions />
+              <LiveSessions lang="en" />
             </Suspense>
           }
         />
       </main>
+      <SiteFooter lang="en" />
     </>
   );
 }

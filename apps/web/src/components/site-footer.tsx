@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { LanguageSwitch } from './language-switch';
 import { Icon, LogoMark } from './ui';
 
-const COLS: Array<{ title: string; links: Array<[string, string]> }> = [
+const EN_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   {
     title: 'Models & API',
     links: [
@@ -50,20 +51,77 @@ const COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   },
 ];
 
-export function SiteFooter() {
+const FA_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
+  {
+    title: 'مدل‌ها و گیت‌وی API',
+    links: [
+      ['همه مدل‌ها و تعرفه‌ها', '/models'],
+      ['مستندات سریع API', '/models#quickstart'],
+      ['مدل‌های رایگان AI', '/models?tag=free'],
+      ['اپ‌های سازگار با Vigas API', '/tools/collection/vigas-api'],
+      ['ابزارهای تازه AI', '/tools/collection/new'],
+      ['ساخت حساب و کلید API', '/signup'],
+    ],
+  },
+  {
+    title: 'لیدربورد Arena',
+    links: [
+      ['بهترین ایجنت‌های کل', '/leaderboard'],
+      ['برترین مدل‌های کدنویسی', '/leaderboard/coding'],
+      ['برترین مدل‌های WebDev', '/leaderboard/webdev'],
+      ['بهترین مدل‌های متن', '/leaderboard/text'],
+      ['بهترین مدل‌های بینایی', '/leaderboard/vision'],
+      ['بهترین ویرایش تصویر', '/leaderboard/image-edit'],
+      ['هوش مصنوعی ایمن', '/leaderboard/aligned'],
+      ['کارهای تخصصی و پژوهش', '/leaderboard/work'],
+    ],
+  },
+  {
+    title: 'تحریریه اخبار AI',
+    links: [
+      ['مدل‌ها', '/news/fa/category/models'],
+      ['ایجنت‌ها', '/news/fa/category/agents'],
+      ['تحلیل‌های تخصصی', '/news/fa/category/analysis'],
+      ['سیاست‌گذاری', '/news/fa/category/policy'],
+      ['سخت‌افزار و تراشه', '/news/fa/category/hardware'],
+      ['سرمایه‌گذاری', '/news/fa/category/funding'],
+      ['ابزارهای جدید', '/news/fa/category/tools'],
+      ['تمام اخبار فارسی', '/news/fa'],
+    ],
+  },
+  {
+    title: 'دایرکتوری ابزارها',
+    links: [
+      ['ابزارهای ایجنتی', '/tools/category/agents'],
+      ['ابزارهای کدنویسی', '/tools/category/coding'],
+      ['پژوهش و جستجو', '/tools/category/research'],
+      ['تولید تصویر AI', '/tools/category/image'],
+      ['ساخت ویدیو AI', '/tools/category/video'],
+      ['صوت و گفتار AI', '/tools/category/audio'],
+      ['بهره‌وری و کار', '/tools/category/productivity'],
+      ['ابزارهای رایگان', '/tools/collection/free'],
+    ],
+  },
+];
+
+export function SiteFooter({ lang = 'en', altHref }: { lang?: 'en' | 'fa'; altHref?: string }) {
+  const isFa = lang === 'fa';
+  const cols = isFa ? FA_COLS : EN_COLS;
   return (
-    <footer className="site-footer">
+    <footer className="site-footer" dir={isFa ? 'rtl' : 'ltr'} lang={lang}>
       <div className="wrap" style={{ paddingTop: 64, paddingBottom: 28 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '36px 28px' }}>
           <div style={{ flex: '2 1 300px', minWidth: 0 }}>
-            <Link href="/" aria-label="Vigas home" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <Link href={isFa ? '/fa' : '/'} aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
               <LogoMark />
               <span className="sf" style={{ fontSize: 27, lineHeight: 1 }}>
                 Vigas
               </span>
             </Link>
-            <p style={{ color: 'var(--vg-ink2)', maxWidth: 320, margin: '16px 0 18px', fontSize: 14, lineHeight: 1.6 }}>
-              The fastest, lowest-cost AI API gateway — one key, pass-through pricing, live rankings, and bilingual AI news.
+            <p style={{ color: 'var(--vg-ink2)', maxWidth: 320, margin: '16px 0 18px', fontSize: 14, lineHeight: isFa ? 1.8 : 1.6 }}>
+              {isFa
+                ? 'سریع‌ترین و ارزان‌ترین دروازه API هوش مصنوعی — یک کلید، قیمت مستقیم آزمایشگاه‌ها، رتبه‌بندی زنده Arena و اخبار دوزبانه.'
+                : 'The fastest, lowest-cost AI API gateway — one key, pass-through pricing, live rankings, and bilingual AI news.'}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span
@@ -83,7 +141,7 @@ export function SiteFooter() {
                 }}
               >
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--vg-green)', display: 'inline-block' }} />
-                OpenAI-compatible API
+                {isFa ? 'API سازگار با OpenAI' : 'OpenAI-compatible API'}
               </span>
               <span
                 style={{
@@ -100,11 +158,11 @@ export function SiteFooter() {
                 }}
               >
                 <Icon name="phone" size={14} />
-                Android app · coming soon
+                {isFa ? 'اپ اندروید · به‌زودی' : 'Android app · coming soon'}
               </span>
             </div>
           </div>
-          {COLS.map((col) => (
+          {cols.map((col) => (
             <nav key={col.title} aria-label={col.title} style={{ flex: '1 1 150px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 11 }}>
               <span className="lbl" style={{ marginBottom: 4 }}>
                 {col.title}
@@ -133,22 +191,48 @@ export function SiteFooter() {
             paddingTop: 18,
           }}
         >
-          <span>© 2026 Vigas Labs · Made with sand &amp; signal</span>
+          <span>{isFa ? '© ۲۰۲۶ آزمایشگاه ویگاس · ساخته شده با سیگنال و دقت' : '© 2026 Vigas Labs · Made with sand & signal'}</span>
           <span className="footer-bottom-links">
-            <Link href="/" style={{ color: 'var(--vg-ink)' }}>
+            <LanguageSwitch
+              variant="link"
+              lang={lang}
+              targetLang="en"
+              altHref={isFa ? (altHref ?? '/') : '/'}
+              dir="ltr"
+              langAttr="en"
+              style={{ color: !isFa ? 'var(--vg-ink)' : 'var(--vg-ink2)' }}
+            >
               English
-            </Link>
-            <Link href="/fa" className="fa-ui" lang="fa" dir="rtl" style={{ color: 'var(--vg-sand)' }}>
+            </LanguageSwitch>
+            <LanguageSwitch
+              variant="link"
+              lang={lang}
+              targetLang="fa"
+              altHref={!isFa ? (altHref ?? '/fa') : '/fa'}
+              className="fa-ui"
+              langAttr="fa"
+              dir="rtl"
+              style={{ color: 'var(--vg-sand)' }}
+            >
               فارسی
-            </Link>
-            <Link href="/news/fa" className="fa-ui" lang="fa" dir="rtl" style={{ color: 'var(--vg-ink2)' }}>
+            </LanguageSwitch>
+            <LanguageSwitch
+              variant="link"
+              lang={lang}
+              targetLang="fa"
+              altHref="/news/fa"
+              className="fa-ui"
+              langAttr="fa"
+              dir="rtl"
+              style={{ color: 'var(--vg-ink2)' }}
+            >
               اخبار فارسی
-            </Link>
+            </LanguageSwitch>
             <Link href="/privacy" style={{ color: 'var(--vg-ink3)' }}>
-              Privacy
+              {isFa ? 'حریم خصوصی' : 'Privacy'}
             </Link>
             <Link href="/terms" style={{ color: 'var(--vg-ink3)' }}>
-              Terms
+              {isFa ? 'قوانین استفاده' : 'Terms'}
             </Link>
             <a href="/feed.xml" style={{ color: 'var(--vg-ink3)' }}>
               RSS

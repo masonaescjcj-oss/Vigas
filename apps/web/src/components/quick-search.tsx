@@ -12,19 +12,19 @@ interface Entry {
   href: string;
 }
 
-const LEADERBOARDS: Array<[string, string]> = [
-  ['Overall', '/leaderboard'],
-  ['Coding', '/leaderboard/coding'],
-  ['WebDev', '/leaderboard/webdev'],
-  ['Text', '/leaderboard/text'],
-  ['Vision', '/leaderboard/vision'],
-  ['Image edit', '/leaderboard/image-edit'],
-  ['Aligned', '/leaderboard/aligned'],
-  ['Work', '/leaderboard/work'],
+const LEADERBOARDS: Array<[string, string, string]> = [
+  ['Overall', 'رتبه‌بندی کل', '/leaderboard'],
+  ['Coding', 'کدنویسی', '/leaderboard/coding'],
+  ['WebDev', 'توسعه وب', '/leaderboard/webdev'],
+  ['Text', 'متن', '/leaderboard/text'],
+  ['Vision', 'بینایی', '/leaderboard/vision'],
+  ['Image edit', 'ویرایش تصویر', '/leaderboard/image-edit'],
+  ['Aligned', 'ایمن و هم‌راستا', '/leaderboard/aligned'],
+  ['Work', 'بهره‌وری کاری', '/leaderboard/work'],
 ];
 
-const PAGES: Entry[] = [
-  ...LEADERBOARDS.map(([label, href]) => ({ type: 'Page' as const, title: `${label} leaderboard`, sub: 'Rankings from real use', href })),
+const PAGES_EN: Entry[] = [
+  ...LEADERBOARDS.map(([label, , href]) => ({ type: 'Page' as const, title: `${label} leaderboard`, sub: 'Rankings from real use', href })),
   { type: 'Page', title: 'Models & live prices', sub: 'Compare pass-through token costs across 25+ frontier models', href: '/models' },
   { type: 'Page', title: 'Free AI models', sub: 'Zero-dollar community and open-weight API endpoints', href: '/models?tag=free' },
   { type: 'Page', title: 'API quickstart', sub: 'Python, TypeScript and cURL setup in 30 seconds', href: '/models#quickstart' },
@@ -32,21 +32,52 @@ const PAGES: Entry[] = [
   { type: 'Page', title: 'Dashboard', sub: 'Credits, usage and API keys', href: '/dashboard' },
 ];
 
-let indexPromise: Promise<Entry[]> | null = null;
+const PAGES_FA: Entry[] = [
+  ...LEADERBOARDS.map(([, faLabel, href]) => ({ type: 'Page' as const, title: `لیدربورد ${faLabel}`, sub: 'رده‌بندی زنده بر اساس استفاده واقعی', href })),
+  { type: 'Page', title: 'مدل‌ها و تعرفه زنده API', sub: 'مقایسه قیمت توکن و کارمزد ۰٪ در بیش از ۲۵ مدل پیشتاز', href: '/models' },
+  { type: 'Page', title: 'مدل‌های رایگان AI', sub: 'اندپوینت‌های رایگان API بدون نیاز به کارت بانکی', href: '/models?tag=free' },
+  { type: 'Page', title: 'راهنمای سریع API', sub: 'راه‌اندازی در ۳۰ ثانیه با Python، TypeScript و cURL', href: '/models#quickstart' },
+  { type: 'Page', title: 'اخبار فارسی هوش مصنوعی', sub: 'گزارش‌های تحلیلی و فوری تحریریه ویگاس', href: '/news/fa' },
+  { type: 'Page', title: 'داشبورد و کلیدهای API', sub: 'مدیریت اعتبار، مصرف و کلیدها', href: '/dashboard' },
+];
 
-function loadIndex(): Promise<Entry[]> {
-  indexPromise ??= Promise.all([api.models(), api.news({ limit: 50 }), api.tools()])
+const TYPE_FA: Record<Entry['type'], string> = {
+  Model: 'مدل',
+  News: 'خبر',
+  Tool: 'ابزار',
+  Page: 'صفحه',
+};
+
+let indexPromiseEn: Promise<Entry[]> | null = null;
+let indexPromiseFa: Promise<Entry[]> | null = null;
+
+function loadIndex(lang: 'en' | 'fa'): Promise<Entry[]> {
+  if (lang === 'fa') {
+    indexPromiseFa ??= Promise.all([api.models(), api.news({ limit: 50 }), api.tools()])
+      .then(([models, news, tools]) => [
+        ...models.items.map((m) => ({ type: 'Model' as const, title: m.name, sub: `${m.org} · ${m.id}`, href: `/models?q=${encodeURIComponent(m.id)}` })),
+        ...news.items.map((n) => ({ type: 'News' as const, title: n.title, sub: n.category, href: `/news/${n.slug}` })),
+        ...tools.items.map((t) => ({ type: 'Tool' as const, title: t.name, sub: `${t.category} · ${t.tagline}`, href: `/tools/${t.slug}` })),
+        ...PAGES_FA,
+      ])
+      .catch(() => {
+        indexPromiseFa = null;
+        return PAGES_FA;
+      });
+    return indexPromiseFa;
+  }
+  indexPromiseEn ??= Promise.all([api.models(), api.news({ limit: 50 }), api.tools()])
     .then(([models, news, tools]) => [
       ...models.items.map((m) => ({ type: 'Model' as const, title: m.name, sub: `${m.org} · ${m.id}`, href: `/models?q=${encodeURIComponent(m.id)}` })),
       ...news.items.map((n) => ({ type: 'News' as const, title: n.title, sub: n.category, href: `/news/${n.slug}` })),
       ...tools.items.map((t) => ({ type: 'Tool' as const, title: t.name, sub: `${t.category} · ${t.tagline}`, href: `/tools/${t.slug}` })),
-      ...PAGES,
+      ...PAGES_EN,
     ])
     .catch(() => {
-      indexPromise = null;
-      return PAGES;
+      indexPromiseEn = null;
+      return PAGES_EN;
     });
-  return indexPromise;
+  return indexPromiseEn;
 }
 
 function search(index: Entry[], q: string): Entry[] {
@@ -106,7 +137,7 @@ function SearchResultsList({
             }}
           >
             <span className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
-              {r.type}
+              {isFa ? TYPE_FA[r.type] : r.type}
             </span>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</span>
@@ -129,15 +160,18 @@ export function QuickSearch({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState('');
-  const [index, setIndex] = useState<Entry[] | null>(null);
+  const [indexes, setIndexes] = useState<Partial<Record<'en' | 'fa', Entry[]>>>({});
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const index = indexes[lang] ?? null;
   const results = index ? search(index, q) : [];
 
   const warm = useCallback(() => {
-    if (!index) void loadIndex().then(setIndex);
-  }, [index]);
+    if (!index) {
+      void loadIndex(lang).then((items) => setIndexes((prev) => ({ ...prev, [lang]: items })));
+    }
+  }, [index, lang]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -293,8 +327,8 @@ export function QuickSearch({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
               {q.trim() ? (
                 <SearchResultsList id={modalListId} loaded={index !== null} results={results} active={active} onHover={setActive} onSelect={go} lang={lang} />
               ) : (
-                <ul role="listbox" aria-label="Quick links" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                  {PAGES.slice(0, 6).map((p) => (
+                <ul role="listbox" aria-label={isFa ? 'دسترسی سریع' : 'Quick links'} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {(isFa ? PAGES_FA : PAGES_EN).slice(0, 6).map((p) => (
                     <li key={p.href}>
                       <a
                         href={p.href}
@@ -305,7 +339,7 @@ export function QuickSearch({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
                         }}
                       >
                         <span className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)', textTransform: 'uppercase' }}>
-                          {p.type}
+                          {isFa ? TYPE_FA[p.type] : p.type}
                         </span>
                         <span style={{ minWidth: 0 }}>
                           <span style={{ display: 'block' }}>{p.title}</span>

@@ -44,6 +44,8 @@ export const ICONS = {
   stop: 'M7 7h10v10H7z',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
   bars: 'M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41',
+  moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
 } as const;
 
 export type IconName = keyof typeof ICONS;
@@ -112,6 +114,7 @@ export function Mark({
   return (
     <span
       aria-hidden="true"
+      className="vg-monogram"
       style={{
         width: size,
         height: size,
@@ -155,7 +158,7 @@ export function OrgMark({
         display: 'grid',
         placeItems: 'center',
         flexShrink: 0,
-        background: '#171614',
+        background: 'var(--vg-mark-bg)',
         border: '1px solid var(--vg-line2)',
         padding: pad,
         overflow: 'hidden',
@@ -211,7 +214,7 @@ export function ToolMark({
         display: 'grid',
         placeItems: 'center',
         flexShrink: 0,
-        background: '#171614',
+        background: 'var(--vg-mark-bg)',
         border: '1px solid var(--vg-line2)',
         padding: pad,
         overflow: 'hidden',
@@ -282,15 +285,17 @@ export function JsonLd({ data }: { data: JsonLdObject | JsonLdObject[] }) {
 export function Breadcrumb({
   items,
   center = false,
+  lang = 'en',
   style,
 }: {
   items: Array<{ name: string; href?: string; accent?: boolean }>;
   center?: boolean;
+  lang?: 'en' | 'fa';
   style?: CSSProperties;
 }) {
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={lang === 'fa' ? 'مسیر صفحه' : 'Breadcrumb'}
       className="mn"
       style={{ fontSize: 12, color: 'var(--vg-ink3)', ...style }}
     >

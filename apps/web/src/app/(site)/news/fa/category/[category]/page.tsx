@@ -3,6 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { NEWS_CATEGORIES } from '@vigas/core';
 import { newsCategoryPath, NewsContent, NewsMasthead, NewsRiverSkeleton } from '@/components/news/news-feed';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 import { parseNewsCategorySlug } from '@/lib/seo-catalog';
@@ -59,6 +60,7 @@ export default async function PersianNewsCategoryPage({
           <NewsContent category={cat} page={1} lang="fa" />
         </Suspense>
       </main>
+      <SiteFooter lang="fa" altHref={newsCategoryPath(cat, 1, 'en')} />
     </div>
   );
 }

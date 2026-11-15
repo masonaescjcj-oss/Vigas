@@ -29,6 +29,7 @@ export function ParetoChart({
   cMax,
   defaultSelectedId,
   frontierAriaLabel,
+  lang = 'en',
 }: {
   points: ParetoPoint[];
   frontierPolyline: string;
@@ -38,31 +39,36 @@ export function ParetoChart({
   cMax: number;
   defaultSelectedId: string | null;
   frontierAriaLabel: string;
+  lang?: 'en' | 'fa';
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(defaultSelectedId);
   const active = points.find((p) => p.modelId === selectedId) ?? points[0] ?? null;
+  const isFa = lang === 'fa';
 
   return (
     <div className="card" style={{ borderRadius: 22, padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <h2 className="sf" style={{ fontSize: 26, margin: 0, fontWeight: 400 }}>
-          Pareto frontier
+        <h2 className="sf" style={{ fontSize: isFa ? 22 : 26, margin: 0, fontWeight: isFa ? 700 : 400 }}>
+          {isFa ? 'مرز بهینه پارتو' : 'Pareto frontier'}
         </h2>
         <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-          score vs $/task
+          {isFa ? 'امتیاز در برابر $/تسک' : 'score vs $/task'}
         </span>
       </div>
-      <p style={{ margin: '6px 0 14px', fontSize: 13, color: 'var(--vg-ink2)' }}>
-        Green models give the best score for their price. Tap any dot to inspect value vs. performance.
+      <p style={{ margin: '6px 0 14px', fontSize: 13, color: 'var(--vg-ink2)', lineHeight: isFa ? 1.7 : undefined }}>
+        {isFa
+          ? 'نقاط سبز بهترین امتیاز را نسبت به قیمت خود می‌دهند. برای جزئیات روی هر نقطه بزنید.'
+          : 'Green models give the best score for their price. Tap any dot to inspect value vs. performance.'}
       </p>
       <div
+        dir="ltr"
         role="region"
         aria-label={frontierAriaLabel}
         style={{ position: 'relative', height: 260, marginLeft: 36, marginBottom: 24, borderLeft: '1px solid var(--vg-line2)', borderBottom: '1px solid var(--vg-line2)' }}
       >
         <div
           aria-hidden="true"
-          style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(239,234,225,.06) 1px,transparent 1px)', backgroundSize: '100% 25%' }}
+          style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(var(--vg-line-soft) 1px,transparent 1px)', backgroundSize: '100% 25%' }}
         />
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style={{ position: 'absolute', inset: 0, overflow: 'visible' }} aria-hidden="true">
           <polyline
@@ -81,7 +87,11 @@ export function ParetoChart({
               type="button"
               className="pareto-dot"
               aria-pressed={isSelected}
-              aria-label={`${short(e.name)}, score ${Math.round(e.rating)}, ${formatUsd(e.costPerTaskMicros)} per task`}
+              aria-label={
+                isFa
+                  ? `${short(e.name)}، امتیاز ${Math.round(e.rating)}، ${formatUsd(e.costPerTaskMicros)} برای هر تسک`
+                  : `${short(e.name)}, score ${Math.round(e.rating)}, ${formatUsd(e.costPerTaskMicros)} per task`
+              }
               title={`${short(e.name)} · ${Math.round(e.rating)} · ${formatUsd(e.costPerTaskMicros)}/task`}
               onClick={() => setSelectedId(e.modelId)}
               onFocus={() => setSelectedId(e.modelId)}
@@ -129,24 +139,28 @@ export function ParetoChart({
             <OrgMark org={active.org} size={28} radius={8} />
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <b style={{ fontWeight: 600, fontSize: 14 }}>{short(active.name)}</b>
+                <b dir="ltr" style={{ fontWeight: 600, fontSize: 14 }}>
+                  {short(active.name)}
+                </b>
                 {active.onFrontier ? (
-                  <span className="pill" style={{ background: 'rgba(111,207,115,.14)', color: 'var(--vg-green)', fontSize: 11 }}>
-                    Pareto optimal
+                  <span className="pill" style={{ background: 'var(--vg-green-soft)', color: 'var(--vg-green)', fontSize: 11 }}>
+                    {isFa ? 'بهینه پارتو' : 'Pareto optimal'}
                   </span>
                 ) : (
                   <span className="pill" style={{ fontSize: 11 }}>
-                    Rank #{active.rank}
+                    {isFa ? `رتبه #${active.rank}` : `Rank #${active.rank}`}
                   </span>
                 )}
               </div>
               <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink2)', marginTop: 3 }}>
-                Score {Math.round(active.rating)} · {active.winRate.toFixed(2)}% win · {formatUsd(active.costPerTaskMicros)}/task
+                {isFa
+                  ? `امتیاز ${Math.round(active.rating)} · ${active.winRate.toFixed(2)}% سهم برد · ${formatUsd(active.costPerTaskMicros)}/تسک`
+                  : `Score ${Math.round(active.rating)} · ${active.winRate.toFixed(2)}% win · ${formatUsd(active.costPerTaskMicros)}/task`}
               </div>
             </div>
           </div>
           <Link href={`/models?q=${encodeURIComponent(active.modelId)}`} className="btn gh" style={{ minHeight: 34, padding: '0 12px', fontSize: 12, borderRadius: 9 }}>
-            API pricing
+            {isFa ? 'تعرفه API' : 'API pricing'}
           </Link>
         </div>
       )}
