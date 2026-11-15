@@ -50,15 +50,6 @@ export default async function HomePage() {
   const [lead, ...restNews] = news.items;
   const secondary = restNews.slice(0, 3);
   const rail = restNews.slice(3, 8);
-  const routeModels = ['deepseek/v4.1-flash', 'anthropic/claude-sonnet-5.5', 'google/gemini-4-argon', 'openai/gpt-6.1-terra']
-    .map((id) => models.find((m) => m.id === id))
-    .filter((m): m is ModelListItem => Boolean(m));
-  const routeMeta = [
-    { ms: '291 ms', w: '34%', st: 'Rate-limited', sc: 'var(--vg-red)', bar: '#4A4540', bg: 'transparent' },
-    { ms: '412 ms', w: '48%', st: 'Selected', sc: 'var(--vg-orange-text)', bar: 'var(--vg-orange)', bg: 'rgba(255,106,26,.08)' },
-    { ms: '538 ms', w: '63%', st: 'Standby', sc: 'var(--vg-ink3)', bar: '#4A4540', bg: 'transparent' },
-    { ms: '604 ms', w: '71%', st: 'Standby', sc: 'var(--vg-ink3)', bar: '#4A4540', bg: 'transparent' },
-  ];
 
   return (
     <>
@@ -79,115 +70,39 @@ export default async function HomePage() {
             }}
           />
           <div className="wrap hero-inner">
-            <div style={{ flex: '1 1 540px', minWidth: 0 }}>
-              <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: '1.05 1 460px', minWidth: 0 }}>
+              <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                 <span className="led" />
-                {models.length} models · {providers} providers · lowest pass-through rates
+                {models.length} models · {providers} labs · $0 markup
               </div>
-              <h1 className="sf" style={{ fontSize: 'clamp(44px,7vw,96px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '20px 0 22px' }}>
+              <h1 className="sf" style={{ fontSize: 'clamp(42px,6.4vw,86px)', lineHeight: 0.96, letterSpacing: '-.032em', margin: '14px 0 14px' }}>
                 Fastest API.
                 <br />
                 <em className="hi">Lowest cost</em> per token.
               </h1>
-              <p style={{ fontSize: 'clamp(16px,1.5vw,18px)', color: 'var(--vg-ink2)', maxWidth: 560, margin: '0 0 24px', lineHeight: 1.6 }}>
-                Route to every frontier model through one OpenAI‑compatible API with sub‑120ms edge routing, automatic provider failover, and
-                wholesale pass‑through token rates — $0 markup on your first $5.
+              <p style={{ fontSize: 'clamp(15px,1.4vw,17.5px)', color: 'var(--vg-ink2)', maxWidth: 460, margin: '0 0 20px', lineHeight: 1.55 }}>
+                One OpenAI‑compatible key for frontier AI — wholesale pricing and sub‑120ms routing.
               </p>
-              <HeroApiPanel models={models} lang="en" />
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-                <Link href="/signup?next=/dashboard%23keys" className="btn key" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
-                  Get your API key
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Link href="/signup?next=/dashboard%23keys" className="btn key" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
+                  Get API key
                   <Icon name="arrow" size={16} />
                 </Link>
-                <Link href="/models" className="btn gh" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
-                  Browse {models.length} models &amp; live prices
+                <Link href="/models" className="btn gh" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
+                  Models &amp; pricing
                 </Link>
+              </div>
+              <div className="mn hero-spec-strip">
+                <span style={{ color: 'var(--vg-ink2)' }}>api.vigas.ai/v1</span>
+                <span>·</span>
+                <span>Auto-failover</span>
+                <span>·</span>
+                <span>Free first $5</span>
               </div>
             </div>
 
-            <div style={{ flex: '1 1 440px', minWidth: 0 }}>
-              <figure
-                aria-label="Example request routed by vigas/auto"
-                style={{ margin: 0, background: 'var(--vg-bg2)', border: '1px solid var(--vg-line2)', borderRadius: 22, overflow: 'hidden', boxShadow: '0 40px 80px -40px rgba(0,0,0,.8)' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: line }}>
-                  <span className="mn" style={{ fontSize: 12, color: 'var(--vg-on-orange)', background: 'var(--vg-sand)', borderRadius: 6, padding: '2px 7px', fontWeight: 600 }}>
-                    POST
-                  </span>
-                  <span className="mn" style={{ fontSize: 13, color: 'var(--vg-ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                    api.vigas.ai/v1/chat/completions
-                  </span>
-                  <span className="mn" style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--vg-green)', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-                    <span className="led" />
-                    200 OK
-                  </span>
-                </div>
-                <pre
-                  className="mn"
-                  style={{ margin: 0, padding: '18px 20px', background: 'var(--vg-code)', fontSize: 13, lineHeight: 1.75, color: '#D9D3C7', overflowX: 'auto', borderBottom: line }}
-                >
-                  <span style={{ color: 'var(--vg-ink3)' }}>{'{'}</span>
-                  {'\n  '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;model&quot;</span>: <span style={{ color: '#A6D49F' }}>&quot;vigas/auto&quot;</span>,{'\n  '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;route&quot;</span>: {'{ '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;sort&quot;</span>: <span style={{ color: '#A6D49F' }}>&quot;latency&quot;</span>,{' '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;fallbacks&quot;</span>: <span style={{ color: '#A5A8FF' }}>true</span>
-                  {' },\n  '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;messages&quot;</span>: [{'{ '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;role&quot;</span>: <span style={{ color: '#A6D49F' }}>&quot;user&quot;</span>,{' '}
-                  <span style={{ color: '#FF8A4C' }}>&quot;content&quot;</span>: <span style={{ color: '#A6D49F' }}>&quot;Summarize this contract&quot;</span>
-                  {' }]\n'}
-                  <span style={{ color: 'var(--vg-ink3)' }}>{'}'}</span>
-                </pre>
-                <div style={{ padding: '16px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span className="lbl">Routing</span>
-                  <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                    {routeModels.length} candidates
-                  </span>
-                </div>
-                <div style={{ padding: '0 10px 10px' }}>
-                  {routeModels.map((m, i) => {
-                    const r = routeMeta[i]!;
-                    return (
-                      <div
-                        key={m.id}
-                        style={{ display: 'grid', gridTemplateColumns: '30px minmax(0,1fr) 92px', gap: 12, alignItems: 'center', padding: '10px 8px', borderRadius: 12, background: r.bg }}
-                      >
-                        <OrgMark org={m.org} size={30} radius={9} fontSize={13} />
-                        <div style={{ minWidth: 0 }}>
-                          <div className="mn" style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {m.id}
-                          </div>
-                          <div style={{ height: 4, borderRadius: 2, background: 'var(--vg-raised)', marginTop: 7, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: r.w, background: r.bar, borderRadius: 2 }} />
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div className="mn" style={{ fontSize: 13 }}>
-                            {r.ms}
-                          </div>
-                          <div style={{ fontSize: 12, color: r.sc }}>{r.st}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', borderTop: line }}>
-                  {[
-                    ['Tokens', '1,284', undefined],
-                    ['Cost', '$0.0041', 'var(--vg-green)'],
-                    ['Latency', '0.41 s', undefined],
-                  ].map(([k, v, c], i) => (
-                    <div key={k} style={{ padding: '14px 18px', borderLeft: i ? line : undefined }}>
-                      <div className="lbl">{k}</div>
-                      <div className="mn" style={{ fontSize: 16, marginTop: 4, color: c }}>
-                        {v}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <figcaption className="sr-only">Illustration of a request routed across four candidate models.</figcaption>
-              </figure>
+            <div style={{ flex: '1 1 430px', minWidth: 0 }}>
+              <HeroApiPanel models={models} lang="en" />
             </div>
           </div>
         </section>
@@ -385,7 +300,7 @@ export default async function HomePage() {
                     per 1M tokens
                   </span>
                 </div>
-                <div>
+                <div className="live-prices-list">
                   <div
                     aria-hidden="true"
                     className="mn live-prices-grid"

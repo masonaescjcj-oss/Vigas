@@ -1335,12 +1335,116 @@ details[open] .pm {
 }
 .hero-inner {
   position: relative;
-  padding-top: clamp(36px, 6vw, 76px);
-  padding-bottom: clamp(44px, 6vw, 84px);
+  padding-top: clamp(32px, 5.5vw, 68px);
+  padding-bottom: clamp(40px, 5.5vw, 72px);
   display: flex;
   flex-wrap: wrap;
-  gap: clamp(28px, 5vw, 56px);
+  gap: clamp(24px, 4.5vw, 56px);
   align-items: center;
+}
+.hero-rates {
+  position: relative;
+  border-top: 1px solid var(--vg-line2);
+  border-bottom: 1px solid var(--vg-line2);
+  background: radial-gradient(ellipse 85% 65% at 50% 0%, rgba(255, 106, 26, 0.085), transparent 72%);
+}
+.hero-rates::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 106, 26, 0.55) 35%, rgba(227, 182, 92, 0.4) 65%, transparent);
+}
+.hero-rates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--vg-line);
+}
+.hero-rate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 6px;
+  margin: 0 -6px;
+  border-radius: 12px;
+  color: var(--vg-ink);
+  text-decoration: none;
+  transition: background 0.16s ease;
+}
+.hero-rate-row:hover {
+  background: rgba(239, 234, 225, 0.055);
+  color: var(--vg-ink);
+}
+.hero-rate-chev {
+  color: var(--vg-ink3);
+  flex-shrink: 0;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+.hero-rate-row:hover .hero-rate-chev {
+  color: var(--vg-sand);
+  transform: translateX(2px);
+}
+[dir='rtl'] .hero-rate-row:hover .hero-rate-chev {
+  transform: scaleX(-1) translateX(2px);
+}
+.hero-rate-sep {
+  border-top: 1px solid rgba(239, 234, 225, 0.07);
+}
+.hero-rates-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 2px;
+  border-top: 1px solid var(--vg-line);
+}
+.hero-spec-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--vg-ink3);
+}
+@media (max-width: 640px) {
+  .hero-inner {
+    padding-top: 18px;
+    padding-bottom: 24px;
+    gap: 18px;
+  }
+  .hero-rate-row {
+    padding: 9px 4px;
+    margin: 0 -4px;
+    gap: 10px;
+  }
+  .hero-rates-head {
+    padding: 10px 0;
+  }
+  .hero-rates-foot {
+    padding: 10px 0;
+  }
+  .hero-spec-strip {
+    display: none;
+  }
+  .live-prices-list > .live-prices-grid:nth-child(n + 6) {
+    display: none;
+  }
+}
+@media (max-width: 420px) {
+  .hero-rate-tag {
+    display: none;
+  }
+  .hero-rate-chip-alt {
+    display: none;
+  }
 }
 .bento-card {
   min-width: 0;
@@ -1365,18 +1469,6 @@ details[open] .pm {
   align-items: center;
   padding-left: 22px;
   padding-right: 22px;
-}
-.hero-api-panel {
-  background: var(--vg-surface);
-  border: 1px solid var(--vg-line2);
-}
-.hero-api-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 16px;
-  color: var(--vg-ink);
-  text-decoration: none;
 }
 @media (max-width: 560px) {
   .live-prices-grid {
