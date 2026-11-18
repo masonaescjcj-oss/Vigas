@@ -13,9 +13,9 @@ function parsePage(sp: Record<string, string | string[] | undefined>): number {
 export async function generateMetadata({ searchParams }: PageProps<'/news/fa'>): Promise<Metadata> {
   const page = parsePage(await searchParams);
   return pageMetadata({
-    title: page > 1 ? `اخبار هوش مصنوعی ویگاس · صفحه ${page}` : 'اخبار هوش مصنوعی ویگاس — مدل‌ها، ایجنت‌ها و بازار AI',
+    title: page > 1 ? `اخبار هوش مصنوعی ویگاس · صفحه ${page}` : 'اخبار هوش مصنوعی — مدل‌ها، ایجنت‌ها و بازار AI',
     description:
-      'تازه‌ترین اخبار و تحلیل‌های هوش مصنوعی به زبان فارسی در تحریریه ویگاس: رونمایی مدل‌های پیشتاز، تغییرات تعرفه API، رده‌بندی Arena، سخت‌افزار و سیاست‌گذاری.',
+      'تازه‌ترین اخبار و تحلیل‌های فارسی هوش مصنوعی در ویگاس: رونمایی مدل‌ها، تغییر تعرفه API، رده‌بندی Arena، سخت‌افزار و سیاست‌گذاری.',
     path: page > 1 ? `/news/fa?page=${page}` : '/news/fa',
     locale: 'fa_IR',
     alternatesLanguages: { en: '/news', fa: '/news/fa', 'x-default': '/news' },

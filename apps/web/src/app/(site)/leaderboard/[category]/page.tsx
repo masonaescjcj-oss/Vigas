@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: PageProps<'/leaderboard/[cate
   if (!isCategory(category) || category === 'overall') return {};
   const label = categoryLabel(category);
   return pageMetadata({
-    title: `Best ${label} AI models — ${label} leaderboard`,
+    title: `Best ${label} AI Models — Leaderboard`,
     description: DESCRIPTIONS[category],
     path: `/leaderboard/${category}`,
     image: `/og/leaderboard/${category}`,

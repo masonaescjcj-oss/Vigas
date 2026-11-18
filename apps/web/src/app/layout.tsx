@@ -22,6 +22,17 @@ export const metadata: Metadata = {
   title: { default: 'Vigas — One key for every AI model', template: `%s | ${SITE_NAME}` },
   description: DEFAULT_DESCRIPTION,
   applicationName: SITE_NAME,
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48 32x32 16x16', type: 'image/x-icon' },
+      { url: '/icons/icon-48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/icons/icon-96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml' },
+    ],
+    shortcut: ['/favicon.ico'],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   alternates: { types: { 'application/rss+xml': [{ url: '/feed.xml', title: `${SITE_NAME} AI News RSS` }] } },
   openGraph: {
     siteName: SITE_NAME,
@@ -45,7 +56,7 @@ export const viewport: Viewport = {
 const tokenCss = cssVariables();
 const SHOW_PREVIEW_BANNER = process.env.VIGAS_PREVIEW_BANNER === '1';
 
-const INIT_THEME_SCRIPT = `(function(){try{var d=document.documentElement;var m=document.cookie.match(/(?:^|;\\s*)vg_theme=(light|dark)(?:;|$)/);var t=m?m[1]:localStorage.getItem('vg_theme');if(t!=='light'&&t!=='dark')t='dark';d.dataset.theme=t;d.style.colorScheme=t;var p=location.pathname;var lm=document.cookie.match(/(?:^|;\\s*)vg_lang=(fa|en)(?:;|$)/);var fa=p==='/fa'||p==='/news/fa'||p.indexOf('/news/fa/')===0||(lm&&lm[1]==='fa'&&p.indexOf('/news/')!==0&&p.indexOf('/admin')!==0&&p.indexOf('/embed')!==0&&p!=='/');if(fa){d.lang='fa';d.dir='rtl';}}catch(_){}})();`;
+const INIT_THEME_SCRIPT = `(function(){try{var d=document.documentElement;var m=document.cookie.match(/(?:^|;\\s*)vg_theme=(light|dark)(?:;|$)/);var t=m?m[1]:localStorage.getItem('vg_theme');if(t!=='light'&&t!=='dark')t='dark';d.dataset.theme=t;d.style.colorScheme=t;var p=location.pathname;var lm=document.cookie.match(/(?:^|;\\s*)vg_lang=(fa|en)(?:;|$)/);var fa=p==='/fa'||p==='/news/fa'||p.indexOf('/news/fa/')===0||p.indexOf('/news/fa-')===0||(lm&&lm[1]==='fa'&&p.indexOf('/news/')!==0&&p.indexOf('/admin')!==0&&p.indexOf('/embed')!==0&&p!=='/');if(fa){d.lang='fa';d.dir='rtl';}}catch(_){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (

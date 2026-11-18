@@ -1,5 +1,5 @@
 ---
-title: "انفجار مصرف ایجنت‌های کدنویسی باز و رکورد ۱۶۴ تریلیون توکن DeepSeek"
+title: "رکورد ۱۶۴ تریلیون توکن DeepSeek در ایجنت‌های کدنویسی"
 slug: "fa-open-coding-agents-dsh-opencode"
 dek: "گزارش CNCF از استفاده ۷۵ درصد توسعه‌دهندگان از دستیارهای کدنویسی خبر می‌دهد؛ ابزار سبک dsh-superagent و DeepSeek V4.1 Flash معادله هزینه را عوض کردند."
 category: "Agents"

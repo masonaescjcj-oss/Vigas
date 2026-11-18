@@ -14,6 +14,7 @@ export default function SignInPage() {
     <AuthPage
       lang="en"
       crumb="Sign in"
+      path="/signin"
       title={
         <>
           Welcome <em className="hi">back.</em>

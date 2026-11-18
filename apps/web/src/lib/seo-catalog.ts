@@ -29,7 +29,7 @@ export const TOOL_CATEGORY_SEO: Record<ToolCategory, ToolCategorySeo> = {
     category: 'Agents',
     slug: 'agents',
     label: 'AI agent builders & autonomous tools',
-    title: 'Best AI Agent Tools & Autonomous Coding Agents (2026)',
+    title: 'Best AI Agent Tools & Workflow Agents (2026)',
     heading: 'Best AI agent tools,',
     accent: 'ranked by builders.',
     description:
@@ -77,7 +77,7 @@ export const TOOL_CATEGORY_SEO: Record<ToolCategory, ToolCategorySeo> = {
     category: 'Research',
     slug: 'research',
     label: 'AI research assistants & search engines',
-    title: 'Best AI Research Assistants & Cited Answer Engines (2026)',
+    title: 'Best AI Research Tools & Answer Engines (2026)',
     heading: 'Best AI research tools,',
     accent: 'with verifiable citations.',
     description:
@@ -101,7 +101,7 @@ export const TOOL_CATEGORY_SEO: Record<ToolCategory, ToolCategorySeo> = {
     category: 'Image',
     slug: 'image',
     label: 'AI image generators & design studios',
-    title: 'Best AI Image Generators & Visual Design Tools (2026)',
+    title: 'Best AI Image Generators & Design Tools (2026)',
     heading: 'Best AI image generators,',
     accent: 'ranked by creators.',
     description:
@@ -125,7 +125,7 @@ export const TOOL_CATEGORY_SEO: Record<ToolCategory, ToolCategorySeo> = {
     category: 'Video',
     slug: 'video',
     label: 'AI video generators & editors',
-    title: 'Best AI Video Generators & Film Editing Tools (2026)',
+    title: 'Best AI Video Generators & Video Editors (2026)',
     heading: 'Best AI video tools,',
     accent: 'frame-by-frame control.',
     description:
@@ -173,7 +173,7 @@ export const TOOL_CATEGORY_SEO: Record<ToolCategory, ToolCategorySeo> = {
     category: 'Productivity',
     slug: 'productivity',
     label: 'AI meeting notes, decks & workflow tools',
-    title: 'Best AI Productivity Tools for Teams & Operators (2026)',
+    title: 'Best AI Productivity Tools for Teams (2026)',
     heading: 'Best AI productivity tools,',
     accent: 'without the busywork.',
     description:
@@ -213,11 +213,11 @@ export const TOOL_COLLECTIONS: Record<ToolCollectionSlug, ToolCollectionSeo> = {
   free: {
     slug: 'free',
     name: 'Free & Freemium AI Tools',
-    title: 'Best Free AI Tools That Are Actually Worth Using (2026)',
+    title: 'Best Free AI Tools Worth Using (2026)',
     heading: 'Free AI tools,',
     accent: 'verified by builders.',
     description:
-      'A curated directory of the best free and generous freemium AI tools across coding, research, images, audio, video, and productivity — ranked on Vigas.',
+      'Curated directory of free and generous freemium AI tools for coding, research, images, audio, and productivity — ranked on Vigas.',
     intro:
       'Every tool in this collection offers either 100% free access or a genuinely usable ongoing free tier with no trial trap, sorted by real builder upvotes.',
     filter: (t) => t.pricing === 'Free' || t.pricing === 'Freemium',
@@ -235,11 +235,11 @@ export const TOOL_COLLECTIONS: Record<ToolCollectionSlug, ToolCollectionSeo> = {
   'vigas-api': {
     slug: 'vigas-api',
     name: 'Tools Powered by Vigas API',
-    title: 'Best AI Tools Running on the Vigas API (2026)',
+    title: 'Best AI Tools Powered by Vigas API (2026)',
     heading: 'Built on Vigas,',
     accent: 'one key & balance.',
     description:
-      'Discover AI agents, coding editors, and apps powered by the Vigas unified API — use your single prepaid balance with honest pass-through pricing.',
+      'Discover AI agents, coding editors, and apps powered by the Vigas unified API — one prepaid wallet with honest pass-through pricing.',
     intro:
       'Products in this collection connect directly to your Vigas API key so you share one credit balance across every tool without stacking redundant subscriptions.',
     filter: (t) => t.runsOnVigas,

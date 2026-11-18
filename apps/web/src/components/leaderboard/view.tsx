@@ -114,7 +114,7 @@ async function getCachedBoardPayload(category: LeaderboardCategory, lang: 'en' |
     dateModified: board.updatedAt,
     inLanguage: lang,
     isAccessibleForFree: true,
-    creator: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
+    creator: { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: SITE_NAME, url: SITE_URL },
     variableMeasured: ['Win Share Percentage', 'Bradley-Terry ELO Score', 'Cost Per Completed Task (USD)', '95% Confidence Interval'],
     distribution: {
       '@type': 'DataDownload',

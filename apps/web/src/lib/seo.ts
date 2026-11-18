@@ -91,7 +91,7 @@ export const organizationLd = (lang: 'en' | 'fa' = 'en'): JsonLdObject => ({
   url: lang === 'fa' ? `${SITE_URL}/fa` : SITE_URL,
   logo: {
     '@type': 'ImageObject',
-    url: absoluteUrl('/icon.svg'),
+    url: absoluteUrl('/icons/icon-512.png'),
     width: 512,
     height: 512,
   },

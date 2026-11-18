@@ -11,7 +11,26 @@ export default function OpenGraphImage() {
     (
       <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#12110F', color: '#EFEAE1', padding: 72 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <div style={{ display: 'flex', width: 56, height: 56, borderRadius: 14, background: '#FF6A1A' }} />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 60,
+              height: 60,
+              borderRadius: 15,
+              background: '#171614',
+              border: '1px solid rgba(239,234,225,0.18)',
+            }}
+          >
+            <svg viewBox="5 26 90 50" width="44" height="24" fill="none">
+              <circle cx="29" cy="50" r="17" stroke="#EFEAE1" strokeWidth="6.5" />
+              <circle cx="71" cy="50" r="17" stroke="#EFEAE1" strokeWidth="6.5" />
+              <line x1="29" y1="67" x2="71" y2="67" stroke="#EFEAE1" strokeWidth="6.5" strokeLinecap="round" />
+              <circle cx="29" cy="50" r="6.2" fill="#FF6A1A" />
+              <circle cx="71" cy="50" r="3.4" fill="#EFEAE1" />
+            </svg>
+          </div>
           <div style={{ fontSize: 52, letterSpacing: -1 }}>Vigas</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>

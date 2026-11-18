@@ -35,6 +35,11 @@ function withVaryCookie(res: NextResponse): NextResponse {
   return res;
 }
 
+function withLang(res: NextResponse, lang: 'en' | 'fa'): NextResponse {
+  res.headers.set('Content-Language', lang);
+  return res;
+}
+
 function redirect308(request: NextRequest, pathname: string, search = ''): NextResponse {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
@@ -56,7 +61,7 @@ function rewriteToFaApp(request: NextRequest): NextResponse {
   url.pathname = `/fa-app${url.pathname}`;
   const res = NextResponse.rewrite(url);
   res.headers.set('Cache-Control', 'private, no-store');
-  return withVaryCookie(res);
+  return withLang(withVaryCookie(res), 'fa');
 }
 
 const STATIC_EXT_RE = /\.(?:webp|png|jpe?g|gif|svg|ico|css|js|mjs|woff2?|ttf|map|txt|xml|json|webmanifest)$/i;
@@ -107,7 +112,7 @@ export function proxy(request: NextRequest) {
     if (cookieLang === 'fa') {
       return redirect307(request, '/fa');
     }
-    return withVaryCookie(NextResponse.next());
+    return withLang(withVaryCookie(NextResponse.next()), 'en');
   }
 
   // Explicit Persian home sets cookie on non-prefetch visits
@@ -116,7 +121,7 @@ export function proxy(request: NextRequest) {
     if (!prefetch && cookieLang !== 'fa' && qLang !== 'en') {
       res.cookies.set(LANG_COOKIE, 'fa', LANG_COOKIE_OPTS);
     }
-    return res;
+    return withLang(res, 'fa');
   }
 
   // Legacy `/news?lang=fa|en&category=Models&page=2` -> canonical `/news` or `/news/fa` routes
@@ -154,7 +159,7 @@ export function proxy(request: NextRequest) {
     if (cookieLang === 'fa') {
       return redirect307(request, '/news/fa', page && page > 1 ? `?page=${page}` : '');
     }
-    return withVaryCookie(NextResponse.next());
+    return withLang(withVaryCookie(NextResponse.next()), 'en');
   }
 
   if (pathname === '/news/fa') {
@@ -166,7 +171,7 @@ export function proxy(request: NextRequest) {
     }
     const res = NextResponse.next();
     if (!prefetch && cookieLang !== 'fa') res.cookies.set(LANG_COOKIE, 'fa', LANG_COOKIE_OPTS);
-    return res;
+    return withLang(res, 'fa');
   }
 
   // `/news/category/[category]` & `/news/category/[category]/page/[page]`
@@ -210,7 +215,7 @@ export function proxy(request: NextRequest) {
       const pathPage = rest.length === 3 && rest[1] === 'page' ? parsePositivePage(rest[2] ?? null) : qPage;
       return redirect307(request, `/news/fa/category/${lower}`, pathPage && pathPage > 1 ? `?page=${pathPage}` : '');
     }
-    return withVaryCookie(NextResponse.next());
+    return withLang(withVaryCookie(NextResponse.next()), 'en');
   }
 
   if (pathname.startsWith('/news/fa/category/')) {
@@ -229,7 +234,7 @@ export function proxy(request: NextRequest) {
     }
     const res = NextResponse.next();
     if (!prefetch && cookieLang !== 'fa') res.cookies.set(LANG_COOKIE, 'fa', LANG_COOKIE_OPTS);
-    return res;
+    return withLang(res, 'fa');
   }
 
   // Legacy `/tools?category=Coding` -> `/tools/category/coding`
@@ -277,14 +282,21 @@ export function proxy(request: NextRequest) {
   // Shared bilingual routes: preserve EN for anonymous visitors, rewrite to `/fa-app/*` when `vg_lang=fa`
   if (isSharedBilingualPath(pathname)) {
     if (qLang === 'en') {
-      const res = withVaryCookie(NextResponse.next());
+      const res = withLang(withVaryCookie(NextResponse.next()), 'en');
       if (!prefetch) res.cookies.set(LANG_COOKIE, 'en', LANG_COOKIE_OPTS);
       return res;
     }
     if (cookieLang === 'fa') {
       return rewriteToFaApp(request);
     }
-    return withVaryCookie(NextResponse.next());
+    return withLang(withVaryCookie(NextResponse.next()), 'en');
+  }
+
+  if (pathname.startsWith('/news/fa-')) {
+    return withLang(NextResponse.next(), 'fa');
+  }
+  if (pathname.startsWith('/news/')) {
+    return withLang(NextResponse.next(), 'en');
   }
 
   return NextResponse.next();

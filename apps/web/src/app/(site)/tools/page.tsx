@@ -2,9 +2,9 @@ import { ToolsIndexView } from '@/components/tools/tools-views';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Best AI tools of 2026 — curated app directory',
+  title: 'Best AI Tools of 2026 — App Directory',
   description:
-    'Discover verified AI coding agents, research workspaces, image studios, video generators, voice tools, and productivity apps on Vigas — tested and upvoted by builders.',
+    'Discover 24 verified AI coding agents, research apps, image studios, video & voice tools ranked by builder upvotes and real ratings on Vigas.',
   path: '/tools',
 });
 

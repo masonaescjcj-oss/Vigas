@@ -215,6 +215,33 @@ function pngResponse(element: React.ReactElement, fonts?: OgFontOption): ImageRe
   return new ImageResponse(element, { ...SIZE, ...(fonts ? { fonts } : {}), headers: CACHE_HEADERS });
 }
 
+function OgBrandBadge({ size = 40 }: { size?: number }) {
+  const svgW = Math.round(size * 0.76);
+  const svgH = Math.round(svgW * (50 / 90));
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: size,
+        height: size,
+        borderRadius: Math.round(size * 0.25),
+        background: '#171614',
+        border: '1px solid rgba(239,234,225,0.18)',
+      }}
+    >
+      <svg viewBox="5 26 90 50" width={svgW} height={svgH} fill="none">
+        <circle cx="29" cy="50" r="17" stroke="#EFEAE1" strokeWidth="6.5" />
+        <circle cx="71" cy="50" r="17" stroke="#EFEAE1" strokeWidth="6.5" />
+        <line x1="29" y1="67" x2="71" y2="67" stroke="#EFEAE1" strokeWidth="6.5" strokeLinecap="round" />
+        <circle cx="29" cy="50" r="6.2" fill="#FF6A1A" />
+        <circle cx="71" cy="50" r="3.4" fill="#EFEAE1" />
+      </svg>
+    </div>
+  );
+}
+
 export async function renderLeaderboardOg(category: LeaderboardCategory): Promise<Response> {
   const board = await getLeaderboardData(category);
   const label = LEADERBOARD_CATEGORIES.find((c) => c.id === category)?.label ?? 'Overall';
@@ -236,7 +263,7 @@ export async function renderLeaderboardOg(category: LeaderboardCategory): Promis
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', width: 38, height: 38, borderRadius: 10, background: '#FF6A1A' }} />
+          <OgBrandBadge size={40} />
           <div style={{ display: 'flex', fontSize: 30, color: '#EFEAE1' }}>Vigas Arena Leaderboard</div>
         </div>
         <div
@@ -324,7 +351,7 @@ export async function renderLeaderboardOg(category: LeaderboardCategory): Promis
       >
         <div style={{ display: 'flex' }}>{`${board.totalSessions.toLocaleString('en-US')} sessions ranked`}</div>
         <div style={{ display: 'flex', color: '#EFEAE1' }}>
-          {`vigas.ai${category === 'overall' ? '/leaderboard' : `/leaderboard/${category}`}`}
+          {`vigas.app${category === 'overall' ? '/leaderboard' : `/leaderboard/${category}`}`}
         </div>
       </div>
     </div>,
@@ -353,7 +380,7 @@ export async function renderToolOg(slug: string): Promise<Response> {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', width: 38, height: 38, borderRadius: 10, background: '#FF6A1A' }} />
+          <OgBrandBadge size={40} />
           <div style={{ display: 'flex', fontSize: 28, color: '#A9A298' }}>Vigas AI Tools Directory</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -439,7 +466,12 @@ export async function renderToolOg(slug: string): Promise<Response> {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', fontSize: 18, color: '#958E84' }}>BUILDER RATING</div>
-            <div style={{ display: 'flex', fontSize: 48, lineHeight: 1, color: '#E3B65C' }}>{`★ ${tool.rating.toFixed(1)}`}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 48, lineHeight: 1, color: '#E3B65C' }}>
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="#E3B65C">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              <span>{tool.rating.toFixed(1)}</span>
+            </div>
           </div>
           <div style={{ borderTop: '1px solid rgba(239,234,225,0.1)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', fontSize: 18, color: '#958E84' }}>UPVOTES</div>
@@ -459,7 +491,7 @@ export async function renderToolOg(slug: string): Promise<Response> {
         }}
       >
         <div style={{ display: 'flex' }}>Ranked on Vigas Tools</div>
-        <div style={{ display: 'flex', color: '#FF6A1A' }}>{`vigas.ai/tools/${tool.slug}`}</div>
+        <div style={{ display: 'flex', color: '#FF6A1A' }}>{`vigas.app/tools/${tool.slug}`}</div>
       </div>
     </div>,
   );
@@ -516,7 +548,7 @@ export async function renderArticleOg(slug: string): Promise<Response> {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ display: 'flex', width: 38, height: 38, borderRadius: 10, background: '#FF6A1A' }} />
+          <OgBrandBadge size={40} />
           <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: '#EFEAE1' }}>Vigas Newsroom</div>
           {isFa && (
             <div
@@ -602,7 +634,7 @@ export async function renderArticleOg(slug: string): Promise<Response> {
         }}
       >
         <div style={{ display: 'flex', color: '#EFEAE1' }}>{`${article.author.name} · ${article.author.role}`}</div>
-        <div style={{ display: 'flex', color: '#E3B65C' }}>{`${article.readingMinutes} min read · vigas.ai`}</div>
+        <div style={{ display: 'flex', color: '#E3B65C' }}>{`${article.readingMinutes} min read · vigas.app`}</div>
       </div>
     </div>,
     fonts,

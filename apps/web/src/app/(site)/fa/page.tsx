@@ -14,7 +14,7 @@ import { articleImageUrl } from '@/lib/media';
 import { organizationLd, pageMetadata, websiteLd } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'ویگاس — ارزان‌ترین و سریع‌ترین API هوش مصنوعی، لیدربورد و اخبار AI',
+  title: 'ویگاس — سریع‌ترین API هوش مصنوعی، لیدربورد و اخبار AI',
   absoluteTitle: true,
   description:
     'دسترسی یکپارچه به تمام مدل‌های برتر هوش مصنوعی با کمترین تعرفه مستقیم توکن، پایین‌ترین تأخیر لبه، رده‌بندی زنده Arena، اخبار تخصصی AI به فارسی و فهرست ابزارها.',

@@ -1,5 +1,6 @@
 import { getNews } from '@/lib/data';
 import { absoluteUrl, SITE_NAME } from '@/lib/env';
+import { articleImageUrl } from '@/lib/media';
 
 function escapeXml(text: string): string {
   return text
@@ -22,6 +23,7 @@ export async function GET() {
     .map((item) => {
       const loc = absoluteUrl(`/news/${item.slug}`);
       const pubIso = new Date(item.publishedAt).toISOString();
+      const imageLoc = absoluteUrl(articleImageUrl(item.slug, item.imageUrl));
       return [
         '  <url>',
         `    <loc>${escapeXml(loc)}</loc>`,
@@ -34,6 +36,10 @@ export async function GET() {
         `      <news:title>${escapeXml(item.title)}</news:title>`,
         `      <news:keywords>${escapeXml(`${item.category}, AI, ${SITE_NAME}`)}</news:keywords>`,
         '    </news:news>',
+        '    <image:image>',
+        `      <image:loc>${escapeXml(imageLoc)}</image:loc>`,
+        `      <image:title>${escapeXml(item.title)}</image:title>`,
+        '    </image:image>',
         '  </url>',
       ].join('\n');
     })
@@ -41,7 +47,7 @@ export async function GET() {
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
     urlNodes,
     '</urlset>',
   ].join('\n');

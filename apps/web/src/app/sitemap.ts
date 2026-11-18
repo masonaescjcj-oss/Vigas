@@ -1,13 +1,20 @@
 import type { MetadataRoute } from 'next';
 import { LEADERBOARD_CATEGORIES, NEWS_CATEGORIES, TOOL_CATEGORIES } from '@vigas/core';
-import { getSitemapData } from '@/lib/data';
+import { getNews, getSitemapData } from '@/lib/data';
 import { absoluteUrl } from '@/lib/env';
 import { getArticleAlternate } from '@/lib/media';
 import { TOOL_COLLECTIONS } from '@/lib/seo-catalog';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { articles, tools } = await getSitemapData();
+  const [{ articles, tools }, enCatChecks, faCatChecks] = await Promise.all([
+    getSitemapData(),
+    Promise.all(NEWS_CATEGORIES.map((c) => getNews({ category: c, lang: 'en', limit: 1 }))),
+    Promise.all(NEWS_CATEGORIES.map((c) => getNews({ category: c, lang: 'fa', limit: 1 }))),
+  ]);
   const newest = articles[0]?.updatedAt ?? new Date().toISOString();
+  const enCats = new Map(NEWS_CATEGORIES.map((c, i) => [c, enCatChecks[i]!]));
+  const faCats = new Map(NEWS_CATEGORIES.map((c, i) => [c, faCatChecks[i]!]));
+
   const entry = (
     path: string,
     changeFrequency: 'hourly' | 'daily' | 'weekly' | 'monthly',
@@ -39,15 +46,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...LEADERBOARD_CATEGORIES.filter((c) => c.id !== 'overall').map((c) => entry(`/leaderboard/${c.id}`, 'daily', 0.8, newest)),
     entry('/news', 'hourly', 0.9, newest, newsLangs),
     entry('/news/fa', 'hourly', 0.9, newest, newsLangs),
-    ...NEWS_CATEGORIES.map((c) => {
+    ...NEWS_CATEGORIES.flatMap((c) => {
       const slug = c.toLowerCase();
-      const langs = { en: `/news/category/${slug}`, fa: `/news/fa/category/${slug}`, 'x-default': `/news/category/${slug}` };
-      return entry(`/news/category/${slug}`, 'daily', 0.7, newest, langs);
-    }),
-    ...NEWS_CATEGORIES.map((c) => {
-      const slug = c.toLowerCase();
-      const langs = { en: `/news/category/${slug}`, fa: `/news/fa/category/${slug}`, 'x-default': `/news/category/${slug}` };
-      return entry(`/news/fa/category/${slug}`, 'daily', 0.7, newest, langs);
+      const en = enCats.get(c);
+      const fa = faCats.get(c);
+      const hasEn = Boolean(en && en.total > 0);
+      const hasFa = Boolean(fa && fa.total > 0);
+      const out: MetadataRoute.Sitemap = [];
+      if (hasEn) {
+        const langs = hasFa ? { en: `/news/category/${slug}`, fa: `/news/fa/category/${slug}`, 'x-default': `/news/category/${slug}` } : undefined;
+        out.push(entry(`/news/category/${slug}`, 'daily', 0.7, en?.items[0]?.publishedAt ?? newest, langs));
+      }
+      if (hasFa) {
+        const langs = hasEn ? { en: `/news/category/${slug}`, fa: `/news/fa/category/${slug}`, 'x-default': `/news/category/${slug}` } : undefined;
+        out.push(entry(`/news/fa/category/${slug}`, 'daily', 0.7, fa?.items[0]?.publishedAt ?? newest, langs));
+      }
+      return out;
     }),
     ...articles.map((a) => {
       const alt = getArticleAlternate(a.slug);

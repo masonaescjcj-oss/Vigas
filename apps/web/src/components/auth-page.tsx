@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
+import { absoluteUrl } from '@/lib/env';
+import { breadcrumbLd } from '@/lib/seo';
 import { SiteFooter } from './site-footer';
 import { SiteHeader } from './site-header';
-import { Breadcrumb, Icon } from './ui';
+import { Breadcrumb, Icon, JsonLd } from './ui';
 
 const EN_BULLETS = [
   'One OpenAI-compatible API key for 25+ frontier models',
@@ -22,22 +24,41 @@ export function AuthPage({
   title,
   intro,
   crumb,
+  path = '/signup',
   lang = 'en',
   children,
 }: {
   title: ReactNode;
   intro: string;
   crumb: string;
+  path?: string;
   lang?: 'en' | 'fa';
   children: ReactNode;
 }) {
   const isFa = lang === 'fa';
   const bullets = isFa ? FA_BULLETS : EN_BULLETS;
+  const homeHref = isFa ? '/fa' : '/';
   const content = (
     <>
+      <JsonLd
+        data={[
+          breadcrumbLd([
+            { name: isFa ? 'خانه' : 'Home', path: homeHref },
+            { name: crumb, path },
+          ]),
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: crumb,
+            description: intro,
+            url: absoluteUrl(path),
+            inLanguage: lang,
+          },
+        ]}
+      />
       <SiteHeader ticker={false} lang={lang} />
       <main id="main" className="wrap" style={{ paddingBottom: 96 }}>
-        <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: crumb }]} style={{ paddingTop: 28 }} />
+        <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: homeHref }, { name: crumb }]} style={{ paddingTop: 28 }} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 56, alignItems: 'center', paddingTop: 40 }}>
           <div style={{ flex: '1 1 420px', minWidth: 0 }}>
             <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>

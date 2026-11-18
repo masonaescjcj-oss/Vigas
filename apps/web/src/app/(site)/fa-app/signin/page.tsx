@@ -18,6 +18,7 @@ export default function FaSignInPage() {
     <AuthPage
       lang="fa"
       crumb="ورود به حساب"
+      path="/signin"
       title={
         <>
           خوش <em className="hi">برگشتید.</em>

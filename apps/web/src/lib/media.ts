@@ -15,6 +15,12 @@ const ARTICLE_IMAGES: Record<string, string> = {
   'fa-sf-frontier-ai-safety-lawsuit': '/news/ai-safety-court.webp',
   'open-coding-agents-deepseek-dsh-opencode-cncf': '/news/open-coding-agents.webp',
   'fa-open-coding-agents-dsh-opencode': '/news/open-coding-agents.webp',
+  'router-unit-economics-task-cost-vs-arena': '/news/token-economics.webp',
+  'fa-router-unit-economics-cost-vs-arena': '/news/token-economics.webp',
+  'inference-chips-hbm-memory-bandwidth-token-drop': '/news/inference-silicon.webp',
+  'fa-inference-chips-hbm-memory-drop': '/news/inference-silicon.webp',
+  'coding-editors-byok-cursor-cline-opencode': '/news/ai-coding-tools-2026.webp',
+  'fa-coding-editors-byok-cursor-cline-opencode': '/news/ai-coding-tools-2026.webp',
 };
 
 export function articleImageUrl(slug: string, explicitUrl?: string | null): string {
@@ -24,6 +30,9 @@ export function articleImageUrl(slug: string, explicitUrl?: string | null): stri
   if (/anthropic|ipo|funding/i.test(slug)) return '/news/anthropic-ipo.webp';
   if (/gemini|carbon|hydrogen/i.test(slug)) return '/news/gemini-4.webp';
   if (/lawsuit|policy|safety/i.test(slug)) return '/news/ai-safety-court.webp';
+  if (/hardware|chip|silicon|hbm/i.test(slug)) return '/news/inference-silicon.webp';
+  if (/economics|unit-cost|pareto|analysis/i.test(slug)) return '/news/token-economics.webp';
+  if (/byok|editor|tools/i.test(slug)) return '/news/ai-coding-tools-2026.webp';
   if (/opencode|coding|deepseek|agent/i.test(slug)) return '/news/open-coding-agents.webp';
   return '/news/arena-eval.webp';
 }
@@ -97,6 +106,9 @@ const ARTICLE_PAIRS: Array<[en: string, fa: string]> = [
   ['google-gemini-4-carbon-hydrogen-gemini-2-5-shutdown', 'fa-google-gemini-4-carbon-hydrogen'],
   ['sf-frontier-ai-safety-lawsuit-five-labs', 'fa-sf-frontier-ai-safety-lawsuit'],
   ['open-coding-agents-deepseek-dsh-opencode-cncf', 'fa-open-coding-agents-dsh-opencode'],
+  ['router-unit-economics-task-cost-vs-arena', 'fa-router-unit-economics-cost-vs-arena'],
+  ['inference-chips-hbm-memory-bandwidth-token-drop', 'fa-inference-chips-hbm-memory-drop'],
+  ['coding-editors-byok-cursor-cline-opencode', 'fa-coding-editors-byok-cursor-cline-opencode'],
 ];
 
 export const ARTICLE_ALTERNATES: Record<string, { en: string; fa: string }> = Object.fromEntries(

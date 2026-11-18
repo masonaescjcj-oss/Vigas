@@ -13,15 +13,29 @@ export async function generateStaticParams() {
   return tools.map((t) => ({ slug: t.slug }));
 }
 
+function clampWords(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 3);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > 40 ? cut.slice(0, space) : cut).trimEnd()}...`;
+}
+
 export async function generateMetadata({ params }: PageProps<'/tools/[slug]'>): Promise<Metadata> {
   const { slug } = await params;
   const tool = await getToolBySlug(slug);
   if (!tool) return { title: 'Tool not found', robots: { index: false } };
   const tagline = tool.tagline.replace(/\.$/, '');
-  const rawDesc = `${tool.name} (${tool.pricing}, ★ ${tool.rating.toFixed(1)}/5): ${tagline}. Compare pricing, features, and ${tool.category.toLowerCase()} alternatives on Vigas.`;
-  const description = rawDesc.length > 160 ? `${rawDesc.slice(0, 157).trimEnd()}...` : rawDesc;
+  const fullTaglineTitle = `${tool.name} — ${tagline}`;
+  const title =
+    fullTaglineTitle.length <= 52
+      ? fullTaglineTitle
+      : `${tool.name} — ${tool.category} AI Tool (${tool.pricing})`.length <= 52
+        ? `${tool.name} — ${tool.category} AI Tool (${tool.pricing})`
+        : `${tool.name} — ${tool.category} AI App`;
+  const rawDesc = `${tool.name} (${tool.pricing}, ★ ${tool.rating.toFixed(1)}/5): ${tagline}. Compare pricing, features & ${tool.category.toLowerCase()} alternatives on Vigas.`;
+  const description = clampWords(rawDesc, 155);
   return pageMetadata({
-    title: `${tool.name} — ${tagline}`,
+    title,
     description,
     path: `/tools/${tool.slug}`,
     image: `/og/tool/${tool.slug}`,

@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: PageProps<'/news/[slug]'>): P
     title: article.title,
     description: article.dek,
     path: `/news/${article.slug}`,
+    absoluteTitle: article.title.length > 52,
     locale: lang === 'fa' ? 'fa_IR' : 'en_US',
     alternatesLanguages,
     image: `/og/news/${article.slug}`,

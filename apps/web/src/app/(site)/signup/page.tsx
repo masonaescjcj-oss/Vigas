@@ -3,7 +3,7 @@ import { AuthPage } from '@/components/auth-page';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Create your account — one API key for every AI model',
+  title: 'Create Account — One API Key for Every Model',
   description:
     'Create a free Vigas account: one OpenAI-compatible API key with fast edge routing, lowest pass-through token pricing, and zero markup on your first $5.',
   path: '/signup',

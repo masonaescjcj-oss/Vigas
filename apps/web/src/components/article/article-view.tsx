@@ -113,7 +113,13 @@ export async function ArticleView({ slug }: { slug: string }) {
       url,
       image: [absoluteUrl(coverImage), absoluteUrl(`/og/news/${article.slug}`)],
       author: [{ '@type': 'Person', name: article.author.name, jobTitle: article.author.role }],
-      publisher: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL, logo: { '@type': 'ImageObject', url: absoluteUrl('/icon.svg') } },
+      publisher: {
+        '@type': 'Organization',
+        '@id': `${SITE_URL}/#organization`,
+        name: SITE_NAME,
+        url: SITE_URL,
+        logo: { '@type': 'ImageObject', url: absoluteUrl('/icons/icon-512.png'), width: 512, height: 512 },
+      },
     },
     breadcrumbLd([
       { name: isFa ? 'خانه' : 'Home', path: homePath },

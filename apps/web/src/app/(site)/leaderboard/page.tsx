@@ -6,9 +6,9 @@ import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'AI Leaderboard — best AI models and agents ranked by real use',
+  title: 'AI Leaderboard — Best Models Ranked Live',
   description:
-    'Live rankings of the best AI models and agents, built from real sessions and blind Arena votes on Vigas — with win share, Bradley–Terry scores, confidence intervals and cost per task.',
+    'Live rankings of top AI models and coding agents built from real sessions and blind Arena votes — win share, Bradley-Terry scores & cost per task.',
   path: '/leaderboard',
   image: '/og/leaderboard/overall',
   imageAlt: 'Vigas AI Leaderboard — Best models and agents ranked by real use',
