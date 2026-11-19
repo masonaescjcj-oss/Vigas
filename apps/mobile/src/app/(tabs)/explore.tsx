@@ -1,4 +1,16 @@
-import { NEWS_CATEGORIES, TOOL_CATEGORIES, type NewsCategory, type NewsListItem, type ToolCategory, type ToolItem } from '@vigas/core';
+import {
+  formatContext,
+  formatPricePerMillion,
+  MODEL_TAGS,
+  NEWS_CATEGORIES,
+  TOOL_CATEGORIES,
+  type ModelListItem,
+  type ModelTag,
+  type NewsCategory,
+  type NewsListItem,
+  type ToolCategory,
+  type ToolItem,
+} from '@vigas/core';
 import { router, useLocalSearchParams, useScrollToTop } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
@@ -19,34 +31,44 @@ import { SkeletonRow } from '@/components/skeleton';
 import { EmptyState, OfflineNote } from '@/components/states';
 import { Heading, Label, Span, T } from '@/components/text';
 import { api, errorMessage, isUnauthorized, withTimeout } from '@/lib/api';
-import { fallbackNews, fallbackTools } from '@/lib/fallback';
+import { fallbackModels, fallbackNews, fallbackTools } from '@/lib/fallback';
 import { agoLabel, intl, shortTitle } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { useRemote } from '@/lib/remote';
 import { useSession } from '@/lib/session';
 import { toast } from '@/lib/toast';
-import { colors, GUTTER, withAlpha } from '@/theme';
+import { colors, GUTTER, orgMark, withAlpha } from '@/theme';
 
-type Seg = 'news' | 'tools';
-type Row = { kind: 'tool'; tool: ToolItem } | { kind: 'news'; item: NewsListItem };
+type Seg = 'news' | 'models' | 'tools';
+type Row =
+  | { kind: 'tool'; tool: ToolItem }
+  | { kind: 'news'; item: NewsListItem }
+  | { kind: 'model'; model: ModelListItem };
 type VoteState = { voted: boolean; votes: number };
 
 const SEGMENTS = [
   { id: 'news', label: 'News' },
+  { id: 'models', label: 'Models' },
   { id: 'tools', label: 'Tools' },
 ] as const;
+
 const TOOL_CHIPS: { id: 'All' | ToolCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...TOOL_CATEGORIES.map((c) => ({ id: c, label: c }))];
 const NEWS_CHIPS: { id: 'All' | NewsCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...NEWS_CATEGORIES.map((c) => ({ id: c, label: c }))];
+const MODEL_CHIPS: { id: 'All' | ModelTag; label: string }[] = [
+  { id: 'All', label: 'All' },
+  ...MODEL_TAGS.map((t) => ({ id: t, label: t[0]!.toUpperCase() + t.slice(1) })),
+];
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ seg?: string; focus?: string; t?: string }>();
   const { token, expire } = useSession();
 
-  const [seg, setSeg] = useState<Seg>(params.seg === 'news' ? 'news' : 'tools');
+  const [seg, setSeg] = useState<Seg>(params.seg === 'news' || params.seg === 'models' ? params.seg : 'tools');
   const [query, setQuery] = useState('');
   const [toolCat, setToolCat] = useState<'All' | ToolCategory>('All');
   const [newsCat, setNewsCat] = useState<'All' | NewsCategory>('All');
+  const [modelTag, setModelTag] = useState<'All' | ModelTag>('All');
   const [votes, setVotes] = useState<Record<string, VoteState>>({});
   const [detail, setDetail] = useState<ToolItem | null>(null);
 
@@ -54,7 +76,7 @@ export default function ExploreScreen() {
   const [lastNav, setLastNav] = useState(params.t);
   if (params.t !== lastNav) {
     setLastNav(params.t);
-    if (params.seg === 'news' || params.seg === 'tools') setSeg(params.seg);
+    if (params.seg === 'news' || params.seg === 'models' || params.seg === 'tools') setSeg(params.seg);
   }
 
   const inputRef = useRef<TextInputInstance>(null);
@@ -69,19 +91,26 @@ export default function ExploreScreen() {
 
   const news = useRemote('news', () => api.news({ limit: 60 }), { fallback: fallbackNews });
   const tools = useRemote('tools', () => api.tools({ sort: 'votes' }), { fallback: fallbackTools });
-  const active = seg === 'tools' ? tools : news;
+  const models = useRemote('models', () => api.models(), { fallback: fallbackModels });
+  const active = seg === 'tools' ? tools : seg === 'models' ? models : news;
 
   const q = query.trim().toLowerCase();
   const voteOf = (t: ToolItem): VoteState => votes[t.slug] ?? { voted: !!t.voted, votes: t.votes };
 
   const allTools = tools.data?.items ?? [];
+  const allModels = models.data?.items ?? [];
+
   const toolRows: Row[] = allTools
     .filter((t) => (toolCat === 'All' || t.category === toolCat) && (!q || `${t.name} ${t.tagline} ${t.category}`.toLowerCase().includes(q)))
     .map((tool) => ({ kind: 'tool', tool }));
   const newsRows: Row[] = (news.data?.items ?? [])
     .filter((n) => (newsCat === 'All' || n.category === newsCat) && (!q || `${n.title} ${n.dek} ${n.category}`.toLowerCase().includes(q)))
     .map((item) => ({ kind: 'news', item }));
-  const rows = seg === 'tools' ? toolRows : newsRows;
+  const modelRows: Row[] = allModels
+    .filter((m) => (modelTag === 'All' || m.tags.includes(modelTag)) && (!q || `${m.name} ${m.id} ${m.org}`.toLowerCase().includes(q)))
+    .map((model) => ({ kind: 'model', model }));
+
+  const rows = seg === 'tools' ? toolRows : seg === 'models' ? modelRows : newsRows;
   const trending = [...allTools].sort((a, b) => b.votes - a.votes).slice(0, 3);
   const showTrending = seg === 'tools' && !q && toolCat === 'All' && trending.length > 0;
 
@@ -105,6 +134,17 @@ export default function ExploreScreen() {
     }
   };
 
+  const searchPlaceholder =
+    seg === 'tools'
+      ? allTools.length
+        ? `Search ${intl(allTools.length)} tools`
+        : 'Search tools'
+      : seg === 'models'
+        ? allModels.length
+          ? `Search ${intl(allModels.length)} models & API prices`
+          : 'Search models'
+        : 'Search AI news';
+
   const header = (
     <View>
       <View style={[styles.head, { paddingTop: insets.top + 24 }]}>
@@ -125,7 +165,7 @@ export default function ExploreScreen() {
             ref={inputRef}
             value={query}
             onChangeText={setQuery}
-            placeholder={seg === 'tools' ? (allTools.length ? `Search ${intl(allTools.length)} tools` : 'Search tools') : 'Search AI news'}
+            placeholder={searchPlaceholder}
             placeholderTextColor={colors.ink3}
             accessibilityLabel="Search"
             returnKeyType="search"
@@ -141,6 +181,8 @@ export default function ExploreScreen() {
       </View>
       {seg === 'tools' ? (
         <ChipRow options={TOOL_CHIPS} value={toolCat} onChange={(c) => setToolCat(c)} accessibilityLabel="Tool category" style={styles.chips} height={38} />
+      ) : seg === 'models' ? (
+        <ChipRow options={MODEL_CHIPS} value={modelTag} onChange={(t) => setModelTag(t)} accessibilityLabel="Model capability" style={styles.chips} height={38} />
       ) : (
         <ChipRow options={NEWS_CHIPS} value={newsCat} onChange={(c) => setNewsCat(c)} accessibilityLabel="News category" style={styles.chips} height={38} />
       )}
@@ -178,6 +220,8 @@ export default function ExploreScreen() {
       ) : null}
       {seg === 'tools' ? (
         <Heading style={styles.allTools}>{q || toolCat !== 'All' ? `${toolRows.length} tools` : 'All tools'}</Heading>
+      ) : seg === 'models' ? (
+        <Heading style={styles.allTools}>{q || modelTag !== 'All' ? `${modelRows.length} models` : `${modelRows.length} models · tap to chat`}</Heading>
       ) : (
         <View style={styles.newsGap} />
       )}
@@ -189,11 +233,13 @@ export default function ExploreScreen() {
       <Animated.FlatList
         ref={listRef}
         data={rows}
-        keyExtractor={(r) => (r.kind === 'tool' ? `t:${r.tool.slug}` : `n:${r.item.slug}`)}
+        keyExtractor={(r) => (r.kind === 'tool' ? `t:${r.tool.slug}` : r.kind === 'model' ? `m:${r.model.id}` : `n:${r.item.slug}`)}
         ListHeaderComponent={header}
         renderItem={({ item, index }) =>
           item.kind === 'tool' ? (
             <ToolRow tool={item.tool} vote={voteOf(item.tool)} index={index} onVote={() => void vote(item.tool)} onOpen={() => setDetail(item.tool)} />
+          ) : item.kind === 'model' ? (
+            <ModelRow model={item.model} index={index} />
           ) : (
             <NewsRow item={item.item} index={index} />
           )
@@ -203,7 +249,7 @@ export default function ExploreScreen() {
           active.pending ? (
             <View style={styles.pad}>
               {[0, 1, 2, 3, 4].map((i) => (
-                <SkeletonRow key={i} square={seg === 'tools' ? 48 : 64} />
+                <SkeletonRow key={i} square={seg === 'news' ? 64 : 48} />
               ))}
             </View>
           ) : (
@@ -219,6 +265,45 @@ export default function ExploreScreen() {
       <StatusScrim />
       <ToolSheet tool={detail} vote={detail ? voteOf(detail) : null} onVote={() => detail && void vote(detail)} onClose={() => setDetail(null)} />
     </View>
+  );
+}
+
+function ModelRow({ model, index }: { model: ModelListItem; index: number }) {
+  const chg = model.priceChange24h;
+  const badgeColor = chg < 0 ? colors.green : chg > 0 ? colors.red : colors.ink3;
+  const badgeText = chg < 0 ? `▼ ${Math.abs(chg)}%` : chg > 0 ? `▲ ${chg}%` : '—';
+  const mark = orgMark(model.org);
+  return (
+    <Animated.View entering={index < 10 ? FadeInDown.duration(320).delay(index * 30) : undefined} style={styles.pad}>
+      <PressableScale
+        accessibilityLabel={`${model.name} by ${model.org}. Open in Chat`}
+        onPress={() => {
+          haptics.select();
+          router.navigate({ pathname: '/chat', params: { model: model.id, t: String(Date.now()) } });
+        }}
+        scaleTo={0.985}
+        style={styles.modelRow}
+      >
+        <Monogram letter={mark.letter} color={mark.color} size={46} radius={13} />
+        <View style={styles.flex}>
+          <View style={styles.modelHead}>
+            <T f="sansSemi" numberOfLines={1} style={styles.flex}>
+              {model.name}
+            </T>
+            <T f="monoSemi" size={11} color={badgeColor}>
+              {badgeText}
+            </T>
+          </View>
+          <T f="mono" size={12} color={colors.ink3} numberOfLines={1}>
+            {model.id}
+          </T>
+          <T f="mono" size={12} color={colors.ink2}>
+            {formatContext(model.contextLength)} · IN {formatPricePerMillion(model.inputPerMillionMicros)} · OUT {formatPricePerMillion(model.outputPerMillionMicros)}
+          </T>
+        </View>
+        <Icon name="chevronRight" size={18} color={colors.ink3} />
+      </PressableScale>
+    </Animated.View>
   );
 }
 
@@ -371,6 +456,15 @@ const styles = StyleSheet.create({
   trendTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   allTools: { marginTop: 24, marginBottom: 4, marginHorizontal: GUTTER },
   newsGap: { height: 16 },
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(239,234,225,0.06)',
+  },
+  modelHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toolRow: {
     flexDirection: 'row',
     alignItems: 'center',

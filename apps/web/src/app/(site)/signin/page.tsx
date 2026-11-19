@@ -1,28 +1,23 @@
-import { AuthForm } from '@/components/auth-form';
-import { AuthPage } from '@/components/auth-page';
+import { RetroAuth } from '@/components/retro-auth';
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
   title: 'Sign in',
-  description: 'Sign in to Vigas to manage your prepaid credits, API keys, and usage across every AI model.',
+  description: 'Sign in to Vigas to access AI Chat, prepaid credits, API keys, and usage across every model.',
   path: '/signin',
   noindex: true,
 });
 
 export default function SignInPage() {
   return (
-    <AuthPage
-      lang="en"
-      crumb="Sign in"
-      path="/signin"
-      title={
-        <>
-          Welcome <em className="hi">back.</em>
-        </>
-      }
-      intro="Sign in to manage your credits, API keys, and live usage analytics across every connected coding app and server."
-    >
-      <AuthForm mode="signin" lang="en" />
-    </AuthPage>
+    <>
+      <SiteHeader ticker={false} lang="en" />
+      <main id="main">
+        <RetroAuth initialMode="signin" lang="en" />
+      </main>
+      <SiteFooter lang="en" />
+    </>
   );
 }

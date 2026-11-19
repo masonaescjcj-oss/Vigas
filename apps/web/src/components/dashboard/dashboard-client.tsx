@@ -5,7 +5,8 @@ import { useEffect, useId, useState, type CSSProperties, type FormEvent } from '
 import { ApiError } from '@vigas/api-client';
 import type { ApiKeySummary, AppError, CreatedApiKey, PublicUser, WalletResponse } from '@vigas/core';
 import { formatUsd, shortDay } from '@/lib/fmt';
-import { api, notifyAuthChanged } from '@/lib/client/session';
+import { api } from '@/lib/client/session';
+import { signOutEverywhere } from '@/lib/client/session-sync';
 import { CopyButton } from '../copy-button';
 import { Icon } from '../ui';
 
@@ -37,15 +38,16 @@ async function createKey(name: string, monthlyLimitMicros: number | null): Promi
 export function DashboardClient({
   user,
   initial,
-  paymentsEnabled,
+  paymentMode,
   lang = 'en',
 }: {
   user: PublicUser;
   initial: WalletResponse;
-  paymentsEnabled: boolean;
+  paymentMode: 'avexpay' | 'test' | 'none';
   lang?: 'en' | 'fa';
 }) {
   const isFa = lang === 'fa';
+  const paymentsEnabled = paymentMode !== 'none';
   const router = useRouter();
   const ids = useId();
   const [wallet, setWallet] = useState(initial);
@@ -58,14 +60,11 @@ export function DashboardClient({
   const [keyBusy, setKeyBusy] = useState(false);
   const [keyErr, setKeyErr] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
+  const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
+  const [editingLimitValue, setEditingLimitValue] = useState('');
+  const [savingLimitId, setSavingLimitId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
-
-  useEffect(() => {
-    const t = Number(new URLSearchParams(window.location.search).get('topup'));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- preselect the amount chosen on the Models page
-    if (Number.isFinite(t) && t >= 1 && t <= 1000) setAmount(Math.round(t));
-  }, []);
 
   const refresh = async () => {
     try {
@@ -74,6 +73,68 @@ export function DashboardClient({
       if (e instanceof ApiError && e.status === 401) router.replace('/signin?next=/dashboard');
     }
   };
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const t = Number(sp.get('topup'));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- preselect the amount chosen on the Models page or mobile app
+    if (Number.isFinite(t) && t >= 1 && t <= 1000) setAmount(Math.round(t));
+
+    const checkout = sp.get('checkout');
+    const ref = sp.get('ref');
+    if (checkout === 'cancelled') {
+      setTopupMsg({
+        ok: false,
+        text: isFa ? 'پرداخت در AvexPay لغو شد و مبلغی کسر نگردید.' : 'Checkout was cancelled. Nothing was charged.',
+      });
+      return;
+    }
+
+    if (checkout === 'success' && ref) {
+      let active = true;
+      void (async () => {
+        for (let attempt = 0; attempt < 4 && active; attempt += 1) {
+          try {
+            const st = await api.checkoutStatus(ref);
+            if (!active) return;
+            if (st.status === 'succeeded') {
+              setTopupMsg({
+                ok: true,
+                text: isFa
+                  ? `${formatUsd(st.amountMicros)} اعتبار به کیف‌پول شما اضافه شد.`
+                  : `${formatUsd(st.amountMicros)} in credits was added to your wallet.`,
+              });
+              await refresh();
+              return;
+            }
+            if (st.status === 'failed') {
+              setTopupMsg({
+                ok: false,
+                text: isFa ? 'پرداخت تکمیل نشد یا منقضی شد.' : 'Payment could not be completed or expired.',
+              });
+              return;
+            }
+          } catch {
+            // Keep brief banner fallback below
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        if (active) {
+          setTopupMsg({
+            ok: true,
+            text: isFa
+              ? 'پرداخت شما ثبت شد و در حال تأیید نهایی شبکه است. موجودی به محض تأیید به‌روزرسانی می‌شود.'
+              : 'Payment submitted and awaiting confirmation. Your balance will update automatically once settled.',
+          });
+          await refresh();
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const amountUsd = custom ? Number(custom) : amount;
   const amountValid = Number.isFinite(amountUsd) && amountUsd >= 1 && amountUsd <= 1000;
@@ -85,12 +146,16 @@ export function DashboardClient({
     setTopupBusy(true);
     setTopupMsg(null);
     try {
-      const r = await api.topup(amountMicros);
+      const r = await api.startCheckout(amountMicros);
+      if (r.mode === 'redirect' && r.checkoutUrl) {
+        window.location.assign(r.checkoutUrl);
+        return;
+      }
       setTopupMsg({
         ok: true,
         text: isFa
-          ? `${formatUsd(amountMicros)} به اعتبار حساب اضافه شد. مبلغ کسرشده: ${formatUsd(r.chargedMicros)}${r.feeMicros ? ` (شامل ${formatUsd(r.feeMicros)} کارمزد)` : ''}.`
-          : `Added ${formatUsd(amountMicros)}. Charged ${formatUsd(r.chargedMicros)}${r.feeMicros ? ` (incl. ${formatUsd(r.feeMicros)} fee)` : ''}.`,
+          ? `${formatUsd(amountMicros)} به اعتبار حساب اضافه شد. مبلغ کل: ${formatUsd(r.totalMicros)}${r.feeMicros ? ` (شامل ${formatUsd(r.feeMicros)} کارمزد)` : ''}.`
+          : `Added ${formatUsd(amountMicros)}. Charged ${formatUsd(r.totalMicros)}${r.feeMicros ? ` (incl. ${formatUsd(r.feeMicros)} fee)` : ''}.`,
       });
       setCustom('');
       await refresh();
@@ -133,6 +198,30 @@ export function DashboardClient({
     }
   };
 
+  const saveKeyLimit = async (k: ApiKeySummary) => {
+    const raw = editingLimitValue.trim();
+    const limitUsd = raw ? Number(raw) : null;
+    if (limitUsd !== null && !(Number.isFinite(limitUsd) && limitUsd >= 1 && limitUsd <= 100_000)) {
+      setKeyErr(
+        isFa
+          ? 'سقف ماهانه باید بین $1 تا $100,000 باشد یا برای بدون محدودیت خالی بماند.'
+          : 'Monthly limit must be between $1 and $100,000, or empty for no limit.',
+      );
+      return;
+    }
+    setSavingLimitId(k.id);
+    setKeyErr(null);
+    try {
+      await api.updateKeyLimit(k.id, limitUsd ? Math.round(limitUsd * 100) * 10_000 : null);
+      setEditingLimitId(null);
+      await refresh();
+    } catch (err) {
+      setKeyErr(err instanceof Error ? err.message : isFa ? 'ذخیره سقف ماهانه ناموفق بود.' : 'Could not update the monthly limit.');
+    } finally {
+      setSavingLimitId(null);
+    }
+  };
+
   const revoke = async (k: ApiKeySummary) => {
     setRevoking(k.id);
     try {
@@ -149,9 +238,8 @@ export function DashboardClient({
 
   const signOut = async () => {
     try {
-      await api.logout();
+      await signOutEverywhere();
     } finally {
-      notifyAuthChanged();
       router.replace(isFa ? '/fa' : '/');
       router.refresh();
     }
@@ -172,10 +260,16 @@ export function DashboardClient({
             {user.email}
           </b>
         </p>
-        <button type="button" className="btn gh" onClick={signOut} style={{ minHeight: 38 }}>
-          <Icon name="logout" size={16} />
-          {isFa ? 'خروج از حساب' : 'Sign out'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <a href="/chat" className="btn gh" style={{ minHeight: 38 }}>
+            <Icon name="spark" size={16} />
+            {isFa ? 'باز کردن چت AI' : 'Open AI Chat'}
+          </a>
+          <button type="button" className="btn gh" onClick={signOut} style={{ minHeight: 38 }}>
+            <Icon name="logout" size={16} />
+            {isFa ? 'خروج از حساب' : 'Sign out'}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
@@ -240,13 +334,21 @@ export function DashboardClient({
           </label>
           <button type="button" className="btn key" onClick={topup} disabled={!amountValid || topupBusy || !paymentsEnabled} style={{ width: '100%', minHeight: 50, fontSize: 15 }}>
             {topupBusy
-              ? isFa
-                ? 'در حال افزودن اعتبار…'
-                : 'Adding credits…'
-              : amountValid
+              ? paymentMode === 'avexpay'
                 ? isFa
-                  ? `افزودن ${formatUsd(amountMicros)} اعتبار`
-                  : `Add ${formatUsd(amountMicros)} in credits`
+                  ? 'در حال انتقال به AvexPay…'
+                  : 'Opening AvexPay checkout…'
+                : isFa
+                  ? 'در حال افزودن اعتبار…'
+                  : 'Adding credits…'
+              : amountValid
+                ? paymentMode === 'avexpay'
+                  ? isFa
+                    ? `پرداخت ${formatUsd(q.total)} با AvexPay`
+                    : `Continue to AvexPay (${formatUsd(q.total)})`
+                  : isFa
+                    ? `افزودن ${formatUsd(amountMicros)} اعتبار`
+                    : `Add ${formatUsd(amountMicros)} in credits`
                 : isFa
                   ? 'مبلغی بین $1 تا $1,000 وارد کنید'
                   : 'Enter $1 – $1,000'}
@@ -263,13 +365,17 @@ export function DashboardClient({
               : ' '}
           </p>
           <p style={{ fontSize: 13, color: 'var(--vg-ink3)', margin: '10px 0 0' }}>
-            {paymentsEnabled
+            {paymentMode === 'avexpay'
               ? isFa
-                ? 'حالت آزمایشی: اعتبار فوراً اضافه می‌شود و هیچ وجهی از کارت کسر نمی‌گردد.'
-                : 'Test mode: credits are added instantly and no card is charged.'
-              : isFa
-                ? 'درگاه پرداخت در حال حاضر متصل نیست، بنابراین امکان شارژ آنلاین اکنون فعال نیست.'
-                : 'Card payments are not connected yet, so credits cannot be added right now.'}
+                ? 'درگاه امن AvexPay.net · پرداخت با رمزارزها (USDT/BTC/ETH/TON) و Telegram Stars.'
+                : 'Powered by AvexPay.net · pay securely with Crypto or Telegram Stars.'
+              : paymentMode === 'test'
+                ? isFa
+                  ? 'حالت آزمایشی: اعتبار فوراً اضافه می‌شود و هیچ وجهی کسر نمی‌گردد.'
+                  : 'Test mode: credits are added instantly and no payment is charged.'
+                : isFa
+                  ? 'درگاه پرداخت در حال حاضر متصل نیست، بنابراین امکان شارژ آنلاین اکنون فعال نیست.'
+                  : 'Payments are not connected yet, so credits cannot be added right now.'}
           </p>
           {topupMsg && (
             <p role={topupMsg.ok ? 'status' : 'alert'} className={`notice ${topupMsg.ok ? 'ok' : 'err'}`} style={{ margin: '12px 0 0' }}>
@@ -347,20 +453,26 @@ export function DashboardClient({
 
       {/* Keys */}
       <section id="keys" aria-labelledby={`${ids}-keys`} className="card" style={{ ...card, marginTop: 16, scrollMarginTop: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <h2 id={`${ids}-keys`} className="sf" style={{ fontSize: isFa ? 24 : 28, margin: 0, fontWeight: isFa ? 700 : 400 }}>
             {isFa ? 'کلیدهای API' : 'API keys'}
           </h2>
-          <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-            {isFa ? (
-              <>
-                {wallet.keys.length} کلید فعال · آدرس پایه{' '}
-                <bdi dir="ltr">https://api.vigas.ai/v1</bdi>
-              </>
-            ) : (
-              `${wallet.keys.length} active · base URL https://api.vigas.ai/v1`
-            )}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+              {isFa ? `${wallet.keys.length} کلید فعال · آدرس پایه` : `${wallet.keys.length} active · base URL`}
+            </span>
+            <span dir="ltr" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 4px 2px 10px', borderRadius: 9, background: 'var(--vg-bg2)', border: '1px solid var(--vg-line2)' }}>
+              <code className="mn" style={{ fontSize: 12, color: 'var(--vg-ink)' }}>
+                https://api.vigas.ai/v1
+              </code>
+              <CopyButton text="https://api.vigas.ai/v1" label={isFa ? 'کپی آدرس API' : 'Copy base URL'} copiedText={isFa ? 'کپی شد' : 'Copied'} style={{ minHeight: 26, padding: '0 8px', fontSize: 11, borderRadius: 6 }}>
+                {isFa ? 'کپی' : 'Copy'}
+              </CopyButton>
+            </span>
+            <a href="/models#quickstart" className="btn gh" style={{ minHeight: 30, padding: '0 10px', fontSize: 12 }}>
+              {isFa ? 'مستندات و مدل‌ها' : 'Models & SDK'}
+            </a>
+          </div>
         </div>
 
         <form onSubmit={onCreateKey} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', margin: '18px 0 6px' }}>
@@ -439,6 +551,7 @@ export function DashboardClient({
             {wallet.keys.map((k) => {
               const limit = k.monthlyLimitMicros ?? null;
               const pct = limit ? Math.min(100, (k.spentThisMonthMicros / limit) * 100) : 0;
+              const editingLimit = editingLimitId === k.id;
               return (
                 <li key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 0', borderTop: '1px solid var(--vg-line-soft)' }}>
                   <span style={{ width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'var(--vg-indigo-soft)', color: 'var(--vg-indigo)', flexShrink: 0 }}>
@@ -463,53 +576,108 @@ export function DashboardClient({
                       )}
                     </span>
                   </span>
-                  <span style={{ flex: '0 1 200px', minWidth: 140 }}>
-                    <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 13, textAlign: 'end' }}>
-                      {formatUsd(k.spentThisMonthMicros)}
-                      {limit ? <span style={{ color: 'var(--vg-ink3)' }}> / {formatUsd(limit)}</span> : null}
-                    </span>
-                    <span className="mn" style={{ display: 'block', fontSize: 11, color: 'var(--vg-ink3)', textAlign: 'end' }}>
-                      {isFa
-                        ? limit
-                          ? 'مصرف / سقف ماهانه'
-                          : 'مصرف این ماه · نامحدود'
-                        : limit
-                          ? 'spent / monthly limit'
-                          : 'spent this month · no limit'}
-                    </span>
-                    {limit ? (
-                      <span aria-hidden="true" style={{ display: 'block', height: 4, borderRadius: 2, background: 'var(--vg-raised)', marginTop: 5, overflow: 'hidden' }}>
-                        <span style={{ display: 'block', height: '100%', width: `${pct}%`, background: pct >= 90 ? 'var(--vg-red)' : 'var(--vg-orange)' }} />
+                  <span style={{ flex: '0 1 210px', minWidth: 150 }}>
+                    {editingLimit ? (
+                      <span dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100000}
+                          step="0.01"
+                          value={editingLimitValue}
+                          placeholder={isFa ? 'نامحدود' : 'No limit'}
+                          onChange={(e) => setEditingLimitValue(e.target.value)}
+                          aria-label={isFa ? `سقف ماهانه کلید ${k.name}` : `Monthly limit for ${k.name}`}
+                          className="input"
+                          style={{ width: 96, height: 34, padding: '0 8px', fontSize: 13, fontFamily: 'var(--vg-font-mono)' }}
+                        />
+                        <button
+                          type="button"
+                          className="btn key"
+                          disabled={savingLimitId === k.id}
+                          onClick={() => void saveKeyLimit(k)}
+                          style={{ minHeight: 34, padding: '0 10px', fontSize: 12 }}
+                        >
+                          {savingLimitId === k.id ? '…' : isFa ? 'ذخیره' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn gh"
+                          onClick={() => setEditingLimitId(null)}
+                          style={{ minHeight: 34, padding: '0 8px', fontSize: 12 }}
+                        >
+                          {isFa ? 'بستن' : 'Cancel'}
+                        </button>
                       </span>
-                    ) : null}
+                    ) : (
+                      <>
+                        <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 13, textAlign: 'end' }}>
+                          {formatUsd(k.spentThisMonthMicros)}
+                          {limit ? <span style={{ color: 'var(--vg-ink3)' }}> / {formatUsd(limit)}</span> : null}
+                        </span>
+                        <span className="mn" style={{ display: 'block', fontSize: 11, color: 'var(--vg-ink3)', textAlign: 'end' }}>
+                          {isFa
+                            ? limit
+                              ? 'مصرف / سقف ماهانه'
+                              : 'مصرف این ماه · نامحدود'
+                            : limit
+                              ? 'spent / monthly limit'
+                              : 'spent this month · no limit'}
+                        </span>
+                        {limit ? (
+                          <span aria-hidden="true" style={{ display: 'block', height: 4, borderRadius: 2, background: 'var(--vg-raised)', marginTop: 5, overflow: 'hidden' }}>
+                            <span style={{ display: 'block', height: '100%', width: `${pct}%`, background: pct >= 90 ? 'var(--vg-red)' : 'var(--vg-orange)' }} />
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </span>
-                  {confirm === k.id ? (
-                    <span style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {!editingLimit && confirm !== k.id && (
                       <button
                         type="button"
-                        className="btn"
-                        onClick={() => revoke(k)}
-                        disabled={revoking === k.id}
-                        style={{ minHeight: 36, padding: '0 12px', fontSize: 13, background: 'var(--vg-red-soft)', color: 'var(--vg-red)', boxShadow: 'inset 0 0 0 1px var(--vg-red-edge)' }}
+                        className="btn gh"
+                        onClick={() => {
+                          setConfirm(null);
+                          setEditingLimitId(k.id);
+                          setEditingLimitValue(limit ? String(limit / 1_000_000) : '');
+                        }}
+                        style={{ minHeight: 36, padding: '0 10px', fontSize: 12.5 }}
                       >
-                        {revoking === k.id ? (isFa ? 'در حال لغو…' : 'Revoking…') : isFa ? `لغو «${k.name}»` : `Revoke “${k.name}”`}
+                        {isFa ? 'سقف مصرف' : 'Set limit'}
                       </button>
-                      <button type="button" className="btn gh" onClick={() => setConfirm(null)} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
-                        {isFa ? 'انصراف' : 'Cancel'}
+                    )}
+                    {confirm === k.id ? (
+                      <span style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => revoke(k)}
+                          disabled={revoking === k.id}
+                          style={{ minHeight: 36, padding: '0 12px', fontSize: 13, background: 'var(--vg-red-soft)', color: 'var(--vg-red)', boxShadow: 'inset 0 0 0 1px var(--vg-red-edge)' }}
+                        >
+                          {revoking === k.id ? (isFa ? 'در حال لغو…' : 'Revoking…') : isFa ? `لغو «${k.name}»` : `Revoke “${k.name}”`}
+                        </button>
+                        <button type="button" className="btn gh" onClick={() => setConfirm(null)} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn gh"
+                        onClick={() => {
+                          setEditingLimitId(null);
+                          setConfirm(k.id);
+                        }}
+                        style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}
+                        aria-label={isFa ? `لغو کلید ${k.name}` : `Revoke key ${k.name}`}
+                      >
+                        <Icon name="trash" size={15} />
+                        {isFa ? 'لغو کلید' : 'Revoke'}
                       </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn gh"
-                      onClick={() => setConfirm(k.id)}
-                      style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}
-                      aria-label={isFa ? `لغو کلید ${k.name}` : `Revoke key ${k.name}`}
-                    >
-                      <Icon name="trash" size={15} />
-                      {isFa ? 'لغو کلید' : 'Revoke'}
-                    </button>
-                  )}
+                    )}
+                  </span>
                 </li>
               );
             })}

@@ -175,6 +175,26 @@ export interface TopupResponse {
   feeMicros: number;
 }
 
+export interface CheckoutStartResponse {
+  mode: 'redirect' | 'instant';
+  reference: string;
+  checkoutUrl?: string;
+  provider: 'avexpay' | 'test';
+  amountMicros: number;
+  feeMicros: number;
+  totalMicros: number;
+  balanceMicros?: number;
+}
+
+export interface CheckoutStatusResponse {
+  reference: string;
+  status: 'pending' | 'succeeded' | 'failed';
+  provider: string;
+  amountMicros: number;
+  feeMicros: number;
+  balanceMicros: number;
+}
+
 export interface ArenaSide {
   label: 'A' | 'B';
   content: string;

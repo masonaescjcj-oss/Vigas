@@ -31,6 +31,56 @@ export function isPlanId(value: unknown): value is PlanId {
 }
 
 /**
+ * Prepaid API credit packs for the Vigas wallet, in USD cents. Paying for one
+ * credits exactly its face value — the price is the server's, never the client's.
+ */
+export const CREDIT_PACKS: Record<string, { cents: number }> = {
+  credits_5: { cents: 500 },
+  credits_10: { cents: 1000 },
+  credits_25: { cents: 2500 },
+  credits_50: { cents: 5000 },
+  credits_100: { cents: 10000 },
+};
+
+export function isCreditPack(value: unknown): value is string {
+  return typeof value === "string" && Object.hasOwn(CREDIT_PACKS, value);
+}
+
+/** What a checkout item costs, in USD cents, or null for anything we do not sell. */
+export function checkoutPriceCents(itemId: string): number | null {
+  if (isPlanId(itemId)) return PLAN_PRICES[itemId].cents;
+  if (isCreditPack(itemId)) return CREDIT_PACKS[itemId].cents;
+  return null;
+}
+
+export type CreditVerdict =
+  | { ok: true; creditMicros: number }
+  | { ok: false; reason: string };
+
+/**
+ * Decide whether a settled payment earns a credit pack. Same tolerance as the
+ * plans; the wallet is credited the pack's face value, not what the coin
+ * happened to be worth on arrival.
+ */
+export function verifyCreditPayment(facts: PaymentFacts): CreditVerdict {
+  if (facts.status !== "paid") {
+    return { ok: false, reason: `Payment is ${facts.status}, not paid.` };
+  }
+  if (!isCreditPack(facts.planId)) {
+    return { ok: false, reason: `Unknown credit pack "${facts.planId}".` };
+  }
+  const pack = CREDIT_PACKS[facts.planId];
+  const required = Math.floor(pack.cents * (1 - UNDERPAYMENT_TOLERANCE));
+  if (!Number.isFinite(facts.paidCents) || facts.paidCents < required) {
+    return {
+      ok: false,
+      reason: `Paid ${facts.paidCents} cents, which is under the ${required} needed for ${facts.planId}.`,
+    };
+  }
+  return { ok: true, creditMicros: pack.cents * 10_000 };
+}
+
+/**
  * How far under the asking price a payment may land and still count.
  *
  * Crypto settles in a coin whose price moves between the moment an invoice is

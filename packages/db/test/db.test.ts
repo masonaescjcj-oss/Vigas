@@ -4,18 +4,22 @@ import { usdToMicros } from '@vigas/core';
 import { hashPassword } from '@vigas/core/server';
 import {
   authenticateApiKey,
+  completePendingTopup,
   completeTopup,
   countArticles,
   createApiKey,
   createBattle,
   createDb,
+  createPendingTopup,
   createSession,
   createUser,
   deleteSession,
+  findOrCreateExternalUser,
   getAccount,
   getArticle,
   getLeaderboard,
   getSessionUser,
+  getTopupById,
   getWallet,
   keySpendThisMonth,
   listApiKeys,
@@ -28,6 +32,7 @@ import {
   migrateDatabase,
   releaseStaleHolds,
   reserveCredits,
+  reverseTopupById,
   revokeApiKey,
   seedDatabase,
   settleUsage,
@@ -149,6 +154,37 @@ describe('billing', () => {
     await reserveCredits(h.db, u.accountId, 2_000_000);
     expect(await releaseStaleHolds(h.db, -1)).toBeGreaterThanOrEqual(1);
     expect((await getAccount(h.db, u.accountId))!.balanceMicros).toBe(usdToMicros(10));
+  });
+
+  it('finds or creates SSO external users idempotently and handles pending topup settlement and reversals', async () => {
+    const ext = await findOrCreateExternalUser(h.db, { email: 'SSO@Example.com', name: 'SSO User' });
+    const extAgain = await findOrCreateExternalUser(h.db, { email: 'sso@example.com' });
+    expect(extAgain.id).toBe(ext.id);
+    expect(extAgain.accountId).toBe(ext.accountId);
+
+    const pending = await createPendingTopup(h.db, {
+      accountId: ext.accountId,
+      amountMicros: usdToMicros(10),
+      feeBps: 500,
+      provider: 'avexpay',
+    });
+    const first = await completePendingTopup(h.db, {
+      topupId: pending.id,
+      providerRef: 'inv_test_1',
+      settledMicros: usdToMicros(10.5),
+    });
+    expect(first).toMatchObject({ ok: true, alreadySucceeded: false });
+    const duplicate = await completePendingTopup(h.db, {
+      topupId: pending.id,
+      providerRef: 'inv_test_1',
+      settledMicros: usdToMicros(10.5),
+    });
+    expect(duplicate).toMatchObject({ ok: true, alreadySucceeded: true });
+    expect((await getAccount(h.db, ext.accountId))!.balanceMicros).toBe(usdToMicros(10));
+
+    expect(await reverseTopupById(h.db, pending.id)).toBe(true);
+    expect((await getAccount(h.db, ext.accountId))!.balanceMicros).toBe(0);
+    expect((await getTopupById(h.db, pending.id))?.status).toBe('failed');
   });
 });
 

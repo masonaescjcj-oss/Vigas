@@ -1,12 +1,13 @@
-import { AuthForm } from '@/components/auth-form';
-import { AuthPage } from '@/components/auth-page';
+import { RetroAuth } from '@/components/retro-auth';
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = {
   ...pageMetadata({
-    title: 'ساخت حساب کاربری — یک کلید API برای همه مدل‌ها',
+    title: 'ساخت حساب کاربری — چت AI و کلید API یکپارچه',
     description:
-      'حساب رایگان ویگاس بسازید: یک کلید API سازگار با OpenAI با سریع‌ترین مسیریابی، کمترین تعرفه مستقیم توکن و ۰٪ کارمزد تا ۵ دلار اول.',
+      'حساب رایگان ویگاس بسازید: دسترسی هم‌زمان به چت هوش مصنوعی، یک کلید API سازگار با OpenAI و ۰٪ کارمزد تا ۵ دلار اول.',
     path: '/signup',
     locale: 'fa_IR',
   }),
@@ -15,17 +16,12 @@ export const metadata = {
 
 export default function FaSignUpPage() {
   return (
-    <AuthPage
-      lang="fa"
-      crumb="ساخت حساب کاربری"
-      title={
-        <>
-          یک کلید. <em className="hi">همه مدل‌ها.</em>
-        </>
-      }
-      intro="یک حساب رایگان بسازید، کلید API اختصاصی دریافت کنید، اعتبار خود را با ۰٪ کارمزد تا ۵ دلار اول شارژ نمایید و بیش از ۲۵ مدل پیشتاز را صدا بزنید."
-    >
-      <AuthForm mode="signup" lang="fa" />
-    </AuthPage>
+    <div dir="rtl" lang="fa" className="fa-ui">
+      <SiteHeader ticker={false} lang="fa" />
+      <main id="main">
+        <RetroAuth initialMode="signup" lang="fa" />
+      </main>
+      <SiteFooter lang="fa" />
+    </div>
   );
 }

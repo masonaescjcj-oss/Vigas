@@ -6,6 +6,7 @@ import { DashboardClient } from '@/components/dashboard/dashboard-client';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { Breadcrumb } from '@/components/ui';
+import { activePaymentMode } from '@/lib/avexpay';
 import { getCurrentUser, toPublicUser } from '@/lib/auth';
 import { serverEnv } from '@/lib/env';
 import { pageMetadata } from '@/lib/seo';
@@ -62,7 +63,7 @@ async function DashboardInner() {
             </>
           )}
         </h1>
-        <DashboardClient user={toPublicUser(user)} initial={wallet} paymentsEnabled={env.paymentProvider === 'test'} lang={lang} />
+        <DashboardClient user={toPublicUser(user)} initial={wallet} paymentMode={activePaymentMode(env)} lang={lang} />
       </main>
       <SiteFooter lang={lang} />
     </>

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { VigasApi } from '@vigas/api-client';
+import { hasStoredSession } from './supabase-config';
 
 /** Same-origin API client. The session cookie is sent automatically. */
 export const api = new VigasApi({ baseUrl: '' });
@@ -16,20 +17,23 @@ export function notifyAuthChanged(): void {
 function subscribe(cb: () => void) {
   window.addEventListener(EVENT, cb);
   window.addEventListener('focus', cb);
+  // Signing in or out in another tab (or inside /chat) updates localStorage.
+  window.addEventListener('storage', cb);
   return () => {
     window.removeEventListener(EVENT, cb);
     window.removeEventListener('focus', cb);
+    window.removeEventListener('storage', cb);
   };
 }
 
 /**
- * True when the readable `vigas_signed_in` marker cookie is present. It only drives navigation
- * hints; the API still checks the real session on every call.
+ * True when the readable `vigas_signed_in` marker cookie is present or a shared Supabase session is stored
+ * (one account for vigas.app and /chat). It only drives navigation hints; APIs always verify the real token.
  */
 export function useSignedInHint(): boolean {
   return useSyncExternalStore(
     subscribe,
-    () => document.cookie.split(';').some((c) => c.trim() === 'vigas_signed_in=1'),
+    () => document.cookie.split(';').some((c) => c.trim() === 'vigas_signed_in=1') || hasStoredSession(),
     () => false,
   );
 }

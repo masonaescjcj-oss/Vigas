@@ -1,27 +1,23 @@
-import { AuthForm } from '@/components/auth-form';
-import { AuthPage } from '@/components/auth-page';
+import { RetroAuth } from '@/components/retro-auth';
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Create Account — One API Key for Every Model',
+  title: 'Create Account — One Key & AI Chat',
   description:
-    'Create a free Vigas account: one OpenAI-compatible API key with fast edge routing, lowest pass-through token pricing, and zero markup on your first $5.',
+    'Create a free Vigas account: one account for Vigas AI Chat, OpenAI-compatible API keys, lowest pass-through token pricing, and zero markup on your first $5.',
   path: '/signup',
 });
 
 export default function SignUpPage() {
   return (
-    <AuthPage
-      lang="en"
-      crumb="Create account"
-      title={
-        <>
-          One key. <em className="hi">Every model.</em>
-        </>
-      }
-      intro="Create a free account to generate your API key, add prepaid credits with $0 markup on your first $5, and call 25+ models."
-    >
-      <AuthForm mode="signup" lang="en" />
-    </AuthPage>
+    <>
+      <SiteHeader ticker={false} lang="en" />
+      <main id="main">
+        <RetroAuth initialMode="signup" lang="en" />
+      </main>
+      <SiteFooter lang="en" />
+    </>
   );
 }

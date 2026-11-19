@@ -41,6 +41,7 @@ import {
   type CheckpointRow,
 } from "../../services/checkpointService";
 import { useAuthStore } from "../../stores/authStore";
+import { usePendingPromptStore } from "../../stores/pendingPromptStore";
 import { supabase } from "../../services/supabase";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
@@ -272,10 +273,9 @@ export const AgentChatScreen = () => {
   const settledRunIdsRef = useRef<Set<string>>(new Set());
   const { projects, createProject, deleteProject } = useProjects();
   const { profile, user, signOut } = useAuthStore();
-  // Every account has an email now that guest mode is gone, so the last
-  // fallback only covers the moment before the profile arrives — it must not
-  // name a kind of user that no longer exists.
-  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Account";
+  const setPendingPrompt = usePendingPromptStore((s) => s.setPendingPrompt);
+  const consumePendingPrompt = usePendingPromptStore((s) => s.consumePendingPrompt);
+  const displayName = user ? (profile?.display_name || user.email?.split("@")[0] || "Account") : "Sign in / Create account";
 
   // On-device live preview state (Phase 2 killer feature)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -636,9 +636,40 @@ export const AgentChatScreen = () => {
     setTimeout(() => { void handleSend(question); }, 0);
   };
 
-  const handleSend = async (override?: string) => {
+  // Hydrate model/prompt from web query params (?model=...&prompt=...) when navigated from /models or home.
+  useEffect(() => {
+    const search = (globalThis as { location?: { search?: string } }).location?.search;
+    if (!search) return;
+    try {
+      const qs = new URLSearchParams(search);
+      const qModel = qs.get("model")?.trim();
+      const qPrompt = qs.get("prompt")?.trim();
+      if (qModel) setSelectedModelId(qModel);
+      if (qPrompt) setInputText(qPrompt);
+    } catch {
+      // Ignore malformed query string
+    }
+  }, []);
+
+  const handleSend = async (override?: string, config?: { mode?: "chat" | "build"; model?: string }) => {
     const source = (override ?? inputText).trim();
     if (!source || isExecuting) return;
+
+    const effectiveMode = config?.mode ?? activeMode;
+    const effectiveModel = config?.model ?? selectedModelId;
+
+    // Guests can open and browse /chat freely; only when they ask AI do we show SignUp/Login,
+    // and as soon as they authenticate their saved question is sent automatically.
+    if (!user) {
+      selectionFeedback();
+      setPendingPrompt({
+        prompt: source,
+        mode: effectiveMode,
+        model: effectiveModel,
+      });
+      goTo("AuthStack", { screen: "SignUp" });
+      return;
+    }
 
     const userPromptText = source;
     const isFirstPrompt = messages.length === 0;
@@ -661,7 +692,7 @@ export const AgentChatScreen = () => {
     // Asking a question does not need the agent. Chat and Incognito call the
     // model directly and the answer is in the response — no job queue, no cron
     // worker, no sandbox, and no polling for a reply that is already here.
-    if (activeMode === "chat" || isIncognito) {
+    if (effectiveMode === "chat" || isIncognito) {
       runStartedAtRef.current = null; // stops the agent-task poller from waking
       setIsExecuting(true);
       try {
@@ -675,7 +706,7 @@ export const AgentChatScreen = () => {
 
         const answer = await agentService.ask({
           prompt: userPromptText,
-          model: selectedModelId,
+          model: effectiveModel,
           ...(activeSkills.length ? { skills: activeSkills } : {}),
           ...(isIncognito
             ? { history }
@@ -728,7 +759,7 @@ export const AgentChatScreen = () => {
       const res = await agentService.startAgentRun(projectId, userPromptText, {
         title: userPromptText.slice(0, 48),
         sessionId: activeSessionId ?? undefined,
-        model: selectedModelId,
+        model: effectiveModel,
         ...(activeSkills.length ? { skills: activeSkills } : {}),
         // Only when the Supabase skill asked for it. Otherwise the project URL
         // would sit in every stored transcript for no reason.
@@ -748,6 +779,17 @@ export const AgentChatScreen = () => {
       ]);
     }
   };
+
+  // Auto-submit the saved guest question immediately after SignUp / Login completes.
+  useEffect(() => {
+    if (!user) return;
+    const pending = consumePendingPrompt();
+    if (!pending) return;
+    setActiveMode(pending.mode);
+    setSelectedModelId(pending.model);
+    void handleSend(pending.prompt, { mode: pending.mode, model: pending.model });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   /**
    * Save a restore point on demand — the "before I try this" button. Runs are
@@ -1304,15 +1346,22 @@ export const AgentChatScreen = () => {
 
   // Open Projects Sheet from Drawer
   const handleOpenProjectsFromDrawer = () => {
+    if (!user) {
+      goTo("AuthStack", { screen: "SignUp" });
+      return;
+    }
     setShowDrawerModal(false);
     setShowProjectsModal(true);
   };
 
 
-  // Open Master Profile Settings from Drawer
-  // The Profile tab is the settings screen; the chat no longer keeps a copy.
+  // Open Master Profile Settings (or Auth modal for guests) from Drawer
   const handleOpenProfileFromDrawer = () => {
     setShowDrawerModal(false);
+    if (!user) {
+      goTo("AuthStack", { screen: "Login" });
+      return;
+    }
     goTo("ProfileTab");
   };
 
@@ -1589,9 +1638,9 @@ export const AgentChatScreen = () => {
             <Monogram name={displayName} size={40} />
             <View className="flex-1 ml-3">
               <Text style={{ fontSize: 15, lineHeight: 20 }} className="font-medium" numberOfLines={1}>{displayName}</Text>
-              {user?.email ? (
-                <Text variant="label" numberOfLines={1} style={{ fontSize: 11, textTransform: "none" }}>{user.email}</Text>
-              ) : null}
+              <Text variant="label" numberOfLines={1} style={{ fontSize: 11, textTransform: "none" }}>
+                {user?.email || "Sign up or sign in to save chats"}
+              </Text>
             </View>
             <VectorIcon name="chevron-right" size={16} color={colors.inkMuted} />
           </TouchableOpacity>

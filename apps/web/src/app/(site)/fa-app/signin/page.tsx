@@ -1,11 +1,12 @@
-import { AuthForm } from '@/components/auth-form';
-import { AuthPage } from '@/components/auth-page';
+import { RetroAuth } from '@/components/retro-auth';
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = {
   ...pageMetadata({
     title: 'ورود به حساب',
-    description: 'برای مدیریت اعتبار پیش‌پرداخت، کلیدهای API و مصرف مدل‌های هوش مصنوعی وارد ویگاس شوید.',
+    description: 'برای دسترسی یکپارچه به چت هوش مصنوعی، مدیریت اعتبار کیف‌پول و کلیدهای API وارد ویگاس شوید.',
     path: '/signin',
     locale: 'fa_IR',
     noindex: true,
@@ -15,18 +16,12 @@ export const metadata = {
 
 export default function FaSignInPage() {
   return (
-    <AuthPage
-      lang="fa"
-      crumb="ورود به حساب"
-      path="/signin"
-      title={
-        <>
-          خوش <em className="hi">برگشتید.</em>
-        </>
-      }
-      intro="برای مدیریت اعتبار کیف‌پول، ساخت یا لغو کلیدهای API و مشاهده آمار مصرف زنده وارد حساب کاربری خود شوید."
-    >
-      <AuthForm mode="signin" lang="fa" />
-    </AuthPage>
+    <div dir="rtl" lang="fa" className="fa-ui">
+      <SiteHeader ticker={false} lang="fa" />
+      <main id="main">
+        <RetroAuth initialMode="signin" lang="fa" />
+      </main>
+      <SiteFooter lang="fa" />
+    </div>
   );
 }

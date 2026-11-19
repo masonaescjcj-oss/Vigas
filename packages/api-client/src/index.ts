@@ -7,6 +7,8 @@ import type {
   AuthResponse,
   ChatCompletionChunk,
   ChatMessage,
+  CheckoutStartResponse,
+  CheckoutStatusResponse,
   CreatedApiKey,
   HomeFeed,
   LeaderboardCategory,
@@ -136,13 +138,26 @@ export class VigasApi {
   // Auth
   signup = (b: { email: string; password: string; name?: string }) => this.request<AuthResponse>('POST', '/api/auth/signup', b);
   login = (b: { email: string; password: string }) => this.request<AuthResponse>('POST', '/api/auth/login', b);
+  exchange = (accessToken: string) => this.request<AuthResponse>('POST', '/api/auth/exchange', { accessToken });
   logout = () => this.request<{ ok: true }>('POST', '/api/auth/logout', {});
   me = () => this.request<{ user: PublicUser }>('GET', '/api/auth/me');
 
   // Wallet & keys
   wallet = () => this.request<WalletResponse>('GET', '/api/app/wallet');
   topup = (amountMicros: number) => this.request<TopupResponse>('POST', '/api/app/wallet/topup', { amountMicros });
-  createKey = (name: string) => this.request<CreatedApiKey>('POST', '/api/app/keys', { name });
+  startCheckout = (amountMicros: number) =>
+    this.request<CheckoutStartResponse>('POST', '/api/app/wallet/checkout', { amountMicros });
+  checkoutStatus = (reference: string) =>
+    this.request<CheckoutStatusResponse>('GET', `/api/app/wallet/checkout/${encodeURIComponent(reference)}`);
+  createKey = (name: string, monthlyLimitMicros?: number | null) =>
+    this.request<CreatedApiKey>('POST', '/api/app/keys', {
+      name,
+      ...(monthlyLimitMicros ? { monthlyLimitMicros } : {}),
+    });
+  updateKeyLimit = (id: string, monthlyLimitMicros: number | null) =>
+    this.request<{ ok: true; monthlyLimitMicros: number | null }>('PATCH', `/api/app/keys/${encodeURIComponent(id)}`, {
+      monthlyLimitMicros,
+    });
   revokeKey = (id: string) => this.request<{ ok: true }>('DELETE', `/api/app/keys/${encodeURIComponent(id)}`);
 
   // Arena

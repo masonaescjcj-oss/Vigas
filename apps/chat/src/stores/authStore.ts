@@ -53,6 +53,13 @@ interface AuthState {
   refreshAccessToken: () => Promise<boolean>;
 }
 
+let lastMirroredToken: string | null = null;
+
+function isSameOriginChatWeb(): boolean {
+  const loc = (globalThis as { location?: { pathname?: string } }).location;
+  return typeof fetch === "function" && Boolean(loc?.pathname?.startsWith("/chat"));
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
@@ -71,11 +78,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ session, user, initialized: true });
 
     if (!user) {
+      lastMirroredToken = null;
       setAnalyticsUser(null);
       set({ profile: null, profileLoadedFor: null });
       return;
     }
     setAnalyticsUser(user.id);
+    if (session?.access_token && isSameOriginChatWeb() && lastMirroredToken !== session.access_token) {
+      lastMirroredToken = session.access_token;
+      void fetch("/api/auth/exchange", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ accessToken: session.access_token }),
+      }).catch(() => {
+        if (lastMirroredToken === session.access_token) lastMirroredToken = null;
+      });
+    }
     // Only on a genuine change of user, not on every token refresh — the same
     // guard the profile fetch uses, for the same reason.
     if (previous.user?.id !== user.id) track("signed_in");
@@ -124,7 +143,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    lastMirroredToken = null;
     await supabase.auth.signOut();
+    if (isSameOriginChatWeb()) {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => undefined);
+    }
     // Recovery is cleared too: leaving it set would pin the app to the reset
     // screen after the very sign-out that ends the flow.
     set({ user: null, session: null, profile: null, passwordRecovery: false, recoveryError: null });

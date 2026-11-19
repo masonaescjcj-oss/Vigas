@@ -20,8 +20,15 @@ import { withSentryHandler } from "../shared/sentry.ts";
 import { AppError, assertMethod, errorResponse } from "../shared/errorHandler.ts";
 import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient } from "../shared/supabase.ts";
-import { isDuplicateEvent, isReference, periodEndAfter, verifyPayment } from "../shared/checkout.ts";
-import { NowPaymentsProvider } from "../shared/cryptoProvider.ts";
+import {
+  isCreditPack,
+  isDuplicateEvent,
+  isReference,
+  periodEndAfter,
+  verifyCreditPayment,
+  verifyPayment,
+} from "../shared/checkout.ts";
+import { AvexPayProvider, NowPaymentsProvider } from "../shared/cryptoProvider.ts";
 
 /** A body larger than this is not a payment notification. */
 const MAX_BODY_BYTES = 64_000;
@@ -34,9 +41,14 @@ export async function handler(req: Request): Promise<Response> {
   try {
     assertMethod(req, ["POST"]);
 
-    const apiKey = Deno.env.get("NOWPAYMENTS_API_KEY") ?? "";
+    const isAvex = req.headers.has("avex-signature");
+    const avexSecret = Deno.env.get("AVEXPAY_WEBHOOK_SECRET");
     const ipnSecret = Deno.env.get("NOWPAYMENTS_IPN_SECRET");
-    if (!ipnSecret) {
+
+    if (isAvex && !avexSecret) {
+      throw new AppError(500, "SERVER_MISCONFIGURED", "AVEXPAY_WEBHOOK_SECRET is not configured.");
+    }
+    if (!isAvex && !ipnSecret) {
       // Fail closed. With no secret every signature check would have to either
       // pass or fail; passing would be catastrophic, so say what is wrong.
       throw new AppError(500, "SERVER_MISCONFIGURED", "NOWPAYMENTS_IPN_SECRET is not configured.");
@@ -49,7 +61,9 @@ export async function handler(req: Request): Promise<Response> {
       throw new AppError(413, "PAYLOAD_TOO_LARGE", "That is too large to be a payment notification.");
     }
 
-    const provider = new NowPaymentsProvider(apiKey, ipnSecret);
+    const provider = isAvex
+      ? new AvexPayProvider(Deno.env.get("AVEXPAY_API_KEY") ?? "", avexSecret!)
+      : new NowPaymentsProvider(Deno.env.get("NOWPAYMENTS_API_KEY") ?? "", ipnSecret!);
     let parsed;
     try {
       parsed = await provider.parseWebhook(rawBody, req.headers);
@@ -81,6 +95,42 @@ export async function handler(req: Request): Promise<Response> {
     // Providers retry until they get a 2xx. Answer 200, change nothing.
     if (isDuplicateEvent(session.last_event_id, parsed.eventId)) {
       return json({ ok: true, duplicate: true }, 200, headers);
+    }
+
+    // ── Prepaid credit pack: credit the Vigas wallet instead of a subscription.
+    if (isCreditPack(String(session.plan_id))) {
+      const credit = verifyCreditPayment({
+        planId: String(session.plan_id),
+        paidCents: parsed.facts.paidCents,
+        status: parsed.facts.status,
+      });
+      if (!credit.ok) {
+        await service.from("checkout_sessions").update({
+          status: parsed.facts.status === "paid" ? "failed" : parsed.facts.status,
+          last_event_id: parsed.eventId,
+          paid_cents: parsed.facts.paidCents,
+          updated_at: new Date().toISOString(),
+        }).eq("reference", session.reference);
+        console.warn(`[crypto-webhook] credits not granted for ${session.reference}: ${credit.reason}`);
+        return json({ ok: true, granted: false }, 200, headers);
+      }
+      // Idempotent by reference inside the database, so a retry racing this
+      // one cannot credit the wallet twice.
+      const { error: creditError } = await service.rpc("vigas_credit_topup", {
+        p_user_id: String(session.user_id),
+        p_amount_micros: credit.creditMicros,
+        p_reference: `checkout:${session.reference}`,
+        p_description: `Credit top-up (${session.plan_id})`,
+      });
+      if (creditError) throw creditError;
+      await service.from("checkout_sessions").update({
+        status: "paid",
+        last_event_id: parsed.eventId,
+        paid_cents: parsed.facts.paidCents,
+        updated_at: new Date().toISOString(),
+      }).eq("reference", session.reference);
+      console.log(`[crypto-webhook] credited ${credit.creditMicros} micros to ${session.user_id}`);
+      return json({ ok: true, granted: true, credits: true }, 200, headers);
     }
 
     // The plan comes from our row, not from the payload: the payload's copy

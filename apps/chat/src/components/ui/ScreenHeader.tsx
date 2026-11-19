@@ -46,7 +46,8 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   const back = () => {
     selectionFeedback();
     if (onBack) onBack();
-    else navigation.goBack();
+    else if (navigation.canGoBack()) navigation.goBack();
+    else navigation.getParent()?.goBack();
   };
 
   const roundKey = {

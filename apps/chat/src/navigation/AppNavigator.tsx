@@ -79,31 +79,28 @@ const ProjectStack = createNativeStackNavigator<ProjectStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// 1. Auth Stack Navigator
+// 1. Auth Stack Navigator (opened on demand as a modal when asking AI or tapping Sign in)
 const AuthNavigator = ({ startAtReset = false }: { startAtReset?: boolean }) => {
   const { colors } = useTheme();
   const { wide } = useBreakpoint();
   return (
     <AuthStack.Navigator
-      // A reset link must land on the reset screen, not walk the user back
-      // through Splash and Login while holding a one-use recovery session.
-      initialRouteName={startAtReset ? "ResetPassword" : "Splash"}
+      // Present the clean SignUp/Login card directly without a splash/onboarding gate.
+      initialRouteName={startAtReset ? "ResetPassword" : "SignUp"}
       screenOptions={{
         headerShown: false,
-        // A sign-in form is a column, on any screen. Constrained here so the
-        // nine auth screens stay the phone layouts they are.
         contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, 480) }
       }}
     >
-      <AuthStack.Screen name="Splash" component={SplashScreen} />
-      <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
-      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
-      <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
+      <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <AuthStack.Screen name="VerifyCode" component={VerifyCodeScreen} />
       <AuthStack.Screen name="EmailVerificationPending" component={EmailVerificationPendingScreen} />
+      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
+      <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
+      <AuthStack.Screen name="Splash" component={SplashScreen} />
     </AuthStack.Navigator>
   );
 };
@@ -242,6 +239,21 @@ export const AppNavigator = () => {
     return () => subscription.unsubscribe();
   }, [setSession]);
 
+  // Keep Auth modal synced with sign-in / password-recovery transitions without blocking /chat on startup.
+  useEffect(() => {
+    if (!initialized || !navigationRef.current?.isReady()) return;
+    const rootState = navigationRef.current.getRootState();
+    const topRoute = rootState?.routes[rootState.index ?? 0]?.name;
+    if (passwordRecovery) {
+      navigationRef.current.navigate("AuthStack", { screen: "ResetPassword", params: {} });
+      return;
+    }
+    if (user && topRoute === "AuthStack") {
+      if (navigationRef.current.canGoBack()) navigationRef.current.goBack();
+      else navigationRef.current.navigate("MainTabs", { screen: "AgentTab", params: {} });
+    }
+  }, [initialized, user, passwordRecovery]);
+
   if (!initialized) {
     return null;
   }
@@ -289,15 +301,15 @@ export const AppNavigator = () => {
         GlobalSearch: "chat/search",
         AuthStack: {
           screens: {
-            Splash: "chat/splash",
-            Onboarding: "chat/onboarding",
-            Welcome: "chat/welcome",
-            Login: "chat/login",
             SignUp: "chat/signup",
+            Login: "chat/login",
             ForgotPassword: "chat/forgot-password",
             ResetPassword: "chat/reset-password",
             VerifyCode: "chat/verify",
             EmailVerificationPending: "chat/verify-email",
+            Welcome: "chat/welcome",
+            Onboarding: "chat/onboarding",
+            Splash: "chat/splash",
           },
         },
       },
@@ -312,34 +324,30 @@ export const AppNavigator = () => {
       {/* 2. Navigation Container Stacks */}
       <NavigationContainer ref={navigationRef} linking={linking as never} theme={navTheme}>
         <RootStack.Navigator
+          initialRouteName="MainTabs"
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: colors.canvasBase }
           }}
         >
-          {user && !passwordRecovery ? (
-            <React.Fragment>
-              {/* Authenticated stack with AI Agent as 1st page */}
-              <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
-              
-              {/* Global overlay Modals */}
-              <RootStack.Group
-                screenOptions={{
-                  presentation: "modal",
-                  contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, FORM_MAX) },
-                }}
-              >
-                <RootStack.Screen name="Paywall" component={PaywallScreen} />
-                <RootStack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} />
-                <RootStack.Screen name="TokenUsage" component={TokenUsageScreen} />
-                <RootStack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
-              </RootStack.Group>
-            </React.Fragment>
-          ) : (
-            <RootStack.Screen name="AuthStack">
+          {/* AI Chat opens immediately — guests only see SignUp/Login when they ask AI or open Account. */}
+          <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
+
+          {/* Global overlay Modals (Auth, Paywall, Usage, Search) */}
+          <RootStack.Group
+            screenOptions={{
+              presentation: "modal",
+              contentStyle: { backgroundColor: colors.canvasBase, ...columnStyle(wide, FORM_MAX) },
+            }}
+          >
+            <RootStack.Screen name="AuthStack" options={{ contentStyle: { backgroundColor: colors.canvasBase } }}>
               {() => <AuthNavigator startAtReset={passwordRecovery} />}
             </RootStack.Screen>
-          )}
+            <RootStack.Screen name="Paywall" component={PaywallScreen} />
+            <RootStack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} />
+            <RootStack.Screen name="TokenUsage" component={TokenUsageScreen} />
+            <RootStack.Screen name="GlobalSearch" component={GlobalSearchScreen} />
+          </RootStack.Group>
         </RootStack.Navigator>
       </NavigationContainer>
     </View>

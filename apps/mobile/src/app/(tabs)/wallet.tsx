@@ -1,8 +1,9 @@
 import { blendedCost, formatCompact, quoteTopup, timeAgo, type ApiKeySummary, type CreatedApiKey, type WalletResponse } from '@vigas/core';
 import { seedModels } from '@vigas/core/seed';
 import { useScrollToTop } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, TextInput, View, type ScrollViewInstance } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, TextInput, View, type ScrollViewInstance } from 'react-native';
 import Animated, { Easing, FadeInDown, LinearTransition, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +15,7 @@ import { Sheet } from '@/components/sheet';
 import { Skeleton, SkeletonRow } from '@/components/skeleton';
 import { ErrorCard, SignInCard } from '@/components/states';
 import { Heading, Label, T } from '@/components/text';
-import { api, errorMessage, isUnauthorized, withTimeout } from '@/lib/api';
+import { api, checkoutUrl, errorMessage, isUnauthorized, withTimeout } from '@/lib/api';
 import { usd, weekdayLetter } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { mutate } from '@/lib/remote';
@@ -26,8 +27,8 @@ import { colors, GUTTER, withAlpha } from '@/theme';
 const AMOUNTS = [10, 25, 50, 100];
 
 const SOURCES: Record<WalletResponse['bySource'][number]['source'], { label: string; color: string }> = {
-  api: { label: 'API', color: colors.indigo },
-  retrobuild: { label: 'RetroBuild', color: colors.orange },
+  api: { label: 'API Gateway', color: colors.indigo },
+  retrobuild: { label: 'Sandbox', color: colors.orange },
   chat: { label: 'Chat', color: colors.sand },
   arena: { label: 'Arena', color: colors.teal },
 };
@@ -100,8 +101,8 @@ export default function WalletScreen() {
 
 function SignedOut() {
   const perks = [
-    ['wallet', 'Prepaid credits, no subscription'],
-    ['key', 'API keys for every model on Vigas'],
+    ['wallet', 'Prepaid credits across vigas.app, Chat & API'],
+    ['key', 'OpenAI-compatible API keys with monthly caps'],
     ['ranks', 'Usage by day and by product'],
   ] as const;
   return (
@@ -110,7 +111,7 @@ function SignedOut() {
         icon="wallet"
         title="One balance,"
         italic="every model."
-        body="Top up once and spend it across the Vigas API, Chat, Arena and RetroBuild. Create keys for your own apps."
+        body="Sign in once to check your prepaid credits, inspect daily spend, and manage your API keys for vigas.app and Chat."
       />
       <View style={styles.perks}>
         {perks.map(([icon, text], i) => (
@@ -142,8 +143,8 @@ function WalletSkeleton() {
 function Loaded({ wallet }: { wallet: WalletResponse }) {
   const { expire } = useSession();
   const [amount, setAmount] = useState(25);
-  const [buying, setBuying] = useState(false);
   const [keySheet, setKeySheet] = useState(false);
+  const [limitKey, setLimitKey] = useState<ApiKeySummary | null>(null);
 
   const amountMicros = amount * 1_000_000;
   const quote = quoteTopup(amountMicros, wallet.lifetimeTopupMicros, wallet.feeBps);
@@ -158,21 +159,19 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
     1,
   );
 
-  const buy = async () => {
-    setBuying(true);
+  // Google Play policy compliant: no in-app billing/purchase inside the Android app.
+  // Hand off cleanly to the external vigas.app dashboard for AvexPay checkout.
+  const openWebCheckout = async () => {
+    const url = checkoutUrl(amount);
+    haptics.tap();
     try {
-      const res = await withTimeout(api.topup(amountMicros), 20000);
-      mutate<WalletResponse>(WALLET_KEY, (prev) =>
-        prev ? { ...prev, balanceMicros: res.balanceMicros, lifetimeTopupMicros: prev.lifetimeTopupMicros + amountMicros } : prev,
-      );
-      haptics.success();
-      toast(`Added ${usd(amountMicros)}${res.feeMicros ? ` · fee ${usd(res.feeMicros)}` : ''}`, 'success');
-    } catch (e) {
-      haptics.error();
-      toast(errorMessage(e), 'error');
-      if (isUnauthorized(e)) expire();
-    } finally {
-      setBuying(false);
+      await WebBrowser.openBrowserAsync(url, { toolbarColor: colors.bg, controlsColor: colors.orange });
+    } catch {
+      try {
+        await Linking.openURL(url);
+      } catch {
+        toast('Could not open vigas.app in browser.', 'error');
+      }
     }
   };
 
@@ -207,7 +206,7 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
           {usd(wallet.balanceMicros)}
         </T>
         <T f="mono" size={12} color={colors.ink3}>
-          ≈ {formatCompact(Math.round(tokens))} tokens · API, Chat & RetroBuild
+          ≈ {formatCompact(Math.round(tokens))} tokens · API & vigas.app/chat
         </T>
 
         <View accessibilityRole="radiogroup" accessibilityLabel="Top-up amount" style={styles.amounts}>
@@ -232,14 +231,14 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
             );
           })}
         </View>
-        <KeyButton label={`Add ${usd(amountMicros)}`} height={54} radius={16} fontSize={16} loading={buying} onPress={() => void buy()} />
+        <KeyButton label={`Top up ${usd(amountMicros)} on vigas.app ↗`} height={54} radius={16} fontSize={15} onPress={() => void openWebCheckout()} />
         <T f="mono" size={12} color={colors.ink3} align="center" style={styles.fee}>
           {quote.feeMicros > 0
-            ? `${usd(quote.feeMicros)} fee · ${usd(quote.totalMicros)} total`
+            ? `${usd(quote.feeMicros)} fee · ${usd(quote.totalMicros)} total on web`
             : quote.freeMicros > 0
               ? 'No fee on your first $5'
               : 'No fee'}
-          {'\nCard · Crypto · Bank transfer'}
+          {'\nAvexPay.net (Crypto · Telegram Stars) in your browser'}
         </T>
       </Animated.View>
 
@@ -288,7 +287,12 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
 
       <Animated.View entering={FadeInDown.duration(380).delay(160)} style={styles.keys}>
         <View style={[styles.spaceBetween, styles.keysHead]}>
-          <Heading>API keys</Heading>
+          <View>
+            <Heading>API keys</Heading>
+            <T f="mono" size={11} color={colors.ink3}>
+              Base URL: https://api.vigas.ai/v1
+            </T>
+          </View>
           <GhostButton label="New key" icon={<Icon name="plus" size={16} />} onPress={() => setKeySheet(true)} />
         </View>
         {wallet.keys.length === 0 ? (
@@ -296,33 +300,35 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
             No keys yet. Create one to call the Vigas API from your own apps.
           </T>
         ) : (
-          wallet.keys.map((k) => (
-            <Animated.View key={k.id} layout={LinearTransition.duration(220)} style={styles.keyRow}>
-              <View style={styles.keyIcon}>
-                <Icon name="key" size={18} color={colors.indigo} />
-              </View>
-              <View style={styles.flex}>
-                <T f="sansMedium" numberOfLines={1}>
-                  {k.name}
-                </T>
-                <T f="mono" size={12} color={colors.ink3} numberOfLines={1}>
-                  {k.display}
-                </T>
-                <T f="mono" size={12} color={colors.ink2}>
-                  {k.spentThisMonthMicros > 0
-                    ? `${usd(k.spentThisMonthMicros)} this month`
-                    : k.lastUsedAt
-                      ? `Used ${timeAgo(k.lastUsedAt)} ago`
-                      : 'Never used'}
-                </T>
-              </View>
-              <IconButton icon="trash" variant="tile" iconSize={17} color={colors.ink2} accessibilityLabel={`Revoke ${k.name}`} onPress={() => revoke(k)} />
-            </Animated.View>
-          ))
+          wallet.keys.map((k) => {
+            const limit = k.monthlyLimitMicros ?? null;
+            return (
+              <Animated.View key={k.id} layout={LinearTransition.duration(220)} style={styles.keyRow}>
+                <View style={styles.keyIcon}>
+                  <Icon name="key" size={18} color={colors.indigo} />
+                </View>
+                <Pressable style={styles.flex} onPress={() => setLimitKey(k)} accessibilityLabel={`Set monthly limit for ${k.name}`}>
+                  <T f="sansMedium" numberOfLines={1}>
+                    {k.name}
+                  </T>
+                  <T f="mono" size={12} color={colors.ink3} numberOfLines={1}>
+                    {k.display}
+                  </T>
+                  <T f="mono" size={12} color={colors.ink2}>
+                    {usd(k.spentThisMonthMicros)}
+                    {limit ? ` / ${usd(limit)} cap` : ' · No limit'}
+                    {k.lastUsedAt ? ` · Used ${timeAgo(k.lastUsedAt)}` : ''}
+                  </T>
+                </Pressable>
+                <IconButton icon="trash" variant="tile" iconSize={17} color={colors.ink2} accessibilityLabel={`Revoke ${k.name}`} onPress={() => revoke(k)} />
+              </Animated.View>
+            );
+          })
         )}
       </Animated.View>
 
       <NewKeySheet visible={keySheet} onClose={() => setKeySheet(false)} />
+      <EditLimitSheet keyItem={limitKey} onClose={() => setLimitKey(null)} />
     </View>
   );
 }
@@ -348,19 +354,28 @@ function GrowWidth({ pct, color }: { pct: number; color: string }) {
 function NewKeySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { expire } = useSession();
   const [name, setName] = useState('');
+  const [limit, setLimit] = useState('');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<CreatedApiKey | null>(null);
 
   const close = () => {
     onClose();
     setName('');
+    setLimit('');
     setCreated(null);
   };
 
   const create = async () => {
+    const parsedLimit = limit.trim() ? Number(limit) : null;
+    if (parsedLimit !== null && !(Number.isFinite(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 100_000)) {
+      toast('Monthly limit must be $1 – $100,000, or empty.', 'error');
+      return;
+    }
     setBusy(true);
     try {
-      const key = await withTimeout(api.createKey(name.trim() || 'Android key'));
+      const key = await withTimeout(
+        api.createKey(name.trim() || 'Android key', parsedLimit ? Math.round(parsedLimit * 100) * 10_000 : null),
+      );
       const { key: _secret, ...summary } = key;
       mutate<WalletResponse>(WALLET_KEY, (prev) => (prev ? { ...prev, keys: [summary, ...prev.keys] } : prev));
       setCreated(key);
@@ -403,7 +418,7 @@ function NewKeySheet({ visible, onClose }: { visible: boolean; onClose: () => vo
         ) : (
           <>
             <T size={14} color={colors.ink2}>
-              Keys work with any OpenAI-compatible SDK. Spend comes from this wallet.
+              Keys work with any OpenAI-compatible SDK (https://api.vigas.ai/v1). Spend comes from this wallet.
             </T>
             <TextInput
               value={name}
@@ -413,6 +428,18 @@ function NewKeySheet({ visible, onClose }: { visible: boolean; onClose: () => vo
               accessibilityLabel="Key name"
               autoFocus
               maxLength={60}
+              returnKeyType="next"
+              selectionColor={colors.orange}
+              cursorColor={colors.orange}
+              style={styles.input}
+            />
+            <TextInput
+              value={limit}
+              onChangeText={setLimit}
+              placeholder="Monthly spend cap in $ (optional, e.g. 25)"
+              placeholderTextColor={colors.ink3}
+              accessibilityLabel="Monthly limit in US dollars"
+              keyboardType="decimal-pad"
               returnKeyType="done"
               onSubmitEditing={() => void create()}
               selectionColor={colors.orange}
@@ -423,6 +450,83 @@ function NewKeySheet({ visible, onClose }: { visible: boolean; onClose: () => vo
           </>
         )}
       </View>
+    </Sheet>
+  );
+}
+
+function EditLimitSheet({ keyItem, onClose }: { keyItem: ApiKeySummary | null; onClose: () => void }) {
+  const { expire } = useSession();
+  const [syncedId, setSyncedId] = useState<string | null>(null);
+  const [limit, setLimit] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const nextId = keyItem?.id ?? null;
+  if (nextId !== syncedId) {
+    setSyncedId(nextId);
+    setLimit(keyItem?.monthlyLimitMicros ? String(keyItem.monthlyLimitMicros / 1_000_000) : '');
+  }
+
+  const save = async (nextMicros: number | null) => {
+    if (!keyItem || busy) return;
+    setBusy(true);
+    try {
+      await withTimeout(api.updateKeyLimit(keyItem.id, nextMicros));
+      mutate<WalletResponse>(WALLET_KEY, (prev) =>
+        prev
+          ? {
+              ...prev,
+              keys: prev.keys.map((x) => (x.id === keyItem.id ? { ...x, monthlyLimitMicros: nextMicros } : x)),
+            }
+          : prev,
+      );
+      haptics.success();
+      toast(nextMicros ? `Limit set to ${usd(nextMicros)}` : 'Monthly limit removed', 'success');
+      onClose();
+    } catch (e) {
+      haptics.error();
+      toast(errorMessage(e), 'error');
+      if (isUnauthorized(e)) expire();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet visible={!!keyItem} onClose={onClose} title={keyItem ? `Limit · ${keyItem.name}` : 'Monthly limit'}>
+      {keyItem ? (
+        <View style={styles.sheetBody}>
+          <T size={14} color={colors.ink2}>
+            Set a monthly USD cap for this key ($1 – $100,000), or leave empty for unlimited.
+          </T>
+          <TextInput
+            value={limit}
+            onChangeText={setLimit}
+            placeholder="e.g. 50 (empty for no limit)"
+            placeholderTextColor={colors.ink3}
+            keyboardType="decimal-pad"
+            selectionColor={colors.orange}
+            cursorColor={colors.orange}
+            style={styles.input}
+          />
+          <View style={styles.sheetActions}>
+            <GhostButton label="No limit" style={styles.flex} onPress={() => void save(null)} />
+            <KeyButton
+              label="Save cap"
+              style={styles.flex}
+              loading={busy}
+              onPress={() => {
+                const raw = limit.trim();
+                const parsed = raw ? Number(raw) : null;
+                if (parsed !== null && !(Number.isFinite(parsed) && parsed >= 1 && parsed <= 100_000)) {
+                  toast('Enter $1 – $100,000, or tap No limit.', 'error');
+                  return;
+                }
+                void save(parsed ? Math.round(parsed * 100) * 10_000 : null);
+              }}
+            />
+          </View>
+        </View>
+      ) : null}
     </Sheet>
   );
 }
@@ -479,7 +583,7 @@ const styles = StyleSheet.create({
   track: { height: 6, borderRadius: 3, backgroundColor: colors.raised, marginTop: 6, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3 },
   keys: { marginTop: 16, marginHorizontal: GUTTER },
-  keysHead: { alignItems: 'center', marginBottom: 4 },
+  keysHead: { alignItems: 'center', marginBottom: 6 },
   noKeys: { paddingVertical: 12 },
   keyRow: {
     flexDirection: 'row',

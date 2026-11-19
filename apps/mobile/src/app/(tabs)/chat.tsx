@@ -1,5 +1,6 @@
 import { AUTO_MODEL_ID, type ArenaBattleResponse, type ArenaVote, type ArenaVoteResponse } from '@vigas/core';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
@@ -32,10 +33,11 @@ import { Icon, LogoMark, StopGlyph } from '@/components/icons';
 import { IconButton, PressableScale } from '@/components/pressable';
 import { Segmented } from '@/components/segmented';
 import { Label, Span, T } from '@/components/text';
-import { ApiError, api, errorMessage, isUnauthorized, withTimeout } from '@/lib/api';
+import { ApiError, api, errorMessage, isUnauthorized, studioChatUrl, withTimeout } from '@/lib/api';
 import { fallbackModels } from '@/lib/fallback';
 import { intl, usdFromDollars } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
+import { consumePendingChat, setPendingChat } from '@/lib/pending-chat';
 import { useRemote } from '@/lib/remote';
 import { useSession } from '@/lib/session';
 import { toast } from '@/lib/toast';
@@ -127,7 +129,7 @@ export default function ChatScreen() {
   const updateMsg = (id: string, patch: Partial<ChatMsg> | ((m: ChatMsg) => Partial<ChatMsg>)) =>
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...(typeof patch === 'function' ? patch(m) : patch) } : m)));
 
-  const stream = async (assistantId: string, history: ChatMsg[]) => {
+  const stream = async (assistantId: string, history: ChatMsg[], targetModel = model) => {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setStreaming(true);
@@ -150,7 +152,7 @@ export default function ChatScreen() {
 
     try {
       const res = await api.chat(
-        { model, messages: history.map((m) => ({ role: m.role, content: m.content })) },
+        { model: targetModel, messages: history.map((m) => ({ role: m.role, content: m.content })) },
         {
           signal: ctrl.signal,
           onDelta: (d) => {
@@ -198,13 +200,14 @@ export default function ChatScreen() {
     }
   };
 
-  const sendChat = (text: string) => {
+  const sendChat = (text: string, overrideModel?: string) => {
+    const targetModel = overrideModel ?? model;
     const user: ChatMsg = { id: uid(), role: 'user', content: text, status: 'done' };
-    const assistant: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming', requested: model };
+    const assistant: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming', requested: targetModel };
     const history = [...messages.filter((m) => m.role === 'user' || (m.status === 'done' && m.content)), user];
     atBottom.current = true;
     setMessages((prev) => [...prev, user, assistant]);
-    void stream(assistant.id, history);
+    void stream(assistant.id, history, targetModel);
   };
 
   const regenerate = (assistantId: string) => {
@@ -219,7 +222,7 @@ export default function ChatScreen() {
     const fresh: ChatMsg = { id: uid(), role: 'assistant', content: '', status: 'streaming', requested: model };
     haptics.tap();
     setMessages((prev) => [...prev.slice(0, idx), fresh]);
-    void stream(fresh.id, history);
+    void stream(fresh.id, history, model);
   };
 
   // ── Arena ───────────────────────────────────────────────────────────────
@@ -258,11 +261,28 @@ export default function ChatScreen() {
     setMode('arena');
     if (!token) {
       setDraft(prompt);
-      router.push('/sign-in');
+      setPendingChat({ prompt, mode: 'arena', model });
+      router.push({ pathname: '/sign-in', params: { mode: 'signup' } });
       return;
     }
     void startBattle(prompt);
   };
+
+  // Automatically answer the saved guest prompt right after Sign up / Sign in completes.
+  useEffect(() => {
+    if (!token) return;
+    const pending = consumePendingChat();
+    if (!pending) return;
+    const id = setTimeout(() => {
+      setMode(pending.mode);
+      if (pending.model) setModel(pending.model);
+      setDraft('');
+      if (pending.mode === 'arena') void startBattle(pending.prompt);
+      else sendChat(pending.prompt, pending.model);
+    }, 60);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   // ── Composer ────────────────────────────────────────────────────────────
 
@@ -270,7 +290,9 @@ export default function ChatScreen() {
     const text = draft.trim();
     if (!text || streaming || arena.phase === 'loading') return;
     if (!token) {
-      router.push('/sign-in');
+      haptics.tap();
+      setPendingChat({ prompt: text, mode, model });
+      router.push({ pathname: '/sign-in', params: { mode: 'signup' } });
       return;
     }
     haptics.tap();
@@ -409,7 +431,17 @@ export default function ChatScreen() {
             onContentSizeChange={() => {
               if (atBottom.current) listRef.current?.scrollToEnd({ animated: !streaming });
             }}
-            ListEmptyComponent={<ChatEmpty onPick={(s) => setDraft(s)} />}
+            ListEmptyComponent={
+              <ChatEmpty
+                onPick={(s) => setDraft(s)}
+                onOpenStudio={() =>
+                  void WebBrowser.openBrowserAsync(studioChatUrl(model), {
+                    toolbarColor: colors.bg,
+                    controlsColor: colors.orange,
+                  })
+                }
+              />
+            }
             renderItem={({ item, index }) =>
               item.role === 'user' ? (
                 <UserBubble text={item.content} />
@@ -432,19 +464,6 @@ export default function ChatScreen() {
 
         <View style={[styles.composerWrap, { paddingBottom: keyboard ? 8 : insets.bottom + 10 }]}>
           {showVote ? <VoteBar onVote={(v) => void castVote(v)} busy={!!arena.voting} chosen={arena.voting} /> : null}
-          {!token ? (
-            <Animated.View entering={FadeIn} style={styles.signedOutHint}>
-              <Icon name="lock" size={14} color={colors.ink3} />
-              <T f="mono" size={12} color={colors.ink3} style={styles.flex}>
-                {isArena ? 'Sign in to start a battle' : 'Sign in to chat · billed to your credits'}
-              </T>
-              <Pressable accessibilityRole="link" onPress={() => router.push('/sign-in')} hitSlop={10}>
-                <T f="sansMedium" size={13} color={colors.indigo}>
-                  Sign in
-                </T>
-              </Pressable>
-            </Animated.View>
-          ) : null}
           <View style={styles.composer}>
             <IconButton
               icon="plus"
@@ -533,7 +552,7 @@ function Suggestion({ text, onPress }: { text: string; onPress: () => void }) {
   );
 }
 
-function ChatEmpty({ onPick }: { onPick: (s: string) => void }) {
+function ChatEmpty({ onPick, onOpenStudio }: { onPick: (s: string) => void; onOpenStudio: () => void }) {
   return (
     <Animated.View entering={FadeIn.duration(260)} style={styles.empty}>
       <View style={styles.emptyMark}>
@@ -553,6 +572,18 @@ function ChatEmpty({ onPick }: { onPick: (s: string) => void }) {
           <Suggestion key={s} text={s} onPress={() => onPick(s)} />
         ))}
       </View>
+      <PressableScale
+        accessibilityRole="link"
+        accessibilityLabel="Open RetroCode web Studio on vigas.app/chat"
+        onPress={onOpenStudio}
+        style={styles.studioPill}
+        haptic="tap"
+      >
+        <Icon name="spark" size={14} color={colors.indigo} />
+        <T f="mono" size={12} color={colors.indigo} style={styles.flex}>
+          Open full web Studio · vigas.app/chat ↗
+        </T>
+      </PressableScale>
     </Animated.View>
   );
 }
@@ -613,7 +644,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line2,
   },
-  signedOutHint: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6, paddingBottom: 8 },
   empty: { flex: 1, justifyContent: 'flex-end', gap: 14, paddingBottom: 8 },
   emptyMark: {
     width: 48,
@@ -635,6 +665,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
+  },
+  studioPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(139,144,240,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(139,144,240,0.28)',
   },
   arenaError: {
     gap: 10,

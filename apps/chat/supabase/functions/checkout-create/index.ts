@@ -21,16 +21,34 @@ import { AppError, assertMethod, errorResponse, parseJson } from "../shared/erro
 import { corsHeaders, json, preflight } from "../shared/http.ts";
 import { createServiceClient, requireUser } from "../shared/supabase.ts";
 import { enforceRateLimit } from "../shared/rateLimit.ts";
-import { generateReference, isPlanId, PLAN_PRICES } from "../shared/checkout.ts";
-import { NowPaymentsProvider } from "../shared/cryptoProvider.ts";
+import { checkoutPriceCents, generateReference, isCreditPack, isPlanId } from "../shared/checkout.ts";
+import { AvexPayProvider, NowPaymentsProvider } from "../shared/cryptoProvider.ts";
 
 /** Where the user lands after paying, or after giving up. */
-function returnUrls(): { successUrl: string; cancelUrl: string } {
-  const base = (Deno.env.get("CHECKOUT_RETURN_URL") ?? "https://retrocode.app").replace(/\/+$/, "");
-  return { successUrl: `${base}/thanks`, cancelUrl: `${base}/cancelled` };
+function returnUrls(itemId: string, reference: string): { successUrl: string; cancelUrl: string } {
+  const base = (Deno.env.get("CHECKOUT_RETURN_URL") ?? "https://vigas.app").replace(/\/+$/, "");
+  const kind = isCreditPack(itemId) ? "credits" : "plan";
+  const ref = encodeURIComponent(reference);
+  return {
+    successUrl: `${base}/dashboard?checkout=success&item=${kind}&ref=${ref}`,
+    cancelUrl: `${base}/dashboard?checkout=cancelled&item=${kind}&ref=${ref}`,
+  };
 }
 
 function provider() {
+  const preferred = (Deno.env.get("PAYMENT_PROVIDER") ?? "").toLowerCase();
+  const avexKey = Deno.env.get("AVEXPAY_API_KEY");
+  const avexSecret = Deno.env.get("AVEXPAY_WEBHOOK_SECRET") ?? "";
+  const avexOrg = Deno.env.get("AVEXPAY_ORG_ID") ?? "";
+  const avexBase = (Deno.env.get("AVEXPAY_BASE_URL") ?? "https://api.avexpay.net/v1").replace(/\/+$/, "");
+
+  if (preferred === "avexpay" || (avexKey && preferred !== "nowpayments")) {
+    if (!avexKey) {
+      throw new AppError(503, "CHECKOUT_NOT_CONFIGURED", "AvexPay is not configured yet.");
+    }
+    return new AvexPayProvider(avexKey, avexSecret, avexOrg, avexBase);
+  }
+
   const apiKey = Deno.env.get("NOWPAYMENTS_API_KEY");
   const ipnSecret = Deno.env.get("NOWPAYMENTS_IPN_SECRET");
   if (!apiKey || !ipnSecret) {
@@ -61,10 +79,11 @@ export async function handler(req: Request): Promise<Response> {
     // harder than a read would be.
     await enforceRateLimit(service, "checkout-create", user.id, 6, 300);
 
-    if (!isPlanId(input.planId)) {
-      throw new AppError(400, "UNKNOWN_PLAN", "That plan does not exist.");
+    const priceCents = checkoutPriceCents(input.planId);
+    if (priceCents === null || (!isPlanId(input.planId) && !isCreditPack(input.planId))) {
+      throw new AppError(400, "UNKNOWN_PLAN", "That plan or credit pack does not exist.");
     }
-    const plan = PLAN_PRICES[input.planId];
+    const plan = { cents: priceCents };
     const pay = provider();
 
     // The row is written before the provider is called, so a reference can
@@ -91,7 +110,7 @@ export async function handler(req: Request): Promise<Response> {
       throw insertError;
     }
 
-    const { successUrl, cancelUrl } = returnUrls();
+    const { successUrl, cancelUrl } = returnUrls(input.planId, reference);
     let invoice;
     try {
       invoice = await pay.createInvoice({

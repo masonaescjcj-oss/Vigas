@@ -8,14 +8,17 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { projectService, type Project } from "../services/projectService";
+import { useAuthStore } from "../stores/authStore";
 
 export const useProjects = () => {
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
   // Query: Get all projects
   const projectsQuery = useQuery({
-    queryKey: ["projects"],
+    queryKey: ["projects", user?.id ?? null],
     queryFn: () => projectService.getProjects(),
+    enabled: Boolean(user),
   });
 
   // Mutation: Create a project

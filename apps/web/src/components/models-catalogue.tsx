@@ -194,7 +194,7 @@ export function ModelsCatalogue({
                 <col style={{ width: 110 }} />
                 <col style={{ width: 110 }} />
                 <col style={{ width: 90 }} />
-                <col style={{ width: 196 }} />
+                <col style={{ width: 244 }} />
               </colgroup>
               <thead>
                 <tr
@@ -224,7 +224,7 @@ export function ModelsCatalogue({
                   </th>
                   <th scope="col" style={th()}>
                     <span className="sr-only">{isFa ? 'عملیات' : 'Actions'}</span>
-                    <span aria-hidden="true">API</span>
+                    <span aria-hidden="true">API · CHAT</span>
                   </th>
                 </tr>
               </thead>
@@ -273,9 +273,17 @@ export function ModelsCatalogue({
                       <td style={td()}>
                         <span style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           <a
+                            href={`/chat?model=${encodeURIComponent(m.id)}`}
+                            className="btn gh"
+                            style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9, color: 'var(--vg-orange-text)' }}
+                            aria-label={isFa ? `گفتگو با ${m.name} در چت` : `Open ${m.name} in Chat`}
+                          >
+                            {isFa ? 'چت' : 'Chat'}
+                          </a>
+                          <a
                             href="#quickstart"
                             className="btn gh"
-                            style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                            style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9 }}
                             aria-label={isFa ? `استفاده از ${m.name} با Vigas API` : `Use ${m.name} via Vigas API`}
                           >
                             {isFa ? 'کد API' : 'Use API'}
@@ -284,9 +292,9 @@ export function ModelsCatalogue({
                             text={m.id}
                             label={isFa ? `کپی شناسه ${m.id}` : `Copy model ID ${m.id}`}
                             copiedText={isFa ? 'کپی شد' : 'Copied'}
-                            style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                            style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9 }}
                           >
-                            {isFa ? 'کپی شناسه' : 'Copy ID'}
+                            {isFa ? 'کپی' : 'Copy ID'}
                           </CopyButton>
                         </span>
                       </td>
@@ -358,9 +366,17 @@ export function ModelsCatalogue({
                       ))}
                     </div>
                     <a
+                      href={`/chat?model=${encodeURIComponent(m.id)}`}
+                      className="btn gh"
+                      style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9, color: 'var(--vg-orange-text)' }}
+                      aria-label={isFa ? `گفتگو با ${m.name} در چت` : `Open ${m.name} in Chat`}
+                    >
+                      {isFa ? 'چت' : 'Chat'}
+                    </a>
+                    <a
                       href="#quickstart"
                       className="btn gh"
-                      style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                      style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9 }}
                       aria-label={isFa ? `استفاده از ${m.name} با Vigas API` : `Use ${m.name} via Vigas API`}
                     >
                       {isFa ? 'کد API' : 'Use API'}
@@ -369,9 +385,9 @@ export function ModelsCatalogue({
                       text={m.id}
                       label={isFa ? `کپی شناسه ${m.id}` : `Copy model ID ${m.id}`}
                       copiedText={isFa ? 'کپی شد' : 'Copied'}
-                      style={{ minHeight: 34, padding: '0 12px', fontSize: 13, borderRadius: 9 }}
+                      style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9 }}
                     >
-                      {isFa ? 'کپی شناسه' : 'Copy ID'}
+                      {isFa ? 'کپی' : 'Copy ID'}
                     </CopyButton>
                   </div>
                 </div>

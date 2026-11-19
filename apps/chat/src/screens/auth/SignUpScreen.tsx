@@ -93,9 +93,14 @@ export const SignUpScreen = () => {
     }
   };
 
+  const dismissAuth = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.getParent()?.goBack();
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvasBase }}>
-      <ScreenHeader title="" divider={false} />
+      <ScreenHeader title="" divider={false} onBack={dismissAuth} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 }}
@@ -180,7 +185,7 @@ export const SignUpScreen = () => {
           <GoogleSignInButton />
 
           <TouchableOpacity
-            onPress={() => navigation.navigate("Login")}
+            onPress={() => navigation.replace("Login")}
             className="items-center mt-8 py-2"
             activeOpacity={0.6}
           >

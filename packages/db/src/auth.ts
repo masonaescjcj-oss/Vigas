@@ -1,6 +1,6 @@
 import { and, eq, gt, lt } from 'drizzle-orm';
 import type { PublicUser } from '@vigas/core';
-import { generateSessionToken, randomId, sha256Hex } from '@vigas/core/server';
+import { generateSessionToken, randomBase62, randomId, sha256Hex } from '@vigas/core/server';
 import type { Db } from './client';
 import { accounts, sessions, users } from './schema';
 
@@ -33,6 +33,58 @@ export async function createUser(
     await tx.insert(accounts).values({ id: accountId, userId: id });
     return { id, email, name: input.name?.trim() || null, role: input.role ?? 'user', accountId };
   });
+}
+
+/**
+ * Finds an existing Vigas user + billing account by normalized email, or creates one for an
+ * externally authenticated identity (e.g. Supabase Auth SSO across vigas.app and /chat).
+ */
+export async function findOrCreateExternalUser(
+  db: Db,
+  input: { email: string; name?: string | null },
+): Promise<SessionUser> {
+  const email = normalizeEmail(input.email);
+  const existing = await db
+    .select({ id: users.id, email: users.email, name: users.name, role: users.role, accountId: accounts.id })
+    .from(users)
+    .leftJoin(accounts, eq(accounts.userId, users.id))
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (existing[0]) {
+    const row = existing[0];
+    let accountId = row.accountId;
+    if (!accountId) {
+      accountId = randomId('acc');
+      await db.insert(accounts).values({ id: accountId, userId: row.id }).onConflictDoNothing();
+      const [acc] = await db.select({ id: accounts.id }).from(accounts).where(eq(accounts.userId, row.id)).limit(1);
+      accountId = acc!.id;
+    }
+    const cleanName = input.name?.trim() || null;
+    if (!row.name && cleanName) {
+      await db.update(users).set({ name: cleanName }).where(eq(users.id, row.id));
+      return { id: row.id, email: row.email, name: cleanName, role: row.role, accountId };
+    }
+    return { id: row.id, email: row.email, name: row.name, role: row.role, accountId };
+  }
+
+  try {
+    return await createUser(db, {
+      email,
+      name: input.name?.trim() || null,
+      // Non-scrypt sentinel hash cannot match verifyPassword() until the user explicitly sets a password.
+      passwordHash: `sso:${randomBase62(48)}`,
+    });
+  } catch {
+    const [race] = await db
+      .select({ id: users.id, email: users.email, name: users.name, role: users.role, accountId: accounts.id })
+      .from(users)
+      .innerJoin(accounts, eq(accounts.userId, users.id))
+      .where(eq(users.email, email))
+      .limit(1);
+    if (!race) throw new Error('Could not resolve user after concurrent creation');
+    return race;
+  }
 }
 
 /** Starts a session and returns the plain token (cookie value or bearer token). */

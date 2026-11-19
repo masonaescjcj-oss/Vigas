@@ -9,12 +9,17 @@ import {
   formatCompact,
   formatPricePerMillion,
   formatUsd,
+  inferAvexPayMode,
   paretoFrontier,
+  parseAvexSignatureHeader,
+  parseAvexPayWebhookPayload,
   planRoute,
   quoteTopup,
   RouteError,
+  signAvexPayPayload,
   slugify,
   usdToMicros,
+  verifyAvexPaySignature,
   type Battle,
 } from '../src';
 import { seedArticles, seedEndpoints, seedLeaderboard, seedModels, seedTools } from '../src/seed';
@@ -173,3 +178,119 @@ describe('seed data', () => {
     expect(formatCompact(4821)).toBe('4.8k');
   });
 });
+
+describe('avexpay', () => {
+  it('verifies t=<unix>,v1=<hex> HMAC-SHA256 signatures and rejects stale or tampered payloads', async () => {
+    const secret = 'whsec_test_secret_123';
+    const ts = 1_760_000_000;
+    const body = JSON.stringify({
+      id: 'evt_1',
+      event: 'invoice.paid',
+      mode: 'live',
+      invoiceId: 'inv_999',
+      reference: 'top_abc123',
+      amountFiatMicros: '25000000',
+    });
+    const sig = await signAvexPayPayload(ts, body, secret);
+    const header = `t=${ts},v1=${sig}`;
+
+    expect(parseAvexSignatureHeader(header)).toEqual({ timestamp: ts, signatures: [sig] });
+    expect(
+      await verifyAvexPaySignature({
+        rawBody: body,
+        signatureHeader: header,
+        webhookSecret: secret,
+        nowSeconds: ts + 45,
+      }),
+    ).toEqual({ ok: true, timestamp: ts });
+
+    // Tampered body must fail.
+    expect(
+      await verifyAvexPaySignature({
+        rawBody: body.replace('25000000', '999000000'),
+        signatureHeader: header,
+        webhookSecret: secret,
+        nowSeconds: ts + 45,
+      }),
+    ).toMatchObject({ ok: false, reason: 'signature_mismatch' });
+
+    // Timestamp outside 300s tolerance must fail.
+    expect(
+      await verifyAvexPaySignature({
+        rawBody: body,
+        signatureHeader: header,
+        webhookSecret: secret,
+        nowSeconds: ts + 305,
+      }),
+    ).toMatchObject({ ok: false, reason: 'timestamp_out_of_range' });
+
+    // Missing secret must fail closed.
+    expect(
+      await verifyAvexPaySignature({
+        rawBody: body,
+        signatureHeader: header,
+        webhookSecret: '',
+        nowSeconds: ts,
+      }),
+    ).toMatchObject({ ok: false, reason: 'missing_webhook_secret' });
+  });
+
+  it('normalizes webhook events and infers mode from key prefixes', () => {
+    const body = JSON.stringify({
+      id: 'evt_2',
+      event: 'invoice.paid',
+      mode: 'test',
+      invoiceId: 'inv_123',
+      reference: 'top_xyz',
+      amountFiatMicros: '10000000',
+    });
+    const parsed = parseAvexPayWebhookPayload(body);
+    expect(parsed).toMatchObject({
+      eventId: 'evt_2',
+      event: 'invoice.paid',
+      mode: 'test',
+      invoiceId: 'inv_123',
+      reference: 'top_xyz',
+      requestedMicros: 10_000_000,
+      settledMicros: 10_000_000,
+      status: 'paid',
+    });
+    expect(inferAvexPayMode('ak_test_abc')).toBe('test');
+    expect(inferAvexPayMode('ak_live_abc')).toBe('live');
+  });
+
+  it('handles AvexPay envelope payloads and reversed/expired/underpaid/confirming events', () => {
+    const expired = parseAvexPayWebhookPayload(
+      JSON.stringify({
+        event: 'invoice.expired',
+        data: { id: 'inv_exp', reference: 'top_1', amountFiatMicros: 5_000_000 },
+      }),
+    );
+    expect(expired).toMatchObject({ status: 'expired', invoiceId: 'inv_exp', reference: 'top_1', settledMicros: 0 });
+
+    const reversed = parseAvexPayWebhookPayload(
+      JSON.stringify({
+        event: 'payment.reversed',
+        data: { invoiceId: 'inv_rev', reference: 'top_2', amountFiatMicros: 25_000_000 },
+      }),
+    );
+    expect(reversed).toMatchObject({ status: 'reversed', invoiceId: 'inv_rev', reference: 'top_2' });
+
+    const underpaid = parseAvexPayWebhookPayload(
+      JSON.stringify({
+        event: 'invoice.underpaid',
+        data: { invoiceId: 'inv_low', reference: 'top_3', amountFiatMicros: 10_000_000, paidFiatMicros: 5_000_000 },
+      }),
+    );
+    expect(underpaid).toMatchObject({ status: 'failed', settledMicros: 5_000_000 });
+
+    const confirming = parseAvexPayWebhookPayload(
+      JSON.stringify({
+        event: 'invoice.confirming',
+        data: { invoiceId: 'inv_wait', reference: 'top_4', amountFiatMicros: 10_000_000 },
+      }),
+    );
+    expect(confirming.status).toBe('pending');
+  });
+});
+

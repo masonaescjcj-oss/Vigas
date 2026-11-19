@@ -291,3 +291,170 @@ export async function completeTopup(
     return { balanceMicros: updated!.balance, chargedMicros: quote.totalMicros, feeMicros: quote.feeMicros };
   });
 }
+
+export interface PendingTopupQuote {
+  id: string;
+  amountMicros: number;
+  feeMicros: number;
+  totalMicros: number;
+}
+
+/**
+ * Records a pending payment session before calling the external gateway (e.g. AvexPay.net)
+ * so any incoming webhook can be validated against our own server-recorded amount.
+ */
+export async function createPendingTopup(
+  db: Db,
+  input: { accountId: string; amountMicros: number; feeBps: number; provider: string; reference?: string },
+): Promise<PendingTopupQuote> {
+  return db.transaction(async (tx) => {
+    const [acc] = await tx
+      .select({ lifetime: accounts.lifetimeTopupMicros })
+      .from(accounts)
+      .where(eq(accounts.id, input.accountId));
+    if (!acc) throw new Error('Account not found');
+    const quote = quoteTopup(input.amountMicros, acc.lifetime, input.feeBps);
+    const id = input.reference ?? randomId('top');
+    await tx.insert(topups).values({
+      id,
+      accountId: input.accountId,
+      amountMicros: quote.amountMicros,
+      feeMicros: quote.feeMicros,
+      provider: input.provider,
+      providerRef: null,
+      status: 'pending',
+    });
+    return {
+      id,
+      amountMicros: quote.amountMicros,
+      feeMicros: quote.feeMicros,
+      totalMicros: quote.totalMicros,
+    };
+  });
+}
+
+export async function setTopupProviderRef(db: Db, topupId: string, providerRef: string): Promise<void> {
+  await db.update(topups).set({ providerRef }).where(eq(topups.id, topupId));
+}
+
+export async function deletePendingTopup(db: Db, topupId: string): Promise<void> {
+  await db.delete(topups).where(and(eq(topups.id, topupId), eq(topups.status, 'pending')));
+}
+
+export async function getTopupByAccount(db: Db, accountId: string, topupId: string) {
+  const [row] = await db
+    .select()
+    .from(topups)
+    .where(and(eq(topups.id, topupId), eq(topups.accountId, accountId)))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getTopupById(db: Db, topupId: string) {
+  const [row] = await db.select().from(topups).where(eq(topups.id, topupId)).limit(1);
+  return row ?? null;
+}
+
+export type CompletePendingTopupResult =
+  | { ok: true; alreadySucceeded: boolean; balanceMicros: number; amountMicros: number; feeMicros: number }
+  | { ok: false; reason: 'not_found' | 'underpaid' };
+
+/**
+ * Atomically settles a pending top-up by our reference ID (`topups.id`).
+ * Safe to invoke concurrently or from retried webhooks — an already succeeded row is a no-op.
+ */
+export async function completePendingTopup(
+  db: Db,
+  input: { topupId: string; providerRef?: string; settledMicros?: number },
+): Promise<CompletePendingTopupResult> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(topups).where(eq(topups.id, input.topupId)).for('update');
+    if (!row) return { ok: false, reason: 'not_found' };
+
+    if (row.status === 'succeeded') {
+      const [acc] = await tx.select({ balance: accounts.balanceMicros }).from(accounts).where(eq(accounts.id, row.accountId));
+      return {
+        ok: true,
+        alreadySucceeded: true,
+        balanceMicros: acc?.balance ?? 0,
+        amountMicros: row.amountMicros,
+        feeMicros: row.feeMicros,
+      };
+    }
+
+    const expectedTotal = row.amountMicros + row.feeMicros;
+    const minAccepted = Math.floor(expectedTotal * 0.98);
+    if (input.settledMicros !== undefined && input.settledMicros < minAccepted) {
+      await tx
+        .update(topups)
+        .set({ status: 'failed', ...(input.providerRef ? { providerRef: input.providerRef } : {}) })
+        .where(eq(topups.id, row.id));
+      return { ok: false, reason: 'underpaid' };
+    }
+
+    await tx
+      .update(topups)
+      .set({
+        status: 'succeeded',
+        completedAt: new Date(),
+        ...(input.providerRef ? { providerRef: input.providerRef } : {}),
+      })
+      .where(eq(topups.id, row.id));
+
+    await tx.insert(ledgerEntries).values({
+      accountId: row.accountId,
+      amountMicros: row.amountMicros,
+      kind: 'topup',
+      reference: row.id,
+    });
+
+    const [updated] = await tx
+      .update(accounts)
+      .set({
+        balanceMicros: sql`${accounts.balanceMicros} + ${row.amountMicros}`,
+        lifetimeTopupMicros: sql`${accounts.lifetimeTopupMicros} + ${row.amountMicros}`,
+      })
+      .where(eq(accounts.id, row.accountId))
+      .returning({ balance: accounts.balanceMicros });
+
+    return {
+      ok: true,
+      alreadySucceeded: false,
+      balanceMicros: updated!.balance,
+      amountMicros: row.amountMicros,
+      feeMicros: row.feeMicros,
+    };
+  });
+}
+
+export async function failPendingTopup(db: Db, topupId: string, providerRef?: string): Promise<boolean> {
+  const res = await db
+    .update(topups)
+    .set({ status: 'failed', ...(providerRef ? { providerRef } : {}) })
+    .where(and(eq(topups.id, topupId), eq(topups.status, 'pending')))
+    .returning({ id: topups.id });
+  return res.length > 0;
+}
+
+export async function reverseTopupById(db: Db, topupId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(topups).where(eq(topups.id, topupId)).for('update');
+    if (!row || row.status !== 'succeeded') return false;
+    await tx.update(topups).set({ status: 'failed' }).where(eq(topups.id, row.id));
+    await tx.insert(ledgerEntries).values({
+      accountId: row.accountId,
+      amountMicros: -row.amountMicros,
+      kind: 'adjustment',
+      reference: `reversal:${row.id}`,
+    });
+    await tx
+      .update(accounts)
+      .set({
+        balanceMicros: sql`GREATEST(0, ${accounts.balanceMicros} - ${row.amountMicros})`,
+        lifetimeTopupMicros: sql`GREATEST(0, ${accounts.lifetimeTopupMicros} - ${row.amountMicros})`,
+      })
+      .where(eq(accounts.id, row.accountId));
+    return true;
+  });
+}
+
