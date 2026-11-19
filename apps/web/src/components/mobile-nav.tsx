@@ -73,14 +73,23 @@ export function MobileNav({
               {isFa ? 'نمای کلی' : 'Overview'}
             </span>
           </Link>
-          {nav.map(([id, label, href]) => (
-            <Link key={id} href={href} aria-current={id === active ? 'page' : undefined} onClick={close}>
-              <span>{label}</span>
-              {id === 'models' && <span className="mn hdr-menu-tag">{isFa ? 'کمترین نرخ' : 'Lowest rates'}</span>}
-              {id === 'leaderboard' && <span className="mn hdr-menu-tag">Arena</span>}
-              {id === 'tools' && <span className="mn hdr-menu-tag">{isFa ? '۲۴ ابزار' : '24 apps'}</span>}
-            </Link>
-          ))}
+          {nav.map(([id, label, href]) =>
+            href === '/chat' ? (
+              <a key={id} href={href} aria-current={id === active ? 'page' : undefined} onClick={close}>
+                <span>{label}</span>
+                <span className="mn hdr-menu-tag" style={{ color: 'var(--vg-orange-text)' }}>
+                  {isFa ? 'زنده' : 'Live'}
+                </span>
+              </a>
+            ) : (
+              <Link key={id} href={href} aria-current={id === active ? 'page' : undefined} onClick={close}>
+                <span>{label}</span>
+                {id === 'models' && <span className="mn hdr-menu-tag">{isFa ? 'کمترین نرخ' : 'Lowest rates'}</span>}
+                {id === 'leaderboard' && <span className="mn hdr-menu-tag">Arena</span>}
+                {id === 'tools' && <span className="mn hdr-menu-tag">{isFa ? '۲۴ ابزار' : '24 apps'}</span>}
+              </Link>
+            ),
+          )}
         </div>
 
         <LanguageSwitch variant="mobile" lang={lang} altHref={altHref} onNavigate={close} />

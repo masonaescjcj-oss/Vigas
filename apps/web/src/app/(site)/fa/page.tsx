@@ -114,12 +114,15 @@ export default async function PersianHomePage() {
                 یک کلید API سازگار با OpenAI برای تمام مدل‌های پیشتاز؛ با تعرفه مستقیم و مسیریابی زیر ۱۲۰ms.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <Link href="/signup?next=/dashboard%23keys" className="btn key" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
-                  دریافت کلید API
+                <a href="/chat" className="btn key" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
+                  ورود به چت AI
                   <Icon name="arrow" size={16} style={{ transform: 'scaleX(-1)' }} />
-                </Link>
+                </a>
                 <Link href="/models" className="btn gh" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
                   مدل‌ها و قیمت‌ها
+                </Link>
+                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 46, padding: '0 18px', fontSize: 14.5 }}>
+                  دریافت کلید API
                 </Link>
               </div>
               <div className="hero-spec-strip">

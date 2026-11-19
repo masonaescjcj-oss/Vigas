@@ -41,6 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     entry('/', 'hourly', 1, newest, homeLangs),
     entry('/fa', 'hourly', 1, newest, homeLangs),
+    entry('/chat', 'weekly', 0.9, newest),
     entry('/models', 'daily', 0.9, newest),
     entry('/leaderboard', 'hourly', 0.9, newest),
     ...LEADERBOARD_CATEGORIES.filter((c) => c.id !== 'overall').map((c) => entry(`/leaderboard/${c.id}`, 'daily', 0.8, newest)),

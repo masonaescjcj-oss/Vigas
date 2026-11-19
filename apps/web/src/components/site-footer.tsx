@@ -6,6 +6,7 @@ const EN_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   {
     title: 'Models & API',
     links: [
+      ['AI Chat & App Builder', '/chat'],
       ['All models & pricing', '/models'],
       ['API quickstart', '/models#quickstart'],
       ['Free AI models', '/models?tag=free'],
@@ -55,6 +56,7 @@ const FA_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
   {
     title: 'مدل‌ها و گیت‌وی API',
     links: [
+      ['چت و اپ‌ساز هوش مصنوعی', '/chat'],
       ['همه مدل‌ها و تعرفه‌ها', '/models'],
       ['مستندات سریع API', '/models#quickstart'],
       ['مدل‌های رایگان AI', '/models?tag=free'],
@@ -167,11 +169,17 @@ export function SiteFooter({ lang = 'en', altHref }: { lang?: 'en' | 'fa'; altHr
               <span className="lbl" style={{ marginBottom: 4 }}>
                 {col.title}
               </span>
-              {col.links.map(([label, href]) => (
-                <Link key={label} href={href} prefetch={false}>
-                  {label}
-                </Link>
-              ))}
+              {col.links.map(([label, href]) =>
+                href === '/chat' ? (
+                  <a key={label} href={href}>
+                    {label}
+                  </a>
+                ) : (
+                  <Link key={label} href={href} prefetch={false}>
+                    {label}
+                  </Link>
+                ),
+              )}
             </nav>
           ))}
         </div>

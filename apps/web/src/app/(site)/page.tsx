@@ -86,12 +86,15 @@ export default async function HomePage() {
                 One OpenAI‑compatible key for frontier AI — wholesale pricing and sub‑120ms routing.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <Link href="/signup?next=/dashboard%23keys" className="btn key" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
-                  Get API key
+                <a href="/chat" className="btn key" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
+                  Open AI Chat
                   <Icon name="arrow" size={16} />
-                </Link>
+                </a>
                 <Link href="/models" className="btn gh" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
                   Models &amp; pricing
+                </Link>
+                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 46, padding: '0 18px', fontSize: 14.5 }}>
+                  Get API key
                 </Link>
               </div>
               <div className="mn hero-spec-strip">

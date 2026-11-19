@@ -16,7 +16,11 @@
     "db:migrate": "pnpm --filter @vigas/db migrate",
     "db:seed": "pnpm --filter @vigas/db seed",
     "db:generate": "pnpm --filter @vigas/db generate",
-    "leaderboard:compute": "pnpm --filter @vigas/db leaderboard"
+    "leaderboard:compute": "pnpm --filter @vigas/db leaderboard",
+    "chat:install": "npm --prefix apps/chat ci --no-audit --no-fund",
+    "chat:build": "node scripts/build-chat-web.mjs",
+    "chat:typecheck": "npm --prefix apps/chat run typecheck",
+    "chat:test": "npm --prefix apps/chat run test"
   },
   "devDependencies": {
     "turbo": "^2.11.10",

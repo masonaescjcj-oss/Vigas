@@ -1,0 +1,8 @@
+/* Fonts are loaded by the app itself (theme/useAppFonts.ts), bundled rather
+   than fetched, and registered under the names Tailwind and the components
+   use. A Google Fonts @import here would be a competing second source that
+   only works on web and only when online. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

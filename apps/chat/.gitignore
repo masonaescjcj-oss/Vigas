@@ -1,0 +1,23 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Supabase local state (contains project ref / versions)
+supabase/.temp/
+
+# Build & tooling output
+.expo/
+dist/
+# Production web export (expo export --platform web --output-dir dist-web).
+dist-web/
+build/
+coverage/
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db

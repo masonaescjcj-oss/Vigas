@@ -9,9 +9,10 @@ import { QuickSearch } from './quick-search';
 import { ThemeToggle } from './theme-toggle';
 import { Icon, LogoMark } from './ui';
 
-export type NavKey = 'home' | 'models' | 'leaderboard' | 'news' | 'tools' | 'none';
+export type NavKey = 'home' | 'chat' | 'models' | 'leaderboard' | 'news' | 'tools' | 'none';
 
 const EN_NAV: Array<[NavKey, string, string]> = [
+  ['chat', 'Chat', '/chat'],
   ['models', 'Models & API', '/models'],
   ['leaderboard', 'Leaderboard', '/leaderboard'],
   ['news', 'News', '/news'],
@@ -19,6 +20,7 @@ const EN_NAV: Array<[NavKey, string, string]> = [
 ];
 
 const FA_NAV: Array<[NavKey, string, string]> = [
+  ['chat', 'چت AI', '/chat'],
   ['models', 'مدل‌ها و تعرفه', '/models'],
   ['leaderboard', 'لیدربورد', '/leaderboard'],
   ['news', 'اخبار AI', '/news/fa'],
@@ -64,11 +66,17 @@ export function SiteHeader({
             </span>
           </Link>
           <nav aria-label={isFa ? 'منوی اصلی' : 'Primary'} className="hdr-nav">
-            {nav.map(([id, label, href]) => (
-              <Link key={id} href={href} aria-current={id === active ? 'page' : undefined}>
-                {label}
-              </Link>
-            ))}
+            {nav.map(([id, label, href]) =>
+              href === '/chat' ? (
+                <a key={id} href={href} aria-current={id === active ? 'page' : undefined}>
+                  {label}
+                </a>
+              ) : (
+                <Link key={id} href={href} aria-current={id === active ? 'page' : undefined}>
+                  {label}
+                </Link>
+              ),
+            )}
           </nav>
           <div className="hdr-actions">
             <ThemeToggle variant="icon" lang={lang} />

@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Expo Web static bundle for /chat:
+    "public/_expo/**",
+    "public/assets/**",
   ]),
 ]);
 

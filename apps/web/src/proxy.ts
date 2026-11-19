@@ -95,8 +95,17 @@ export function proxy(request: NextRequest) {
   const cookieLang = request.cookies.get(LANG_COOKIE)?.value === 'fa' ? 'fa' : 'en';
   const qLang = searchParams.get('lang');
 
-  if (pathname === '/chat') {
-    return redirect308(request, '/models');
+  // Integrated Vigas Chat & App Builder SPA hosted natively under /chat and /chat/*
+  if (pathname === '/chat' || pathname.startsWith('/chat/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/chat-shell.html';
+    const res = NextResponse.rewrite(url);
+    res.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+    if (pathname !== '/chat') {
+      res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
+    return withLang(res, 'en');
   }
 
   // Root home: `/` -> `/fa` when user has selected Persian
@@ -307,6 +316,7 @@ export const config = {
     '/',
     '/fa',
     '/chat',
+    '/chat/:path*',
     '/models',
     '/leaderboard',
     '/leaderboard/:path*',

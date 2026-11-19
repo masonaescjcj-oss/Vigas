@@ -1,0 +1,12 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.95.0",
+    "zod": "npm:zod@^3.24.2",
+    "e2b": "npm:e2b@^2.35.0",
+    "@sentry/deno": "npm:@sentry/deno@^10.66.0"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "unstable": ["sloppy-imports"]
+}

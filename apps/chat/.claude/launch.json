@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "expo-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "expo",
+        "start",
+        "--web",
+        "--port",
+        "8082",
+        "--clear",
+        "--offline"
+      ],
+      "port": 8082,
+      "autoPort": false,
+      "env": {
+        "EXPO_NO_TELEMETRY": "1",
+        "BROWSER": "none",
+        "EXPO_NO_PROMPT": "1",
+        "EXPO_OFFLINE": "1"
+      }
+    }
+  ]
+}

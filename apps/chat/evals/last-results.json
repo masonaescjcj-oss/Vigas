@@ -1,0 +1,14 @@
+{
+  "passed": 1,
+  "total": 1,
+  "totalTokens": 3393,
+  "results": [
+    {
+      "id": "count-files",
+      "pass": true,
+      "ms": 10048,
+      "tokens": 3393,
+      "steps": 2
+    }
+  ]
+}
