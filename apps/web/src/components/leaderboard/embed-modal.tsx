@@ -64,8 +64,8 @@ export function EmbedModal({
         </div>
         <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--vg-ink2)', lineHeight: isFa ? 1.75 : undefined }}>
           {isFa
-            ? 'جدول زنده رده‌بندی Vigas Arena را در مستندات، وبلاگ یا داشبورد داخلی خود قرار دهید. آمار و امتیازها به‌صورت خودکار به‌روز می‌شوند.'
-            : 'Drop live Vigas Arena rankings into docs, blog posts, or internal dashboards. The widget refreshes automatically with the latest scores and win shares.'}
+            ? 'جدول زنده رده‌بندی زنده ویگاس را در مستندات، وبلاگ یا داشبورد داخلی خود قرار دهید. آمار و امتیازها به‌صورت خودکار به‌روز می‌شوند.'
+            : 'Drop live Vigas leaderboard rankings into docs, blog posts, or internal dashboards. The widget refreshes automatically with the latest scores and win shares.'}
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>

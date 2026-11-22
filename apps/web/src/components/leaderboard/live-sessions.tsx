@@ -4,8 +4,8 @@ import { timeAgo } from '@vigas/core';
 import { getModels, getRecentSessions } from '@/lib/data';
 import { Icon, OrgMark } from '../ui';
 
-const SOURCE_EN: Record<string, string> = { api: 'API', chat: 'Gateway session', arena: 'Arena test', retrobuild: 'Sandbox run' };
-const SOURCE_FA: Record<string, string> = { api: 'API', chat: 'نشست گیت‌وی', arena: 'آزمون Arena', retrobuild: 'اجرای سندباکس' };
+const SOURCE_EN: Record<string, string> = { api: 'API', chat: 'Gateway session', arena: 'Eval run', retrobuild: 'Sandbox run' };
+const SOURCE_FA: Record<string, string> = { api: 'API', chat: 'نشست گیت‌وی', arena: 'ارزیابی', retrobuild: 'اجرای سندباکس' };
 
 function ago(t: string, isFa: boolean): string {
   if (!isFa) return t === 'now' ? 'just now' : `${t} ago`;

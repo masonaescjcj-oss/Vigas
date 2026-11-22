@@ -385,7 +385,7 @@ export async function NewsContent({
                   <Icon name="arrow" size={16} style={isFa ? { transform: 'scaleX(-1)' } : undefined} />
                 </Link>
                 <Link href="/leaderboard" className="btn gh">
-                  {isFa ? 'لیدربورد زنده Arena' : 'Live leaderboard'}
+                  {isFa ? 'لیدربورد زنده مدل‌ها' : 'Live leaderboard'}
                 </Link>
               </div>
             </div>

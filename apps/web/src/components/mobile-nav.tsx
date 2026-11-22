@@ -85,7 +85,7 @@ export function MobileNav({
               <Link key={id} href={href} aria-current={id === active ? 'page' : undefined} onClick={close}>
                 <span>{label}</span>
                 {id === 'models' && <span className="mn hdr-menu-tag">{isFa ? 'کمترین نرخ' : 'Lowest rates'}</span>}
-                {id === 'leaderboard' && <span className="mn hdr-menu-tag">Arena</span>}
+                {id === 'leaderboard' && <span className="mn hdr-menu-tag">Live</span>}
                 {id === 'tools' && <span className="mn hdr-menu-tag">{isFa ? '۲۴ ابزار' : '24 apps'}</span>}
               </Link>
             ),

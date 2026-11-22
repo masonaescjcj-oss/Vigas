@@ -40,8 +40,6 @@ export function serverEnv() {
       process.env.SUPABASE_ANON_KEY ||
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
       'sb_publishable_m-HAN3dCgDJpgQ_L3WO1hQ_y1CWihK9',
-    arenaDailyLimit: int(process.env.ARENA_DAILY_LIMIT, 30),
-    arenaBillingAccountId: process.env.ARENA_BILLING_ACCOUNT_ID || null,
     production: process.env.NODE_ENV === 'production',
   };
 }

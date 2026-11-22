@@ -264,7 +264,7 @@ export async function renderLeaderboardOg(category: LeaderboardCategory): Promis
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <OgBrandBadge size={40} />
-          <div style={{ display: 'flex', fontSize: 30, color: '#EFEAE1' }}>Vigas Arena Leaderboard</div>
+          <div style={{ display: 'flex', fontSize: 30, color: '#EFEAE1' }}>Vigas Model Leaderboard</div>
         </div>
         <div
           style={{

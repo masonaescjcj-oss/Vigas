@@ -3,7 +3,7 @@ import type { ChatCompletion, ChatMessage } from '@vigas/core';
 import { serverEnv } from './env';
 import { apiError } from './http';
 
-export type GatewaySource = 'chat' | 'arena';
+export type GatewaySource = 'chat';
 
 export class GatewayUnavailableError extends Error {}
 

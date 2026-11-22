@@ -26,8 +26,8 @@ type ConsoleTab = 'overview' | 'keys' | 'credits' | 'models' | 'connect';
 
 const PRESETS = [5, 10, 25, 50, 100];
 const FREE_ALLOWANCE = 5_000_000;
-const SOURCE_LABEL_EN: Record<string, string> = { api: 'API Gateway', chat: 'Playground', arena: 'Arena', retrobuild: 'Sandbox' };
-const SOURCE_LABEL_FA: Record<string, string> = { api: 'گیت‌وی API', chat: 'پلی‌گراند', arena: 'آزمون Arena', retrobuild: 'سندباکس' };
+const SOURCE_LABEL_EN: Record<string, string> = { api: 'API Gateway', chat: 'Playground', arena: 'Eval', retrobuild: 'Sandbox' };
+const SOURCE_LABEL_FA: Record<string, string> = { api: 'گیت‌وی API', chat: 'پلی‌گراند', arena: 'ارزیابی', retrobuild: 'سندباکس' };
 const SOURCE_COLOR: Record<string, string> = { api: 'var(--vg-orange)', chat: 'var(--vg-sand-fill)', arena: 'var(--vg-indigo)', retrobuild: 'var(--vg-teal)' };
 
 const CONSOLE_TABS: Array<{ id: ConsoleTab; icon: IconName; en: string; fa: string }> = [

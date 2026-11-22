@@ -109,7 +109,7 @@ async function getCachedBoardPayload(category: LeaderboardCategory, lang: 'en' |
     '@context': 'https://schema.org',
     '@type': 'Dataset',
     name: isFa ? `رده‌بندی مدل‌ها و ایجنت‌های هوش مصنوعی ویگاس (${label})` : `Vigas ${label} AI Model & Agent Leaderboard`,
-    description: `${catSeo.intro} Built from ${board.totalSessions.toLocaleString('en-US')} real sessions and blind pairwise Arena votes.`,
+    description: `${catSeo.intro} Built from ${board.totalSessions.toLocaleString('en-US')} real gateway sessions and verified benchmarks.`,
     url: pageUrl,
     dateModified: board.updatedAt,
     inLanguage: lang,
@@ -223,8 +223,8 @@ export async function LeaderboardView({
           <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <span className="led" />
             {isFa
-              ? `Vigas Arena · به‌روزرسانی ${faAgo(agoText)}`
-              : `Vigas Arena · updated ${agoText === 'now' ? 'just now' : `${agoText} ago`}`}
+              ? `رتبه‌بندی ویگاس · به‌روزرسانی ${faAgo(agoText)}`
+              : `Vigas Ranks · updated ${agoText === 'now' ? 'just now' : `${agoText} ago`}`}
           </div>
           <h1
             className="sf"
@@ -267,7 +267,7 @@ export async function LeaderboardView({
           <p style={{ fontSize: isFa ? 16.5 : 18, color: 'var(--vg-ink2)', maxWidth: 560, margin: 0, lineHeight: isFa ? 1.8 : undefined }}>
             {category === 'overall'
               ? isFa
-                ? 'رده‌بندی ساخته‌شده از عملکرد واقعی مدل‌ها در ویگاس — هر نشست، هر رأی کور Arena و هر دلار هزینه.'
+                ? 'رده‌بندی ساخته‌شده از عملکرد واقعی مدل‌ها در ویگاس — هر نشست واقعی API، سرعت پاسخ و هر دلار هزینه.'
                 : 'Rankings built from real people doing real work on Vigas — every session, every blind vote, every dollar spent.'
               : catSeo.intro}
           </p>
@@ -478,13 +478,13 @@ export async function LeaderboardView({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 16 }}>
           {(isFa
             ? [
-                ['I', 'var(--vg-orange)', 'var(--vg-orange-text)', 'نشست واقعی، نه بنچمارک مصنوعی', 'سهم برد نشان می‌دهد هر مدل چند بار تسک‌های واقعی مورد تأیید کاربران را در API، ایجنت‌های کدنویسی و آزمون کور Arena به پایان می‌رساند.'],
-                ['II', 'var(--vg-sand)', 'var(--vg-sand)', 'آرای کور جفتی Arena', 'کاربران پاسخ دو مدل ناشناس را مقایسه می‌کنند و رأی می‌دهند. امتیازها بر اساس مدل Bradley–Terry با بازه اطمینان ۹۵٪ محاسبه می‌شوند.'],
+                ['I', 'var(--vg-orange)', 'var(--vg-orange-text)', 'نشست واقعی، نه بنچمارک مصنوعی', 'سهم برد نشان می‌دهد هر مدل چند بار تسک‌های واقعی مورد تأیید کاربران را در API، ایجنت‌های کدنویسی و ارزیابی‌های معتبر به پایان می‌رساند.'],
+                ['II', 'var(--vg-sand)', 'var(--vg-sand)', 'امتیاز آماری و بازه اطمینان', 'تله‌متری نشست‌های موفق و بنچمارک‌های معتبر با مدل Bradley–Terry و بازه اطمینان ۹۵٪ تجمیع و به‌روزرسانی می‌شوند.'],
                 ['III', 'var(--vg-ink3)', 'var(--vg-ink2)', 'هزینه بخشی از معیار است', 'کنار هر رتبه‌بندی میانگین هزینه به‌ازای هر کار انجام‌شده را می‌بینید تا بهترین ارزش خرید را بشناسید.'],
               ]
             : [
-                ['I', 'var(--vg-orange)', 'var(--vg-orange-text)', 'Real sessions, not benchmarks', 'Win share counts how often a model finishes real tasks that users accept — across real API workloads, coding agents, and blind Arena tests.'],
-                ['II', 'var(--vg-sand)', 'var(--vg-sand)', 'Blind pairwise votes', 'In Arena, people compare two hidden models and vote. Scores use a Bradley–Terry model with 95% confidence intervals.'],
+                ['I', 'var(--vg-orange)', 'var(--vg-orange-text)', 'Real sessions, not benchmarks', 'Win share counts how often a model finishes real tasks that users accept — across real API workloads, coding agents, and verified evals.'],
+                ['II', 'var(--vg-sand)', 'var(--vg-sand)', 'Statistical scoring', 'Verified task outcomes and benchmarks are aggregated with a Bradley–Terry model and 95% confidence intervals.'],
                 ['III', 'var(--vg-ink3)', 'var(--vg-ink2)', 'Cost is part of the score', 'Every ranking shows dollars per completed task, so you can see who is best for the money — not just best.'],
               ]
           ).map(([n, border, color, t, d]) => (

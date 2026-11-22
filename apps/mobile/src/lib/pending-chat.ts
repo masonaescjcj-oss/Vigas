@@ -1,6 +1,5 @@
 export interface PendingMobileChat {
   prompt: string;
-  mode: 'chat' | 'arena';
   model: string;
   createdAt: number;
 }
@@ -13,7 +12,6 @@ export function setPendingChat(input: Omit<PendingMobileChat, 'createdAt'>): voi
   if (!prompt) return;
   pendingChat = {
     prompt,
-    mode: input.mode,
     model: input.model,
     createdAt: Date.now(),
   };

@@ -17,7 +17,7 @@ export const metadata = pageMetadata({
   title: 'ویگاس — سریع‌ترین API هوش مصنوعی، لیدربورد و اخبار AI',
   absoluteTitle: true,
   description:
-    'دسترسی یکپارچه به تمام مدل‌های برتر هوش مصنوعی با کمترین تعرفه مستقیم توکن، پایین‌ترین تأخیر لبه، رده‌بندی زنده Arena، اخبار تخصصی AI به فارسی و فهرست ابزارها.',
+    'دسترسی یکپارچه به تمام مدل‌های برتر هوش مصنوعی با کمترین تعرفه مستقیم توکن، پایین‌ترین تأخیر لبه، رده‌بندی زنده مدل‌ها، اخبار تخصصی AI به فارسی و فهرست ابزارها.',
   path: '/fa',
   locale: 'fa_IR',
   alternatesLanguages: { en: '/', fa: '/fa', 'x-default': '/' },
@@ -148,7 +148,7 @@ export default async function PersianHomePage() {
             {[
               [toFaDigits(models.length), 'مدل آنلاین در گیت‌وی'],
               [toFaDigits(providers), 'آزمایشگاه و ارائه‌دهنده'],
-              [sessions, 'نشست ارزیابی Arena'],
+              [sessions, 'نشست واقعی API'],
               ['۰٪', 'کارمزد اضافی تا ۵ دلار اول'],
             ].map(([big, label]) => (
               <div key={label}>
@@ -221,12 +221,12 @@ export default async function PersianHomePage() {
               </Link>
 
               <Link href="/leaderboard" className="lift bento-card" style={{ flex: '1 1 320px' }}>
-                <span className="lbl">۰۲ · لیدربورد زنده Arena</span>
+                <span className="lbl">۰۲ · لیدربورد زنده مدل‌ها</span>
                 <h3 style={{ fontSize: 26, lineHeight: 1.28, margin: 0, fontWeight: 700 }}>
                   رتبه‌بندی بر پایه <em className="hi">آزمون واقعی.</em>
                 </h3>
                 <p style={{ margin: 0, color: 'var(--vg-ink2)', lineHeight: 1.75 }}>
-                  سهم برد از {sessions} نشست و رأی کور کاربران Arena به‌جای بنچمارک‌های تکراری.
+                  سهم برد از {sessions} نشست واقعی گیت‌وی و ارزیابی‌های معتبر.
                 </p>
                 <div
                   aria-hidden="true"
@@ -378,7 +378,7 @@ export default async function PersianHomePage() {
 
               <div style={{ flex: '1 1 520px', minWidth: 0, background: 'var(--vg-surface)', border: line, borderRadius: 22, padding: 22, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <h3 style={{ fontSize: 22, margin: 0, fontWeight: 700 }}>ستون قهرمانان Arena</h3>
+                  <h3 style={{ fontSize: 22, margin: 0, fontWeight: 700 }}>ستون قهرمانان مدل‌ها</h3>
                   <span style={{ fontSize: 12, color: 'var(--vg-ink2)', border: '1px solid var(--vg-line2)', borderRadius: 6, padding: '3px 8px' }}>
                     برترین مدل‌ها · سهم برد این هفته
                   </span>

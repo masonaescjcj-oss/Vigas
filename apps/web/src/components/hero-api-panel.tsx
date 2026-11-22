@@ -14,7 +14,7 @@ const SHOWCASE: ShowcaseSpec[] = [
   { id: 'deepseek/v4.1-flash', enTag: 'Lowest cost', faTag: 'ارزان‌ترین', speedEn: '98ms', speedFa: '98ms' },
   { id: 'google/gemini-4-argon', enTag: 'Fastest', faTag: 'فوق‌سریع', speedEn: '105ms', speedFa: '105ms' },
   { id: 'openai/gpt-6.1-terra', enTag: 'Reasoning -12%', faTag: 'استدلال 12%-', speedEn: '140ms', speedFa: '140ms' },
-  { id: 'anthropic/claude-fable-5.2', enTag: '#1 Arena', faTag: 'رتبه ۱ Arena', speedEn: '175ms', speedFa: '175ms' },
+  { id: 'anthropic/claude-fable-5.2', enTag: '#1 Ranked', faTag: 'رتبه ۱', speedEn: '175ms', speedFa: '175ms' },
 ];
 
 const toFaDigits = (n: number) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!);

@@ -1,6 +1,6 @@
-import { AUTO_MODEL_ID, formatContext, formatPricePerMillion, type ArenaVote, type ModelListItem } from '@vigas/core';
+import { AUTO_MODEL_ID, formatContext, formatPricePerMillion, type ModelListItem } from '@vigas/core';
 import { useEffect } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -61,11 +61,11 @@ export interface AssistantMessageProps {
   costLabel: string | null;
   onShare: () => void;
   onRegenerate: () => void;
-  onArena: () => void;
+  onSwitchModel: () => void;
   canAct: boolean;
 }
 
-export function AssistantMessage({ msg, costLabel, onShare, onRegenerate, onArena, canAct }: AssistantMessageProps) {
+export function AssistantMessage({ msg, costLabel, onShare, onRegenerate, onSwitchModel, canAct }: AssistantMessageProps) {
   const requested = msg.requested ?? AUTO_MODEL_ID;
   const routed = msg.model ? modelSlug(msg.model) : null;
   const done = msg.status === 'done' || msg.status === 'stopped';
@@ -111,9 +111,9 @@ export function AssistantMessage({ msg, costLabel, onShare, onRegenerate, onAren
             disabled={!canAct}
           />
           {msg.status !== 'error' ? (
-            <Pressable accessibilityRole="button" onPress={onArena} disabled={!canAct} style={({ pressed }) => [styles.tc, pressed && styles.tcPressed]}>
+            <Pressable accessibilityRole="button" onPress={onSwitchModel} disabled={!canAct} style={({ pressed }) => [styles.tc, pressed && styles.tcPressed]}>
               <T size={12} color={colors.ink2}>
-                Compare in Arena
+                Switch model
               </T>
             </Pressable>
           ) : null}
@@ -149,75 +149,6 @@ export function TypingDots() {
       <Dot delay={140} />
       <Dot delay={280} />
     </View>
-  );
-}
-
-export interface ArenaSideView {
-  label: 'A' | 'B';
-  content: string | null;
-  modelName?: string;
-  modelId?: string;
-  winner: boolean;
-}
-
-export function ArenaCard({ side, index }: { side: ArenaSideView; index: number }) {
-  const revealed = !!side.modelName;
-  const org = side.modelId?.split('/')[0]?.toUpperCase();
-  return (
-    <Animated.View
-      entering={FadeInDown.duration(320).delay(index * 90)}
-      style={[styles.arenaCard, side.winner && styles.arenaWinner]}
-      accessibilityLabel={revealed ? `Model ${side.label} was ${side.modelName}` : `Model ${side.label}`}
-    >
-      <View style={styles.arenaHead}>
-        <T f="serif" size={22} lh={1.1} style={styles.flex} numberOfLines={1}>
-          {revealed ? side.modelName : `Model ${side.label}`}
-        </T>
-        <T f="mono" size={12} color={side.winner ? colors.orangeText : colors.ink3}>
-          {revealed ? (org ?? 'REVEALED') : 'HIDDEN'}
-        </T>
-      </View>
-      {side.content === null ? (
-        <View style={styles.arenaLoading}>
-          <TypingDots />
-        </View>
-      ) : (
-        <Markdown text={side.content} color={colors.bodySoft} />
-      )}
-    </Animated.View>
-  );
-}
-
-export function VoteBar({ onVote, busy, chosen }: { onVote: (v: ArenaVote) => void; busy: boolean; chosen: ArenaVote | null }) {
-  const opts: { v: ArenaVote; label: string; narrow?: boolean }[] = [
-    { v: 'a', label: 'A is better' },
-    { v: 'tie', label: 'Tie', narrow: true },
-    { v: 'b', label: 'B is better' },
-  ];
-  return (
-    <Animated.View entering={FadeInDown.duration(220)} accessibilityRole="radiogroup" accessibilityLabel="Vote" style={styles.voteBar}>
-      {opts.map((o) => {
-        const on = chosen === o.v;
-        return (
-          <Pressable
-            key={o.v}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy, selected: on }}
-            disabled={busy}
-            onPress={() => onVote(o.v)}
-            style={({ pressed }) => [styles.vote, o.narrow && styles.voteNarrow, (pressed || on) && styles.votePressed]}
-          >
-            {busy && on ? (
-              <ActivityIndicator color={colors.orangeText} size="small" />
-            ) : (
-              <T f="sansMedium" size={14} color={on ? colors.orangeText : colors.ink}>
-                {o.label}
-              </T>
-            )}
-          </Pressable>
-        );
-      })}
-    </Animated.View>
   );
 }
 
@@ -275,26 +206,6 @@ export function ModelPicker({ visible, onClose, models, value, onPick }: ModelPi
   );
 }
 
-export function ArenaIntro() {
-  return (
-    <Animated.View entering={FadeIn.duration(260)} style={styles.intro}>
-      <View style={styles.introIcon}>
-        <Icon name="arena" size={22} color={colors.onOrange} />
-      </View>
-      <T f="serif" size={34} lh={1.08}>
-        Two hidden models.{'\n'}
-        <Span f="serifItalic" color={colors.sand}>
-          You pick the better one.
-        </Span>
-      </T>
-      <T size={15} color={colors.ink2}>
-        Ask anything. Both answers arrive side by side with names hidden; your vote reveals them and feeds the public
-        leaderboard. Arena battles are free.
-      </T>
-    </Animated.View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   user: {
@@ -343,29 +254,6 @@ const styles = StyleSheet.create({
   cost: { marginLeft: 'auto' },
   dots: { flexDirection: 'row', gap: 5, paddingVertical: 8 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.ink2 },
-  arenaCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(239,234,225,0.1)',
-    borderRadius: 20,
-    padding: 16,
-  },
-  arenaWinner: { borderColor: colors.orange },
-  arenaHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  arenaLoading: { minHeight: 60, justifyContent: 'center' },
-  voteBar: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  vote: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.line2,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  voteNarrow: { flexGrow: 0, flexBasis: 72 },
-  votePressed: { borderColor: colors.orange },
   pickerList: { paddingBottom: 8 },
   pickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: GUTTER, minHeight: 60 },
   autoTile: {
@@ -375,14 +263,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.orangeSoft,
-  },
-  intro: { gap: 14, paddingTop: 8 },
-  introIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: colors.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

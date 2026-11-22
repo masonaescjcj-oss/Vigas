@@ -10,8 +10,8 @@ const EN_PRIVACY: Array<{ title: string; body: string }> = [
     body: 'When you create an account, sign in with GitHub or Google, or purchase prepaid credits, we store only the account details required to authenticate your session, meter your token spend, and display your credit balance.',
   },
   {
-    title: '2. Gateway prompts & Arena votes',
-    body: 'API requests routed through Vigas are forwarded to your selected upstream model provider solely to fulfill your completion request. Public leaderboard win shares and blind pairwise Arena statistics are published strictly as aggregated, non-identifying rankings.',
+    title: '2. Gateway prompts & telemetry',
+    body: 'API requests routed through Vigas are forwarded to your selected upstream model provider solely to fulfill your completion request. Public leaderboard win shares and latency statistics are published strictly as aggregated, non-identifying rankings.',
   },
   {
     title: '3. Cookies & local storage',
@@ -29,8 +29,8 @@ const FA_PRIVACY: Array<{ title: string; body: string }> = [
     body: 'هنگام ساخت حساب، ورود یا شارژ اعتبار پیش‌پرداخت، تنها اطلاعات ضروری برای احراز هویت نشست، محاسبه مصرف توکن و نمایش موجودی کیف‌پول ذخیره می‌شود.',
   },
   {
-    title: '۲. درخواست‌های API و آرای Arena',
-    body: 'درخواست‌های ارسالی از طریق گیت‌وی ویگاس صرفاً برای تولید پاسخ به ارائه‌دهنده مدل انتخاب‌شده شما ارسال می‌شوند. سهم برد لیدربورد عمومی و آمارهای Arena به‌شکل کاملاً تجمیع‌شده و بدون هویت شخصی منتشر می‌گردند.',
+    title: '۲. درخواست‌های API و آمار لیدربورد',
+    body: 'درخواست‌های ارسالی از طریق گیت‌وی ویگاس صرفاً برای تولید پاسخ به ارائه‌دهنده مدل انتخاب‌شده شما ارسال می‌شوند. سهم برد لیدربورد عمومی و آمارهای تأخیر به‌شکل کاملاً تجمیع‌شده و بدون هویت شخصی منتشر می‌گردند.',
   },
   {
     title: '۳. کوکی‌ها و حافظه محلی مرورگر',

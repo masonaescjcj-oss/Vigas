@@ -65,7 +65,6 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="news/[slug]" />
-          <Stack.Screen name="compose" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
           <Stack.Screen name="sign-in" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
         </Stack>
         <MenuDrawer />

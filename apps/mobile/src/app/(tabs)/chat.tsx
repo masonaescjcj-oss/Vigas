@@ -1,4 +1,4 @@
-import { AUTO_MODEL_ID, type ArenaBattleResponse, type ArenaVote, type ArenaVoteResponse } from '@vigas/core';
+import { AUTO_MODEL_ID } from '@vigas/core';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
@@ -6,64 +6,42 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   TextInput,
   View,
-  type ScrollViewInstance,
   type TextInputInstance,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { KeyButton } from '@/components/buttons';
 import {
-  ArenaCard,
-  ArenaIntro,
   AssistantMessage,
   ModelPicker,
   UserBubble,
-  VoteBar,
   modelSlug,
-  type ArenaSideView,
   type ChatMsg,
 } from '@/components/chat';
 import { Icon, LogoMark, StopGlyph } from '@/components/icons';
+import { WalletPill } from '@/components/menu-drawer';
 import { IconButton, PressableScale } from '@/components/pressable';
-import { Segmented } from '@/components/segmented';
-import { Label, Span, T } from '@/components/text';
-import { ApiError, api, errorMessage, isUnauthorized, studioChatUrl, withTimeout } from '@/lib/api';
+import { Span, T } from '@/components/text';
+import { api, errorMessage, isUnauthorized, studioChatUrl } from '@/lib/api';
 import { fallbackModels } from '@/lib/fallback';
 import { intl, usdFromDollars } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { consumePendingChat, setPendingChat } from '@/lib/pending-chat';
 import { useRemote } from '@/lib/remote';
 import { useSession } from '@/lib/session';
-import { toast } from '@/lib/toast';
 import { useKeyboardVisible } from '@/lib/use-keyboard';
 import { colors } from '@/theme';
 
-type Mode = 'chat' | 'arena';
-
-type ArenaState =
-  | { phase: 'idle' }
-  | { phase: 'loading'; prompt: string }
-  | { phase: 'error'; prompt: string; message: string }
-  | { phase: 'ready'; prompt: string; battle: ArenaBattleResponse; voting: ArenaVote | null }
-  | { phase: 'revealed'; prompt: string; battle: ArenaBattleResponse; result: ArenaVoteResponse };
-
-const MODES = [
-  { id: 'chat', label: 'Chat' },
-  { id: 'arena', label: 'Arena' },
-] as const;
-
 const SUGGESTIONS = [
   'Which model should I use to summarize 10,000 contracts — and what will it cost?',
-  'Explain the Vigas leaderboard in two sentences.',
-  'Draft a launch tweet for a note-taking app.',
+  'Write an OpenAI SDK client pointing at https://api.vigas.ai/v1.',
+  'Draft a launch tweet for a developer API product.',
 ];
-const ARENA_SUGGESTIONS = ['Summarize an NDA in five bullets for a founder.', 'Write a haiku about latency.', 'Explain RAG to a 12-year-old.'];
 
 /** Abort streams that produce nothing for this long. */
 const FIRST_BYTE_MS = 30_000;
@@ -75,37 +53,33 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardVisible();
   const { token, expire } = useSession();
-  const params = useLocalSearchParams<{ prompt?: string; mode?: string; model?: string; t?: string }>();
+  const params = useLocalSearchParams<{ prompt?: string; model?: string; t?: string }>();
 
-  const [mode, setMode] = useState<Mode>(params.mode === 'arena' ? 'arena' : 'chat');
   const [model, setModel] = useState<string>(params.model || AUTO_MODEL_ID);
   const [draft, setDraft] = useState(params.prompt ?? '');
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [usage, setUsage] = useState({ tokens: 0, cost: 0 });
-  const [arena, setArena] = useState<ArenaState>({ phase: 'idle' });
   const [picker, setPicker] = useState(false);
 
-  // Links from Home, Ranks and articles (prompt / model / mode) apply each time they're followed.
+  // Links from Home, Ranks and Hub (prompt / model) apply each time they're followed.
   const [lastNav, setLastNav] = useState(params.t);
   if (params.t !== lastNav) {
     setLastNav(params.t);
-    if (params.mode === 'arena' || params.mode === 'chat') setMode(params.mode);
     if (params.model) setModel(params.model);
     if (params.prompt) setDraft(params.prompt);
   }
 
   const inputRef = useRef<TextInputInstance>(null);
   const listRef = useRef<FlatList<ChatMsg>>(null);
-  const arenaRef = useRef<ScrollViewInstance>(null);
   const abortRef = useRef<AbortController | null>(null);
   const atBottom = useRef(true);
 
   useEffect(() => {
-    if (!params.t || params.mode === 'arena') return;
+    if (!params.t) return;
     const id = setTimeout(() => inputRef.current?.focus(), 350);
     return () => clearTimeout(id);
-  }, [params.t, params.mode]);
+  }, [params.t]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -123,8 +97,6 @@ export default function ChatScreen() {
       router.push('/sign-in');
     }
   };
-
-  // ── Chat ────────────────────────────────────────────────────────────────
 
   const updateMsg = (id: string, patch: Partial<ChatMsg> | ((m: ChatMsg) => Partial<ChatMsg>)) =>
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...(typeof patch === 'function' ? patch(m) : patch) } : m)));
@@ -225,80 +197,32 @@ export default function ChatScreen() {
     void stream(fresh.id, history, model);
   };
 
-  // ── Arena ───────────────────────────────────────────────────────────────
-
-  const startBattle = async (prompt: string) => {
-    setArena({ phase: 'loading', prompt });
-    try {
-      const battle = await withTimeout(api.arenaBattle(prompt), 120_000);
-      setArena({ phase: 'ready', prompt, battle, voting: null });
-      haptics.tap();
-    } catch (e) {
-      haptics.error();
-      setArena({ phase: 'error', prompt, message: errorMessage(e) });
-      handleAuthError(e);
-    }
-  };
-
-  const castVote = async (vote: ArenaVote) => {
-    if (arena.phase !== 'ready' || arena.voting) return;
-    const { prompt, battle } = arena;
-    haptics.press();
-    setArena({ phase: 'ready', prompt, battle, voting: vote });
-    try {
-      const result = await withTimeout(api.arenaVote(battle.battleId, vote));
-      setArena({ phase: 'revealed', prompt, battle, result });
-      haptics.success();
-    } catch (e) {
-      setArena({ phase: 'ready', prompt, battle, voting: null });
-      haptics.error();
-      toast(e instanceof ApiError && e.status === 409 ? 'This battle already has a vote.' : errorMessage(e), 'error');
-      handleAuthError(e);
-    }
-  };
-
-  const toArena = (prompt: string) => {
-    setMode('arena');
-    if (!token) {
-      setDraft(prompt);
-      setPendingChat({ prompt, mode: 'arena', model });
-      router.push({ pathname: '/sign-in', params: { mode: 'signup' } });
-      return;
-    }
-    void startBattle(prompt);
-  };
-
   // Automatically answer the saved guest prompt right after Sign up / Sign in completes.
   useEffect(() => {
     if (!token) return;
     const pending = consumePendingChat();
     if (!pending) return;
     const id = setTimeout(() => {
-      setMode(pending.mode);
       if (pending.model) setModel(pending.model);
       setDraft('');
-      if (pending.mode === 'arena') void startBattle(pending.prompt);
-      else sendChat(pending.prompt, pending.model);
+      sendChat(pending.prompt, pending.model);
     }, 60);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // ── Composer ────────────────────────────────────────────────────────────
-
   const send = () => {
     const text = draft.trim();
-    if (!text || streaming || arena.phase === 'loading') return;
+    if (!text || streaming) return;
     if (!token) {
       haptics.tap();
-      setPendingChat({ prompt: text, mode, model });
+      setPendingChat({ prompt: text, model });
       router.push({ pathname: '/sign-in', params: { mode: 'signup' } });
       return;
     }
     haptics.tap();
     setDraft('');
-    if (mode === 'arena') void startBattle(text);
-    else sendChat(text);
+    sendChat(text);
   };
 
   const stop = () => {
@@ -309,26 +233,17 @@ export default function ChatScreen() {
   const newConversation = () => {
     if (streaming) abortRef.current?.abort();
     haptics.select();
-    if (mode === 'arena') setArena({ phase: 'idle' });
-    else {
-      setMessages([]);
-      setUsage({ tokens: 0, cost: 0 });
-    }
+    setMessages([]);
+    setUsage({ tokens: 0, cost: 0 });
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────
-
-  const isArena = mode === 'arena';
-  const modelLabel = isArena ? 'Arena · 2 hidden' : modelSlug(model);
-  const meta = isArena
-    ? 'Free · your vote shapes the Ranks'
-    : usage.tokens > 0
+  const modelLabel = modelSlug(model);
+  const meta =
+    usage.tokens > 0
       ? `${intl(usage.tokens)} tokens · ${usdFromDollars(usage.cost)}`
       : modelInfo
         ? `${modelInfo.name} · pay per token`
         : 'Auto-routed · pay per token';
-  const showVote = isArena && arena.phase === 'ready';
-  const busy = streaming || arena.phase === 'loading';
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -337,145 +252,79 @@ export default function ChatScreen() {
         <View style={styles.flex}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={isArena ? 'Arena mode: two hidden models' : `Model ${modelLabel}. Change model`}
-            disabled={isArena}
+            accessibilityLabel={`Model ${modelLabel}. Change model`}
             onPress={() => setPicker(true)}
             hitSlop={8}
             style={styles.modelBtn}
           >
-            <View style={[styles.liveDot, isArena && { backgroundColor: colors.orange }]} />
+            <View style={styles.liveDot} />
             <T f="monoMedium" size={14} numberOfLines={1} style={styles.shrink}>
               {modelLabel}
             </T>
-            {!isArena ? <Icon name="chevronDown" size={15} /> : null}
+            <Icon name="chevronDown" size={15} />
           </Pressable>
           <T f="mono" size={12} color={colors.ink3} numberOfLines={1}>
             {meta}
           </T>
         </View>
-        <Segmented options={MODES} value={mode} onChange={(m) => setMode(m)} tone="dark" stretch={false} height={36} fontSize={13} accessibilityLabel="Mode" />
+        <WalletPill />
       </View>
 
       <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-        {isArena ? (
-          <ScrollView
-            ref={arenaRef}
-            style={styles.flex}
-            contentContainerStyle={styles.thread}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            onContentSizeChange={() => arenaRef.current?.scrollToEnd({ animated: true })}
-          >
-            <Label color={colors.orangeText}>Arena · blind test</Label>
-            {arena.phase === 'idle' ? (
-              <>
-                <ArenaIntro />
-                <View style={styles.suggestions}>
-                  {ARENA_SUGGESTIONS.map((s) => (
-                    <Suggestion key={s} text={s} onPress={() => setDraft(s)} />
-                  ))}
-                </View>
-              </>
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          style={styles.flex}
+          contentContainerStyle={[styles.thread, messages.length === 0 && styles.grow]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onLayout={() => {
+            if (atBottom.current) listRef.current?.scrollToEnd({ animated: false });
+          }}
+          onScroll={(e) => {
+            const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+            atBottom.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+          }}
+          scrollEventThrottle={64}
+          onContentSizeChange={() => {
+            if (atBottom.current) listRef.current?.scrollToEnd({ animated: !streaming });
+          }}
+          ListEmptyComponent={
+            <ChatEmpty
+              onPick={(s) => setDraft(s)}
+              onOpenStudio={() =>
+                void WebBrowser.openBrowserAsync(studioChatUrl(model), {
+                  toolbarColor: colors.bg,
+                  controlsColor: colors.orange,
+                })
+              }
+            />
+          }
+          renderItem={({ item }) =>
+            item.role === 'user' ? (
+              <UserBubble text={item.content} />
             ) : (
-              <>
-                <UserBubble text={arena.prompt} />
-                {arena.phase === 'error' ? (
-                  <View style={styles.arenaError}>
-                    <T size={14} color={colors.ink2}>
-                      {arena.message}
-                    </T>
-                    <Pressable accessibilityRole="button" onPress={() => void startBattle(arena.prompt)} style={styles.retry} hitSlop={8}>
-                      <Icon name="regenerate" size={16} color={colors.indigo} />
-                      <T f="sansMedium" size={14} color={colors.indigo}>
-                        Try again
-                      </T>
-                    </Pressable>
-                  </View>
-                ) : (
-                  arenaSides(arena).map((side, i) => <ArenaCard key={side.label} side={side} index={i} />)
-                )}
-                {arena.phase === 'revealed' ? (
-                  <Animated.View entering={FadeInDown.duration(260)} style={styles.voted}>
-                    <Icon name="check" size={18} color={colors.green} />
-                    <T size={14} style={styles.flex}>
-                      Vote counted. It’s now part of the leaderboard.
-                    </T>
-                    <Pressable accessibilityRole="link" onPress={() => router.navigate('/ranks')} hitSlop={10}>
-                      <T f="sansMedium" size={14} color={colors.indigo}>
-                        Ranks
-                      </T>
-                    </Pressable>
-                  </Animated.View>
-                ) : null}
-              </>
-            )}
-          </ScrollView>
-        ) : (
-          <FlatList
-            ref={listRef}
-            data={messages}
-            keyExtractor={(m) => m.id}
-            style={styles.flex}
-            contentContainerStyle={[styles.thread, messages.length === 0 && styles.grow]}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            // The keyboard shrinks the list; keep the latest message in view.
-            onLayout={() => {
-              if (atBottom.current) listRef.current?.scrollToEnd({ animated: false });
-            }}
-            onScroll={(e) => {
-              const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-              atBottom.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
-            }}
-            scrollEventThrottle={64}
-            onContentSizeChange={() => {
-              if (atBottom.current) listRef.current?.scrollToEnd({ animated: !streaming });
-            }}
-            ListEmptyComponent={
-              <ChatEmpty
-                onPick={(s) => setDraft(s)}
-                onOpenStudio={() =>
-                  void WebBrowser.openBrowserAsync(studioChatUrl(model), {
-                    toolbarColor: colors.bg,
-                    controlsColor: colors.orange,
-                  })
-                }
+              <AssistantMessage
+                msg={item}
+                canAct={!streaming}
+                costLabel={item.costUsd !== null && item.costUsd !== undefined ? usdFromDollars(item.costUsd) : null}
+                onShare={() => void Share.share({ message: item.content }).catch(() => undefined)}
+                onRegenerate={() => regenerate(item.id)}
+                onSwitchModel={() => setPicker(true)}
               />
-            }
-            renderItem={({ item, index }) =>
-              item.role === 'user' ? (
-                <UserBubble text={item.content} />
-              ) : (
-                <AssistantMessage
-                  msg={item}
-                  canAct={!streaming}
-                  costLabel={item.costUsd !== null && item.costUsd !== undefined ? usdFromDollars(item.costUsd) : null}
-                  onShare={() => void Share.share({ message: item.content }).catch(() => undefined)}
-                  onRegenerate={() => regenerate(item.id)}
-                  onArena={() => {
-                    const prompt = [...messages.slice(0, index)].reverse().find((m) => m.role === 'user')?.content;
-                    if (prompt) toArena(prompt);
-                  }}
-                />
-              )
-            }
-          />
-        )}
+            )
+          }
+        />
 
         <View style={[styles.composerWrap, { paddingBottom: keyboard ? 8 : insets.bottom + 10 }]}>
-          {showVote ? <VoteBar onVote={(v) => void castVote(v)} busy={!!arena.voting} chosen={arena.voting} /> : null}
           <View style={styles.composer}>
-            <IconButton
-              icon="plus"
-              accessibilityLabel={isArena ? 'New battle' : 'New chat'}
-              color={colors.ink2}
-              onPress={newConversation}
-            />
+            <IconButton icon="plus" accessibilityLabel="New chat" color={colors.ink2} onPress={newConversation} />
             <TextInput
               ref={inputRef}
               value={draft}
               onChangeText={setDraft}
-              placeholder={isArena ? (arena.phase === 'revealed' ? 'Ask a new question…' : 'Ask both models…') : 'Message Vigas…'}
+              placeholder="Message Vigas…"
               placeholderTextColor={colors.ink3}
               accessibilityLabel="Message"
               multiline
@@ -492,10 +341,9 @@ export default function ChatScreen() {
               <KeyButton
                 round
                 height={44}
-                accessibilityLabel={isArena ? 'Start battle' : 'Send'}
+                accessibilityLabel="Send"
                 icon={<Icon name="arrowUp" size={20} color={colors.onOrange} />}
-                disabled={!draft.trim() || busy}
-                loading={arena.phase === 'loading'}
+                disabled={!draft.trim() || streaming}
                 onPress={send}
                 haptic={false}
               />
@@ -516,29 +364,6 @@ export default function ChatScreen() {
       />
     </View>
   );
-}
-
-function arenaSides(arena: ArenaState): ArenaSideView[] {
-  if (arena.phase === 'loading') {
-    return [
-      { label: 'A', content: null, winner: false },
-      { label: 'B', content: null, winner: false },
-    ];
-  }
-  if (arena.phase === 'ready') {
-    return arena.battle.sides.map((s) => ({ label: s.label, content: s.content, winner: false }));
-  }
-  if (arena.phase === 'revealed') {
-    const v = arena.result.vote;
-    return arena.result.sides.map((s) => ({
-      label: s.label,
-      content: s.content,
-      modelName: s.modelName,
-      modelId: s.modelId,
-      winner: (v === 'a' && s.label === 'A') || (v === 'b' && s.label === 'B'),
-    }));
-  }
-  return [];
 }
 
 function Suggestion({ text, onPress }: { text: string; onPress: () => void }) {
@@ -596,9 +421,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingLeft: 8,
+    paddingRight: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
@@ -677,24 +503,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139,144,240,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(139,144,240,0.28)',
-  },
-  arenaError: {
-    gap: 10,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line2,
-  },
-  retry: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 36 },
-  voted: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(111,207,115,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(111,207,115,0.3)',
   },
 });

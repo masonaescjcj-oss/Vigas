@@ -66,7 +66,7 @@ const FA_COLS: Array<{ title: string; links: Array<[string, string]> }> = [
     ],
   },
   {
-    title: 'لیدربورد Arena',
+    title: 'لیدربورد مدل‌ها',
     links: [
       ['بهترین ایجنت‌های کل', '/leaderboard'],
       ['برترین مدل‌های کدنویسی', '/leaderboard/coding'],
@@ -122,7 +122,7 @@ export function SiteFooter({ lang = 'en', altHref }: { lang?: 'en' | 'fa'; altHr
             </Link>
             <p style={{ color: 'var(--vg-ink2)', maxWidth: 320, margin: '16px 0 18px', fontSize: 14, lineHeight: isFa ? 1.8 : 1.6 }}>
               {isFa
-                ? 'سریع‌ترین و ارزان‌ترین دروازه API هوش مصنوعی — یک کلید، قیمت مستقیم آزمایشگاه‌ها، رتبه‌بندی زنده Arena و اخبار دوزبانه.'
+                ? 'سریع‌ترین و ارزان‌ترین دروازه API هوش مصنوعی — یک کلید، قیمت مستقیم آزمایشگاه‌ها، رتبه‌بندی زنده مدل‌ها و اخبار دوزبانه.'
                 : 'The fastest, lowest-cost AI API gateway — one key, pass-through pricing, live rankings, and bilingual AI news.'}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

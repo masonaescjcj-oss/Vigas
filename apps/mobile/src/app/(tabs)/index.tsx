@@ -1,19 +1,19 @@
-import { formatPricePerMillion, type ModelListItem, type NewsListItem, type PulsePost, type ToolItem, type WalletResponse } from '@vigas/core';
+import { formatPricePerMillion, type ModelListItem, type NewsListItem, type ToolItem, type WalletResponse } from '@vigas/core';
 import { router, useScrollToTop } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bento, Led, SectionHead, Tag } from '@/components/boxes';
 import { KeyButton } from '@/components/buttons';
+import { CostCalculator } from '@/components/cost-calculator';
 import { Icon, LogoMark } from '@/components/icons';
 import { MenuTrigger, WalletPill } from '@/components/menu-drawer';
 import { Monogram, OrgMonogram } from '@/components/monogram';
 import { NewsCover } from '@/components/news-cover';
 import { Colonnade } from '@/components/pillars';
 import { IconButton, PressableScale } from '@/components/pressable';
-import { ApiCodeSheet, PostCard } from '@/components/pulse';
 import { Refresher, StatusScrim } from '@/components/screen';
 import { Skeleton, SkeletonRow } from '@/components/skeleton';
 import { OfflineNote } from '@/components/states';
@@ -21,13 +21,12 @@ import { Label, Span, T } from '@/components/text';
 import { api } from '@/lib/api';
 import { fallbackHome } from '@/lib/fallback';
 import { agoLabel, dayLabel, greeting, intl, navStamp, pct, pillarName, shortTitle, usd } from '@/lib/format';
-import { usePulseFeed } from '@/lib/pulse';
 import { useRemote } from '@/lib/remote';
 import { useSession } from '@/lib/session';
 import { useWallet } from '@/lib/wallet';
 import { colors, GUTTER, radius } from '@/theme';
 
-const PROMPTS = ['Compare Fable vs Flash', 'AI news in 60 seconds', 'Cheapest PDF extractor', 'Write a launch tweet'];
+const PROMPTS = ['Compare Fable vs Flash', 'AI news in 60 seconds', 'Cheapest PDF extractor', 'OpenAI SDK for Vigas'];
 const CARD_W = 286;
 const CARD_GAP = 10;
 
@@ -42,11 +41,11 @@ const LIVE_SHOWCASE: RateSpec[] = [
   { id: 'deepseek/v4.1-flash', tag: 'Lowest cost', speed: '98ms', fast: true },
   { id: 'google/gemini-4-argon', tag: 'Fastest', speed: '105ms', fast: true },
   { id: 'openai/gpt-6.1-terra', tag: 'Reasoning -12%', speed: '140ms' },
-  { id: 'anthropic/claude-fable-5.2', tag: '#1 Arena', speed: '175ms' },
+  { id: 'anthropic/claude-fable-5.2', tag: '#1 Ranked', speed: '175ms' },
 ];
 
 const openChat = (prompt?: string, model?: string) =>
-  router.navigate({ pathname: '/chat', params: { prompt: prompt ?? '', model: model ?? '', mode: 'chat', t: navStamp() } });
+  router.navigate({ pathname: '/chat', params: { prompt: prompt ?? '', model: model ?? '', t: navStamp() } });
 
 const enter = (i: number) => FadeInDown.duration(380).delay(35 + i * 45);
 
@@ -55,14 +54,11 @@ export default function HomeScreen() {
   const { token } = useSession();
   const home = useRemote('home', () => api.home(), { fallback: fallbackHome });
   const wallet = useWallet();
-  const pulse = usePulseFeed('hot');
-  const [codePost, setCodePost] = useState<PulsePost | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
 
   const feed = home.data;
   const now = new Date();
-  const spotlight = pulse.items.find((p) => p.kind === 'battle') ?? pulse.items[0] ?? null;
 
   return (
     <View style={styles.root}>
@@ -72,12 +68,11 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <Refresher
-            refreshing={home.refreshing || wallet.refreshing || pulse.refreshing}
+            refreshing={home.refreshing || wallet.refreshing}
             progressViewOffset={insets.top}
             onRefresh={() => {
               void home.refresh();
               void wallet.refresh();
-              void pulse.refresh();
             }}
           />
         }
@@ -123,14 +118,14 @@ export default function HomeScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Open blind Arena"
+                accessibilityLabel="Browse models and API prices"
                 hitSlop={6}
-                onPress={() => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: navStamp() } })}
-                style={styles.arenaPill}
+                onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } })}
+                style={styles.modelsPill}
               >
-                <Icon name="arena" size={13} color={colors.sand} />
+                <Icon name="layers" size={13} color={colors.sand} />
                 <T f="monoMedium" size={11.5} color={colors.sand}>
-                  Arena
+                  26 models
                 </T>
               </Pressable>
               <View style={[styles.sendKey, styles.pushRight]}>
@@ -162,21 +157,10 @@ export default function HomeScreen() {
           <LiveRatesBox models={feed?.prices ?? []} />
         </Animated.View>
 
-        {/* § 02 — Pulse Community Spotlight */}
-        {spotlight ? (
-          <Animated.View entering={enter(3)} style={styles.section}>
-            <SectionHead
-              index="02"
-              label="Pulse · Community"
-              title="Live model"
-              accent="battle."
-              right={<SeeAll label="Open Pulse" onPress={() => router.navigate('/pulse')} />}
-            />
-            <View style={styles.pad}>
-              <PostCard post={spotlight} onCode={setCodePost} />
-            </View>
-          </Animated.View>
-        ) : null}
+        {/* § 02 — Interactive API Cost Estimator (zero token burn, drives API adoption) */}
+        <Animated.View entering={enter(3)} style={[styles.section, styles.pad]}>
+          <CostCalculator compact />
+        </Animated.View>
 
         {/* § 03 — The Colonnade (signature architectural fluted pillars) */}
         <Animated.View entering={enter(4)} style={styles.section}>
@@ -185,7 +169,7 @@ export default function HomeScreen() {
               <View style={styles.flex}>
                 <Label color={colors.sand}>§ 03 — The Colonnade</Label>
                 <T f="serif" size={28} lh={1.06} style={styles.bentoTitle}>
-                  Top agents <Span f="serifItalic" color={colors.sand}>this week</Span>
+                  Top models <Span f="serifItalic" color={colors.sand}>this week</Span>
                 </T>
               </View>
               <SeeAll label="Ranks" onPress={() => router.navigate('/ranks')} />
@@ -263,7 +247,6 @@ export default function HomeScreen() {
         </Animated.View>
       </ScrollView>
       <StatusScrim />
-      <ApiCodeSheet post={codePost} onClose={() => setCodePost(null)} />
     </View>
   );
 }
@@ -531,7 +514,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line2,
     backgroundColor: colors.bg2,
   },
-  arenaPill: {
+  modelsPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,

@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: PageProps<'/leaderboard/[cate
     description: DESCRIPTIONS[category],
     path: `/leaderboard/${category}`,
     image: `/og/leaderboard/${category}`,
-    imageAlt: `Best ${label} AI models on Vigas Arena Leaderboard`,
+    imageAlt: `Best ${label} AI models on Vigas Leaderboard`,
   });
 }
 

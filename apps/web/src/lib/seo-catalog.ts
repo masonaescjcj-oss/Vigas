@@ -301,7 +301,7 @@ export const NEWS_CATEGORY_SEO: Record<NewsCategory, NewsCategorySeo> = {
     faqs: [
       {
         q: 'How does Vigas verify AI model launch claims?',
-        a: 'We cross-reference provider announcements against live gateway latency, per-token pass-through pricing, and blind Arena pairwise votes.',
+        a: 'We cross-reference provider announcements against live gateway latency, per-token pass-through pricing, and verified gateway telemetry.',
       },
     ],
   },
@@ -331,13 +331,13 @@ export const NEWS_CATEGORY_SEO: Record<NewsCategory, NewsCategorySeo> = {
     description:
       'Data-backed analysis essays examining AI inference economics, datacenter power constraints, model routing trends, and developer adoption.',
     intro:
-      'Original essays grounded in anonymized marketplace price changes, latency telemetry, and multi-model Arena preferences.',
+      'Original essays grounded in anonymized marketplace price changes, latency telemetry, and multi-model gateway telemetry.',
     relatedToolCategory: 'Research',
     relatedLeaderboard: 'overall',
     faqs: [
       {
         q: 'What datasets inform Vigas Newsroom analysis?',
-        a: 'Our essays cite real router pricing snapshots, Bradley-Terry Arena win shares, and anonymized task cost distributions across Vigas.',
+        a: 'Our essays cite real router pricing snapshots, Bradley-Terry live win shares, and anonymized task cost distributions across Vigas.',
       },
     ],
   },
@@ -424,7 +424,7 @@ export interface LeaderboardCategorySeo {
 
 export const LEADERBOARD_CATEGORY_SEO: Record<LeaderboardCategory, LeaderboardCategorySeo> = {
   overall: {
-    intro: 'Composite leaderboard weighting real multi-turn task completions alongside blind Arena pairwise comparisons across every domain.',
+    intro: 'Composite leaderboard weighting real multi-turn task completions alongside verified benchmark telemetry across every domain.',
     relatedToolCategory: 'Agents',
     relatedToolLabel: 'AI agent tools',
     relatedNewsCategory: 'Models',
@@ -738,7 +738,7 @@ export const LEADERBOARD_CATEGORIES_FA: Record<LeaderboardCategory, string> = {
 
 export const LEADERBOARD_CATEGORY_SEO_FA: Record<LeaderboardCategory, LeaderboardCategorySeo> = {
   overall: {
-    intro: 'لیدربورد ترکیبی که انجام موفق کارهای واقعی چندمرحله‌ای را همراه با مقایسه‌های کور Arena در همه حوزه‌ها می‌سنجد.',
+    intro: 'لیدربورد ترکیبی که انجام موفق کارهای واقعی چندمرحله‌ای را همراه با تله‌متری معتبر در همه حوزه‌ها می‌سنجد.',
     relatedToolCategory: 'Agents',
     relatedToolLabel: 'ابزارهای ایجنتی AI',
     relatedNewsCategory: 'Models',
@@ -836,7 +836,7 @@ export function getLeaderboardFaq(
     items.push(
       {
         q: 'امتیاز و سهم برد لیدربورد ویگاس چگونه محاسبه می‌شود؟',
-        a: 'ویگاس نتایج واقعی اجرای تسک‌ها در درخواست‌های API و ایجنت‌ها را با آرای کور جفتی Arena ترکیب کرده و از مدل آماری Bradley-Terry با بازه اطمینان ۹۵٪ استفاده می‌کند.',
+        a: 'ویگاس نتایج واقعی اجرای تسک‌ها در درخواست‌های API و ایجنت‌ها را با ارزیابی‌های معتبر ترکیب کرده و از مدل آماری Bradley-Terry با بازه اطمینان ۹۵٪ استفاده می‌کند.',
       },
       {
         q: `آیا می‌توانم همه مدل‌های برتر بخش ${label} را با یک کلید API فراخوانی کنم؟`,
@@ -862,7 +862,7 @@ export function getLeaderboardFaq(
   items.push(
     {
       q: 'How are Vigas leaderboard scores and win shares calculated?',
-      a: 'Vigas combines real session outcomes across API workloads and agent harnesses with blind pairwise Arena votes using a Bradley-Terry statistical model with 95% confidence intervals.',
+      a: 'Vigas combines real session outcomes across API workloads and agent harnesses with verified benchmark telemetry using a Bradley-Terry statistical model with 95% confidence intervals.',
     },
     {
       q: `Can I call the top ${label.toLowerCase()} models through one API?`,

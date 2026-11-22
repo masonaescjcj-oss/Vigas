@@ -14,14 +14,14 @@ import { breadcrumbLd, faqLd } from '@/lib/seo';
 
 const EN_FEATURES: Array<{ icon: IconName; t: string; d: string }> = [
   { icon: 'refresh', t: 'Automatic fallbacks', d: 'If a provider is down or rate-limited, the request moves to the next one — same response format.' },
-  { icon: 'bolt', t: 'Fastest edge routing', d: 'Route requests by latency, lowest price or Arena quality, or let vigas/auto pick the fastest healthy endpoint.' },
+  { icon: 'bolt', t: 'Fastest edge routing', d: 'Route requests by latency, lowest price or live quality score, or let vigas/auto pick the fastest healthy endpoint.' },
   { icon: 'wallet', t: 'Lowest pass-through prices', d: 'Prepaid credits across every provider with $0 markup on your first $5 and zero hidden surcharges.' },
   { icon: 'chart', t: 'Usage you can read', d: 'Per-key spend, tokens and daily usage — in your dashboard with optional monthly caps.' },
 ];
 
 const FA_FEATURES: Array<{ icon: IconName; t: string; d: string }> = [
   { icon: 'refresh', t: 'Failover خودکار', d: 'اگر یکی از ارائه‌دهندگان با خطا یا محدودیت مواجه شود، درخواست بدون تغییر فرمت به گره جایگزین منتقل می‌شود.' },
-  { icon: 'bolt', t: 'مسیریابی سریع از لبه', d: 'مسیریابی هوشمند بر اساس تأخیر، کمترین قیمت یا امتیاز Arena؛ یا سپردن انتخاب به vigas/auto.' },
+  { icon: 'bolt', t: 'مسیریابی سریع از لبه', d: 'مسیریابی هوشمند بر اساس تأخیر، کمترین قیمت یا امتیاز کیفیت زنده؛ یا سپردن انتخاب به vigas/auto.' },
   { icon: 'wallet', t: 'کمترین تعرفه مستقیم', d: 'انتقال نرخ اصلی توکن‌های آزمایشگاه‌ها بدون کارمزد روی ۵ دلار اول و بدون هزینه پنهان.' },
   { icon: 'chart', t: 'گزارش مصرف شفاف', d: 'ردیابی هزینه، توکن و مصرف روزانه برای هر کلید در داشبورد با امکان تعیین سقف ماهانه.' },
 ];

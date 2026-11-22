@@ -321,7 +321,7 @@ export async function ArticleView({ slug }: { slug: string }) {
                 </div>
                 <p style={{ margin: 0, color: 'var(--vg-ink2)', lineHeight: isFa ? 1.8 : 1.55 }}>
                   {isFa
-                    ? 'عضو تحریریه ویگاس. تمام گزارش‌ها با داده‌های زنده لیدربورد Arena و جدول تعرفه روتر ویگاس راستی‌آزمایی می‌شوند.'
+                    ? 'عضو تحریریه ویگاس. تمام گزارش‌ها با داده‌های زنده لیدربورد زنده و جدول تعرفه روتر ویگاس راستی‌آزمایی می‌شوند.'
                     : 'Writes for the Vigas Newsroom. Every story is checked against live data from the Vigas leaderboard and price sheet.'}
                 </p>
               </div>
@@ -475,7 +475,7 @@ function WinShareFigure({ entries, isFa }: { entries: Array<{ modelId: string; n
           {isFa ? 'سهم برد ۵ مدل برتر (رتبه‌بندی کلی)' : 'Win share, top five (overall)'}
         </b>
         <span className={isFa ? 'fa-ui' : 'mn'} style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-          {isFa ? 'Vigas Arena · زنده' : 'Vigas Arena · live'}
+          {isFa ? 'لیدربورد ویگاس · زنده' : 'Vigas Ranks · live'}
         </span>
       </figcaption>
       <ol dir="ltr" style={{ listStyle: 'none', margin: 0, padding: 0 }}>

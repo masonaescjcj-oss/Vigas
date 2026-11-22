@@ -7,4 +7,3 @@ export * from './openai';
 export * from './app-api';
 export * from './admin';
 export * from './avexpay';
-export * from './pulse';

@@ -8,6 +8,7 @@ import Animated, { Easing, FadeInDown, LinearTransition, useAnimatedStyle, useSh
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GhostButton, KeyButton } from '@/components/buttons';
+import { CostCalculator } from '@/components/cost-calculator';
 import { Icon } from '@/components/icons';
 import { MenuTrigger } from '@/components/menu-drawer';
 import { IconButton } from '@/components/pressable';
@@ -31,7 +32,7 @@ const SOURCES: Record<WalletResponse['bySource'][number]['source'], { label: str
   api: { label: 'API Gateway', color: colors.indigo },
   retrobuild: { label: 'Sandbox', color: colors.orange },
   chat: { label: 'Chat', color: colors.sand },
-  arena: { label: 'Arena', color: colors.teal },
+  arena: { label: 'Eval', color: colors.teal },
 };
 
 /** Micros per token for a typical Claude Sonnet 5.5 request, used for the "≈ tokens" hint. */
@@ -59,7 +60,7 @@ export default function WalletScreen() {
         <View style={styles.titleRow}>
           <MenuTrigger />
           <T f="serif" size={38} lh={1.05} ls={-0.02} accessibilityRole="header" style={styles.flex}>
-            Wallet
+            API Console
           </T>
           {token ? (
             <IconButton
@@ -329,6 +330,10 @@ function Loaded({ wallet }: { wallet: WalletResponse }) {
         )}
       </Animated.View>
 
+      <Animated.View entering={FadeInDown.duration(380).delay(200)} style={[styles.pad, styles.calcWrap]}>
+        <CostCalculator />
+      </Animated.View>
+
       <NewKeySheet visible={keySheet} onClose={() => setKeySheet(false)} />
       <EditLimitSheet keyItem={limitKey} onClose={() => setLimitKey(null)} />
     </View>
@@ -538,6 +543,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   pad: { paddingHorizontal: GUTTER },
   top: { marginTop: 18 },
+  calcWrap: { marginTop: 22 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 12 },
   signedAs: { marginTop: 24 },
   perks: { marginTop: 18, marginHorizontal: GUTTER, gap: 4 },

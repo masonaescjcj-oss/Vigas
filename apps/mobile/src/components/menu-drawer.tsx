@@ -55,14 +55,14 @@ export function MenuTrigger() {
   return <IconButton icon="menu" accessibilityLabel="Open menu" onPress={openMenu} color={colors.ink} />;
 }
 
-/** Top-right compact API / Wallet pill (balance when signed in, API key prompt when guest). */
+/** Top-right compact API / Wallet pill (balance when signed in, Sign-in key when guest). */
 export function WalletPill() {
   const { token } = useSession();
   const wallet = useWallet();
   const label = token && wallet.data ? usd(wallet.data.balanceMicros) : token ? 'API' : 'Sign in';
   return (
     <PressableScale
-      accessibilityLabel={token ? 'Open Wallet and API keys' : 'Sign in to Vigas'}
+      accessibilityLabel={token ? 'Open API Console and Wallet' : 'Sign in to Vigas'}
       onPress={() => (token ? router.navigate('/wallet') : router.push('/sign-in'))}
       style={[styles.walletPill, token && styles.walletPillSigned]}
       haptic="tap"
@@ -116,38 +116,29 @@ export function MenuDrawer() {
   };
 
   const primary: NavRow[] = [
-    { id: 'home', label: 'Home', sub: 'Live rates · Colonnade · Briefs', icon: 'home', match: '/', onPress: () => router.navigate('/') },
+    { id: 'home', label: 'Home', sub: 'Live rates · Cost estimator · News', icon: 'home', match: '/', onPress: () => router.navigate('/') },
     {
-      id: 'pulse',
-      label: 'Pulse Feed',
-      sub: 'Prompts · Battles · UI designs',
-      icon: 'pulse',
-      badge: 'NEW',
+      id: 'wallet',
+      label: 'API & Wallet',
+      sub: 'Keys · Spend · Cost calculator',
+      icon: 'wallet',
+      badge: 'CONSOLE',
       badgeColor: colors.orange,
-      match: '/pulse',
-      onPress: () => router.navigate('/pulse'),
+      match: '/wallet',
+      onPress: () => router.navigate('/wallet'),
     },
     {
       id: 'chat',
       label: 'AI Chat',
-      sub: 'Multi-model studio · Auto route',
+      sub: '26 models · Auto route · Pay per token',
       icon: 'chat',
       match: '/chat',
-      onPress: () => router.navigate({ pathname: '/chat', params: { mode: 'chat', t: navStamp() } }),
-    },
-    {
-      id: 'arena',
-      label: 'Blind Arena',
-      sub: 'Compare two hidden models live',
-      icon: 'arena',
-      badge: 'LIVE',
-      badgeColor: colors.sand,
-      onPress: () => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: navStamp() } }),
+      onPress: () => router.navigate({ pathname: '/chat', params: { t: navStamp() } }),
     },
     {
       id: 'ranks',
       label: 'Leaderboard',
-      sub: 'Win share · Cost per task',
+      sub: 'Colonnade · Pareto value · Win share',
       icon: 'ranks',
       match: '/ranks',
       onPress: () => router.navigate('/ranks'),
@@ -156,13 +147,6 @@ export function MenuDrawer() {
 
   const directory: NavRow[] = [
     {
-      id: 'models',
-      label: 'Models & API Rates',
-      sub: '26 frontier models · 1 endpoint',
-      icon: 'layers',
-      onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } }),
-    },
-    {
       id: 'tools',
       label: 'Tools & 30s Connect',
       sub: 'Cursor · Cline · Claude Code · n8n',
@@ -170,9 +154,16 @@ export function MenuDrawer() {
       onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } }),
     },
     {
+      id: 'models',
+      label: 'Models & API Rates',
+      sub: '26 frontier models · 1 endpoint',
+      icon: 'layers',
+      onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } }),
+    },
+    {
       id: 'news',
       label: 'AI Newsroom',
-      sub: 'Model drops · Benchmarks · Policy',
+      sub: 'Model drops · Pricing · Policy',
       icon: 'news',
       onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'news', t: navStamp() } }),
     },
@@ -202,7 +193,6 @@ export function MenuDrawer() {
           <FlutedRule style={styles.rule} />
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-            {/* Account / Balance architectural box */}
             <PressableScale
               accessibilityLabel={token ? 'Open API Console and Wallet' : 'Sign in to Vigas'}
               onPress={() => go(() => (token ? router.navigate('/wallet') : router.push('/sign-in')))}
@@ -243,7 +233,7 @@ export function MenuDrawer() {
                       <Icon name={item.icon} size={19} color={active ? colors.orange : colors.ink2} />
                     </View>
                     <View style={styles.flex}>
-                      <T f="sansSemi" size={15} color={active ? colors.ink : colors.ink}>
+                      <T f="sansSemi" size={15}>
                         {item.label}
                       </T>
                       <T f="mono" size={11} color={colors.ink3} numberOfLines={1}>
@@ -276,25 +266,14 @@ export function MenuDrawer() {
               ))}
             </View>
 
-            <Label style={styles.groupLabel}>§ API & Billing</Label>
+            <Label style={styles.groupLabel}>§ Quick Actions</Label>
             <View style={styles.actions}>
               <KeyButton
-                label="Post to Pulse"
+                label="Get API Key"
                 height={42}
-                icon={<Icon name="plus" size={16} color={colors.onOrange} />}
-                onPress={() => go(() => router.push('/compose'))}
-              />
-              <PressableScale
-                accessibilityLabel="Wallet and API keys"
+                icon={<Icon name="key" size={16} color={colors.onOrange} />}
                 onPress={() => go(() => router.navigate('/wallet'))}
-                style={styles.ghostRow}
-              >
-                <Icon name="wallet" size={17} color={colors.indigo} />
-                <T f="sansMedium" size={14} style={styles.flex}>
-                  API Keys & Usage
-                </T>
-                <Icon name="chevronRight" size={16} color={colors.ink3} />
-              </PressableScale>
+              />
               <PressableScale accessibilityLabel="Top up credits on vigas.app" onPress={() => void openTopup()} style={styles.ghostRow}>
                 <Icon name="external" size={17} color={colors.green} />
                 <T f="sansMedium" size={14} style={styles.flex}>
@@ -313,7 +292,7 @@ export function MenuDrawer() {
               api.vigas.ai/v1 · <Span color={colors.green}>99.98%</Span>
             </T>
             <T f="mono" size={11} color={colors.ink3}>
-              v2.0
+              v2.1
             </T>
           </View>
         </Animated.View>

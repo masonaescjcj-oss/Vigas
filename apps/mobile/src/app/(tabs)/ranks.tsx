@@ -23,9 +23,9 @@ import { baseModelName, intl, navStamp, pct, pillarName, usd } from '@/lib/forma
 import { useRemote } from '@/lib/remote';
 import { colors, GUTTER, radius } from '@/theme';
 
-const openArena = () => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: navStamp() } });
+const openApiConsole = () => router.navigate('/wallet');
 const openModel = (modelId: string) =>
-  router.navigate({ pathname: '/chat', params: { mode: 'chat', model: modelId, t: navStamp() } });
+  router.navigate({ pathname: '/chat', params: { model: modelId, t: navStamp() } });
 
 export default function RanksScreen() {
   const insets = useSafeAreaInsets();
@@ -167,7 +167,7 @@ export default function RanksScreen() {
             </View>
           ) : undefined
         }
-        ListFooterComponent={<ArenaCta />}
+        ListFooterComponent={<ApiCta />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={<Refresher refreshing={lb.refreshing} progressViewOffset={insets.top} onRefresh={() => void lb.refresh()} />}
@@ -176,15 +176,14 @@ export default function RanksScreen() {
       <Sheet visible={howOpen} onClose={() => setHowOpen(false)} title="How we rank">
         <View style={styles.how}>
           <T size={15} color={colors.ink2}>
-            Ranks come from real sessions routed through Vigas and from blind Arena votes, where two hidden models answer the
-            same prompt and you pick the better one.
+            Ranks combine anonymized gateway session telemetry with verified coding, reasoning and multimodal benchmarks.
           </T>
           <T size={15} color={colors.ink2}>
-            Votes are scored with a Bradley–Terry model and bootstrapped 95% confidence intervals.{' '}
+            Ratings are computed with a Bradley–Terry model and 95% confidence intervals.{' '}
             <T f="sansSemi" size={15}>
               Win share
             </T>{' '}
-            is the percent of sessions a model wins;{' '}
+            measures task quality;{' '}
             <T f="sansSemi" size={15}>
               Pareto value
             </T>{' '}
@@ -193,13 +192,13 @@ export default function RanksScreen() {
           <PressableScale
             onPress={() => {
               setHowOpen(false);
-              openArena();
+              openApiConsole();
             }}
             style={styles.howCta}
           >
-            <Icon name="arena" size={18} color={colors.orange} />
+            <Icon name="key" size={18} color={colors.orange} />
             <T f="sansMedium" size={15} color={colors.orangeText}>
-              Vote in the Arena
+              Compare API cost &amp; get a key
             </T>
           </PressableScale>
         </View>
@@ -251,16 +250,21 @@ function RankRow({ entry, max, index, pareto }: { entry: LeaderboardEntry; max: 
   );
 }
 
-function ArenaCta() {
+function ApiCta() {
   return (
-    <PressableScale accessibilityLabel="Vote in the Arena. Compare two hidden models." onPress={openArena} style={styles.cta} haptic="tap">
+    <PressableScale
+      accessibilityLabel="Estimate monthly API cost and create a Vigas key."
+      onPress={openApiConsole}
+      style={styles.cta}
+      haptic="tap"
+    >
       <View style={styles.ctaIcon}>
-        <Icon name="arena" size={20} color={colors.onOrange} />
+        <Icon name="key" size={20} color={colors.onOrange} />
       </View>
       <View style={styles.flex}>
-        <T f="sansSemi">Vote in the Blind Arena</T>
+        <T f="sansSemi">Call any ranked model with 1 key</T>
         <T size={13} color={colors.ink2}>
-          Pit two hidden models head-to-head and shape live ranks.
+          $0 fee on your first $5 · Estimate monthly savings.
         </T>
       </View>
       <Icon name="chevronRight" size={20} color={colors.orangeText} />

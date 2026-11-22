@@ -10,13 +10,12 @@ import { Icon, type IconName } from './icons';
 import { T } from './text';
 
 /**
- * Five-slot native dock: Home · Pulse · [Tactile Chat Keycap] · Ranks · Hub.
- * Wallet remains a registered route in `(tabs)` accessed from the top header balance pill and the
- * slide-over Menu Drawer so the dock stays balanced and uncluttered.
+ * Clean 4+1 native dock: Home · API · [Tactile Chat Keycap] · Ranks · Hub.
+ * Every visible slot maps directly to Vigas's core API business and showcase.
  */
 const TABS: Record<string, { label: string; icon: IconName; center?: boolean }> = {
   index: { label: 'Home', icon: 'home' },
-  pulse: { label: 'Pulse', icon: 'pulse' },
+  wallet: { label: 'API', icon: 'wallet' },
   chat: { label: 'Chat', icon: 'spark', center: true },
   ranks: { label: 'Ranks', icon: 'ranks' },
   explore: { label: 'Hub', icon: 'grid' },

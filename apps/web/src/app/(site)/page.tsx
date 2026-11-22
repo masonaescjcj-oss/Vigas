@@ -17,7 +17,7 @@ export const metadata = pageMetadata({
   title: 'Vigas — Fastest & lowest-cost AI API for every frontier model',
   absoluteTitle: true,
   description:
-    'Fastest, lowest-cost OpenAI-compatible AI API for Claude, GPT, Gemini & DeepSeek — plus live Arena leaderboards, AI newsroom, and curated AI tools.',
+    'Fastest, lowest-cost OpenAI-compatible AI API for Claude, GPT, Gemini & DeepSeek — plus live model leaderboards, AI newsroom, and curated AI tools.',
   path: '/',
   alternatesLanguages: { en: '/', fa: '/fa', 'x-default': '/' },
 });
@@ -201,7 +201,7 @@ export default async function HomePage() {
                 <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
                   Rankings from <em className="hi">real work.</em>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Win share from {sessions} real sessions and blind Arena evaluations — not stale lab benchmarks.</p>
+                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Win share from {sessions} real gateway sessions and verified benchmarks — updated continuously.</p>
                 <div
                   aria-hidden="true"
                   style={{ marginTop: 'auto', display: 'flex', alignItems: 'flex-end', gap: 10, height: 112, padding: '0 6px', borderBottom: '1px solid var(--vg-line2)' }}
