@@ -10,15 +10,15 @@ import { Icon, type IconName } from './icons';
 import { T } from './text';
 
 /**
- * Clean 4+1 native dock: Home · API · [Tactile Chat Keycap] · Ranks · Hub.
- * Every visible slot maps directly to Vigas's core API business and showcase.
+ * Clean 4+1 native dock matching the Vigas design system:
+ * Home · Explore (News & Tools) · [Tactile Chat Keycap] · Ranks · API.
  */
 const TABS: Record<string, { label: string; icon: IconName; center?: boolean }> = {
   index: { label: 'Home', icon: 'home' },
-  wallet: { label: 'API', icon: 'wallet' },
+  explore: { label: 'Explore', icon: 'explore' },
   chat: { label: 'Chat', icon: 'spark', center: true },
   ranks: { label: 'Ranks', icon: 'ranks' },
-  explore: { label: 'Hub', icon: 'grid' },
+  wallet: { label: 'API', icon: 'wallet' },
 };
 
 /** Routes that take the whole screen (the Chat artboard has no bottom navigation). */

@@ -148,17 +148,10 @@ export function MenuDrawer() {
   const directory: NavRow[] = [
     {
       id: 'tools',
-      label: 'Tools & 30s Connect',
-      sub: 'Cursor · Cline · Claude Code · n8n',
-      icon: 'plug',
+      label: 'Explore Tools',
+      sub: 'Trending builders · Upvotes · Ratings',
+      icon: 'explore',
       onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } }),
-    },
-    {
-      id: 'models',
-      label: 'Models & API Rates',
-      sub: '26 frontier models · 1 endpoint',
-      icon: 'layers',
-      onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } }),
     },
     {
       id: 'news',
@@ -166,6 +159,20 @@ export function MenuDrawer() {
       sub: 'Model drops · Pricing · Policy',
       icon: 'news',
       onPress: () => router.navigate({ pathname: '/explore', params: { seg: 'news', t: navStamp() } }),
+    },
+    {
+      id: 'models',
+      label: 'Models & API Rates',
+      sub: '26 frontier models · 1 endpoint',
+      icon: 'layers',
+      onPress: () => router.navigate({ pathname: '/wallet', params: { seg: 'models', t: navStamp() } }),
+    },
+    {
+      id: 'connect',
+      label: 'Connect IDE in 30s',
+      sub: 'Cursor · Cline · Claude Code · n8n',
+      icon: 'plug',
+      onPress: () => router.navigate({ pathname: '/wallet', params: { seg: 'connect', t: navStamp() } }),
     },
   ];
 

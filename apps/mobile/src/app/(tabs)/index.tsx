@@ -120,7 +120,7 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Browse models and API prices"
                 hitSlop={6}
-                onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } })}
+                onPress={() => router.navigate({ pathname: '/wallet', params: { seg: 'models', t: navStamp() } })}
                 style={styles.modelsPill}
               >
                 <Icon name="layers" size={13} color={colors.sand} />
@@ -237,7 +237,7 @@ export default function HomeScreen() {
             label="Builder Directory"
             title="Trending"
             accent="tools."
-            right={<SeeAll label="30s Connect" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })} />}
+            right={<SeeAll label="Explore" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })} />}
           />
           <View style={styles.pad}>
             {feed
@@ -321,7 +321,7 @@ function LiveRatesBox({ models }: { models: ModelListItem[] }) {
       <View style={styles.ratesFoot}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })}
+          onPress={() => router.navigate({ pathname: '/wallet', params: { seg: 'connect', t: navStamp() } })}
           style={styles.rateChip}
         >
           <Icon name="plug" size={13} color={colors.ink2} />
@@ -332,7 +332,7 @@ function LiveRatesBox({ models }: { models: ModelListItem[] }) {
         <Pressable
           accessibilityRole="link"
           hitSlop={8}
-          onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } })}
+          onPress={() => router.navigate({ pathname: '/wallet', params: { seg: 'models', t: navStamp() } })}
           style={styles.rateAll}
         >
           <T f="sansMedium" size={13} color={colors.orangeText}>

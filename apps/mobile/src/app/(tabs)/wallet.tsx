@@ -1,18 +1,20 @@
 import { blendedCost, formatCompact, quoteTopup, timeAgo, type ApiKeySummary, type CreatedApiKey, type WalletResponse } from '@vigas/core';
 import { seedModels } from '@vigas/core/seed';
-import { useScrollToTop } from 'expo-router';
+import { useLocalSearchParams, useScrollToTop } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, TextInput, View, type ScrollViewInstance } from 'react-native';
 import Animated, { Easing, FadeInDown, LinearTransition, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ConnectIdePanel, ModelsCatalogue } from '@/components/api-extras';
 import { GhostButton, KeyButton } from '@/components/buttons';
 import { CostCalculator } from '@/components/cost-calculator';
 import { Icon } from '@/components/icons';
 import { MenuTrigger } from '@/components/menu-drawer';
 import { IconButton } from '@/components/pressable';
 import { Refresher, StatusScrim } from '@/components/screen';
+import { Segmented } from '@/components/segmented';
 import { Sheet } from '@/components/sheet';
 import { Skeleton, SkeletonRow } from '@/components/skeleton';
 import { ErrorCard, SignInCard } from '@/components/states';
@@ -25,6 +27,14 @@ import { useSession } from '@/lib/session';
 import { toast } from '@/lib/toast';
 import { useWallet, WALLET_KEY } from '@/lib/wallet';
 import { colors, GUTTER, withAlpha } from '@/theme';
+
+type ApiSeg = 'console' | 'models' | 'connect';
+
+const API_SEGMENTS = [
+  { id: 'console', label: 'Console' },
+  { id: 'models', label: 'Models' },
+  { id: 'connect', label: 'Connect' },
+] as const;
 
 const AMOUNTS = [10, 25, 50, 100];
 
@@ -41,20 +51,30 @@ const MICROS_PER_TOKEN = SONNET ? blendedCost(SONNET) / 3500 : 5;
 
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ seg?: string; t?: string }>();
   const { token, user, signOut } = useSession();
   const wallet = useWallet();
   const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
 
+  const [seg, setSeg] = useState<ApiSeg>(params.seg === 'models' || params.seg === 'connect' ? params.seg : 'console');
+  const [lastNav, setLastNav] = useState(params.t);
+  if (params.t !== lastNav) {
+    setLastNav(params.t);
+    if (params.seg === 'console' || params.seg === 'models' || params.seg === 'connect') setSeg(params.seg);
+  }
+
   return (
     <View style={styles.root}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingTop: insets.top + 18, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={
-          token ? <Refresher refreshing={wallet.refreshing} progressViewOffset={insets.top} onRefresh={() => void wallet.refresh()} /> : undefined
+          token && seg === 'console' ? (
+            <Refresher refreshing={wallet.refreshing} progressViewOffset={insets.top} onRefresh={() => void wallet.refresh()} />
+          ) : undefined
         }
       >
         <View style={styles.titleRow}>
@@ -77,7 +97,15 @@ export default function WalletScreen() {
           ) : null}
         </View>
 
-        {!token ? (
+        <View style={[styles.pad, styles.segWrap]}>
+          <Segmented options={API_SEGMENTS} value={seg} onChange={setSeg} accessibilityLabel="API section" pad={4} />
+        </View>
+
+        {seg === 'models' ? (
+          <ModelsCatalogue />
+        ) : seg === 'connect' ? (
+          <ConnectIdePanel onOpenConsole={() => setSeg('console')} />
+        ) : !token ? (
           <SignedOut />
         ) : wallet.data ? (
           <Loaded wallet={wallet.data} />
@@ -91,7 +119,7 @@ export default function WalletScreen() {
           />
         )}
 
-        {token && user?.email ? (
+        {seg === 'console' && token && user?.email ? (
           <T f="mono" size={12} color={colors.ink3} align="center" style={styles.signedAs}>
             Signed in as {user.email}
           </T>
@@ -543,6 +571,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   pad: { paddingHorizontal: GUTTER },
   top: { marginTop: 18 },
+  segWrap: { marginTop: 14 },
   calcWrap: { marginTop: 22 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 12 },
   signedAs: { marginTop: 24 },

@@ -15,10 +15,10 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="wallet" options={{ title: 'API' }} />
+      <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
       <Tabs.Screen name="chat" options={{ title: 'Chat' }} />
       <Tabs.Screen name="ranks" options={{ title: 'Ranks' }} />
-      <Tabs.Screen name="explore" options={{ title: 'Hub' }} />
+      <Tabs.Screen name="wallet" options={{ title: 'API' }} />
     </Tabs>
   );
 }

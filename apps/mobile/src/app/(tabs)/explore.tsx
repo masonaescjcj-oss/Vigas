@@ -1,11 +1,6 @@
 import {
-  formatContext,
-  formatPricePerMillion,
-  MODEL_TAGS,
   NEWS_CATEGORIES,
   TOOL_CATEGORIES,
-  type ModelListItem,
-  type ModelTag,
   type NewsCategory,
   type NewsListItem,
   type ToolCategory,
@@ -14,15 +9,15 @@ import {
 import { router, useLocalSearchParams, useScrollToTop } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Share, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CodeWell, Led, SpecStrip, Tag } from '@/components/boxes';
+import { CodeWell, Led } from '@/components/boxes';
 import { KeyButton } from '@/components/buttons';
 import { ChipRow } from '@/components/chips';
 import { Icon } from '@/components/icons';
-import { MenuTrigger, WalletPill } from '@/components/menu-drawer';
+import { MenuTrigger } from '@/components/menu-drawer';
 import { Monogram } from '@/components/monogram';
 import { NewsCover } from '@/components/news-cover';
 import { IconButton, PressableScale } from '@/components/pressable';
@@ -31,62 +26,32 @@ import { Segmented } from '@/components/segmented';
 import { Sheet } from '@/components/sheet';
 import { SkeletonRow } from '@/components/skeleton';
 import { EmptyState, OfflineNote } from '@/components/states';
-import { Heading, Label, Span, T } from '@/components/text';
+import { Heading, Span, T } from '@/components/text';
 import { api, errorMessage, isUnauthorized, withTimeout } from '@/lib/api';
-import { fallbackModels, fallbackNews, fallbackTools } from '@/lib/fallback';
+import { fallbackNews, fallbackTools } from '@/lib/fallback';
 import { agoLabel, intl, shortTitle } from '@/lib/format';
 import { haptics } from '@/lib/haptics';
 import { useRemote } from '@/lib/remote';
 import { useSession } from '@/lib/session';
 import { toast } from '@/lib/toast';
-import { colors, GUTTER, orgMark, radius, withAlpha } from '@/theme';
+import { colors, GUTTER, withAlpha } from '@/theme';
 
-type Seg = 'news' | 'models' | 'tools';
-type ConnectClient = 'cursor' | 'cline' | 'claude' | 'n8n';
-type Row =
-  | { kind: 'tool'; tool: ToolItem }
-  | { kind: 'news'; item: NewsListItem }
-  | { kind: 'model'; model: ModelListItem };
+type Seg = 'news' | 'tools';
+type Row = { kind: 'tool'; tool: ToolItem } | { kind: 'news'; item: NewsListItem };
 type VoteState = { voted: boolean; votes: number };
 
 const SEGMENTS = [
-  { id: 'tools', label: 'Tools' },
-  { id: 'models', label: 'Models' },
   { id: 'news', label: 'News' },
+  { id: 'tools', label: 'Tools' },
 ] as const;
 
-const CONNECT_TABS: { id: ConnectClient; label: string; snippet: string; note: string }[] = [
-  {
-    id: 'cursor',
-    label: 'Cursor',
-    note: 'Settings → Models → OpenAI API Key → Override Base URL',
-    snippet: 'Base URL: https://api.vigas.ai/v1\nAPI Key:  vg_live_••••••••\nModel:    anthropic/claude-fable-5.2',
-  },
-  {
-    id: 'cline',
-    label: 'Cline',
-    note: 'API Provider: OpenAI Compatible',
-    snippet: 'Base URL: https://api.vigas.ai/v1\nAPI Key:  vg_live_••••••••\nModel ID: deepseek/v4.1-flash',
-  },
-  {
-    id: 'claude',
-    label: 'Claude Code',
-    note: 'Drop into ~/.zshrc or .env',
-    snippet: 'export ANTHROPIC_BASE_URL="https://api.vigas.ai"\nexport ANTHROPIC_API_KEY="vg_live_••••••••"',
-  },
-  {
-    id: 'n8n',
-    label: 'n8n',
-    note: 'OpenAI Credential → Base URL override',
-    snippet: 'Base URL: https://api.vigas.ai/v1\nAPI Key:  vg_live_••••••••\nAuto:     vigas/auto',
-  },
-];
-
-const TOOL_CHIPS: { id: 'All' | ToolCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...TOOL_CATEGORIES.map((c) => ({ id: c, label: c }))];
-const NEWS_CHIPS: { id: 'All' | NewsCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...NEWS_CATEGORIES.map((c) => ({ id: c, label: c }))];
-const MODEL_CHIPS: { id: 'All' | ModelTag; label: string }[] = [
+const TOOL_CHIPS: { id: 'All' | ToolCategory; label: string }[] = [
   { id: 'All', label: 'All' },
-  ...MODEL_TAGS.map((t) => ({ id: t, label: t[0]!.toUpperCase() + t.slice(1) })),
+  ...TOOL_CATEGORIES.map((c) => ({ id: c, label: c })),
+];
+const NEWS_CHIPS: { id: 'All' | NewsCategory; label: string }[] = [
+  { id: 'All', label: 'All' },
+  ...NEWS_CATEGORIES.map((c) => ({ id: c, label: c })),
 ];
 
 export default function ExploreScreen() {
@@ -94,20 +59,18 @@ export default function ExploreScreen() {
   const params = useLocalSearchParams<{ seg?: string; focus?: string; t?: string }>();
   const { token, expire } = useSession();
 
-  const [seg, setSeg] = useState<Seg>(params.seg === 'news' || params.seg === 'models' ? params.seg : 'tools');
-  const [connectTab, setConnectTab] = useState<ConnectClient>('cursor');
+  const [seg, setSeg] = useState<Seg>(params.seg === 'news' ? 'news' : 'tools');
   const [query, setQuery] = useState('');
   const [toolCat, setToolCat] = useState<'All' | ToolCategory>('All');
   const [newsCat, setNewsCat] = useState<'All' | NewsCategory>('All');
-  const [modelTag, setModelTag] = useState<'All' | ModelTag>('All');
   const [votes, setVotes] = useState<Record<string, VoteState>>({});
   const [detail, setDetail] = useState<ToolItem | null>(null);
 
-  // Deep links from Home ("See all", search) re-select the segment each time they're followed.
+  // Deep links from Home / Menu ("See all", search) re-select News or Tools each time they're followed.
   const [lastNav, setLastNav] = useState(params.t);
   if (params.t !== lastNav) {
     setLastNav(params.t);
-    if (params.seg === 'news' || params.seg === 'models' || params.seg === 'tools') setSeg(params.seg);
+    if (params.seg === 'news' || params.seg === 'tools') setSeg(params.seg);
   }
 
   const inputRef = useRef<TextInputInstance>(null);
@@ -122,29 +85,22 @@ export default function ExploreScreen() {
 
   const news = useRemote('news', () => api.news({ limit: 60 }), { fallback: fallbackNews });
   const tools = useRemote('tools', () => api.tools({ sort: 'votes' }), { fallback: fallbackTools });
-  const models = useRemote('models', () => api.models(), { fallback: fallbackModels });
-  const active = seg === 'tools' ? tools : seg === 'models' ? models : news;
+  const active = seg === 'tools' ? tools : news;
 
   const q = query.trim().toLowerCase();
   const voteOf = (t: ToolItem): VoteState => votes[t.slug] ?? { voted: !!t.voted, votes: t.votes };
 
   const allTools = tools.data?.items ?? [];
-  const allModels = models.data?.items ?? [];
-
   const toolRows: Row[] = allTools
     .filter((t) => (toolCat === 'All' || t.category === toolCat) && (!q || `${t.name} ${t.tagline} ${t.category}`.toLowerCase().includes(q)))
     .map((tool) => ({ kind: 'tool', tool }));
   const newsRows: Row[] = (news.data?.items ?? [])
     .filter((n) => (newsCat === 'All' || n.category === newsCat) && (!q || `${n.title} ${n.dek} ${n.category}`.toLowerCase().includes(q)))
     .map((item) => ({ kind: 'news', item }));
-  const modelRows: Row[] = allModels
-    .filter((m) => (modelTag === 'All' || m.tags.includes(modelTag)) && (!q || `${m.name} ${m.id} ${m.org}`.toLowerCase().includes(q)))
-    .map((model) => ({ kind: 'model', model }));
 
-  const rows = seg === 'tools' ? toolRows : seg === 'models' ? modelRows : newsRows;
+  const rows = seg === 'tools' ? toolRows : newsRows;
   const trending = [...allTools].sort((a, b) => b.votes - a.votes).slice(0, 3);
   const showTrending = seg === 'tools' && !q && toolCat === 'All' && trending.length > 0;
-  const activeConnect = CONNECT_TABS.find((c) => c.id === connectTab) ?? CONNECT_TABS[0]!;
 
   const vote = async (t: ToolItem) => {
     if (!token) {
@@ -171,25 +127,17 @@ export default function ExploreScreen() {
       ? allTools.length
         ? `Search ${intl(allTools.length)} tools`
         : 'Search tools'
-      : seg === 'models'
-        ? allModels.length
-          ? `Search ${intl(allModels.length)} models & API prices`
-          : 'Search models'
-        : 'Search AI news';
+      : 'Search AI news';
 
   const header = (
     <View>
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <MenuTrigger />
-        <View style={styles.flex}>
-          <T f="serif" size={30} lh={1.05} ls={-0.02} accessibilityRole="header">
-            Hub
+      <View style={[styles.head, { paddingTop: insets.top + 18 }]}>
+        <View style={styles.titleRow}>
+          <T f="serif" size={44} lh={1.05} ls={-0.02} accessibilityRole="header" style={styles.flex}>
+            Explore
           </T>
+          <MenuTrigger />
         </View>
-        <WalletPill />
-      </View>
-
-      <View style={styles.head}>
         <Segmented
           options={SEGMENTS}
           value={seg}
@@ -221,87 +169,14 @@ export default function ExploreScreen() {
 
       {seg === 'tools' ? (
         <ChipRow options={TOOL_CHIPS} value={toolCat} onChange={(c) => setToolCat(c)} accessibilityLabel="Tool category" style={styles.chips} height={38} />
-      ) : seg === 'models' ? (
-        <ChipRow options={MODEL_CHIPS} value={modelTag} onChange={(t) => setModelTag(t)} accessibilityLabel="Model capability" style={styles.chips} height={38} />
       ) : (
         <ChipRow options={NEWS_CHIPS} value={newsCat} onChange={(c) => setNewsCat(c)} accessibilityLabel="News category" style={styles.chips} height={38} />
       )}
 
       {active.offline ? <OfflineNote style={styles.offline} onRetry={() => void active.refresh()} /> : null}
 
-      {/* Models Gateway Spec Strip */}
-      {seg === 'models' && !q ? (
-        <View style={styles.gatewayBox}>
-          <SpecStrip
-            items={[
-              { label: 'Gateway', value: 'api.vigas.ai', color: colors.orangeText },
-              { label: 'Fee', value: '0% first $5', color: colors.green },
-              { label: 'Routing', value: 'Auto-failover' },
-            ]}
-          />
-        </View>
-      ) : null}
-
-      {/* Connect in 30s LCD box inside Tools */}
       {showTrending ? (
         <>
-          <View style={styles.connectBox}>
-            <View style={styles.connectHead}>
-              <View style={styles.flex}>
-                <Label color={colors.sand}>§ Connect in 30 seconds</Label>
-                <T f="serif" size={24} lh={1.1} style={styles.connectTitle}>
-                  Use your Vigas key in <Span f="serifItalic" color={colors.sand}>any IDE.</Span>
-                </T>
-              </View>
-              <Led color={colors.green} size={7} />
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectPills}>
-              {CONNECT_TABS.map((tab) => {
-                const on = tab.id === connectTab;
-                return (
-                  <Pressable
-                    key={tab.id}
-                    accessibilityRole="button"
-                    onPress={() => {
-                      haptics.select();
-                      setConnectTab(tab.id);
-                    }}
-                    style={[styles.connectPill, on && styles.connectPillOn]}
-                  >
-                    <T f="monoMedium" size={12} color={on ? colors.onOrange : colors.ink2}>
-                      {tab.label}
-                    </T>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <CodeWell caption={activeConnect.note} meta={<Tag text="OPENAI V1" color={colors.green} />}>
-              <T f="mono" size={11.5} lh={1.55} color={colors.bodySoft} selectable>
-                {activeConnect.snippet}
-              </T>
-            </CodeWell>
-            <View style={styles.connectActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void Share.share({ message: activeConnect.snippet }).catch(() => undefined)}
-                style={styles.connectGhost}
-              >
-                <Icon name="share" size={15} color={colors.ink} />
-                <T f="monoMedium" size={12} color={colors.ink}>
-                  Share config
-                </T>
-              </Pressable>
-              <KeyButton
-                label="Get API key"
-                height={36}
-                radius={11}
-                fontSize={13}
-                icon={<Icon name="key" size={14} color={colors.onOrange} />}
-                onPress={() => router.navigate('/wallet')}
-              />
-            </View>
-          </View>
-
           <View style={styles.trendHead}>
             <Icon name="flame" size={18} color={colors.orange} />
             <Heading>Trending this week</Heading>
@@ -334,8 +209,6 @@ export default function ExploreScreen() {
 
       {seg === 'tools' ? (
         <Heading style={styles.allTools}>{q || toolCat !== 'All' ? `${toolRows.length} tools` : 'All tools'}</Heading>
-      ) : seg === 'models' ? (
-        <Heading style={styles.allTools}>{q || modelTag !== 'All' ? `${modelRows.length} models` : `${modelRows.length} models · tap to chat`}</Heading>
       ) : (
         <View style={styles.newsGap} />
       )}
@@ -347,13 +220,11 @@ export default function ExploreScreen() {
       <Animated.FlatList
         ref={listRef}
         data={rows}
-        keyExtractor={(r) => (r.kind === 'tool' ? `t:${r.tool.slug}` : r.kind === 'model' ? `m:${r.model.id}` : `n:${r.item.slug}`)}
+        keyExtractor={(r) => (r.kind === 'tool' ? `t:${r.tool.slug}` : `n:${r.item.slug}`)}
         ListHeaderComponent={header}
         renderItem={({ item, index }) =>
           item.kind === 'tool' ? (
             <ToolRow tool={item.tool} vote={voteOf(item.tool)} index={index} onVote={() => void vote(item.tool)} onOpen={() => setDetail(item.tool)} />
-          ) : item.kind === 'model' ? (
-            <ModelRow model={item.model} index={index} />
           ) : (
             <NewsRow item={item.item} index={index} />
           )
@@ -382,45 +253,6 @@ export default function ExploreScreen() {
   );
 }
 
-function ModelRow({ model, index }: { model: ModelListItem; index: number }) {
-  const chg = model.priceChange24h;
-  const badgeColor = chg < 0 ? colors.green : chg > 0 ? colors.red : colors.ink3;
-  const badgeText = chg < 0 ? `▼ ${Math.abs(chg)}%` : chg > 0 ? `▲ ${chg}%` : '—';
-  const mark = orgMark(model.org);
-  return (
-    <Animated.View entering={index < 10 ? FadeInDown.duration(320).delay(index * 30) : undefined} style={styles.pad}>
-      <PressableScale
-        accessibilityLabel={`${model.name} by ${model.org}. Open in Chat`}
-        onPress={() => {
-          haptics.select();
-          router.navigate({ pathname: '/chat', params: { model: model.id, t: String(Date.now()) } });
-        }}
-        scaleTo={0.985}
-        style={styles.modelRow}
-      >
-        <Monogram letter={mark.letter} color={mark.color} size={46} radius={13} />
-        <View style={styles.flex}>
-          <View style={styles.modelHead}>
-            <T f="sansSemi" numberOfLines={1} style={styles.flex}>
-              {model.name}
-            </T>
-            <T f="monoSemi" size={11} color={badgeColor}>
-              {badgeText}
-            </T>
-          </View>
-          <T f="mono" size={12} color={colors.ink3} numberOfLines={1}>
-            {model.id}
-          </T>
-          <T f="mono" size={12} color={colors.ink2}>
-            {formatContext(model.contextLength)} · IN {formatPricePerMillion(model.inputPerMillionMicros)} · OUT {formatPricePerMillion(model.outputPerMillionMicros)}
-          </T>
-        </View>
-        <Icon name="chevronRight" size={18} color={colors.ink3} />
-      </PressableScale>
-    </Animated.View>
-  );
-}
-
 function ToolRow({ tool, vote, index, onVote, onOpen }: { tool: ToolItem; vote: VoteState; index: number; onVote: () => void; onOpen: () => void }) {
   return (
     <Animated.View entering={index < 10 ? FadeInDown.duration(320).delay(index * 35) : undefined} style={styles.pad}>
@@ -428,10 +260,7 @@ function ToolRow({ tool, vote, index, onVote, onOpen }: { tool: ToolItem; vote: 
         <PressableScale accessibilityLabel={`${tool.name}: ${tool.tagline}`} onPress={onOpen} style={styles.toolMain} scaleTo={0.985}>
           <Monogram letter={tool.letter} color={tool.color} size={48} radius={14} />
           <View style={styles.flex}>
-            <View style={styles.toolTitleRow}>
-              <T f="sansSemi">{tool.name}</T>
-              {tool.runsOnVigas ? <Tag text="VIGAS KEY" color={colors.green} /> : null}
-            </View>
+            <T f="sansSemi">{tool.name}</T>
             <T size={13} lh={1.35} color={colors.ink2}>
               {tool.tagline}
             </T>
@@ -516,7 +345,7 @@ function ToolSheet({ tool, vote, onVote, onClose }: { tool: ToolItem | null; vot
           {tool.runsOnVigas ? (
             <CodeWell caption="Runs on your Vigas API key" meta={<Led color={colors.green} size={6} />}>
               <T f="mono" size={12} lh={1.5} color={colors.bodySoft} selectable>
-                {'Base URL: https://api.vigas.ai/v1\nAPI Key:  Create in Wallet → API Keys'}
+                {'Base URL: https://api.vigas.ai/v1\nAPI Key:  Create in API Console → Keys'}
               </T>
             </CodeWell>
           ) : null}
@@ -559,19 +388,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   pad: { paddingHorizontal: GUTTER },
   listContent: { paddingBottom: 32, flexGrow: 1 },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingLeft: 10,
-    paddingRight: GUTTER,
-    paddingBottom: 4,
-  },
   head: { paddingHorizontal: GUTTER },
-  segments: { marginTop: 10 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginRight: -10 },
+  segments: { marginTop: 18 },
   search: {
     marginTop: 12,
-    height: 50,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -582,43 +404,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(239,234,225,0.1)',
   },
-  input: { flex: 1, minWidth: 0, color: colors.ink, fontFamily: 'Inter_400Regular', fontSize: 15.5, paddingVertical: 0, height: 48 },
+  input: { flex: 1, minWidth: 0, color: colors.ink, fontFamily: 'Inter_400Regular', fontSize: 16, paddingVertical: 0, height: 50 },
   chips: { marginTop: 14 },
   offline: { marginTop: 14 },
-  gatewayBox: { paddingHorizontal: GUTTER, marginTop: 14 },
-  connectBox: {
-    marginTop: 18,
-    marginHorizontal: GUTTER,
-    padding: 16,
-    borderRadius: radius.card,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line2,
-    gap: 12,
-  },
-  connectHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  connectTitle: { marginTop: 4 },
-  connectPills: { gap: 7 },
-  connectPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: colors.bg2,
-    borderWidth: 1,
-    borderColor: colors.line2,
-  },
-  connectPillOn: { backgroundColor: colors.orange, borderColor: colors.orange },
-  connectActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  connectGhost: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.line2,
-  },
   trendHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 22, paddingBottom: 12, paddingHorizontal: GUTTER },
   trendRow: { paddingHorizontal: GUTTER, gap: 8 },
   trendCard: {
@@ -632,17 +420,8 @@ const styles = StyleSheet.create({
   },
   trendFirst: { borderColor: withAlpha(colors.orange, 0.4) },
   trendTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  allTools: { marginTop: 22, marginBottom: 4, marginHorizontal: GUTTER },
+  allTools: { marginTop: 24, marginBottom: 4, marginHorizontal: GUTTER },
   newsGap: { height: 16 },
-  modelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 13,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(239,234,225,0.06)',
-  },
-  modelHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toolRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -651,7 +430,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(239,234,225,0.06)',
   },
-  toolTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   toolMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
   upvote: {
     width: 52,

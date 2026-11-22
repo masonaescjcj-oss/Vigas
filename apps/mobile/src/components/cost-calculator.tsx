@@ -177,8 +177,8 @@ export function CostCalculator({ compact = false }: { compact?: boolean }) {
           fontSize={13}
           onPress={() =>
             compact
-              ? router.navigate('/wallet')
-              : router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })
+              ? router.navigate({ pathname: '/wallet', params: { seg: 'console', t: navStamp() } })
+              : router.navigate({ pathname: '/wallet', params: { seg: 'connect', t: navStamp() } })
           }
         />
       </View>
