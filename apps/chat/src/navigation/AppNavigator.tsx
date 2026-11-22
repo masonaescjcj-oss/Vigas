@@ -241,7 +241,49 @@ export const AppNavigator = () => {
 
   // Keep Auth modal synced with sign-in / password-recovery transitions without blocking /chat on startup.
   useEffect(() => {
-    if (!initialized || !navigationRef.current?.isReady()) return;
+    if (!initialized) return;
+    if (user && !passwordRecovery) {
+      // If the user initiated Google sign-in from vigas.app/signin for /dashboard and Supabase's Site URL
+      // landed on /chat, forward them straight to their requested Vigas API Console destination.
+      const win = globalThis as unknown as {
+        location?: { pathname?: string; assign?: (url: string) => void };
+        sessionStorage?: { getItem?: (k: string) => string | null; removeItem?: (k: string) => void };
+        document?: { cookie?: string };
+      };
+      if (win.location?.pathname?.startsWith("/chat")) {
+        let nextDest: string | null = null;
+        try {
+          const s = win.sessionStorage?.getItem?.("vigas_auth_next");
+          if (s && s.startsWith("/") && !s.startsWith("//") && !s.startsWith("/chat")) nextDest = s;
+          win.sessionStorage?.removeItem?.("vigas_auth_next");
+        } catch {
+          // Ignore
+        }
+        try {
+          const cookieStr = win.document?.cookie ?? "";
+          for (const part of cookieStr.split(";")) {
+            const trimmed = part.trim();
+            if (trimmed.startsWith("vigas_auth_next=")) {
+              const decoded = decodeURIComponent(trimmed.slice("vigas_auth_next=".length));
+              if (!nextDest && decoded.startsWith("/") && !decoded.startsWith("//") && !decoded.startsWith("/chat")) {
+                nextDest = decoded;
+              }
+            }
+          }
+          if (win.document && typeof win.document.cookie === "string") {
+            win.document.cookie = "vigas_auth_next=; Path=/; Max-Age=0; SameSite=Lax";
+          }
+        } catch {
+          // Ignore
+        }
+        if (nextDest && win.location?.assign) {
+          win.location.assign(nextDest);
+          return;
+        }
+      }
+    }
+
+    if (!navigationRef.current?.isReady()) return;
     const rootState = navigationRef.current.getRootState();
     const topRoute = rootState?.routes[rootState.index ?? 0]?.name;
     if (passwordRecovery) {

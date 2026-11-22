@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import type { ModelListItem, PublicUser, WalletResponse } from '@vigas/core';
 import { api } from '@/lib/client/session';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
-import { getSupabase, syncSignedInHint } from '@/lib/client/supabase';
+import { consumeAuthNext, getSupabase, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
 import { fetchSupabaseAccount, type SupabaseUsageSummary } from '@/lib/client/supabase-account';
 import { DashboardClient } from './dashboard-client';
 
@@ -48,20 +48,11 @@ export function DashboardGate({
     if (resolved) return;
     let active = true;
 
-    const load = async () => {
-      const supabase = getSupabase();
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-
-      if (!session?.user?.email) {
-        if (active) {
-          syncSignedInHint(false);
-          router.replace('/signin?next=/dashboard');
-        }
-        return;
-      }
-
+    const resolveFromSession = async (session: { access_token: string; user: { id: string; email?: string; user_metadata?: Record<string, unknown> } }) => {
+      if (!active || !session.user?.email) return;
       syncSignedInHint(true);
+      consumeAuthNext();
+
       const userName =
         (typeof session.user.user_metadata?.full_name === 'string' && session.user.user_metadata.full_name) ||
         (typeof session.user.user_metadata?.name === 'string' && session.user.user_metadata.name) ||
@@ -101,6 +92,30 @@ export function DashboardGate({
         supabaseRpcReady: supaAccount.rpcReady,
         supabaseUsage: supaAccount.usage,
       });
+    };
+
+    const load = async () => {
+      // First consume any `#access_token=...` or `?code=...` directly from the URL (Google OAuth landing on /dashboard).
+      const { session } = await hydrateSessionFromUrl();
+      if (!active) return;
+      if (session?.user?.email) {
+        await resolveFromSession(session);
+        return;
+      }
+
+      // Brief grace wait in case supabase-js finishes initializing from localStorage/event asynchronously.
+      await new Promise((r) => setTimeout(r, 250));
+      if (!active) return;
+      const { data } = await getSupabase().auth.getSession();
+      if (data.session?.user?.email) {
+        await resolveFromSession(data.session);
+        return;
+      }
+
+      if (active) {
+        syncSignedInHint(false);
+        router.replace('/signin?next=/dashboard');
+      }
     };
 
     void load();

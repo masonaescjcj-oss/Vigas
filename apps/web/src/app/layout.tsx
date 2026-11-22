@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Instrument_Serif, Inter, JetBrains_Mono, Vazirmatn } from 'next/font/google';
 import { colors, cssVariables } from '@vigas/tokens';
+import { AuthHashBridge } from '@/components/auth-hash-bridge';
 import { SITE_NAME, SITE_URL } from '@/lib/env';
 import { PREVIEW_MESSAGE, PREVIEW_MODE } from '@/lib/preview';
 import { DEFAULT_DESCRIPTION } from '@/lib/seo';
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
             PREVIEW · sample data · {PREVIEW_MESSAGE}
           </div>
         )}
+        <AuthHashBridge />
         {children}
       </body>
     </html>

@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { api, safeNext } from '@/lib/client/session';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
-import { getSupabase, syncSignedInHint } from '@/lib/client/supabase';
+import {
+  consumeAuthNext,
+  getSupabase,
+  hydrateSessionFromUrl,
+  saveAuthNext,
+  syncSignedInHint,
+} from '@/lib/client/supabase';
 import { LanguageSwitch } from './language-switch';
 import { ThemeToggle } from './theme-toggle';
 import { Icon, LogoMark } from './ui';
@@ -43,7 +49,6 @@ export function RetroAuth({
   lang?: 'en' | 'fa';
 }) {
   const isFa = lang === 'fa';
-  const router = useRouter();
   const id = useId();
 
   const [step, setStep] = useState<AuthStep>(initialMode);
@@ -78,36 +83,17 @@ export function RetroAuth({
   const resolveDest = () => {
     const queryDest = safeNext('');
     if (queryDest) return queryDest;
-    try {
-      const saved = window.sessionStorage.getItem('vigas_auth_next');
-      if (saved && saved.startsWith('/') && !saved.startsWith('//')) {
-        window.sessionStorage.removeItem('vigas_auth_next');
-        return saved;
-      }
-    } catch {
-      // Ignore storage access restrictions
-    }
-    return '/dashboard';
+    return consumeAuthNext() || '/dashboard';
   };
 
   const finishRedirect = (dest = resolveDest()) => {
     syncSignedInHint(true);
-    try {
-      window.sessionStorage.removeItem('vigas_auth_next');
-    } catch {
-      // Ignore
-    }
-    if (dest.startsWith('/chat')) {
-      window.location.assign(dest);
-    } else {
-      router.replace(dest);
-      router.refresh();
-    }
+    consumeAuthNext();
+    window.location.assign(dest);
   };
 
   useEffect(() => {
     const dest = resolveDest();
-
     const supabase = getSupabase();
     let active = true;
     let navigated = false;
@@ -116,6 +102,7 @@ export function RetroAuth({
       if (!active || !accessToken || navigated) return;
       navigated = true;
       syncSignedInHint(true);
+      consumeAuthNext();
       if (dest.startsWith('/chat')) {
         void exchangeSupabaseSession(accessToken);
         window.location.assign(dest);
@@ -124,13 +111,17 @@ export function RetroAuth({
       // Best-effort bridge to Postgres cookie when DATABASE_URL is configured; never block opening /dashboard.
       await exchangeSupabaseSession(accessToken).catch(() => false);
       if (!active) return;
-      router.replace(dest);
-      router.refresh();
+      window.location.assign(dest);
     };
 
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!active || !data.session) return;
-      void completeFromSession(data.session.access_token);
+    void hydrateSessionFromUrl().then(({ session, error: oauthErr }) => {
+      if (!active) return;
+      if (oauthErr) {
+        setError(oauthErr);
+        setGoogleBusy(false);
+        return;
+      }
+      if (session) void completeFromSession(session.access_token);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -138,11 +129,15 @@ export function RetroAuth({
       void completeFromSession(session.access_token);
     });
 
+    const onPageShow = () => setGoogleBusy(false);
+    window.addEventListener('pageshow', onPageShow);
+
     return () => {
       active = false;
       listener.subscription.unsubscribe();
+      window.removeEventListener('pageshow', onPageShow);
     };
-  }, [router]);
+  }, []);
 
   const handleGoogle = async () => {
     if (googleBusy || busy) return;
@@ -152,19 +147,17 @@ export function RetroAuth({
     try {
       const origin = window.location.origin;
       const dest = safeNext('/dashboard');
-      try {
-        window.sessionStorage.setItem('vigas_auth_next', dest);
-      } catch {
-        // Ignore
-      }
-      const redirectTo = dest.startsWith('/chat')
-        ? `${origin}/chat`
-        : `${origin}/signin?next=${encodeURIComponent(dest)}`;
-      const { error: oauthError } = await getSupabase().auth.signInWithOAuth({
+      saveAuthNext(dest);
+      // Clean redirect URL without query params so Supabase redirect allow-list always matches cleanly.
+      const redirectTo = dest.startsWith('/chat') ? `${origin}/chat` : `${origin}/dashboard`;
+      const { data, error: oauthError } = await getSupabase().auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo },
       });
       if (oauthError) throw oauthError;
+      if (data?.url) {
+        window.location.assign(data.url);
+      }
     } catch (e: unknown) {
       setError(
         e instanceof Error
