@@ -14,13 +14,15 @@ import {
 import { router, useLocalSearchParams, useScrollToTop } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
+import { FlatList, Pressable, ScrollView, Share, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CodeWell, Led, SpecStrip, Tag } from '@/components/boxes';
 import { KeyButton } from '@/components/buttons';
 import { ChipRow } from '@/components/chips';
 import { Icon } from '@/components/icons';
+import { MenuTrigger, WalletPill } from '@/components/menu-drawer';
 import { Monogram } from '@/components/monogram';
 import { NewsCover } from '@/components/news-cover';
 import { IconButton, PressableScale } from '@/components/pressable';
@@ -37,9 +39,10 @@ import { haptics } from '@/lib/haptics';
 import { useRemote } from '@/lib/remote';
 import { useSession } from '@/lib/session';
 import { toast } from '@/lib/toast';
-import { colors, GUTTER, orgMark, withAlpha } from '@/theme';
+import { colors, GUTTER, orgMark, radius, withAlpha } from '@/theme';
 
 type Seg = 'news' | 'models' | 'tools';
+type ConnectClient = 'cursor' | 'cline' | 'claude' | 'n8n';
 type Row =
   | { kind: 'tool'; tool: ToolItem }
   | { kind: 'news'; item: NewsListItem }
@@ -47,10 +50,37 @@ type Row =
 type VoteState = { voted: boolean; votes: number };
 
 const SEGMENTS = [
-  { id: 'news', label: 'News' },
-  { id: 'models', label: 'Models' },
   { id: 'tools', label: 'Tools' },
+  { id: 'models', label: 'Models' },
+  { id: 'news', label: 'News' },
 ] as const;
+
+const CONNECT_TABS: { id: ConnectClient; label: string; snippet: string; note: string }[] = [
+  {
+    id: 'cursor',
+    label: 'Cursor',
+    note: 'Settings → Models → OpenAI API Key → Override Base URL',
+    snippet: 'Base URL: https://api.vigas.ai/v1\nAPI Key:  vg_live_••••••••\nModel:    anthropic/claude-fable-5.2',
+  },
+  {
+    id: 'cline',
+    label: 'Cline',
+    note: 'API Provider: OpenAI Compatible',
+    snippet: 'Base URL: https://api.vigas.ai/v1\nAPI Key:  vg_live_••••••••\nModel ID: deepseek/v4.1-flash',
+  },
+  {
+    id: 'claude',
+    label: 'Claude Code',
+    note: 'Drop into ~/.zshrc or .env',
+    snippet: 'export ANTHROPIC_BASE_URL="https://api.vigas.ai"\nexport ANTHROPIC_API_KEY="vg_live_••••••••"',
+  },
+  {
+    id: 'n8n',
+    label: 'n8n',
+    note: 'OpenAI Credential → Base URL override',
+    snippet: 'Base URL: https://api.vigas.ai/v1\nAPI Key:  vg_live_••••••••\nAuto:     vigas/auto',
+  },
+];
 
 const TOOL_CHIPS: { id: 'All' | ToolCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...TOOL_CATEGORIES.map((c) => ({ id: c, label: c }))];
 const NEWS_CHIPS: { id: 'All' | NewsCategory; label: string }[] = [{ id: 'All', label: 'All' }, ...NEWS_CATEGORIES.map((c) => ({ id: c, label: c }))];
@@ -65,6 +95,7 @@ export default function ExploreScreen() {
   const { token, expire } = useSession();
 
   const [seg, setSeg] = useState<Seg>(params.seg === 'news' || params.seg === 'models' ? params.seg : 'tools');
+  const [connectTab, setConnectTab] = useState<ConnectClient>('cursor');
   const [query, setQuery] = useState('');
   const [toolCat, setToolCat] = useState<'All' | ToolCategory>('All');
   const [newsCat, setNewsCat] = useState<'All' | NewsCategory>('All');
@@ -113,6 +144,7 @@ export default function ExploreScreen() {
   const rows = seg === 'tools' ? toolRows : seg === 'models' ? modelRows : newsRows;
   const trending = [...allTools].sort((a, b) => b.votes - a.votes).slice(0, 3);
   const showTrending = seg === 'tools' && !q && toolCat === 'All' && trending.length > 0;
+  const activeConnect = CONNECT_TABS.find((c) => c.id === connectTab) ?? CONNECT_TABS[0]!;
 
   const vote = async (t: ToolItem) => {
     if (!token) {
@@ -147,10 +179,17 @@ export default function ExploreScreen() {
 
   const header = (
     <View>
-      <View style={[styles.head, { paddingTop: insets.top + 24 }]}>
-        <T f="serif" size={44} lh={1.05} ls={-0.02} accessibilityRole="header">
-          Explore
-        </T>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <MenuTrigger />
+        <View style={styles.flex}>
+          <T f="serif" size={30} lh={1.05} ls={-0.02} accessibilityRole="header">
+            Hub
+          </T>
+        </View>
+        <WalletPill />
+      </View>
+
+      <View style={styles.head}>
         <Segmented
           options={SEGMENTS}
           value={seg}
@@ -179,6 +218,7 @@ export default function ExploreScreen() {
           ) : null}
         </View>
       </View>
+
       {seg === 'tools' ? (
         <ChipRow options={TOOL_CHIPS} value={toolCat} onChange={(c) => setToolCat(c)} accessibilityLabel="Tool category" style={styles.chips} height={38} />
       ) : seg === 'models' ? (
@@ -186,9 +226,82 @@ export default function ExploreScreen() {
       ) : (
         <ChipRow options={NEWS_CHIPS} value={newsCat} onChange={(c) => setNewsCat(c)} accessibilityLabel="News category" style={styles.chips} height={38} />
       )}
+
       {active.offline ? <OfflineNote style={styles.offline} onRetry={() => void active.refresh()} /> : null}
+
+      {/* Models Gateway Spec Strip */}
+      {seg === 'models' && !q ? (
+        <View style={styles.gatewayBox}>
+          <SpecStrip
+            items={[
+              { label: 'Gateway', value: 'api.vigas.ai', color: colors.orangeText },
+              { label: 'Fee', value: '0% first $5', color: colors.green },
+              { label: 'Routing', value: 'Auto-failover' },
+            ]}
+          />
+        </View>
+      ) : null}
+
+      {/* Connect in 30s LCD box inside Tools */}
       {showTrending ? (
         <>
+          <View style={styles.connectBox}>
+            <View style={styles.connectHead}>
+              <View style={styles.flex}>
+                <Label color={colors.sand}>§ Connect in 30 seconds</Label>
+                <T f="serif" size={24} lh={1.1} style={styles.connectTitle}>
+                  Use your Vigas key in <Span f="serifItalic" color={colors.sand}>any IDE.</Span>
+                </T>
+              </View>
+              <Led color={colors.green} size={7} />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.connectPills}>
+              {CONNECT_TABS.map((tab) => {
+                const on = tab.id === connectTab;
+                return (
+                  <Pressable
+                    key={tab.id}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      haptics.select();
+                      setConnectTab(tab.id);
+                    }}
+                    style={[styles.connectPill, on && styles.connectPillOn]}
+                  >
+                    <T f="monoMedium" size={12} color={on ? colors.onOrange : colors.ink2}>
+                      {tab.label}
+                    </T>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <CodeWell caption={activeConnect.note} meta={<Tag text="OPENAI V1" color={colors.green} />}>
+              <T f="mono" size={11.5} lh={1.55} color={colors.bodySoft} selectable>
+                {activeConnect.snippet}
+              </T>
+            </CodeWell>
+            <View style={styles.connectActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void Share.share({ message: activeConnect.snippet }).catch(() => undefined)}
+                style={styles.connectGhost}
+              >
+                <Icon name="share" size={15} color={colors.ink} />
+                <T f="monoMedium" size={12} color={colors.ink}>
+                  Share config
+                </T>
+              </Pressable>
+              <KeyButton
+                label="Get API key"
+                height={36}
+                radius={11}
+                fontSize={13}
+                icon={<Icon name="key" size={14} color={colors.onOrange} />}
+                onPress={() => router.navigate('/wallet')}
+              />
+            </View>
+          </View>
+
           <View style={styles.trendHead}>
             <Icon name="flame" size={18} color={colors.orange} />
             <Heading>Trending this week</Heading>
@@ -218,6 +331,7 @@ export default function ExploreScreen() {
           </ScrollView>
         </>
       ) : null}
+
       {seg === 'tools' ? (
         <Heading style={styles.allTools}>{q || toolCat !== 'All' ? `${toolRows.length} tools` : 'All tools'}</Heading>
       ) : seg === 'models' ? (
@@ -314,7 +428,10 @@ function ToolRow({ tool, vote, index, onVote, onOpen }: { tool: ToolItem; vote: 
         <PressableScale accessibilityLabel={`${tool.name}: ${tool.tagline}`} onPress={onOpen} style={styles.toolMain} scaleTo={0.985}>
           <Monogram letter={tool.letter} color={tool.color} size={48} radius={14} />
           <View style={styles.flex}>
-            <T f="sansSemi">{tool.name}</T>
+            <View style={styles.toolTitleRow}>
+              <T f="sansSemi">{tool.name}</T>
+              {tool.runsOnVigas ? <Tag text="VIGAS KEY" color={colors.green} /> : null}
+            </View>
             <T size={13} lh={1.35} color={colors.ink2}>
               {tool.tagline}
             </T>
@@ -397,21 +514,40 @@ function ToolSheet({ tool, vote, onVote, onClose }: { tool: ToolItem | null; vot
             {tool.description}
           </T>
           {tool.runsOnVigas ? (
-            <View style={styles.runsOn}>
-              <Icon name="check" size={14} color={colors.green} />
-              <Label color={colors.green}>Runs on your Vigas key</Label>
-            </View>
+            <CodeWell caption="Runs on your Vigas API key" meta={<Led color={colors.green} size={6} />}>
+              <T f="mono" size={12} lh={1.5} color={colors.bodySoft} selectable>
+                {'Base URL: https://api.vigas.ai/v1\nAPI Key:  Create in Wallet → API Keys'}
+              </T>
+            </CodeWell>
           ) : null}
-          <KeyButton
-            label="Visit site"
-            height={50}
-            fontSize={16}
-            onPress={() => {
-              void WebBrowser.openBrowserAsync(tool.url, { toolbarColor: colors.bg, controlsColor: colors.orange }).catch(() =>
-                toast('Couldn’t open the browser.', 'error'),
-              );
-            }}
-          />
+          <View style={styles.sheetActions}>
+            {tool.runsOnVigas ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  onClose();
+                  router.navigate('/wallet');
+                }}
+                style={styles.sheetGhost}
+              >
+                <Icon name="key" size={16} color={colors.ink} />
+                <T f="sansMedium" size={14}>
+                  Get key
+                </T>
+              </Pressable>
+            ) : null}
+            <KeyButton
+              label="Visit site"
+              height={48}
+              fontSize={15}
+              style={styles.flex}
+              onPress={() => {
+                void WebBrowser.openBrowserAsync(tool.url, { toolbarColor: colors.bg, controlsColor: colors.orange }).catch(() =>
+                  toast('Couldn’t open the browser.', 'error'),
+                );
+              }}
+            />
+          </View>
         </View>
       ) : null}
     </Sheet>
@@ -422,12 +558,20 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1, minWidth: 0 },
   pad: { paddingHorizontal: GUTTER },
-  listContent: { paddingBottom: 28, flexGrow: 1 },
+  listContent: { paddingBottom: 32, flexGrow: 1 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 10,
+    paddingRight: GUTTER,
+    paddingBottom: 4,
+  },
   head: { paddingHorizontal: GUTTER },
-  segments: { marginTop: 18 },
+  segments: { marginTop: 10 },
   search: {
     marginTop: 12,
-    height: 52,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -438,9 +582,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(239,234,225,0.1)',
   },
-  input: { flex: 1, minWidth: 0, color: colors.ink, fontFamily: 'Inter_400Regular', fontSize: 16, paddingVertical: 0, height: 50 },
+  input: { flex: 1, minWidth: 0, color: colors.ink, fontFamily: 'Inter_400Regular', fontSize: 15.5, paddingVertical: 0, height: 48 },
   chips: { marginTop: 14 },
   offline: { marginTop: 14 },
+  gatewayBox: { paddingHorizontal: GUTTER, marginTop: 14 },
+  connectBox: {
+    marginTop: 18,
+    marginHorizontal: GUTTER,
+    padding: 16,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line2,
+    gap: 12,
+  },
+  connectHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  connectTitle: { marginTop: 4 },
+  connectPills: { gap: 7 },
+  connectPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.bg2,
+    borderWidth: 1,
+    borderColor: colors.line2,
+  },
+  connectPillOn: { backgroundColor: colors.orange, borderColor: colors.orange },
+  connectActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  connectGhost: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: colors.line2,
+  },
   trendHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 22, paddingBottom: 12, paddingHorizontal: GUTTER },
   trendRow: { paddingHorizontal: GUTTER, gap: 8 },
   trendCard: {
@@ -454,7 +632,7 @@ const styles = StyleSheet.create({
   },
   trendFirst: { borderColor: withAlpha(colors.orange, 0.4) },
   trendTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  allTools: { marginTop: 24, marginBottom: 4, marginHorizontal: GUTTER },
+  allTools: { marginTop: 22, marginBottom: 4, marginHorizontal: GUTTER },
   newsGap: { height: 16 },
   modelRow: {
     flexDirection: 'row',
@@ -473,6 +651,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(239,234,225,0.06)',
   },
+  toolTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   toolMain: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
   upvote: {
     width: 52,
@@ -495,5 +674,15 @@ const styles = StyleSheet.create({
   newsTitle: { marginTop: 5 },
   sheetBody: { paddingHorizontal: GUTTER, paddingTop: 8, gap: 14 },
   sheetHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  runsOn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sheetActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sheetGhost: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    height: 48,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line2,
+  },
 });

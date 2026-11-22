@@ -17,6 +17,13 @@ import type {
   NewsCategory,
   NewsListItem,
   PublicUser,
+  PulseDraft,
+  PulseFeedResponse,
+  PulsePost,
+  PulsePostKind,
+  PulseReaction,
+  PulseReactionResponse,
+  PulseSort,
   ToolCategory,
   ToolItem,
   TopupResponse,
@@ -134,6 +141,12 @@ export class VigasApi {
   leaderboard = (category: LeaderboardCategory = 'overall') =>
     this.request<LeaderboardResponse>('GET', `/api/app/leaderboard${qs({ category })}`);
   models = () => this.request<{ items: ModelListItem[] }>('GET', '/api/app/models');
+
+  // Pulse (community feed)
+  pulse = (p: { kind?: PulsePostKind | null; sort?: PulseSort } = {}) => this.request<PulseFeedResponse>('GET', `/api/app/pulse${qs(p)}`);
+  createPulse = (draft: PulseDraft) => this.request<PulsePost>('POST', '/api/app/pulse', draft);
+  reactPulse = (id: string, reaction: PulseReaction) =>
+    this.request<PulseReactionResponse>('POST', `/api/app/pulse/${encodeURIComponent(id)}/react`, reaction);
 
   // Auth
   signup = (b: { email: string; password: string; name?: string }) => this.request<AuthResponse>('POST', '/api/auth/signup', b);

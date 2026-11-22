@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 
+import { MenuDrawer } from '@/components/menu-drawer';
 import { ToastHost } from '@/components/toast-host';
 import { SessionProvider } from '@/lib/session';
 import { colors } from '@/theme';
@@ -64,8 +65,10 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="news/[slug]" />
+          <Stack.Screen name="compose" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
           <Stack.Screen name="sign-in" options={{ animation: 'slide_from_bottom', presentation: 'modal' }} />
         </Stack>
+        <MenuDrawer />
         <ToastHost />
       </SessionProvider>
     </ThemeProvider>

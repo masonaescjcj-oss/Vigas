@@ -1,102 +1,112 @@
-import type { NewsListItem, ToolItem, WalletResponse } from '@vigas/core';
+import { formatPricePerMillion, type ModelListItem, type NewsListItem, type PulsePost, type ToolItem, type WalletResponse } from '@vigas/core';
 import { router, useScrollToTop } from 'expo-router';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Bento, Led, SectionHead, Tag } from '@/components/boxes';
 import { KeyButton } from '@/components/buttons';
 import { Icon, LogoMark } from '@/components/icons';
-import { Avatar, Monogram } from '@/components/monogram';
+import { MenuTrigger, WalletPill } from '@/components/menu-drawer';
+import { Monogram, OrgMonogram } from '@/components/monogram';
 import { NewsCover } from '@/components/news-cover';
 import { Colonnade } from '@/components/pillars';
 import { IconButton, PressableScale } from '@/components/pressable';
+import { ApiCodeSheet, PostCard } from '@/components/pulse';
 import { Refresher, StatusScrim } from '@/components/screen';
 import { Skeleton, SkeletonRow } from '@/components/skeleton';
 import { OfflineNote } from '@/components/states';
-import { Heading, Label, Span, T } from '@/components/text';
+import { Label, Span, T } from '@/components/text';
 import { api } from '@/lib/api';
 import { fallbackHome } from '@/lib/fallback';
 import { agoLabel, dayLabel, greeting, intl, navStamp, pct, pillarName, shortTitle, usd } from '@/lib/format';
+import { usePulseFeed } from '@/lib/pulse';
 import { useRemote } from '@/lib/remote';
-import { useSession, userInitials } from '@/lib/session';
+import { useSession } from '@/lib/session';
 import { useWallet } from '@/lib/wallet';
 import { colors, GUTTER, radius } from '@/theme';
 
-const PROMPTS = ['Compare Opus vs GPT-6', 'AI news in 60 seconds', 'Cheapest model for PDFs', 'Write a launch tweet'];
-const CARD_W = 290;
+const PROMPTS = ['Compare Fable vs Flash', 'AI news in 60 seconds', 'Cheapest PDF extractor', 'Write a launch tweet'];
+const CARD_W = 286;
 const CARD_GAP = 10;
 
-const openChat = (prompt?: string) =>
-  router.navigate({ pathname: '/chat', params: { prompt: prompt ?? '', mode: 'chat', t: navStamp() } });
+interface RateSpec {
+  id: string;
+  tag: string;
+  speed: string;
+  fast?: boolean;
+}
 
-const enter = (i: number) => FadeInDown.duration(420).delay(40 + i * 55);
+const LIVE_SHOWCASE: RateSpec[] = [
+  { id: 'deepseek/v4.1-flash', tag: 'Lowest cost', speed: '98ms', fast: true },
+  { id: 'google/gemini-4-argon', tag: 'Fastest', speed: '105ms', fast: true },
+  { id: 'openai/gpt-6.1-terra', tag: 'Reasoning -12%', speed: '140ms' },
+  { id: 'anthropic/claude-fable-5.2', tag: '#1 Arena', speed: '175ms' },
+];
+
+const openChat = (prompt?: string, model?: string) =>
+  router.navigate({ pathname: '/chat', params: { prompt: prompt ?? '', model: model ?? '', mode: 'chat', t: navStamp() } });
+
+const enter = (i: number) => FadeInDown.duration(380).delay(35 + i * 45);
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { token, user } = useSession();
+  const { token } = useSession();
   const home = useRemote('home', () => api.home(), { fallback: fallbackHome });
   const wallet = useWallet();
+  const pulse = usePulseFeed('hot');
+  const [codePost, setCodePost] = useState<PulsePost | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
 
   const feed = home.data;
   const now = new Date();
+  const spotlight = pulse.items.find((p) => p.kind === 'battle') ?? pulse.items[0] ?? null;
 
   return (
     <View style={styles.root}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 28 }}
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <Refresher
-            refreshing={home.refreshing || wallet.refreshing}
+            refreshing={home.refreshing || wallet.refreshing || pulse.refreshing}
             progressViewOffset={insets.top}
             onRefresh={() => {
               void home.refresh();
               void wallet.refresh();
+              void pulse.refresh();
             }}
           />
         }
       >
         <View style={styles.header}>
-          <LogoMark size={22} />
+          <MenuTrigger />
+          <LogoMark size={21} />
           <T f="serif" size={26} lh={1.05} style={styles.brand}>
             Vigas
           </T>
           <IconButton
             icon="search"
-            accessibilityLabel="Search"
+            accessibilityLabel="Search models, tools and news"
             style={styles.pushRight}
             onPress={() => router.navigate({ pathname: '/explore', params: { focus: '1', t: navStamp() } })}
           />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={token ? 'Account and wallet' : 'Sign in'}
-            hitSlop={5}
-            onPress={() => (token ? router.navigate('/wallet') : router.push('/sign-in'))}
-            style={styles.avatarBtn}
-          >
-            {token ? (
-              <Avatar text={userInitials(user)} />
-            ) : (
-              <View style={styles.guest}>
-                <Icon name="lock" size={16} color={colors.ink2} />
-              </View>
-            )}
-          </Pressable>
+          <WalletPill />
         </View>
 
         <Animated.View entering={enter(0)} style={styles.hero}>
           <Label>{dayLabel(now)}</Label>
-          <T f="serif" size={38} lh={1.08} ls={-0.02} accessibilityRole="header" style={styles.h1}>
+          <T f="serif" size={38} lh={1.06} ls={-0.02} accessibilityRole="header" style={styles.h1}>
             {greeting(now)}
             {'\n'}
             <Span f="serifItalic" color={colors.sand}>
               What are we building?
             </Span>
           </T>
+
           <PressableScale accessibilityLabel="Ask Vigas anything" onPress={() => openChat()} style={styles.ask} haptic="tap">
             <View style={styles.askRow}>
               <Icon name="spark" size={20} color={colors.orange} />
@@ -106,14 +116,24 @@ export default function HomeScreen() {
             </View>
             <View style={styles.askFoot}>
               <View style={styles.modelPill}>
+                <Led color={colors.green} size={6} still />
                 <T f="mono" size={12} color={colors.ink}>
                   vigas/auto
                 </T>
               </View>
-              <View style={[styles.askIcon, styles.pushRight]}>
-                <Icon name="mic" size={20} color={colors.ink2} />
-              </View>
-              <View style={styles.sendKey}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Open blind Arena"
+                hitSlop={6}
+                onPress={() => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: navStamp() } })}
+                style={styles.arenaPill}
+              >
+                <Icon name="arena" size={13} color={colors.sand} />
+                <T f="monoMedium" size={11.5} color={colors.sand}>
+                  Arena
+                </T>
+              </Pressable>
+              <View style={[styles.sendKey, styles.pushRight]}>
                 <View style={styles.sendEdge} />
                 <View style={styles.sendFace}>
                   <Icon name="arrowUp" size={20} color={colors.onOrange} />
@@ -127,7 +147,7 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.prompts}>
             {PROMPTS.map((p) => (
               <PressableScale key={p} onPress={() => openChat(p)} style={styles.prompt} accessibilityLabel={`Ask: ${p}`}>
-                <T size={14} color={colors.ink2}>
+                <T size={13.5} color={colors.ink2}>
                   {p}
                 </T>
               </PressableScale>
@@ -135,17 +155,75 @@ export default function HomeScreen() {
           </ScrollView>
         </Animated.View>
 
-        <Animated.View entering={enter(2)}>
+        {home.offline ? <OfflineNote style={styles.offline} onRetry={() => void home.refresh()} /> : null}
+
+        {/* § 01 — Live API Rates box (directly inspired by vigas.app HeroApiPanel) */}
+        <Animated.View entering={enter(2)} style={styles.section}>
+          <LiveRatesBox models={feed?.prices ?? []} />
+        </Animated.View>
+
+        {/* § 02 — Pulse Community Spotlight */}
+        {spotlight ? (
+          <Animated.View entering={enter(3)} style={styles.section}>
+            <SectionHead
+              index="02"
+              label="Pulse · Community"
+              title="Live model"
+              accent="battle."
+              right={<SeeAll label="Open Pulse" onPress={() => router.navigate('/pulse')} />}
+            />
+            <View style={styles.pad}>
+              <PostCard post={spotlight} onCode={setCodePost} />
+            </View>
+          </Animated.View>
+        ) : null}
+
+        {/* § 03 — The Colonnade (signature architectural fluted pillars) */}
+        <Animated.View entering={enter(4)} style={styles.section}>
+          <Bento tone="cover">
+            <View style={styles.bentoHead}>
+              <View style={styles.flex}>
+                <Label color={colors.sand}>§ 03 — The Colonnade</Label>
+                <T f="serif" size={28} lh={1.06} style={styles.bentoTitle}>
+                  Top agents <Span f="serifItalic" color={colors.sand}>this week</Span>
+                </T>
+              </View>
+              <SeeAll label="Ranks" onPress={() => router.navigate('/ranks')} />
+            </View>
+            {feed ? (
+              <Colonnade
+                items={feed.topAgents.slice(0, 5).map((a) => ({
+                  key: a.modelId,
+                  label: pillarName(a.name),
+                  value: a.winRate,
+                  valueLabel: pct(a.winRate),
+                }))}
+                onPress={(it) => openChat(undefined, it.key)}
+              />
+            ) : (
+              <View style={[styles.row, { alignItems: 'flex-end', height: 190 }]}>
+                {[110, 90, 80, 74, 70].map((h, i) => (
+                  <Skeleton key={i} height={h} style={styles.flex} radius={4} />
+                ))}
+              </View>
+            )}
+          </Bento>
+        </Animated.View>
+
+        {/* § 04 — Credits & API Strip */}
+        <Animated.View entering={enter(5)} style={styles.section}>
           <CreditsStrip signedIn={!!token} wallet={wallet.data} pending={wallet.pending} error={wallet.error} />
         </Animated.View>
 
-        {home.offline ? <OfflineNote style={styles.offline} onRetry={() => void home.refresh()} /> : null}
-
-        <Animated.View entering={enter(3)} style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Heading size={26}>Today in AI</Heading>
-            <SeeAll label="See all" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'news', t: navStamp() } })} />
-          </View>
+        {/* § 05 — Today in AI (dot-grid editorial covers) */}
+        <Animated.View entering={enter(6)} style={styles.section}>
+          <SectionHead
+            index="04"
+            label="AI Newsroom"
+            title="Today in"
+            accent="AI."
+            right={<SeeAll label="See all" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'news', t: navStamp() } })} />}
+          />
           {feed ? (
             <FlatList
               horizontal
@@ -168,41 +246,117 @@ export default function HomeScreen() {
           )}
         </Animated.View>
 
-        <Animated.View entering={enter(4)} style={[styles.card, styles.agents]}>
-          <View style={[styles.sectionHead, styles.noPad, { marginBottom: 16 }]}>
-            <Heading>Top agents</Heading>
-            <SeeAll label="Ranks" onPress={() => router.navigate('/ranks')} />
+        {/* § 06 — Trending Tools */}
+        <Animated.View entering={enter(7)} style={styles.section}>
+          <SectionHead
+            index="05"
+            label="Builder Directory"
+            title="Trending"
+            accent="tools."
+            right={<SeeAll label="30s Connect" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })} />}
+          />
+          <View style={styles.pad}>
+            {feed
+              ? feed.trendingTools.slice(0, 3).map((t) => <ToolRow key={t.slug} tool={t} />)
+              : [0, 1, 2].map((i) => <SkeletonRow key={i} />)}
           </View>
-          {feed ? (
-            <Colonnade
-              items={feed.topAgents.slice(0, 5).map((a) => ({
-                key: a.modelId,
-                label: pillarName(a.name),
-                value: a.winRate,
-                valueLabel: pct(a.winRate),
-              }))}
-              onPress={() => router.navigate('/ranks')}
-            />
-          ) : (
-            <View style={[styles.row, { alignItems: 'flex-end', height: 190 }]}>
-              {[110, 90, 80, 74, 70].map((h, i) => (
-                <Skeleton key={i} height={h} style={styles.flex} radius={4} />
-              ))}
-            </View>
-          )}
-        </Animated.View>
-
-        <Animated.View entering={enter(5)} style={styles.tools}>
-          <View style={[styles.sectionHead, styles.noPad, { marginBottom: 6 }]}>
-            <Heading>Trending tools</Heading>
-            <SeeAll label="Explore" onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })} />
-          </View>
-          {feed
-            ? feed.trendingTools.slice(0, 3).map((t) => <ToolRow key={t.slug} tool={t} />)
-            : [0, 1, 2].map((i) => <SkeletonRow key={i} />)}
         </Animated.View>
       </ScrollView>
       <StatusScrim />
+      <ApiCodeSheet post={codePost} onClose={() => setCodePost(null)} />
+    </View>
+  );
+}
+
+/** Native edition of vigas.app's HeroApiPanel (`apps/web/src/components/hero-api-panel.tsx`). */
+function LiveRatesBox({ models }: { models: ModelListItem[] }) {
+  const byId = new Map(models.map((m) => [m.id, m]));
+  const rows = LIVE_SHOWCASE.map((spec) => ({ spec, model: byId.get(spec.id) })).filter(
+    (entry): entry is { spec: RateSpec; model: ModelListItem } => Boolean(entry.model),
+  );
+
+  return (
+    <View style={styles.ratesBox}>
+      <View style={styles.ratesHead}>
+        <View style={styles.ratesTitleRow}>
+          <Led color={colors.green} size={7} />
+          <T f="sansSemi" size={14}>
+            Live API rates
+          </T>
+        </View>
+        <Tag text="$0 fee · first $5" color={colors.green} />
+      </View>
+
+      {rows.length ? (
+        rows.map(({ spec, model }, i) => {
+          const isFree = model.inputPerMillionMicros === 0 && model.outputPerMillionMicros === 0;
+          const shortName = model.name.replace(/ \(.*\)$/, '');
+          return (
+            <PressableScale
+              key={model.id}
+              accessibilityLabel={`${shortName}, ${spec.speed}, ${formatPricePerMillion(model.inputPerMillionMicros)} input. Test in Chat.`}
+              onPress={() => openChat(undefined, model.id)}
+              scaleTo={0.99}
+              style={[styles.rateRow, i > 0 && styles.rateSep]}
+            >
+              <OrgMonogram org={model.org} size={32} radius={9} />
+              <View style={styles.flex}>
+                <View style={styles.rateNameRow}>
+                  <T f="sansSemi" size={14} numberOfLines={1} style={styles.shrink}>
+                    {shortName}
+                  </T>
+                  <Tag text={spec.tag} color={isFree ? colors.green : colors.sand} />
+                </View>
+                <T f="mono" size={11} color={colors.ink3} numberOfLines={1}>
+                  <Span f="monoMedium" color={spec.fast ? colors.green : colors.ink2}>
+                    {spec.speed}
+                  </Span>
+                  {' · '}
+                  {model.id}
+                </T>
+              </View>
+              <View style={styles.rateRight}>
+                <T f="monoSemi" size={12.5} color={isFree ? colors.green : colors.ink}>
+                  {isFree
+                    ? 'FREE'
+                    : `${formatPricePerMillion(model.inputPerMillionMicros)} / ${formatPricePerMillion(model.outputPerMillionMicros)}`}
+                </T>
+                <T f="mono" size={10} color={colors.ink3}>
+                  in / out · 1M
+                </T>
+              </View>
+            </PressableScale>
+          );
+        })
+      ) : (
+        <View style={styles.ratePad}>
+          <SkeletonRow square={32} />
+          <SkeletonRow square={32} />
+        </View>
+      )}
+
+      <View style={styles.ratesFoot}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'tools', t: navStamp() } })}
+          style={styles.rateChip}
+        >
+          <Icon name="plug" size={13} color={colors.ink2} />
+          <T f="monoMedium" size={11.5} color={colors.ink2}>
+            Connect IDE
+          </T>
+        </Pressable>
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={8}
+          onPress={() => router.navigate({ pathname: '/explore', params: { seg: 'models', t: navStamp() } })}
+          style={styles.rateAll}
+        >
+          <T f="sansMedium" size={13} color={colors.orangeText}>
+            All {models.length || 26} models →
+          </T>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -282,15 +436,15 @@ function CreditsStrip({
     return (
       <View style={[styles.card, styles.credits]}>
         <View style={styles.flex}>
-          <Label>Credits</Label>
-          <T f="serif" size={30} lh={1.1}>
-            One balance
+          <Label color={colors.sand}>API Console · Credits</Label>
+          <T f="serif" size={30} lh={1.08}>
+            One balance, <Span f="serifItalic" color={colors.sand}>every lab.</Span>
           </T>
-          <T f="mono" size={12} color={colors.ink3}>
-            API · Chat · RetroBuild
+          <T f="mono" size={11.5} color={colors.ink3}>
+            api.vigas.ai/v1 · Chat · Cursor · n8n
           </T>
         </View>
-        <KeyButton label="Sign in" onPress={() => router.push('/sign-in')} />
+        <KeyButton label="Get key" onPress={() => router.push('/sign-in')} />
       </View>
     );
   }
@@ -302,7 +456,7 @@ function CreditsStrip({
   return (
     <View style={[styles.card, styles.credits]}>
       <View style={styles.flex}>
-        <Label>Credits</Label>
+        <Label color={colors.sand}>API Credits</Label>
         {wallet ? (
           <>
             <T f="serif" size={34} lh={1.05} numberOfLines={1} adjustsFontSizeToFit>
@@ -339,7 +493,7 @@ function CreditsStrip({
           ))}
         </View>
       ) : null}
-      <KeyButton label="Top up" onPress={() => router.navigate('/wallet')} />
+      <KeyButton label="Console" onPress={() => router.navigate('/wallet')} />
     </View>
   );
 }
@@ -347,23 +501,14 @@ function CreditsStrip({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1, minWidth: 0 },
+  shrink: { flexShrink: 1 },
+  pad: { paddingHorizontal: GUTTER },
   row: { flexDirection: 'row', gap: CARD_GAP },
   pushRight: { marginLeft: 'auto' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 14, paddingBottom: 4, paddingLeft: GUTTER, paddingRight: 12 },
-  brand: { marginLeft: 4 },
-  avatarBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  guest: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.raised,
-    borderWidth: 1,
-    borderColor: colors.line2,
-  },
-  hero: { paddingHorizontal: GUTTER, paddingTop: 14 },
-  h1: { marginTop: 8, marginBottom: 18 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 10, paddingBottom: 4, paddingLeft: 10, paddingRight: GUTTER },
+  brand: { marginLeft: 2 },
+  hero: { paddingHorizontal: GUTTER, paddingTop: 12 },
+  h1: { marginTop: 8, marginBottom: 16 },
   ask: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -375,14 +520,34 @@ const styles = StyleSheet.create({
   },
   askRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   askFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
-  modelPill: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: colors.line2 },
-  askIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  modelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line2,
+    backgroundColor: colors.bg2,
+  },
+  arenaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(227,182,92,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(227,182,92,0.28)',
+  },
   sendKey: { width: 44, height: 47 },
   sendEdge: { position: 'absolute', top: 3, left: 0, width: 44, height: 44, borderRadius: 22, backgroundColor: colors.orangeEdge },
   sendFace: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.orange, alignItems: 'center', justifyContent: 'center' },
-  prompts: { paddingHorizontal: GUTTER, gap: 10, paddingTop: 12 },
+  prompts: { paddingHorizontal: GUTTER, gap: 9, paddingTop: 12 },
   prompt: {
-    minHeight: 40,
+    minHeight: 38,
     paddingHorizontal: 14,
     borderRadius: 999,
     backgroundColor: colors.surface,
@@ -390,6 +555,62 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239,234,225,0.1)',
     justifyContent: 'center',
   },
+  offline: { marginTop: 16 },
+  section: { marginTop: 24 },
+  ratesBox: {
+    marginHorizontal: GUTTER,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line2,
+    overflow: 'hidden',
+  },
+  ratesHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    backgroundColor: colors.bg2,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  ratesTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  rateSep: { borderTopWidth: 1, borderTopColor: colors.line },
+  rateNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  rateRight: { alignItems: 'flex-end', flexShrink: 0 },
+  ratePad: { paddingHorizontal: 16, paddingVertical: 8 },
+  ratesFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    backgroundColor: colors.bg2,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  rateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line2,
+  },
+  rateAll: { minHeight: 30, justifyContent: 'center' },
+  bentoHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  bentoTitle: { marginTop: 4 },
   card: {
     marginHorizontal: GUTTER,
     borderRadius: radius.card,
@@ -397,19 +618,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
-  credits: { marginTop: 20, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  credits: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   miniBars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 44 },
   miniBar: { width: 7, borderRadius: 2 },
-  offline: { marginTop: 16 },
-  section: { marginTop: 26 },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    paddingHorizontal: GUTTER,
-    marginBottom: 12,
-  },
-  noPad: { paddingHorizontal: 0 },
   seeAll: { minHeight: 32, justifyContent: 'center' },
   carousel: { paddingHorizontal: GUTTER },
   newsCard: {
@@ -422,8 +633,6 @@ const styles = StyleSheet.create({
   },
   newsText: { paddingTop: 14, paddingHorizontal: 16, paddingBottom: 16, minHeight: 96 },
   newsTitle: { marginTop: 6 },
-  agents: { marginTop: 26, padding: 18 },
-  tools: { marginTop: 26, marginHorizontal: GUTTER },
   toolRow: {
     flexDirection: 'row',
     alignItems: 'center',

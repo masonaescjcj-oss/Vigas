@@ -35,6 +35,18 @@ export const ICONS = {
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
   lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
   wifiOff: 'M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5-2.7M19 13a10 10 0 0 0-2.2-1.6M2 9.5a15 15 0 0 1 4.3-2.8M22 9.5A15 15 0 0 0 11 5.1M12 20h.01',
+  pulse: 'M3 12h4l2.5-6 4 12 2.5-6H21',
+  menu: 'M4 7h16M4 12h16M4 17h10',
+  code: 'M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16',
+  grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+  comment: 'M5 5h14v10H10l-4 3.5V15H5z',
+  remix: 'M4 7h11l-3-3M20 17H9l3 3M17 7a3 3 0 0 1 3 3M7 17a3 3 0 0 1-3-3',
+  play: 'M8 5.5v13l10-6.5z',
+  external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
+  plug: 'M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4',
+  news: 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 12.5h7M7 16h4',
+  layers: 'M12 3 3 8l9 5 9-5zM3 13l9 5 9-5',
 } as const;
 
 export type IconName = keyof typeof ICONS;

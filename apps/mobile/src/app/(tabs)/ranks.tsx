@@ -1,20 +1,14 @@
-import { LEADERBOARD_CATEGORIES, type LeaderboardCategory, type LeaderboardEntry } from '@vigas/core';
+import { LEADERBOARD_CATEGORIES, paretoFrontier, type LeaderboardCategory, type LeaderboardEntry } from '@vigas/core';
 import { router, useScrollToTop } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import Animated, {
-  Easing,
-  FadeInDown,
-  LinearTransition,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Bento, FlutedBar, Led, Tag } from '@/components/boxes';
 import { ChipRow } from '@/components/chips';
 import { Icon } from '@/components/icons';
+import { MenuTrigger, WalletPill } from '@/components/menu-drawer';
 import { OrgMonogram } from '@/components/monogram';
 import { Podium } from '@/components/pillars';
 import { IconButton, PressableScale } from '@/components/pressable';
@@ -22,12 +16,12 @@ import { Refresher, StatusScrim } from '@/components/screen';
 import { Sheet } from '@/components/sheet';
 import { Skeleton, SkeletonRow } from '@/components/skeleton';
 import { OfflineNote } from '@/components/states';
-import { T } from '@/components/text';
+import { Label, Span, T } from '@/components/text';
 import { api } from '@/lib/api';
 import { fallbackLeaderboard } from '@/lib/fallback';
 import { baseModelName, intl, navStamp, pct, pillarName, usd } from '@/lib/format';
 import { useRemote } from '@/lib/remote';
-import { colors, GUTTER } from '@/theme';
+import { colors, GUTTER, radius } from '@/theme';
 
 const openArena = () => router.navigate({ pathname: '/chat', params: { mode: 'arena', t: navStamp() } });
 const openModel = (modelId: string) =>
@@ -45,21 +39,41 @@ export default function RanksScreen() {
   const max = Math.max(...entries.map((e) => e.winRate), 1);
   const rest = entries.slice(3);
 
+  // Pareto frontier from `@vigas/core`: highest win-rate leader vs cheapest frontier model.
+  const frontierIds = new Set(
+    paretoFrontier(entries.map((e) => ({ id: e.modelId, cost: e.costPerTaskMicros, score: e.winRate }))).map((p) => p.id),
+  );
+  const bestValue = entries
+    .filter((e) => frontierIds.has(e.modelId) && e.rank > 1)
+    .sort((a, b) => a.costPerTaskMicros - b.costPerTaskMicros)[0];
+  const leader = entries[0];
+
   const header = (
     <View>
-      <View style={[styles.head, { paddingTop: insets.top + 14 }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <MenuTrigger />
         <View style={styles.flex}>
-          <T f="serif" size={44} lh={1.05} ls={-0.02} accessibilityRole="header" style={styles.title}>
+          <T f="serif" size={30} lh={1.05} ls={-0.02} accessibilityRole="header">
             Ranks
           </T>
-          <View style={styles.liveRow}>
-            <LiveDot />
-            <T f="mono" size={12} color={colors.ink2}>
-              {lb.data ? `${intl(lb.data.totalSessions)} sessions` : 'Loading sessions…'}
-            </T>
-          </View>
         </View>
-        <IconButton icon="info" accessibilityLabel="How we rank" onPress={() => setHowOpen(true)} />
+        <IconButton icon="info" accessibilityLabel="How we rank" onPress={() => setHowOpen(true)} color={colors.ink2} />
+        <WalletPill />
+      </View>
+
+      <View style={styles.masthead}>
+        <View style={styles.liveRow}>
+          <Led color={colors.green} size={7} />
+          <T f="mono" size={12} color={colors.ink2}>
+            {lb.data ? `${intl(lb.data.totalSessions)} live sessions · Bradley–Terry` : 'Loading sessions…'}
+          </T>
+        </View>
+        <T f="serif" size={34} lh={1.06} ls={-0.02} style={styles.heroTitle}>
+          Rankings from{' '}
+          <Span f="serifItalic" color={colors.sand}>
+            real work.
+          </Span>
+        </T>
       </View>
 
       <ChipRow
@@ -72,7 +86,11 @@ export default function RanksScreen() {
 
       {lb.offline ? <OfflineNote style={styles.offline} onRetry={() => void lb.refresh()} /> : null}
 
-      <View style={styles.podiumCard} accessibilityLabel="Top three">
+      <Bento tone="cover" style={styles.podiumCard}>
+        <View style={styles.podiumHead}>
+          <Label color={colors.sand}>§ The Colonnade · Top 3</Label>
+          <Tag text="Tap pillar to chat" color={colors.ink2} bg="rgba(239,234,225,0.08)" />
+        </View>
         {entries.length >= 3 ? (
           <Podium
             places={entries.slice(0, 3).map((e, i) => ({
@@ -97,8 +115,35 @@ export default function RanksScreen() {
             ))}
           </View>
         )}
+      </Bento>
+
+      {/* Value Frontier bento inspired by vigas.app Pareto chart */}
+      {leader && bestValue ? (
+        <View style={styles.paretoRow}>
+          <PressableScale onPress={() => openModel(leader.modelId)} style={styles.paretoCard} scaleTo={0.98}>
+            <Tag text="#1 Quality" color={colors.orange} />
+            <T f="sansSemi" size={14} numberOfLines={1} style={styles.paretoName}>
+              {baseModelName(leader.name)}
+            </T>
+            <T f="mono" size={11.5} color={colors.ink2}>
+              {pct(leader.winRate)} · {usd(leader.costPerTaskMicros)}/task
+            </T>
+          </PressableScale>
+          <PressableScale onPress={() => openModel(bestValue.modelId)} style={styles.paretoCard} scaleTo={0.98}>
+            <Tag text="Pareto value" color={colors.green} />
+            <T f="sansSemi" size={14} numberOfLines={1} style={styles.paretoName}>
+              {baseModelName(bestValue.name)}
+            </T>
+            <T f="mono" size={11.5} color={colors.green}>
+              {pct(bestValue.winRate)} · {usd(bestValue.costPerTaskMicros)}/task
+            </T>
+          </PressableScale>
+        </View>
+      ) : null}
+
+      <View style={styles.listHead}>
+        <Label>§ Full standings · Tap any model to test</Label>
       </View>
-      <View style={styles.listGap} />
     </View>
   );
 
@@ -109,7 +154,9 @@ export default function RanksScreen() {
         data={rest}
         keyExtractor={(e) => e.modelId}
         ListHeaderComponent={header}
-        renderItem={({ item, index }) => <RankRow entry={item} max={max} index={index} />}
+        renderItem={({ item, index }) => (
+          <RankRow entry={item} max={max} index={index} pareto={frontierIds.has(item.modelId)} />
+        )}
         itemLayoutAnimation={LinearTransition.duration(260)}
         ListEmptyComponent={
           lb.pending ? (
@@ -139,9 +186,9 @@ export default function RanksScreen() {
             </T>{' '}
             is the percent of sessions a model wins;{' '}
             <T f="sansSemi" size={15}>
-              cost per task
+              Pareto value
             </T>{' '}
-            is the average spend for one completed agent task.
+            marks models no cheaper option beats.
           </T>
           <PressableScale
             onPress={() => {
@@ -161,33 +208,7 @@ export default function RanksScreen() {
   );
 }
 
-function LiveDot() {
-  const o = useSharedValue(1);
-  useEffect(() => {
-    o.set(withRepeat(withTiming(0.4, { duration: 1100, easing: Easing.inOut(Easing.quad) }), -1, true));
-  }, [o]);
-  const style = useAnimatedStyle(() => ({ opacity: o.get() }));
-  return (
-    <Animated.View style={[styles.ledRing, style]}>
-      <View style={styles.led} />
-    </Animated.View>
-  );
-}
-
-function Bar({ value }: { value: number }) {
-  const w = useSharedValue(0);
-  useEffect(() => {
-    w.set(withTiming(value, { duration: 600, easing: Easing.out(Easing.cubic) }));
-  }, [value, w]);
-  const fill = useAnimatedStyle(() => ({ width: `${w.get()}%` }));
-  return (
-    <View style={styles.barTrack}>
-      <Animated.View style={[styles.barFill, fill]} />
-    </View>
-  );
-}
-
-function RankRow({ entry, max, index }: { entry: LeaderboardEntry; max: number; index: number }) {
+function RankRow({ entry, max, index, pareto }: { entry: LeaderboardEntry; max: number; index: number; pareto: boolean }) {
   return (
     <Animated.View entering={index < 10 ? FadeInDown.duration(300).delay(index * 30) : undefined} style={styles.pad}>
       <PressableScale
@@ -196,21 +217,32 @@ function RankRow({ entry, max, index }: { entry: LeaderboardEntry; max: number; 
         style={styles.row}
         scaleTo={0.985}
       >
-        <T f="monoSemi" size={14} color={colors.ink3} style={styles.rank}>
-          {entry.rank}
+        <T f="monoSemi" size={13.5} color={colors.ink3} style={styles.rank}>
+          {String(entry.rank).padStart(2, '0')}
         </T>
         <OrgMonogram org={entry.org} size={34} radius={10} />
         <View style={styles.flex}>
-          <T f="sansMedium" numberOfLines={1}>
-            {baseModelName(entry.name)}
-          </T>
-          <Bar value={(entry.winRate / max) * 100} />
+          <View style={styles.rowName}>
+            <T f="sansMedium" numberOfLines={1} style={styles.shrink}>
+              {baseModelName(entry.name)}
+            </T>
+            {pareto ? <Tag text="VALUE" color={colors.green} /> : null}
+          </View>
+          <View style={styles.barWrap}>
+            <FlutedBar
+              pct={(entry.winRate / max) * 100}
+              fill={pareto ? colors.sand : colors.pillar}
+              groove={pareto ? colors.sandDeep : colors.grooveDark}
+              height={7}
+              delay={index < 8 ? index * 30 : 0}
+            />
+          </View>
         </View>
         <View style={styles.right}>
-          <T f="mono" size={14} color={colors.green}>
-            {pct(entry.winRate, 2)}
+          <T f="monoSemi" size={13.5} color={colors.green}>
+            {pct(entry.winRate, 1)}
           </T>
-          <T f="mono" size={12} color={colors.ink3}>
+          <T f="mono" size={11.5} color={colors.ink3}>
             {usd(entry.costPerTaskMicros)}/task
           </T>
         </View>
@@ -226,9 +258,9 @@ function ArenaCta() {
         <Icon name="arena" size={20} color={colors.onOrange} />
       </View>
       <View style={styles.flex}>
-        <T f="sansSemi">Vote in the Arena</T>
+        <T f="sansSemi">Vote in the Blind Arena</T>
         <T size={13} color={colors.ink2}>
-          Compare two hidden models. Shape the ranks.
+          Pit two hidden models head-to-head and shape live ranks.
         </T>
       </View>
       <Icon name="chevronRight" size={20} color={colors.orangeText} />
@@ -239,51 +271,54 @@ function ArenaCta() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1, minWidth: 0 },
+  shrink: { flexShrink: 1 },
   pad: { paddingHorizontal: GUTTER },
-  listContent: { paddingBottom: 28 },
-  head: { flexDirection: 'row', alignItems: 'flex-start', paddingLeft: GUTTER, paddingRight: 12 },
-  title: { marginTop: 10, marginBottom: 6 },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  ledRing: {
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    backgroundColor: 'rgba(111,207,115,0.2)',
+  listContent: { paddingBottom: 32 },
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    paddingLeft: 10,
+    paddingRight: GUTTER,
+    paddingBottom: 4,
   },
-  led: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.green },
-  chips: { marginTop: 18 },
+  masthead: { paddingHorizontal: GUTTER, paddingTop: 6 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroTitle: { marginTop: 6 },
+  chips: { marginTop: 16 },
   offline: { marginTop: 14 },
-  podiumCard: {
-    marginTop: 18,
-    marginHorizontal: GUTTER,
-    paddingTop: 18,
-    paddingHorizontal: 12,
-    borderRadius: 24,
+  podiumCard: { marginTop: 18, paddingHorizontal: 12, paddingBottom: 0 },
+  podiumHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 6, marginBottom: 8 },
+  podiumSkeleton: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  podiumSkeletonCol: { flex: 1, alignItems: 'center', gap: 8 },
+  paretoRow: { flexDirection: 'row', gap: 10, paddingHorizontal: GUTTER, marginTop: 12 },
+  paretoCard: {
+    flex: 1,
+    minWidth: 0,
+    padding: 13,
+    borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    overflow: 'hidden',
+    gap: 5,
   },
-  podiumSkeleton: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  podiumSkeletonCol: { flex: 1, alignItems: 'center', gap: 8 },
-  listGap: { height: 16 },
+  paretoName: { marginTop: 2 },
+  listHead: { paddingHorizontal: GUTTER, marginTop: 20, marginBottom: 6 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 11,
     paddingVertical: 12,
-    minHeight: 64,
+    minHeight: 66,
     borderTopWidth: 1,
     borderTopColor: 'rgba(239,234,225,0.06)',
   },
-  rank: { width: 28 },
-  barTrack: { height: 4, borderRadius: 2, backgroundColor: colors.raised, marginTop: 7, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 2, backgroundColor: colors.blue },
+  rowName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  barWrap: { marginTop: 7 },
+  rank: { width: 26 },
   right: { alignItems: 'flex-end' },
   cta: {
-    marginTop: 16,
+    marginTop: 18,
     marginHorizontal: GUTTER,
     flexDirection: 'row',
     alignItems: 'center',

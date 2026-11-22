@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GhostButton, KeyButton } from '@/components/buttons';
 import { Icon } from '@/components/icons';
+import { MenuTrigger } from '@/components/menu-drawer';
 import { IconButton } from '@/components/pressable';
 import { Refresher, StatusScrim } from '@/components/screen';
 import { Sheet } from '@/components/sheet';
@@ -56,7 +57,8 @@ export default function WalletScreen() {
         }
       >
         <View style={styles.titleRow}>
-          <T f="serif" size={44} lh={1.05} ls={-0.02} accessibilityRole="header" style={styles.flex}>
+          <MenuTrigger />
+          <T f="serif" size={38} lh={1.05} ls={-0.02} accessibilityRole="header" style={styles.flex}>
             Wallet
           </T>
           {token ? (
@@ -536,7 +538,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   pad: { paddingHorizontal: GUTTER },
   top: { marginTop: 18 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: GUTTER, paddingRight: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 10, paddingRight: 12 },
   signedAs: { marginTop: 24 },
   perks: { marginTop: 18, marginHorizontal: GUTTER, gap: 4 },
   perk: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(239,234,225,0.06)' },
