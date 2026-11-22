@@ -1743,13 +1743,25 @@ export const AgentChatScreen = () => {
           <TouchableOpacity
             onPress={() => {
               const win = globalThis as unknown as { location?: { assign?: (url: string) => void } };
+              win.location?.assign?.("/dashboard");
+            }}
+            accessibilityRole="link"
+            activeOpacity={0.7}
+          >
+            <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6, color: colors.brandPrimary }}>
+              api console →
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              const win = globalThis as unknown as { location?: { assign?: (url: string) => void } };
               win.location?.assign?.("/");
             }}
             accessibilityRole="link"
             activeOpacity={0.7}
           >
             <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6, color: colors.inkSecondary }}>
-              ← vigas.app
+              vigas.app
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1761,7 +1773,7 @@ export const AgentChatScreen = () => {
             activeOpacity={0.7}
           >
             <Text variant="label" style={{ fontSize: 11, letterSpacing: 0.6, color: colors.inkMuted }}>
-              models &amp; api
+              models
             </Text>
           </TouchableOpacity>
         </View>

@@ -1,13 +1,11 @@
 import { RetroAuth } from '@/components/retro-auth';
-import { SiteFooter } from '@/components/site-footer';
-import { SiteHeader } from '@/components/site-header';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = {
   ...pageMetadata({
-    title: 'ساخت حساب کاربری — چت AI و کلید API یکپارچه',
+    title: 'ساخت حساب کاربری — پنل API و چت هوش مصنوعی ویگاس',
     description:
-      'حساب رایگان ویگاس بسازید: دسترسی هم‌زمان به چت هوش مصنوعی، یک کلید API سازگار با OpenAI و ۰٪ کارمزد تا ۵ دلار اول.',
+      'حساب رایگان ویگاس بسازید: دسترسی هم‌زمان به پنل فروش و مدیریت کلید API، شارژ اعتبار و چت هوش مصنوعی.',
     path: '/signup',
     locale: 'fa_IR',
   }),
@@ -16,12 +14,8 @@ export const metadata = {
 
 export default function FaSignUpPage() {
   return (
-    <div dir="rtl" lang="fa" className="fa-ui">
-      <SiteHeader ticker={false} lang="fa" />
-      <main id="main">
-        <RetroAuth initialMode="signup" lang="fa" />
-      </main>
-      <SiteFooter lang="fa" />
-    </div>
+    <main id="main">
+      <RetroAuth initialMode="signup" lang="fa" />
+    </main>
   );
 }

@@ -6,6 +6,8 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 import { api, safeNext } from '@/lib/client/session';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
 import { getSupabase, syncSignedInHint } from '@/lib/client/supabase';
+import { LanguageSwitch } from './language-switch';
+import { ThemeToggle } from './theme-toggle';
 import { Icon, LogoMark } from './ui';
 
 type AuthStep = 'signin' | 'signup' | 'forgot' | 'verify';
@@ -73,8 +75,28 @@ export function RetroAuth({
             : 'Strong';
   const mismatch = step === 'signup' && confirmPassword.length > 0 && password !== confirmPassword;
 
-  const finishRedirect = (dest = safeNext('/dashboard')) => {
+  const resolveDest = () => {
+    const queryDest = safeNext('');
+    if (queryDest) return queryDest;
+    try {
+      const saved = window.sessionStorage.getItem('vigas_auth_next');
+      if (saved && saved.startsWith('/') && !saved.startsWith('//')) {
+        window.sessionStorage.removeItem('vigas_auth_next');
+        return saved;
+      }
+    } catch {
+      // Ignore storage access restrictions
+    }
+    return '/dashboard';
+  };
+
+  const finishRedirect = (dest = resolveDest()) => {
     syncSignedInHint(true);
+    try {
+      window.sessionStorage.removeItem('vigas_auth_next');
+    } catch {
+      // Ignore
+    }
     if (dest.startsWith('/chat')) {
       window.location.assign(dest);
     } else {
@@ -84,25 +106,26 @@ export function RetroAuth({
   };
 
   useEffect(() => {
-    const dest = safeNext('/dashboard');
+    const dest = resolveDest();
 
     const supabase = getSupabase();
     let active = true;
+    let navigated = false;
 
     const completeFromSession = async (accessToken: string | undefined) => {
-      if (!active || !accessToken) return;
+      if (!active || !accessToken || navigated) return;
+      navigated = true;
+      syncSignedInHint(true);
       if (dest.startsWith('/chat')) {
         void exchangeSupabaseSession(accessToken);
-        syncSignedInHint(true);
         window.location.assign(dest);
         return;
       }
-      const ok = await exchangeSupabaseSession(accessToken);
+      // Best-effort bridge to Postgres cookie when DATABASE_URL is configured; never block opening /dashboard.
+      await exchangeSupabaseSession(accessToken).catch(() => false);
       if (!active) return;
-      if (ok) {
-        router.replace(dest);
-        router.refresh();
-      }
+      router.replace(dest);
+      router.refresh();
     };
 
     void supabase.auth.getSession().then(({ data }) => {
@@ -128,11 +151,15 @@ export function RetroAuth({
     setGoogleBusy(true);
     try {
       const origin = window.location.origin;
-      const signInPath = isFa ? '/fa-app/signin' : '/signin';
       const dest = safeNext('/dashboard');
+      try {
+        window.sessionStorage.setItem('vigas_auth_next', dest);
+      } catch {
+        // Ignore
+      }
       const redirectTo = dest.startsWith('/chat')
         ? `${origin}/chat`
-        : `${origin}${signInPath}?next=${encodeURIComponent(dest)}`;
+        : `${origin}/signin?next=${encodeURIComponent(dest)}`;
       const { error: oauthError } = await getSupabase().auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo },
@@ -350,12 +377,12 @@ export function RetroAuth({
       lang={isFa ? 'fa' : 'en'}
       className={isFa ? 'fa-ui' : undefined}
       style={{
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '32px 20px 64px',
+        padding: '28px 20px 56px',
       }}
     >
       <div style={{ width: '100%', maxWidth: 440 }}>
@@ -366,6 +393,7 @@ export function RetroAuth({
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: 28,
+            gap: 12,
           }}
         >
           <Link
@@ -383,17 +411,10 @@ export function RetroAuth({
             <span>{isFa ? '→' : '←'}</span>
             <span>vigas.app</span>
           </Link>
-          <a
-            href="/chat"
-            className="mn"
-            style={{
-              fontSize: 12,
-              color: 'var(--vg-ink3)',
-              textDecoration: 'none',
-            }}
-          >
-            {isFa ? 'چت AI · حساب یکپارچه' : 'ai chat · one account'}
-          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ThemeToggle variant="icon" lang={lang} />
+            <LanguageSwitch variant="header" lang={lang} />
+          </div>
         </div>
 
         {/* Brand mark + wordmark header */}
@@ -946,11 +967,8 @@ export function RetroAuth({
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             <Icon name="shield" size={14} style={{ color: 'var(--vg-green)' }} />
-            {isFa ? 'سشن مشترک با vigas.app/chat و داشبورد API' : 'Shared session with vigas.app/chat & API dashboard'}
+            {isFa ? 'یک حساب واحد برای پنل API، کیف‌پول و چت هوش مصنوعی' : 'One account for API Console, wallet credits & AI Chat'}
           </span>
-          <a href="/chat" className="mn" style={{ fontSize: 12, color: 'var(--vg-orange-text)', textDecoration: 'none' }}>
-            /chat {isFa ? '←' : '→'}
-          </a>
         </div>
       </div>
     </div>

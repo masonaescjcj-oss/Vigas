@@ -280,14 +280,14 @@ export function ModelsCatalogue({
                           >
                             {isFa ? 'چت' : 'Chat'}
                           </a>
-                          <a
-                            href="#quickstart"
+                          <Link
+                            href={`/dashboard?model=${encodeURIComponent(m.id)}#connect`}
                             className="btn gh"
                             style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9 }}
                             aria-label={isFa ? `استفاده از ${m.name} با Vigas API` : `Use ${m.name} via Vigas API`}
                           >
                             {isFa ? 'کد API' : 'Use API'}
-                          </a>
+                          </Link>
                           <CopyButton
                             text={m.id}
                             label={isFa ? `کپی شناسه ${m.id}` : `Copy model ID ${m.id}`}
@@ -373,14 +373,14 @@ export function ModelsCatalogue({
                     >
                       {isFa ? 'چت' : 'Chat'}
                     </a>
-                    <a
-                      href="#quickstart"
+                    <Link
+                      href={`/dashboard?model=${encodeURIComponent(m.id)}#connect`}
                       className="btn gh"
                       style={{ minHeight: 34, padding: '0 10px', fontSize: 13, borderRadius: 9 }}
                       aria-label={isFa ? `استفاده از ${m.name} با Vigas API` : `Use ${m.name} via Vigas API`}
                     >
                       {isFa ? 'کد API' : 'Use API'}
-                    </a>
+                    </Link>
                     <CopyButton
                       text={m.id}
                       label={isFa ? `کپی شناسه ${m.id}` : `Copy model ID ${m.id}`}

@@ -1,19 +1,19 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { getDb, getWallet } from '@vigas/db';
-import { DashboardClient } from '@/components/dashboard/dashboard-client';
+import { DashboardGate } from '@/components/dashboard/dashboard-gate';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { Breadcrumb } from '@/components/ui';
 import { activePaymentMode } from '@/lib/avexpay';
 import { getCurrentUser, toPublicUser } from '@/lib/auth';
+import { getModels } from '@/lib/data';
 import { serverEnv } from '@/lib/env';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Dashboard',
-  description: 'Your Vigas credits, usage and API keys.',
+  title: 'API Console & Dashboard',
+  description: 'Manage your Vigas API keys, buy prepaid credits with AvexPay, explore 25+ AI models, and connect Cursor, Cline, Python, or Node.',
   path: '/dashboard',
   noindex: true,
 });
@@ -26,44 +26,52 @@ export default function DashboardPage() {
   );
 }
 
-/** Reads the session and preferred language at request time inside Suspense; user data is never cached. */
+/**
+ * Reads the Postgres session (when DATABASE_URL is set) and preferred language at request time.
+ * When running on Supabase Auth without Postgres (or right after OAuth/chat login), DashboardGate
+ * resolves the live Supabase session seamlessly on the client without trapping users in a redirect loop.
+ */
 async function DashboardInner() {
   const cookieStore = await cookies();
   const lang = cookieStore.get('vg_lang')?.value === 'fa' ? 'fa' : 'en';
   const isFa = lang === 'fa';
 
-  const user = await getCurrentUser();
-  if (!user) redirect('/signin?next=/dashboard');
   const env = serverEnv();
-  const wallet = await getWallet(getDb(), user.accountId, env.topupFeeBps);
-  if (!wallet) redirect('/signin?next=/dashboard');
+  const [user, models] = await Promise.all([getCurrentUser(), getModels()]);
+  const wallet = user ? await getWallet(getDb(), user.accountId, env.topupFeeBps) : null;
 
   const content = (
     <>
       <SiteHeader ticker={false} lang={lang} />
       <main id="main" className="wrap" style={{ paddingBottom: 96 }}>
-        <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: isFa ? 'داشبورد' : 'Dashboard' }]} style={{ paddingTop: 28 }} />
+        <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: isFa ? 'پنل API' : 'API Console' }]} style={{ paddingTop: 28 }} />
         <h1
           className="sf"
           style={{
-            fontSize: isFa ? 'clamp(34px,4.8vw,56px)' : 'clamp(44px,5.4vw,72px)',
+            fontSize: isFa ? 'clamp(32px,4.4vw,52px)' : 'clamp(40px,5vw,66px)',
             lineHeight: isFa ? 1.15 : 1,
             letterSpacing: isFa ? 0 : '-.03em',
             fontWeight: isFa ? 700 : 400,
-            margin: '18px 0 20px',
+            margin: '16px 0 22px',
           }}
         >
           {isFa ? (
             <>
-              داشبورد <em className="hi">کاربری شما.</em>
+              پنل <em className="hi">فروش و مدیریت API.</em>
             </>
           ) : (
             <>
-              Your <em className="hi">dashboard.</em>
+              Vigas <em className="hi">API Console.</em>
             </>
           )}
         </h1>
-        <DashboardClient user={toPublicUser(user)} initial={wallet} paymentMode={activePaymentMode(env)} lang={lang} />
+        <DashboardGate
+          initialUser={user ? toPublicUser(user) : null}
+          initialWallet={wallet}
+          models={models}
+          paymentMode={activePaymentMode(env)}
+          lang={lang}
+        />
       </main>
       <SiteFooter lang={lang} />
     </>
@@ -80,22 +88,22 @@ async function DashboardInner() {
 }
 
 function DashboardShellSkeleton() {
-  const block = (h: number, flex: string) => <div className="card" style={{ flex, minWidth: 0, height: h, borderRadius: 22 }} />;
   return (
     <>
       <SiteHeader ticker={false} lang="en" />
       <main id="main" className="wrap" style={{ paddingBottom: 96 }}>
-        <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'Dashboard' }]} style={{ paddingTop: 28 }} />
-        <h1 className="sf" style={{ fontSize: 'clamp(44px,5.4vw,72px)', lineHeight: 1, letterSpacing: '-.03em', margin: '18px 0 20px' }}>
-          Your <em className="hi">dashboard.</em>
+        <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'API Console' }]} style={{ paddingTop: 28 }} />
+        <h1 className="sf" style={{ fontSize: 'clamp(40px,5vw,66px)', lineHeight: 1, letterSpacing: '-.03em', margin: '16px 0 22px' }}>
+          Vigas <em className="hi">API Console.</em>
         </h1>
-        <div aria-busy="true" aria-label="Loading your dashboard">
-          <p style={{ margin: '-8px 0 28px', color: 'var(--vg-ink3)' }}>Loading your account…</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-            {block(420, '1 1 380px')}
-            {block(420, '1.4 1 460px')}
+        <div aria-busy="true" aria-label="Loading your API Console">
+          <p style={{ margin: '-8px 0 24px', color: 'var(--vg-ink3)' }}>Loading your account…</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12, marginBottom: 16 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="card" style={{ height: 104, borderRadius: 18 }} />
+            ))}
           </div>
-          <div style={{ marginTop: 16 }}>{block(260, '1 1 100%')}</div>
+          <div className="card" style={{ height: 340, borderRadius: 22 }} />
         </div>
       </main>
       <SiteFooter lang="en" />

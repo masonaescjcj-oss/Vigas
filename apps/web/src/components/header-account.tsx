@@ -10,15 +10,21 @@ export function HeaderAccount({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
     <>
       {signedIn ? (
         <Link href="/dashboard" className="hdr-signin">
-          {isFa ? 'داشبورد' : 'Dashboard'}
+          {isFa ? 'پنل API' : 'API Console'}
         </Link>
       ) : (
         <Link href="/signin" className="hdr-signin">
           {isFa ? 'ورود' : 'Sign in'}
         </Link>
       )}
-      <Link href={signedIn ? '/dashboard#keys' : '/signup?next=/dashboard%23keys'} className="btn key hdr-cta">
-        {isFa ? (
+      <Link href={signedIn ? '/dashboard#credits' : '/signup?next=/dashboard'} className="btn key hdr-cta">
+        {signedIn ? (
+          isFa ? (
+            <span>خرید اعتبار</span>
+          ) : (
+            <span>Buy credits</span>
+          )
+        ) : isFa ? (
           <span>
             دریافت کلید <span className="long">API</span>
           </span>

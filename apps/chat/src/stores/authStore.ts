@@ -60,6 +60,16 @@ function isSameOriginChatWeb(): boolean {
   return typeof fetch === "function" && Boolean(loc?.pathname?.startsWith("/chat"));
 }
 
+function syncWebSignedInCookie(signedIn: boolean): void {
+  const doc = (globalThis as { document?: { cookie?: string } }).document;
+  const loc = (globalThis as { location?: { protocol?: string } }).location;
+  if (!doc || typeof doc.cookie !== "string") return;
+  const secure = loc?.protocol === "https:" ? "; Secure" : "";
+  doc.cookie = signedIn
+    ? `vigas_signed_in=1; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`
+    : `vigas_signed_in=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
@@ -79,11 +89,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     if (!user) {
       lastMirroredToken = null;
+      if (isSameOriginChatWeb()) syncWebSignedInCookie(false);
       setAnalyticsUser(null);
       set({ profile: null, profileLoadedFor: null });
       return;
     }
     setAnalyticsUser(user.id);
+    if (isSameOriginChatWeb()) {
+      syncWebSignedInCookie(true);
+    }
     if (session?.access_token && isSameOriginChatWeb() && lastMirroredToken !== session.access_token) {
       lastMirroredToken = session.access_token;
       void fetch("/api/auth/exchange", {
@@ -146,6 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     lastMirroredToken = null;
     await supabase.auth.signOut();
     if (isSameOriginChatWeb()) {
+      syncWebSignedInCookie(false);
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => undefined);
     }
     // Recovery is cleared too: leaving it set would pin the app to the reset
