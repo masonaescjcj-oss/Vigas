@@ -478,7 +478,7 @@ describe('You.com adapter & multi-key env config', () => {
     expect(cfg.providers.you?.apiKeys[0]?.budgetMicros).toBe(100_000_000);
     expect(cfg.providers.sevenapi?.apiKeys).toHaveLength(2);
     expect(cfg.providers.sevenapi?.keyStrategy).toBe('sequential');
-    expect(cfg.promoOnlyModelPrefixes).toEqual(['you/']);
+    expect(cfg.promoOnlyModelPrefixes).toEqual(['you/', 'google/gemini-4-hydrogen']);
 
     const resolve = createAdapterResolver(cfg);
     expect(resolve('you')).not.toBeNull();
@@ -490,8 +490,8 @@ describe('You.com adapter & multi-key env config', () => {
     expect(JSON.stringify(snaps)).not.toContain('sk-s1');
   });
 
-  it('rotates Google Gemini multi-key pool across GOOGLE_API_KEYS / GEMINI_API_KEYS and handles Google array errors & API_KEY_INVALID', async () => {
-    const { loadConfig } = await import('../src/config');
+  it('scopes Google free-tier multi-key pool strictly to Gemini 4 Hydrogen and rotates on API_KEY_INVALID / 429', async () => {
+    const { isProviderAllowedForModel, loadConfig } = await import('../src/config');
     const { createAdapterResolver } = await import('../src/providers');
 
     const cfg = loadConfig({
@@ -499,10 +499,19 @@ describe('You.com adapter & multi-key env config', () => {
       GOOGLE_API_KEYS: 'AIza-bad-key,AIza-limited-key',
       GEMINI_API_KEYS: 'AIza-good-key',
       GOOGLE_KEY_STRATEGY: 'sequential',
+      SEVENAPI_API_KEY: 'sk-seven',
     });
 
     expect(cfg.providers.google?.apiKeys.map((k) => k.key)).toEqual(['AIza-bad-key', 'AIza-limited-key', 'AIza-good-key']);
     expect(cfg.providers.google?.baseUrl).toBe('https://generativelanguage.googleapis.com/v1beta/openai');
+    // Free-tier Google keys must ONLY serve Hydrogen (paid + :free), never Carbon/Neon/Argon.
+    expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-hydrogen')).toBe(true);
+    expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-hydrogen:free')).toBe(true);
+    expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-carbon')).toBe(false);
+    expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-neon')).toBe(false);
+    expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-argon')).toBe(false);
+    // Carbon/Neon/Argon remain allowed on sevenapi.
+    expect(isProviderAllowedForModel(cfg, 'sevenapi', 'google/gemini-4-carbon')).toBe(true);
 
     const seenAuth: string[] = [];
     const { f } = fakeFetch((_url, init) => {
@@ -519,7 +528,7 @@ describe('You.com adapter & multi-key env config', () => {
         });
       }
       return Response.json({
-        choices: [{ index: 0, message: { role: 'assistant', content: 'Gemini 4 ready' }, finish_reason: 'stop' }],
+        choices: [{ index: 0, message: { role: 'assistant', content: 'Gemini 4 Hydrogen ready' }, finish_reason: 'stop' }],
         usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
       });
     });
@@ -527,7 +536,7 @@ describe('You.com adapter & multi-key env config', () => {
     const resolve = createAdapterResolver(cfg, { fetcher: f });
     const adapter = resolve('google')!;
     const out = await adapter.complete({ ...req, upstreamModel: 'gemini-4-hydrogen' }, new AbortController().signal);
-    expect(out.content).toBe('Gemini 4 ready');
+    expect(out.content).toBe('Gemini 4 Hydrogen ready');
     expect(seenAuth).toEqual(['Bearer AIza-bad-key', 'Bearer AIza-limited-key', 'Bearer AIza-good-key']);
 
     const snaps = resolve.poolSnapshots?.() ?? {};

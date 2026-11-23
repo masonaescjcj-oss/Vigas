@@ -138,28 +138,20 @@ describe('routing', () => {
     expect(freePlan[0]?.endpoint.upstreamModel).toBe('express');
   });
 
-  it('registers full Google Gemini 4/3/2.5 + free-tier catalog without duplicate model IDs', async () => {
+  it('scopes Google free-tier catalog to Gemini 4 Hydrogen (paid + :free) without duplicate model IDs', async () => {
+    const { GOOGLE_FREE_TIER_MODELS } = await import('../src/seed');
     const ids = seedModels.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(GOOGLE_FREE_TIER_MODELS).toEqual(['google/gemini-4-hydrogen', 'google/gemini-4-hydrogen:free']);
 
-    for (const modelId of [
-      'google/gemini-4-carbon',
-      'google/gemini-4-neon',
-      'google/gemini-4-argon',
-      'google/gemini-4-hydrogen',
-      'google/gemini-4-hydrogen:free',
-      'google/gemini-3.8-flash',
-      'google/gemini-3.6-flash',
-      'google/gemini-3.5-flash-lite',
-      'google/gemini-3.5-flash-lite:free',
-      'google/gemini-3.1-flash-lite',
-      'google/gemini-3.1-pro-preview',
-      'google/gemini-2.5-pro',
-      'google/gemini-2.5-flash-lite',
-    ]) {
-      const plan = planRoute({ model: modelId, catalog: seedModels, endpoints: seedEndpoints });
-      expect(plan.some((c) => c.endpoint.provider === 'google')).toBe(true);
-    }
+    const paidPlan = planRoute({ model: 'google/gemini-4-hydrogen', catalog: seedModels, endpoints: seedEndpoints });
+    expect(paidPlan[0]?.endpoint.provider).toBe('google');
+    expect(paidPlan[0]?.endpoint.upstreamModel).toBe('gemini-4-hydrogen');
+    expect(paidPlan[0]?.model.inputPerMillionMicros).toBe(usdToMicros(1.5));
+
+    const freePlan = planRoute({ model: 'google/gemini-4-hydrogen:free', catalog: seedModels, endpoints: seedEndpoints });
+    expect(freePlan[0]?.endpoint.provider).toBe('google');
+    expect(freePlan[0]?.model.inputPerMillionMicros).toBe(0);
   });
 });
 

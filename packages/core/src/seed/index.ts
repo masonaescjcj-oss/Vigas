@@ -11,6 +11,7 @@ export {
 export {
   GOOGLE_DEFAULT_BASE_URL,
   GOOGLE_EXTRA_CATALOG,
+  GOOGLE_FREE_TIER_MODELS,
   GOOGLE_PROVIDER_SLUG,
   buildGoogleExtraModels,
   googleExtraEndpoints,

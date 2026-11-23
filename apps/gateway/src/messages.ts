@@ -14,7 +14,7 @@ import { randomBase62 } from '@vigas/core/server';
 import { keySpendThisMonth, reserveCredits, settleUsage } from '@vigas/db';
 import { authenticate, type Caller } from './auth';
 import { checkPromoCreditScope, customerPrice, type GatewayDeps } from './chat';
-import { publicProviderLabel } from './config';
+import { isProviderAllowedForModel, publicProviderLabel } from './config';
 import { asProviderError, type ProviderAdapter, type ProviderError, type StreamEvent, type UpstreamUsage } from './providers';
 import type { OpenAIToolCall } from './providers/anthropic';
 
@@ -267,7 +267,9 @@ export async function handleAnthropicMessages(deps: GatewayDeps, req: Request): 
   if (messages.length === 0) return anthropicError(400, 'invalid_request_error', '"messages" contained no valid blocks');
 
   const snap = await deps.catalog.get();
-  const configuredEndpoints = snap.endpoints.filter((e) => e.enabled && deps.adapters(e.provider) !== null);
+  const configuredEndpoints = snap.endpoints.filter(
+    (e) => e.enabled && deps.adapters(e.provider) !== null && isProviderAllowedForModel(deps.config, e.provider, e.modelId),
+  );
   const resolvedModel = resolveModelId(rawModel, snap.models, snap.endpoints) ?? rawModel;
 
   let plan: RouteCandidate[];
@@ -289,6 +291,7 @@ export async function handleAnthropicMessages(deps: GatewayDeps, req: Request): 
   }
 
   const attempts = plan
+    .filter((candidate) => isProviderAllowedForModel(deps.config, candidate.endpoint.provider, candidate.model.id))
     .map((candidate) => ({ candidate, adapter: deps.adapters(candidate.endpoint.provider) }))
     .filter((a): a is Attempt => a.adapter !== null);
   if (attempts.length === 0) {

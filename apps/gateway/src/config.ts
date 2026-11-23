@@ -1,5 +1,6 @@
 import { usdToMicros } from '@vigas/core';
 import {
+  GOOGLE_FREE_TIER_MODELS,
   SEVENAPI_DEFAULT_BASE_URL,
   SEVENAPI_PROVIDER_SLUG,
   SEVENAPI_PUBLIC_LABEL,
@@ -21,6 +22,13 @@ export interface ProviderConfig {
   apiKeys: PoolKeySpec[];
   /** Rotation mode across `apiKeys`: `round_robin` | `random` | `sequential` | `least_used`. */
   keyStrategy: KeyRotationStrategy;
+  /**
+   * Optional allowlist of Vigas model IDs (or prefixes ending with `*` / `/`) that this provider
+   * is permitted to serve. When `null`, all endpoints for this provider are allowed.
+   * For `google` with real keys, defaults to `['google/gemini-4-hydrogen', 'google/gemini-4-hydrogen:free']`
+   * so Free-Tier Google keys are never spent/errored on paid-only Carbon/Neon/Argon models.
+   */
+  allowedModels: string[] | null;
   /** When true, never expose `slug` or upstream host to customers (uses `publicLabel` instead). */
   hidden?: boolean;
   /** Masked label returned to callers when `hidden` or `hideUpstreamProviders` is active. */
@@ -40,7 +48,7 @@ export interface GatewayConfig {
   hideUpstreamProviders: boolean;
   /**
    * When non-empty, accounts that have NEVER made a real deposit (`lifetimeTopupMicros === 0`)
-   * can only spend free/promo welcome credit on models matching one of these prefixes (e.g. `['you/']`)
+   * can only spend free/promo welcome credit on models matching one of these prefixes (e.g. `['you/', 'google/gemini-4-hydrogen']`)
    * or $0 free models. Prevents multi-account abuse against paid upstream pools.
    */
   promoOnlyModelPrefixes: string[];
@@ -59,13 +67,20 @@ interface BuiltinProviderSpec {
   publicLabel?: string;
   allowMock?: boolean;
   defaultStrategy?: KeyRotationStrategy;
+  /** Default model allowlist applied when real API keys are configured (overridable via `<SLUG>_ALLOWED_MODELS=*`). */
+  defaultAllowedModelsWithKeys?: readonly string[];
 }
 
 /** Known upstreams. Every base URL can be overridden with `<SLUG>_BASE_URL`. */
 const PROVIDERS: BuiltinProviderSpec[] = [
   { slug: 'openai', kind: 'openai', baseUrl: 'https://api.openai.com/v1' },
   { slug: 'anthropic', kind: 'anthropic', baseUrl: 'https://api.anthropic.com/v1' },
-  { slug: 'google', kind: 'openai', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  {
+    slug: 'google',
+    kind: 'openai',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultAllowedModelsWithKeys: GOOGLE_FREE_TIER_MODELS,
+  },
   { slug: 'deepseek', kind: 'openai', baseUrl: 'https://api.deepseek.com/v1' },
   { slug: 'moonshot', kind: 'openai', baseUrl: 'https://api.moonshot.ai/v1' },
   { slug: 'nvidia', kind: 'openai', baseUrl: 'https://integrate.api.nvidia.com/v1' },
@@ -107,6 +122,43 @@ function parseProviderKind(raw: unknown): ProviderKind {
   return 'openai';
 }
 
+function parseAllowedModels(raw: unknown, fallback: readonly string[] | null = null): string[] | null {
+  if (raw === undefined || raw === null) return fallback ? [...fallback] : null;
+  if (Array.isArray(raw)) {
+    const list = raw
+      .filter((x): x is string => typeof x === 'string')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    return list.length ? list : null;
+  }
+  if (typeof raw !== 'string') return fallback ? [...fallback] : null;
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed) return fallback ? [...fallback] : null;
+  if (trimmed === '*' || trimmed === 'all') return null;
+  const list = trimmed
+    .split(/[\n,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length ? list : null;
+}
+
+/** Returns true if provider `slug` is allowed to serve `modelId` under current gateway configuration. */
+export function isProviderAllowedForModel(
+  config: Pick<GatewayConfig, 'providers'>,
+  slug: string,
+  modelId: string,
+): boolean {
+  const allowed = config.providers[slug]?.allowedModels;
+  if (!allowed || allowed.length === 0) return true;
+  const target = modelId.trim().toLowerCase();
+  return allowed.some((rule) => {
+    if (rule === '*' || rule === 'all') return true;
+    if (rule.endsWith('*')) return target.startsWith(rule.slice(0, -1));
+    if (rule.endsWith('/')) return target.startsWith(rule);
+    return target === rule;
+  });
+}
+
 interface DynamicKeyObject {
   key?: unknown;
   label?: unknown;
@@ -121,6 +173,7 @@ interface DynamicProviderInput {
   apiKeys?: unknown;
   keyStrategy?: unknown;
   keyBudgetUsd?: unknown;
+  allowedModels?: unknown;
   hidden?: unknown;
   publicLabel?: unknown;
 }
@@ -170,7 +223,7 @@ function parseDynamicKeys(item: DynamicProviderInput, slug: string): PoolKeySpec
  * 2. `PROVIDER_<NAME>_API_KEY` or `PROVIDER_<NAME>_API_KEYS` + `PROVIDER_<NAME>_BASE_URL`
  *    + optional `PROVIDER_<NAME>_KIND` (`openai`|`anthropic`|`youcom`),
  *    `PROVIDER_<NAME>_KEY_STRATEGY` (`round_robin`|`random`|`sequential`|`least_used`),
- *    `PROVIDER_<NAME>_KEY_BUDGET_USD`
+ *    `PROVIDER_<NAME>_KEY_BUDGET_USD`, `PROVIDER_<NAME>_ALLOWED_MODELS`
  */
 function loadDynamicProviders(env: NodeJS.ProcessEnv, target: Record<string, ProviderConfig>): void {
   const rawJson = (env.UPSTREAM_PROVIDERS ?? '').trim();
@@ -190,6 +243,7 @@ function loadDynamicProviders(env: NodeJS.ProcessEnv, target: Record<string, Pro
             apiKey: apiKeys[0]?.key ?? null,
             apiKeys,
             keyStrategy: parseKeyRotationStrategy(item.keyStrategy, 'round_robin'),
+            allowedModels: parseAllowedModels(item.allowedModels, null),
             hidden: item.hidden !== false,
             publicLabel: typeof item.publicLabel === 'string' && item.publicLabel.trim() ? item.publicLabel.trim() : SEVENAPI_PUBLIC_LABEL,
             allowMock: false,
@@ -226,6 +280,7 @@ function loadDynamicProviders(env: NodeJS.ProcessEnv, target: Record<string, Pro
       apiKey: apiKeys[0]?.key ?? null,
       apiKeys,
       keyStrategy: parseKeyRotationStrategy(env[`${prefix}_KEY_STRATEGY`], 'round_robin'),
+      allowedModels: parseAllowedModels(env[`${prefix}_ALLOWED_MODELS`], null),
       hidden: env[`${prefix}_HIDDEN`] !== 'false',
       publicLabel: env[`${prefix}_PUBLIC_LABEL`]?.trim() || SEVENAPI_PUBLIC_LABEL,
       allowMock: false,
@@ -235,7 +290,7 @@ function loadDynamicProviders(env: NodeJS.ProcessEnv, target: Record<string, Pro
 
 function parsePromoPrefixes(env: NodeJS.ProcessEnv, isProd: boolean): string[] {
   const raw = env.PROMO_ONLY_MODEL_PREFIXES;
-  if (raw === undefined) return isProd ? ['you/'] : [];
+  if (raw === undefined) return isProd ? ['you/', 'google/gemini-4-hydrogen'] : [];
   const trimmed = raw.trim().toLowerCase();
   if (!trimmed || trimmed === 'none' || trimmed === '*' || trimmed === 'all') return [];
   return trimmed
@@ -259,6 +314,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     const singleKey = env[`${up}_API_KEY`] || (aliasPrefix ? env[`${aliasPrefix}_API_KEY`] : undefined);
     const budgetUsdRaw = env[`${up}_KEY_BUDGET_USD`] || (aliasPrefix ? env[`${aliasPrefix}_KEY_BUDGET_USD`] : undefined);
     const strategyRaw = env[`${up}_KEY_STRATEGY`] || (aliasPrefix ? env[`${aliasPrefix}_KEY_STRATEGY`] : undefined);
+    const allowedRaw = env[`${up}_ALLOWED_MODELS`] ?? (aliasPrefix ? env[`${aliasPrefix}_ALLOWED_MODELS`] : undefined);
     const apiKeys = parseKeyPoolEnv({
       keysRaw: keysRaw || undefined,
       singleKey,
@@ -272,6 +328,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
       apiKey: apiKeys[0]?.key ?? null,
       apiKeys,
       keyStrategy: parseKeyRotationStrategy(strategyRaw, p.defaultStrategy ?? 'round_robin'),
+      allowedModels: parseAllowedModels(allowedRaw, apiKeys.length > 0 ? (p.defaultAllowedModelsWithKeys ?? null) : null),
       hidden: p.hidden ?? false,
       publicLabel: p.publicLabel ?? SEVENAPI_PUBLIC_LABEL,
       allowMock: p.allowMock ?? true,

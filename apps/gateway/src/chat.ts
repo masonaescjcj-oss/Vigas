@@ -17,7 +17,7 @@ import {
 import { randomBase62 } from '@vigas/core/server';
 import { getAccount, keySpendThisMonth, reserveCredits, settleUsage, type Db } from '@vigas/db';
 import { authenticate, type Caller } from './auth';
-import { publicProviderLabel, type GatewayConfig } from './config';
+import { isProviderAllowedForModel, publicProviderLabel, type GatewayConfig } from './config';
 import { errorResponse } from './errors';
 import { asProviderError, type AdapterResolver, type ProviderAdapter, type ProviderError, type StreamEvent, type UpstreamUsage } from './providers';
 import type { CatalogCache, EndpointHealth, RateLimiter } from './state';
@@ -80,7 +80,9 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
   const body = parsed.data;
 
   const snap = await deps.catalog.get();
-  const configuredEndpoints = snap.endpoints.filter((e) => e.enabled && deps.adapters(e.provider) !== null);
+  const configuredEndpoints = snap.endpoints.filter(
+    (e) => e.enabled && deps.adapters(e.provider) !== null && isProviderAllowedForModel(deps.config, e.provider, e.modelId),
+  );
   const resolvedModel = resolveModelId(body.model, snap.models, snap.endpoints) ?? body.model;
   const resolvedFallbacks = body.models?.map((m) => resolveModelId(m, snap.models, snap.endpoints) ?? m);
 
@@ -105,6 +107,7 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
   }
 
   const attempts = plan
+    .filter((candidate) => isProviderAllowedForModel(deps.config, candidate.endpoint.provider, candidate.model.id))
     .map((candidate) => ({ candidate, adapter: deps.adapters(candidate.endpoint.provider) }))
     .filter((a): a is Attempt => a.adapter !== null);
   if (attempts.length === 0) {
