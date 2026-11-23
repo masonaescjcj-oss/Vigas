@@ -35,7 +35,7 @@ export function createApp(opts: CreateAppOptions) {
   const deps: GatewayDeps = {
     db: opts.db,
     config: opts.config,
-    adapters: opts.adapters ?? createAdapterResolver(opts.config),
+    adapters: opts.adapters ?? createAdapterResolver(opts.config, { db: opts.db }),
     catalog: new CatalogCache(opts.db, opts.catalogTtlMs ?? 60_000),
     health: new EndpointHealth(),
     limiter: new RateLimiter(opts.config.rateLimitRpm),
@@ -142,12 +142,21 @@ export function createApp(opts: CreateAppOptions) {
     }
   });
 
-  // Internal-only diagnostics for upstream multi-key pools (masked labels, health, spend; never raw keys).
+  // Internal-only diagnostics and hot-reload for upstream multi-key pools (masked labels, health, spend; never raw keys).
   app.get('/v1/admin/pools', (c) => {
     if (!matchToken(c.req.header('x-vigas-internal-token'), deps.config.internalServiceToken)) {
       return errorResponse(401, 'Unauthorized', 'authentication_error', 'invalid_internal_token');
     }
     return c.json({ pools: deps.adapters.poolSnapshots?.() ?? {} });
+  });
+
+  app.post('/v1/admin/pools/reload', async (c) => {
+    if (!matchToken(c.req.header('x-vigas-internal-token'), deps.config.internalServiceToken)) {
+      return errorResponse(401, 'Unauthorized', 'authentication_error', 'invalid_internal_token');
+    }
+    const synced = (await deps.adapters.reloadFromDb?.()) ?? { syncedProviders: 0, totalDbKeys: 0 };
+    deps.catalog.invalidate();
+    return c.json({ ok: true, ...synced, pools: deps.adapters.poolSnapshots?.() ?? {} });
   });
 
   app.post('/v1/chat/completions', (c) => handleChatCompletion(deps, c.req.raw));

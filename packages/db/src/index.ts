@@ -7,6 +7,7 @@ export * from './content';
 export * from './leaderboard';
 export * from './web';
 export * from './admin';
+export * from './providers';
 export * from './oauth';
 export * from './news-ingest';
 export { seedDatabase } from './seed';

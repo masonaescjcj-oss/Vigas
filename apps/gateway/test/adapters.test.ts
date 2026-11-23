@@ -575,4 +575,19 @@ describe('You.com adapter & multi-key env config', () => {
     const failover = stickyPool.acquire(undefined, 'acc_coder_42')!;
     expect(failover.spec.key).not.toBe(first.spec.key);
   });
+
+  it('encrypts/decrypts upstream keys with AES-256-GCM and parses slash/comma/newline bulk key lists cleanly', async () => {
+    const { decryptUpstreamKey, encryptUpstreamKey, maskKeyHint, splitBulkKeys } = await import('@vigas/db');
+    const secret = 'super-secret-vigas-key-32-bytes!';
+    const raw = 'AQ.TestKeyExample_1234567890-abcdef';
+    const cipher = encryptUpstreamKey(raw, secret);
+    expect(cipher.startsWith('enc:v1:')).toBe(true);
+    expect(cipher).not.toContain('TestKeyExample');
+    expect(decryptUpstreamKey(cipher, secret)).toBe(raw);
+    expect(decryptUpstreamKey(cipher, 'wrong-secret-0000000000')).toBeNull();
+    expect(maskKeyHint(raw)).toBe('AQ.Tes…cdef');
+
+    const bulk = splitBulkKeys('AIzaSy00000001 /AQ.KeyNumber0002 / AQ.KeyNumber0003,\nAQ.KeyNumber0002');
+    expect(bulk).toEqual(['AIzaSy00000001', 'AQ.KeyNumber0002', 'AQ.KeyNumber0003']);
+  });
 });

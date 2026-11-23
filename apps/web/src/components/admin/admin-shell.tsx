@@ -6,6 +6,9 @@ import { SiteHeader } from '../site-header';
 import { Breadcrumb } from '../ui';
 
 const TABS = [
+  { id: 'providers', label: 'Providers & Keys', href: '/admin/providers' },
+  { id: 'models', label: 'Models & Routing', href: '/admin/models' },
+  { id: 'users', label: 'Users & Credits', href: '/admin/users' },
   { id: 'articles', label: 'Articles', href: '/admin' },
   { id: 'inbox', label: 'News inbox', href: '/admin/inbox' },
   { id: 'tools', label: 'Tools', href: '/admin/tools' },

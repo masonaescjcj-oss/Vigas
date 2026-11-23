@@ -89,6 +89,11 @@ export class CatalogCache {
     return this.pending;
   }
 
+  invalidate(): void {
+    this.snapshot = null;
+    this.loadedAt = 0;
+  }
+
   private async load(): Promise<CatalogSnapshot> {
     const [models, endpoints, board] = await Promise.all([listModels(this.db), listEndpoints(this.db), getLeaderboard(this.db, 'overall')]);
     const ratings = Object.fromEntries(board.entries.map((e) => [e.modelId, e.rating]));

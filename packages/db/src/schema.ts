@@ -318,3 +318,46 @@ export const leaderboardMeta = pgTable('leaderboard_meta', {
   totalSessions: bigint('total_sessions', { mode: 'number' }).notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── Admin-managed upstream providers & multi-key pools ──────────────────────
+
+export const upstreamProviders = pgTable('upstream_providers', {
+  slug: text('slug').primaryKey(),
+  name: text('name').notNull(),
+  kind: text('kind', { enum: ['openai', 'anthropic', 'gemini', 'youcom'] }).notNull().default('openai'),
+  baseUrl: text('base_url').notNull(),
+  keyStrategy: text('key_strategy', { enum: ['sticky', 'round_robin', 'random', 'sequential', 'least_used'] })
+    .notNull()
+    .default('sticky'),
+  /** Null = all models allowed; otherwise list of Vigas model IDs or prefixes (e.g. `google/gemini-4-hydrogen`). */
+  allowedModels: text('allowed_models').array(),
+  hidden: boolean('hidden').notNull().default(true),
+  publicLabel: text('public_label').notNull().default('vigas-edge'),
+  enabled: boolean('enabled').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const upstreamKeys = pgTable(
+  'upstream_keys',
+  {
+    id: text('id').primaryKey(),
+    providerSlug: text('provider_slug')
+      .notNull()
+      .references(() => upstreamProviders.slug, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    /** AES-256-GCM ciphertext (`enc:v1:...`) when encryption secret is set; never sent to browsers. */
+    keyCiphertext: text('key_ciphertext').notNull(),
+    /** Safe masked preview shown in Admin UI (e.g. `AQ.Ab8…7hWw`). */
+    keyHint: text('key_hint').notNull(),
+    /** SHA-256 hash used to prevent duplicate keys in the same provider pool. */
+    keyHash: text('key_hash').notNull(),
+    /** Optional per-key budget cap in micro-USD (e.g. $100 = 100_000_000). */
+    budgetMicros: micros('budget_micros'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('upstream_keys_provider_hash_idx').on(t.providerSlug, t.keyHash),
+    index('upstream_keys_provider_idx').on(t.providerSlug, t.enabled),
+  ],
+);
