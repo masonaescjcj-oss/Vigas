@@ -1,5 +1,6 @@
 import { usdToMicros } from '../money';
 import type { ModelInfo, ModelTag, ProviderEndpoint } from '../models';
+import { buildGoogleExtraModels, googleExtraEndpoints } from './providers/google';
 import { buildSevenApiExtraModels, sevenApiEndpoints } from './providers/sevenapi';
 import { youComEndpoints, youComModels } from './providers/youcom';
 
@@ -26,12 +27,12 @@ const ROWS: Row[] = [
   ['anthropic/claude-opus-5.5', 'Claude Opus 5.5', 'Anthropic', 1_000_000, 15, 75, ['agents', 'coding'], 0, true, 'anthropic', 'claude-opus-5-5'],
   ['google/gemini-4-carbon', 'Gemini 4 Carbon', 'Google', 1_000_000, 2.0, 10, ['agents', 'vision'], -20, true, 'google', 'gemini-4-carbon'],
   ['anthropic/claude-sonnet-5.5', 'Claude Sonnet 5.5', 'Anthropic', 1_000_000, 3, 15, ['coding', 'agents'], 0, true, 'anthropic', 'claude-sonnet-5-5'],
-  ['google/gemini-4-hydrogen', 'Gemini 4 Hydrogen', 'Google', 1_000_000, 0.5, 2.5, ['agents', 'reasoning'], -11.5, true, 'google', 'gemini-4-hydrogen'],
+  ['google/gemini-4-hydrogen', 'Gemini 4 Hydrogen', 'Google', 1_000_000, 1.5, 7.5, ['agents', 'reasoning'], -11.5, true, 'google', 'gemini-4-hydrogen'],
   ['anthropic/claude-fable-5.1', 'Claude Fable 5.1', 'Anthropic', 1_000_000, 0.8, 4, ['agents'], 0, true, 'anthropic', 'claude-fable-5-1'],
   ['openai/gpt-6-astra', 'GPT-6 Astra', 'OpenAI', 1_000_000, 5, 40, ['agents', 'reasoning'], 0, true, 'openai', 'gpt-6-astra'],
   ['openai/gpt-6.1-sol', 'GPT-6.1 Sol', 'OpenAI', 1_000_000, 4, 32, ['reasoning'], 0, false, 'openai', 'gpt-6.1-sol'],
   ['openai/gpt-6.1-terra', 'GPT-6.1 Terra', 'OpenAI', 400_000, 0.6, 4.8, ['reasoning', 'coding'], -12.5, true, 'openai', 'gpt-6.1-terra'],
-  ['google/gemini-4-argon', 'Gemini 4 Argon', 'Google', 1_000_000, 0.3, 2.5, ['vision'], -15, true, 'google', 'gemini-4-argon'],
+  ['google/gemini-4-argon', 'Gemini 4 Argon', 'Google', 1_000_000, 2.0, 10.0, ['vision'], -15, true, 'google', 'gemini-4-argon'],
   ['openai/gpt-6-luna', 'GPT-6 Luna', 'OpenAI', 400_000, 0.25, 1.2, ['reasoning'], -6.2, true, 'openai', 'gpt-6-luna'],
   ['qwen/qwen-3.8-max', 'Qwen 3.8 Max', 'Alibaba', 256_000, 0.4, 1.6, ['coding', 'vision'], -8.0, false, 'alibaba', 'qwen3.8-max'],
   ['zai/glm-5.3', 'GLM-5.3', 'Z.ai', 200_000, 0.35, 1.4, ['coding', 'reasoning'], -4.5, false, 'zai', 'glm-5.3'],
@@ -62,8 +63,11 @@ const BASE_MODELS: ModelInfo[] = ROWS.map(([id, name, org, ctx, i, o, tags, chan
 }));
 
 const BASE_IDS = new Set(BASE_MODELS.map((m) => m.id));
+const SEVENAPI_MODELS = buildSevenApiExtraModels(BASE_IDS);
+const COMBINED_IDS = new Set([...BASE_IDS, ...SEVENAPI_MODELS.map((m) => m.id)]);
+const GOOGLE_EXTRA_MODELS = buildGoogleExtraModels(COMBINED_IDS);
 
-export const seedModels: ModelInfo[] = [...BASE_MODELS, ...buildSevenApiExtraModels(BASE_IDS), ...youComModels];
+export const seedModels: ModelInfo[] = [...BASE_MODELS, ...SEVENAPI_MODELS, ...GOOGLE_EXTRA_MODELS, ...youComModels];
 
 const BASE_ENDPOINTS: ProviderEndpoint[] = [
   ...ROWS.map<ProviderEndpoint>(([id, , , , i, o, , , , provider, upstream]) => ({
@@ -87,4 +91,9 @@ const BASE_ENDPOINTS: ProviderEndpoint[] = [
   },
 ];
 
-export const seedEndpoints: ProviderEndpoint[] = [...BASE_ENDPOINTS, ...sevenApiEndpoints, ...youComEndpoints];
+export const seedEndpoints: ProviderEndpoint[] = [
+  ...BASE_ENDPOINTS,
+  ...googleExtraEndpoints,
+  ...sevenApiEndpoints,
+  ...youComEndpoints,
+];

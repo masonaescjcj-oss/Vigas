@@ -54,7 +54,13 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       const text = await res.text().catch(() => '');
       let message = text.slice(0, 500) || res.statusText;
       try {
-        message = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? message;
+        const parsed = JSON.parse(text) as
+          | { error?: { message?: string; status?: string } }
+          | Array<{ error?: { message?: string; status?: string } }>;
+        const errObj = Array.isArray(parsed) ? parsed[0]?.error : parsed.error;
+        if (errObj?.message) {
+          message = errObj.status ? `${errObj.status}: ${errObj.message}` : errObj.message;
+        }
       } catch {
         // keep raw text
       }

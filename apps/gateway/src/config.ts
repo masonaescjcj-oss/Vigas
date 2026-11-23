@@ -254,19 +254,24 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
   const providers: Record<string, ProviderConfig> = {};
   for (const p of PROVIDERS) {
     const up = p.slug.toUpperCase();
+    const aliasPrefix = p.slug === 'google' ? 'GEMINI' : null;
+    const keysRaw = [env[`${up}_API_KEYS`], aliasPrefix ? env[`${aliasPrefix}_API_KEYS`] : undefined].filter(Boolean).join(',');
+    const singleKey = env[`${up}_API_KEY`] || (aliasPrefix ? env[`${aliasPrefix}_API_KEY`] : undefined);
+    const budgetUsdRaw = env[`${up}_KEY_BUDGET_USD`] || (aliasPrefix ? env[`${aliasPrefix}_KEY_BUDGET_USD`] : undefined);
+    const strategyRaw = env[`${up}_KEY_STRATEGY`] || (aliasPrefix ? env[`${aliasPrefix}_KEY_STRATEGY`] : undefined);
     const apiKeys = parseKeyPoolEnv({
-      keysRaw: env[`${up}_API_KEYS`],
-      singleKey: env[`${up}_API_KEY`],
-      budgetUsdRaw: env[`${up}_KEY_BUDGET_USD`],
+      keysRaw: keysRaw || undefined,
+      singleKey,
+      budgetUsdRaw,
       labelPrefix: p.slug,
     });
     providers[p.slug] = {
       slug: p.slug,
       kind: p.kind,
-      baseUrl: cleanUrl(env[`${up}_BASE_URL`] || p.baseUrl),
+      baseUrl: cleanUrl(env[`${up}_BASE_URL`] || (aliasPrefix ? env[`${aliasPrefix}_BASE_URL`] : '') || p.baseUrl),
       apiKey: apiKeys[0]?.key ?? null,
       apiKeys,
-      keyStrategy: parseKeyRotationStrategy(env[`${up}_KEY_STRATEGY`], p.defaultStrategy ?? 'round_robin'),
+      keyStrategy: parseKeyRotationStrategy(strategyRaw, p.defaultStrategy ?? 'round_robin'),
       hidden: p.hidden ?? false,
       publicLabel: p.publicLabel ?? SEVENAPI_PUBLIC_LABEL,
       allowMock: p.allowMock ?? true,

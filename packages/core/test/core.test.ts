@@ -126,13 +126,40 @@ describe('routing', () => {
     expect(resolveModelId('kimi-k3', seedModels, seedEndpoints)).toBe('moonshotai/kimi-k3');
   });
 
-  it('registers You.com models (you/express, you/advanced, you/research) and routes them to provider "you"', async () => {
+  it('registers You.com paid & free models and routes them to provider "you"', async () => {
     const { YOUCOM_CATALOG, youComEndpoints } = await import('../src/seed');
-    expect(YOUCOM_CATALOG.map((m) => m.id)).toEqual(['you/express', 'you/advanced', 'you/research']);
-    expect(youComEndpoints).toHaveLength(3);
+    expect(YOUCOM_CATALOG.map((m) => m.id)).toEqual(['you/express', 'you/express:free', 'you/advanced', 'you/research']);
+    expect(youComEndpoints).toHaveLength(4);
     const plan = planRoute({ model: 'you/express', catalog: seedModels, endpoints: seedEndpoints });
     expect(plan[0]?.endpoint.provider).toBe('you');
     expect(plan[0]?.endpoint.upstreamModel).toBe('express');
+    const freePlan = planRoute({ model: 'you/express:free', catalog: seedModels, endpoints: seedEndpoints });
+    expect(freePlan[0]?.model.inputPerMillionMicros).toBe(0);
+    expect(freePlan[0]?.endpoint.upstreamModel).toBe('express');
+  });
+
+  it('registers full Google Gemini 4/3/2.5 + free-tier catalog without duplicate model IDs', async () => {
+    const ids = seedModels.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    for (const modelId of [
+      'google/gemini-4-carbon',
+      'google/gemini-4-neon',
+      'google/gemini-4-argon',
+      'google/gemini-4-hydrogen',
+      'google/gemini-4-hydrogen:free',
+      'google/gemini-3.8-flash',
+      'google/gemini-3.6-flash',
+      'google/gemini-3.5-flash-lite',
+      'google/gemini-3.5-flash-lite:free',
+      'google/gemini-3.1-flash-lite',
+      'google/gemini-3.1-pro-preview',
+      'google/gemini-2.5-pro',
+      'google/gemini-2.5-flash-lite',
+    ]) {
+      const plan = planRoute({ model: modelId, catalog: seedModels, endpoints: seedEndpoints });
+      expect(plan.some((c) => c.endpoint.provider === 'google')).toBe(true);
+    }
   });
 });
 

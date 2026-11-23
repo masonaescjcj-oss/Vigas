@@ -39,6 +39,15 @@ export const YOUCOM_CATALOG: readonly YouComModelSpec[] = [
     tags: ['agents'],
   },
   {
+    id: 'you/express:free',
+    name: 'You Express Search (Free)',
+    agent: 'express',
+    contextLength: 128_000,
+    retailInputUsd: 0,
+    retailOutputUsd: 0,
+    tags: ['free', 'agents'],
+  },
+  {
     id: 'you/advanced',
     name: 'You Advanced Search',
     agent: 'advanced',

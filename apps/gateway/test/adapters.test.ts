@@ -489,4 +489,51 @@ describe('You.com adapter & multi-key env config', () => {
     expect(JSON.stringify(snaps)).not.toContain('yk-1');
     expect(JSON.stringify(snaps)).not.toContain('sk-s1');
   });
+
+  it('rotates Google Gemini multi-key pool across GOOGLE_API_KEYS / GEMINI_API_KEYS and handles Google array errors & API_KEY_INVALID', async () => {
+    const { loadConfig } = await import('../src/config');
+    const { createAdapterResolver } = await import('../src/providers');
+
+    const cfg = loadConfig({
+      NODE_ENV: 'production',
+      GOOGLE_API_KEYS: 'AIza-bad-key,AIza-limited-key',
+      GEMINI_API_KEYS: 'AIza-good-key',
+      GOOGLE_KEY_STRATEGY: 'sequential',
+    });
+
+    expect(cfg.providers.google?.apiKeys.map((k) => k.key)).toEqual(['AIza-bad-key', 'AIza-limited-key', 'AIza-good-key']);
+    expect(cfg.providers.google?.baseUrl).toBe('https://generativelanguage.googleapis.com/v1beta/openai');
+
+    const seenAuth: string[] = [];
+    const { f } = fakeFetch((_url, init) => {
+      const auth = (init.headers as Record<string, string>).Authorization ?? '';
+      seenAuth.push(auth);
+      if (auth.includes('AIza-bad-key')) {
+        return new Response(JSON.stringify([{ error: { status: 'INVALID_ARGUMENT', message: 'API key not valid. Please pass a valid API key.' } }]), {
+          status: 400,
+        });
+      }
+      if (auth.includes('AIza-limited-key')) {
+        return new Response(JSON.stringify([{ error: { status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded for quota metric.' } }]), {
+          status: 429,
+        });
+      }
+      return Response.json({
+        choices: [{ index: 0, message: { role: 'assistant', content: 'Gemini 4 ready' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      });
+    });
+
+    const resolve = createAdapterResolver(cfg, { fetcher: f });
+    const adapter = resolve('google')!;
+    const out = await adapter.complete({ ...req, upstreamModel: 'gemini-4-hydrogen' }, new AbortController().signal);
+    expect(out.content).toBe('Gemini 4 ready');
+    expect(seenAuth).toEqual(['Bearer AIza-bad-key', 'Bearer AIza-limited-key', 'Bearer AIza-good-key']);
+
+    const snaps = resolve.poolSnapshots?.() ?? {};
+    expect(snaps.google?.exhausted).toBe(1);
+    expect(snaps.google?.coolingDown).toBe(1);
+    expect(snaps.google?.healthy).toBe(1);
+    expect(JSON.stringify(snaps)).not.toContain('AIza-');
+  });
 });

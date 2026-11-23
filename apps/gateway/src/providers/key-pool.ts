@@ -26,7 +26,9 @@ const MODEL_ACCESS_RE =
 const CLIENT_FAULT_RE = /invalid_request|invalid_request_error|cannot unmarshal|malformed|failed to parse/i;
 
 const EXHAUSTED_PROSE_RE =
-  /insufficient|quota|exceeded your current|billing|out of credit|credit balance|balance.*exhaust|limit.*exceeded|account.*deactivated|invalid.*api.*key|revoked/i;
+  /insufficient|quota|exceeded your current|billing|out of credit|credit balance|balance.*exhaust|limit.*exceeded|account.*deactivated|invalid.*api.*key|api_key_invalid|api key not valid|api key expired|permission_denied|revoked/i;
+
+const RATE_LIMIT_PROSE_RE = /resource_exhausted|rate[\s_-]?limit|too many requests|requests per minute/i;
 
 /**
  * Classifies an upstream error so the pool knows whether to:
@@ -36,12 +38,11 @@ const EXHAUSTED_PROSE_RE =
  */
 export function classifyKeyFailure(status: number, message: string): KeyFailureKind {
   if (MODEL_ACCESS_RE.test(message)) return 'model_unavailable';
-  if (CLIENT_FAULT_RE.test(message) && status !== 401 && status !== 402 && status !== 403 && status !== 429) {
-    return 'request_rejected';
-  }
-  if (status === 429) return 'rate_limited';
+  if (status === 429 || RATE_LIMIT_PROSE_RE.test(message)) return 'rate_limited';
   if (status === 401 || status === 402 || status === 403) return 'key_exhausted';
+  // Google AI Studio returns HTTP 400 for API_KEY_INVALID / expired keys — check before CLIENT_FAULT_RE.
   if (EXHAUSTED_PROSE_RE.test(message)) return 'key_exhausted';
+  if (CLIENT_FAULT_RE.test(message)) return 'request_rejected';
   if (status >= 500 || status === 408 || status === 0) return 'provider_down';
   return 'request_rejected';
 }
