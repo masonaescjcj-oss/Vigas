@@ -1,6 +1,7 @@
 import { usdToMicros } from '../money';
 import type { ModelInfo, ModelTag, ProviderEndpoint } from '../models';
 import { buildSevenApiExtraModels, sevenApiEndpoints } from './providers/sevenapi';
+import { youComEndpoints, youComModels } from './providers/youcom';
 
 /**
  * Production model catalogue synchronized with verified November 2026 Arena rankings and gateway pricing.
@@ -62,7 +63,7 @@ const BASE_MODELS: ModelInfo[] = ROWS.map(([id, name, org, ctx, i, o, tags, chan
 
 const BASE_IDS = new Set(BASE_MODELS.map((m) => m.id));
 
-export const seedModels: ModelInfo[] = [...BASE_MODELS, ...buildSevenApiExtraModels(BASE_IDS)];
+export const seedModels: ModelInfo[] = [...BASE_MODELS, ...buildSevenApiExtraModels(BASE_IDS), ...youComModels];
 
 const BASE_ENDPOINTS: ProviderEndpoint[] = [
   ...ROWS.map<ProviderEndpoint>(([id, , , , i, o, , , , provider, upstream]) => ({
@@ -86,4 +87,4 @@ const BASE_ENDPOINTS: ProviderEndpoint[] = [
   },
 ];
 
-export const seedEndpoints: ProviderEndpoint[] = [...BASE_ENDPOINTS, ...sevenApiEndpoints];
+export const seedEndpoints: ProviderEndpoint[] = [...BASE_ENDPOINTS, ...sevenApiEndpoints, ...youComEndpoints];

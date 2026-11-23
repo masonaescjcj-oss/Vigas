@@ -13,7 +13,7 @@ import {
 import { randomBase62 } from '@vigas/core/server';
 import { keySpendThisMonth, reserveCredits, settleUsage } from '@vigas/db';
 import { authenticate, type Caller } from './auth';
-import { customerPrice, type GatewayDeps } from './chat';
+import { checkPromoCreditScope, customerPrice, type GatewayDeps } from './chat';
 import { publicProviderLabel } from './config';
 import { asProviderError, type ProviderAdapter, type ProviderError, type StreamEvent, type UpstreamUsage } from './providers';
 import type { OpenAIToolCall } from './providers/anthropic';
@@ -302,6 +302,15 @@ export async function handleAnthropicMessages(deps: GatewayDeps, req: Request): 
   const promptEstimate = messages.reduce((n, m) => n + estimateTokens(messageText(m.content)) + 4, 0);
 
   const reserve = Math.max(...attempts.map((a) => estimateMaxCostMicros(customerPrice(a.candidate), promptEstimate, maxTokens)));
+  const promoBlock = await checkPromoCreditScope(
+    deps,
+    caller.accountId,
+    attempts.map((a) => a.candidate.model.id),
+    reserve,
+  );
+  if (promoBlock) {
+    return anthropicError(402, 'invalid_request_error', promoBlock);
+  }
   if (caller.apiKeyId && caller.monthlyLimitMicros !== null && reserve > 0) {
     const spent = await keySpendThisMonth(deps.db, caller.apiKeyId);
     if (spent + reserve > caller.monthlyLimitMicros) {

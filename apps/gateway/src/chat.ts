@@ -15,7 +15,7 @@ import {
   type TokenPrice,
 } from '@vigas/core';
 import { randomBase62 } from '@vigas/core/server';
-import { keySpendThisMonth, reserveCredits, settleUsage, type Db } from '@vigas/db';
+import { getAccount, keySpendThisMonth, reserveCredits, settleUsage, type Db } from '@vigas/db';
 import { authenticate, type Caller } from './auth';
 import { publicProviderLabel, type GatewayConfig } from './config';
 import { errorResponse } from './errors';
@@ -120,6 +120,15 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
 
   // Reserve enough for the most expensive retail/fallback rate that might serve the request.
   const reserve = Math.max(...attempts.map((a) => estimateMaxCostMicros(customerPrice(a.candidate), promptEstimate, maxTokens)));
+  const promoBlock = await checkPromoCreditScope(
+    deps,
+    caller.accountId,
+    attempts.map((a) => a.candidate.model.id),
+    reserve,
+  );
+  if (promoBlock) {
+    return errorResponse(402, promoBlock, 'insufficient_quota', 'promo_credit_restricted');
+  }
   if (caller.apiKeyId && caller.monthlyLimitMicros !== null && reserve > 0) {
     const spent = await keySpendThisMonth(deps.db, caller.apiKeyId);
     if (spent + reserve > caller.monthlyLimitMicros) {
@@ -153,6 +162,28 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
     clientSignal: req.signal,
   };
   return body.stream ? streamCompletion(ctx) : completeOnce(ctx);
+}
+
+/**
+ * Prevents accounts that only hold free signup promo credit (zero real deposits) from
+ * draining paid upstream pools when `PROMO_ONLY_MODEL_PREFIXES` is configured (default `you/` in prod).
+ */
+export async function checkPromoCreditScope(
+  deps: GatewayDeps,
+  accountId: string,
+  modelIds: string[],
+  reserveMicros: number,
+): Promise<string | null> {
+  const prefixes = deps.config.promoOnlyModelPrefixes;
+  if (prefixes.length === 0 || reserveMicros <= 0) return null;
+  const allowed = modelIds.every((id) => prefixes.some((p) => id.toLowerCase().startsWith(p)));
+  if (allowed) return null;
+
+  const account = await getAccount(deps.db, accountId);
+  if (!account || account.lifetimeTopupMicros > 0 || account.balanceMicros <= 0) return null;
+
+  const balanceUsd = (account.balanceMicros / 1_000_000).toFixed(2);
+  return `Your $${balanceUsd} welcome credit is valid for You.com models (you/express, you/advanced, you/research). Top up at https://vigas.app/dashboard to unlock all models.`;
 }
 
 /**

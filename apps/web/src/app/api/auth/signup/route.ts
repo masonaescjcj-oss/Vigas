@@ -3,6 +3,7 @@ import type { AuthResponse } from '@vigas/core';
 import { hashPassword } from '@vigas/core/server';
 import { createSession, createUser, findUserByEmail, getDb } from '@vigas/db';
 import { setSessionCookies, toPublicUser } from '@/lib/auth';
+import { serverEnv } from '@/lib/env';
 import { apiError, clientIp, originMismatch, rateLimit, readJson } from '@/lib/http';
 import { PREVIEW_MESSAGE, PREVIEW_MODE } from '@/lib/preview';
 import { signupSchema } from '@/lib/schemas';
@@ -22,9 +23,16 @@ export async function POST(req: Request) {
   if (await findUserByEmail(db, email)) {
     return apiError(409, 'email_taken', 'An account with this email already exists. Sign in instead.');
   }
+  const env = serverEnv();
   let user;
   try {
-    user = await createUser(db, { email, name: name || null, passwordHash: await hashPassword(password) });
+    user = await createUser(db, {
+      email,
+      name: name || null,
+      passwordHash: await hashPassword(password),
+      welcomeBonusMicros: env.signupBonusMicros,
+      welcomeReference: 'welcome:youcom',
+    });
   } catch {
     // Unique violation from a concurrent signup with the same email.
     return apiError(409, 'email_taken', 'An account with this email already exists. Sign in instead.');

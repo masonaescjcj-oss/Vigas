@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { AUTO_MODEL_ID } from '@vigas/core';
@@ -9,6 +10,13 @@ import { errorResponse } from './errors';
 import { handleAnthropicMessages } from './messages';
 import { createAdapterResolver, type AdapterResolver } from './providers';
 import { CatalogCache, EndpointHealth, RateLimiter } from './state';
+
+function matchToken(given: string | undefined, expected: string | null): boolean {
+  if (!given || !expected) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 export interface CreateAppOptions {
   db: Db;
@@ -132,6 +140,14 @@ export function createApp(opts: CreateAppOptions) {
       if (err instanceof OAuthError) return errorResponse(403, err.message, 'authentication_error', err.code);
       throw err;
     }
+  });
+
+  // Internal-only diagnostics for upstream multi-key pools (masked labels, health, spend; never raw keys).
+  app.get('/v1/admin/pools', (c) => {
+    if (!matchToken(c.req.header('x-vigas-internal-token'), deps.config.internalServiceToken)) {
+      return errorResponse(401, 'Unauthorized', 'authentication_error', 'invalid_internal_token');
+    }
+    return c.json({ pools: deps.adapters.poolSnapshots?.() ?? {} });
   });
 
   app.post('/v1/chat/completions', (c) => handleChatCompletion(deps, c.req.raw));

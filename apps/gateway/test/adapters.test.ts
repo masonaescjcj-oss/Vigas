@@ -293,3 +293,200 @@ describe('multi-provider config & Anthropic messages translation', () => {
     expect(msgs[3]).toEqual({ role: 'tool', tool_call_id: 'toolu_1', content: '22C' });
   });
 });
+
+describe('Multi-Key Pool rotation & failover', () => {
+  it('supports round_robin, sequential, random, and least_used strategies', async () => {
+    const { KeyPool } = await import('../src/providers/key-pool');
+    const keys = [
+      { key: 'k1', label: 'you-01', budgetMicros: 100_000_000 },
+      { key: 'k2', label: 'you-02', budgetMicros: 100_000_000 },
+      { key: 'k3', label: 'you-03', budgetMicros: 100_000_000 },
+    ];
+
+    // round_robin: 0 -> 1 -> 2 -> 0
+    const rr = new KeyPool(keys, { strategy: 'round_robin' });
+    const rrOrder = [0, 1, 2, 3].map(() => {
+      const lease = rr.acquire()!;
+      rr.recordSuccess(lease.index);
+      return lease.spec.key;
+    });
+    expect(rrOrder).toEqual(['k1', 'k2', 'k3', 'k1']);
+
+    // sequential: sticks to k1 until it hits its $100 budget cap, then moves to k2
+    const seq = new KeyPool(keys, { strategy: 'sequential' });
+    const s1 = seq.acquire()!;
+    expect(s1.spec.key).toBe('k1');
+    seq.recordSuccess(s1.index, 60_000_000);
+    const s2 = seq.acquire()!;
+    expect(s2.spec.key).toBe('k1');
+    seq.recordSuccess(s2.index, 40_000_000); // k1 now at $100 cap
+    const s3 = seq.acquire()!;
+    expect(s3.spec.key).toBe('k2');
+    seq.recordSuccess(s3.index, 10_000_000);
+    expect(seq.snapshot().budgetCapped).toBe(1);
+
+    // random: uses rng across eligible keys
+    let step = 0;
+    const vals = [0.9, 0.1, 0.5];
+    const rnd = new KeyPool(keys, { strategy: 'random', rng: () => vals[step++ % vals.length]! });
+    const rndOrder = [0, 1, 2].map(() => {
+      const l = rnd.acquire()!;
+      rnd.recordSuccess(l.index);
+      return l.spec.key;
+    });
+    expect(rndOrder).toEqual(['k3', 'k1', 'k2']);
+
+    // least_used: balances concurrent inFlight & total uses
+    const lu = new KeyPool(keys, { strategy: 'least_used' });
+    const a = lu.acquire()!;
+    const b = lu.acquire()!;
+    const c = lu.acquire()!;
+    expect([a.spec.key, b.spec.key, c.spec.key]).toEqual(['k1', 'k2', 'k3']);
+    lu.recordSuccess(a.index);
+    lu.recordSuccess(b.index);
+    lu.recordSuccess(c.index);
+  });
+
+  it('transparently rotates to the next key on 402/429 and does NOT burn the pool on 400 client errors', async () => {
+    const { KeyPool, MultiKeyAdapter } = await import('../src/providers/key-pool');
+    let nowMs = 1_000_000;
+    const pool = new KeyPool(
+      [
+        { key: 'you-key-1', label: 'you-01' },
+        { key: 'you-key-2', label: 'you-02' },
+        { key: 'you-key-3', label: 'you-03' },
+      ],
+      { strategy: 'sequential', now: () => nowMs },
+    );
+
+    const usedKeys: string[] = [];
+    const adapter = new MultiKeyAdapter('you', pool, (apiKey) => ({
+      slug: 'you',
+      async complete() {
+        usedKeys.push(apiKey);
+        if (apiKey === 'you-key-1') throw new ProviderError('you: insufficient credit balance', 402, false, 'upstream_rejected');
+        if (apiKey === 'you-key-2') throw new ProviderError('you: rate limited', 429, true, 'rate_limited');
+        return { content: 'Answered by key 3', finishReason: 'stop', usage: { promptTokens: 10, completionTokens: 5 } };
+      },
+      async *stream() {
+        usedKeys.push(apiKey);
+        if (apiKey === 'you-key-1') throw new ProviderError('you: insufficient credit balance', 402, false, 'upstream_rejected');
+        yield { type: 'delta', content: `Stream from ${apiKey}` };
+        yield { type: 'finish', finishReason: 'stop' };
+      },
+    }));
+
+    const res = await adapter.complete(req, new AbortController().signal);
+    expect(res.content).toBe('Answered by key 3');
+    expect(usedKeys).toEqual(['you-key-1', 'you-key-2', 'you-key-3']);
+
+    const snap = pool.snapshot();
+    expect(snap.exhausted).toBe(1);
+    expect(snap.coolingDown).toBe(1);
+    expect(snap.healthy).toBe(1);
+
+    // After 61s, key 2 recovers from 429 cooldown while key 1 stays exhausted (24h).
+    nowMs += 61_000;
+    const events = await collect(adapter.stream(req, new AbortController().signal));
+    expect(events[0]).toEqual({ type: 'delta', content: 'Stream from you-key-2' });
+
+    // A 400 malformed request must NOT rotate across keys or mark the key unhealthy.
+    const badPool = new KeyPool([{ key: 'a' }, { key: 'b' }], { strategy: 'round_robin' });
+    const badCalls: string[] = [];
+    const badAdapter = new MultiKeyAdapter('x', badPool, (k) => ({
+      slug: 'x',
+      async complete() {
+        badCalls.push(k);
+        throw new ProviderError('invalid_request: malformed json', 400, false, 'upstream_rejected');
+      },
+      async *stream() {
+        yield { type: 'finish', finishReason: 'stop' };
+      },
+    }));
+    await expect(badAdapter.complete(req, new AbortController().signal)).rejects.toMatchObject({ status: 400 });
+    expect(badCalls).toEqual(['a']);
+    expect(badPool.snapshot().healthy).toBe(2);
+  });
+});
+
+describe('You.com adapter & multi-key env config', () => {
+  it('calls /v1/agents/runs, maps turns, formats citations, streams deltas, and masks host on error', async () => {
+    const { YouComAdapter, toYouComInput, youComRunsUrl } = await import('../src/providers/youcom');
+    expect(youComRunsUrl('https://api.you.com')).toBe('https://api.you.com/v1/agents/runs');
+    expect(youComRunsUrl('https://api.you.com/v1')).toBe('https://api.you.com/v1/agents/runs');
+
+    expect(
+      toYouComInput([
+        { role: 'system', content: 'Be terse.' },
+        { role: 'user', content: 'First' },
+        { role: 'assistant', content: 'Reply' },
+        { role: 'user', content: 'Second' },
+      ]),
+    ).toEqual([
+      { role: 'user', content: 'Instructions:\nBe terse.\n\nFirst' },
+      { role: 'agent', content: 'Reply' },
+      { role: 'user', content: 'Second' },
+    ]);
+
+    const { f, calls } = fakeFetch(() =>
+      Response.json({
+        output: [
+          {
+            type: 'web_search.results',
+            content: [{ url: 'https://vigas.app/models', title: 'Vigas Models' }],
+          },
+          {
+            type: 'message.answer',
+            text: 'Vigas routes AI models [[1]](https://vigas.app/models).',
+          },
+        ],
+      }),
+    );
+
+    const adapter = new YouComAdapter('you', 'https://api.you.com', 'yk-secret', f, 'vigas-edge');
+    const result = await adapter.complete({ ...req, upstreamModel: 'express' }, new AbortController().signal);
+    expect(calls[0]!.url).toBe('https://api.you.com/v1/agents/runs');
+    expect((calls[0]!.init.headers as Record<string, string>).Authorization).toBe('Bearer yk-secret');
+    expect(calls[0]!.body).toMatchObject({ agent: 'express', stream: false, tools: [{ type: 'web_search' }] });
+    expect(result.content).toContain('Vigas routes AI models [1].');
+    expect(result.content).toContain('[1] Vigas Models — vigas.app');
+
+    const streamEvents = await collect(adapter.stream({ ...req, upstreamModel: 'express' }, new AbortController().signal));
+    expect(streamEvents.some((e) => e.type === 'delta')).toBe(true);
+    expect(streamEvents.some((e) => e.type === 'finish')).toBe(true);
+
+    const errFetch = fakeFetch(() => new Response('api.you.com quota exceeded', { status: 402 }));
+    const errAdapter = new YouComAdapter('you', 'https://api.you.com', 'yk-secret', errFetch.f, 'vigas-edge');
+    await expect(errAdapter.complete(req, new AbortController().signal)).rejects.toThrow('vigas-edge: upstream quota exceeded');
+  });
+
+  it('loads YOU_API_KEYS, strategy, per-key budget, and returns safe masked poolSnapshots without leaking raw keys', async () => {
+    const { loadConfig } = await import('../src/config');
+    const { createAdapterResolver } = await import('../src/providers');
+
+    const cfg = loadConfig({
+      NODE_ENV: 'production',
+      YOU_API_KEYS: 'yk-1, yk-2, yk-3',
+      YOU_KEY_STRATEGY: 'random',
+      YOU_KEY_BUDGET_USD: '100',
+      SEVENAPI_API_KEYS: 'sk-s1\nsk-s2',
+      SEVENAPI_KEY_STRATEGY: 'sequential',
+    });
+
+    expect(cfg.providers.you?.apiKeys).toHaveLength(3);
+    expect(cfg.providers.you?.keyStrategy).toBe('random');
+    expect(cfg.providers.you?.apiKeys[0]?.budgetMicros).toBe(100_000_000);
+    expect(cfg.providers.sevenapi?.apiKeys).toHaveLength(2);
+    expect(cfg.providers.sevenapi?.keyStrategy).toBe('sequential');
+    expect(cfg.promoOnlyModelPrefixes).toEqual(['you/']);
+
+    const resolve = createAdapterResolver(cfg);
+    expect(resolve('you')).not.toBeNull();
+    const snaps = resolve.poolSnapshots?.() ?? {};
+    expect(snaps.you?.total).toBe(3);
+    expect(snaps.you?.strategy).toBe('random');
+    expect(snaps.you?.keys[0]?.budgetUsd).toBe(100);
+    expect(JSON.stringify(snaps)).not.toContain('yk-1');
+    expect(JSON.stringify(snaps)).not.toContain('sk-s1');
+  });
+});

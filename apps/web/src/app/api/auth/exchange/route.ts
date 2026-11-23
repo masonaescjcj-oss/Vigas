@@ -62,7 +62,12 @@ export async function POST(req: Request) {
 
   const name = supaUser?.user_metadata?.full_name || supaUser?.user_metadata?.name || null;
   const db = getDb();
-  const user = await findOrCreateExternalUser(db, { email, name });
+  const user = await findOrCreateExternalUser(db, {
+    email,
+    name,
+    welcomeBonusMicros: env.signupBonusMicros,
+    welcomeReference: 'welcome:youcom',
+  });
   const token = await createSession(db, user.id, req.headers.get('user-agent'));
 
   const payload: AuthResponse = { user: toPublicUser(user), token };

@@ -8,6 +8,15 @@ export {
   type ProbeStatus,
   type SevenApiModelSpec,
 } from './providers/sevenapi';
+export {
+  YOUCOM_CATALOG,
+  YOUCOM_DEFAULT_BASE_URL,
+  YOUCOM_PROVIDER_SLUG,
+  YOUCOM_PUBLIC_LABEL,
+  youComEndpoints,
+  youComModels,
+  type YouComModelSpec,
+} from './providers/youcom';
 export { seedLeaderboard, SEED_TOTAL_SESSIONS } from './leaderboard';
 export { seedTools } from './tools';
 export { seedAuthors, seedArticles } from './news';

@@ -2,7 +2,7 @@ import { and, eq, gt, lt } from 'drizzle-orm';
 import type { PublicUser } from '@vigas/core';
 import { generateSessionToken, randomBase62, randomId, sha256Hex } from '@vigas/core/server';
 import type { Db } from './client';
-import { accounts, sessions, users } from './schema';
+import { accounts, ledgerEntries, sessions, users } from './schema';
 
 export const SESSION_TTL_MS = 30 * 86_400_000;
 
@@ -20,17 +20,39 @@ export async function findUserByEmail(db: Db, email: string) {
   return row ?? null;
 }
 
-/** Creates a user with an empty billing account. Throws on duplicate email (unique violation). */
+/**
+ * Creates a user with a billing account and optional one-time welcome promo credit
+ * (e.g. $5.00 You.com starter balance). Throws on duplicate email (unique violation).
+ */
 export async function createUser(
   db: Db,
-  input: { email: string; name?: string | null; passwordHash: string; role?: 'user' | 'admin' },
+  input: {
+    email: string;
+    name?: string | null;
+    passwordHash: string;
+    role?: 'user' | 'admin';
+    welcomeBonusMicros?: number;
+    welcomeReference?: string;
+  },
 ): Promise<SessionUser> {
+  const bonus =
+    typeof input.welcomeBonusMicros === 'number' && Number.isFinite(input.welcomeBonusMicros) && input.welcomeBonusMicros > 0
+      ? Math.round(input.welcomeBonusMicros)
+      : 0;
   return db.transaction(async (tx) => {
     const id = randomId('usr');
     const accountId = randomId('acc');
     const email = normalizeEmail(input.email);
     await tx.insert(users).values({ id, email, name: input.name?.trim() || null, passwordHash: input.passwordHash, role: input.role ?? 'user' });
-    await tx.insert(accounts).values({ id: accountId, userId: id });
+    await tx.insert(accounts).values({ id: accountId, userId: id, balanceMicros: bonus });
+    if (bonus > 0) {
+      await tx.insert(ledgerEntries).values({
+        accountId,
+        kind: 'promo',
+        amountMicros: bonus,
+        reference: input.welcomeReference ?? 'welcome:youcom',
+      });
+    }
     return { id, email, name: input.name?.trim() || null, role: input.role ?? 'user', accountId };
   });
 }
@@ -38,10 +60,11 @@ export async function createUser(
 /**
  * Finds an existing Vigas user + billing account by normalized email, or creates one for an
  * externally authenticated identity (e.g. Supabase Auth SSO across vigas.app and /chat).
+ * Welcome promo credit is only granted on first-ever account creation.
  */
 export async function findOrCreateExternalUser(
   db: Db,
-  input: { email: string; name?: string | null },
+  input: { email: string; name?: string | null; welcomeBonusMicros?: number; welcomeReference?: string },
 ): Promise<SessionUser> {
   const email = normalizeEmail(input.email);
   const existing = await db
@@ -74,6 +97,8 @@ export async function findOrCreateExternalUser(
       name: input.name?.trim() || null,
       // Non-scrypt sentinel hash cannot match verifyPassword() until the user explicitly sets a password.
       passwordHash: `sso:${randomBase62(48)}`,
+      welcomeBonusMicros: input.welcomeBonusMicros,
+      welcomeReference: input.welcomeReference,
     });
   } catch {
     const [race] = await db

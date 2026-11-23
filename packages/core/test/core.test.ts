@@ -125,6 +125,15 @@ describe('routing', () => {
     expect(resolveModelId('deepseek-v4-pro-0813', seedModels, seedEndpoints)).toBe('deepseek/v4-pro');
     expect(resolveModelId('kimi-k3', seedModels, seedEndpoints)).toBe('moonshotai/kimi-k3');
   });
+
+  it('registers You.com models (you/express, you/advanced, you/research) and routes them to provider "you"', async () => {
+    const { YOUCOM_CATALOG, youComEndpoints } = await import('../src/seed');
+    expect(YOUCOM_CATALOG.map((m) => m.id)).toEqual(['you/express', 'you/advanced', 'you/research']);
+    expect(youComEndpoints).toHaveLength(3);
+    const plan = planRoute({ model: 'you/express', catalog: seedModels, endpoints: seedEndpoints });
+    expect(plan[0]?.endpoint.provider).toBe('you');
+    expect(plan[0]?.endpoint.upstreamModel).toBe('express');
+  });
 });
 
 describe('ranking', () => {

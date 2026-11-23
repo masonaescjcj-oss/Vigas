@@ -17,6 +17,12 @@ const int = (value: string | undefined, fallback: number) => {
   return Number.isFinite(n) && n >= 0 ? n : fallback;
 };
 
+const usdToMicrosEnv = (value: string | undefined, fallbackUsd: number) => {
+  if (value === undefined || value.trim() === '') return Math.round(fallbackUsd * 1_000_000);
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 1_000_000) : Math.round(fallbackUsd * 1_000_000);
+};
+
 /** Server-only settings, read at request time so they can change without a rebuild. */
 export function serverEnv() {
   const avexpayApiKey = (process.env.AVEXPAY_API_KEY ?? '').trim();
@@ -26,6 +32,8 @@ export function serverEnv() {
     gatewayUrl: (process.env.GATEWAY_URL || 'http://localhost:8787').replace(/\/+$/, ''),
     internalToken: process.env.INTERNAL_SERVICE_TOKEN ?? '',
     topupFeeBps: int(process.env.TOPUP_FEE_BPS, 500),
+    /** Welcome promo credit granted once to every brand-new user (default $5.00 for You.com models; set 0 to disable). */
+    signupBonusMicros: usdToMicrosEnv(process.env.SIGNUP_BONUS_USD, 5),
     paymentProvider: (process.env.PAYMENT_PROVIDER ?? '').trim(),
     avexpayApiKey,
     avexpayOrgId: (process.env.AVEXPAY_ORG_ID ?? '').trim(),
