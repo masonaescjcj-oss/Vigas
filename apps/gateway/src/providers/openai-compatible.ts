@@ -2,14 +2,34 @@ import type { ChatCompletion, ChatCompletionChunk } from '@vigas/core';
 import { sseData } from './sse';
 import { ProviderError, type ProviderAdapter, type StreamEvent, type UpstreamRequest, type UpstreamResult } from './types';
 
+interface OpenAIUsageExt {
+  prompt_tokens: number;
+  completion_tokens: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+}
+
+function sanitizeHost(raw: string, baseUrl: string): string {
+  try {
+    const host = new URL(baseUrl).host;
+    return host ? raw.replaceAll(host, 'upstream') : raw;
+  } catch {
+    return raw;
+  }
+}
+
 /** Any provider that speaks the OpenAI Chat Completions API (OpenAI, Google, DeepSeek, Moonshot, …). */
 export class OpenAICompatibleAdapter implements ProviderAdapter {
+  private readonly label: string;
+
   constructor(
     readonly slug: string,
     private readonly baseUrl: string,
     private readonly apiKey: string,
     private readonly fetchImpl: typeof fetch = fetch,
-  ) {}
+    errorLabel?: string,
+  ) {
+    this.label = errorLabel ?? slug;
+  }
 
   private body(req: UpstreamRequest, stream: boolean) {
     return JSON.stringify({
@@ -23,7 +43,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
   }
 
   private async post(req: UpstreamRequest, stream: boolean, signal: AbortSignal): Promise<Response> {
-    if (!this.baseUrl) throw new ProviderError(`Provider "${this.slug}" has no base URL configured`, 503, true, 'provider_not_configured');
+    if (!this.baseUrl) throw new ProviderError(`Provider "${this.label}" has no base URL configured`, 503, true, 'provider_not_configured');
     const res = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
@@ -38,31 +58,38 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       } catch {
         // keep raw text
       }
-      throw ProviderError.fromStatus(res.status, `${this.slug}: ${message}`);
+      throw ProviderError.fromStatus(res.status, `${this.label}: ${sanitizeHost(message, this.baseUrl)}`);
     }
     return res;
   }
 
   async complete(req: UpstreamRequest, signal: AbortSignal): Promise<UpstreamResult> {
     const res = await this.post(req, false, signal);
-    const json = (await res.json()) as ChatCompletion;
+    const json = (await res.json()) as ChatCompletion & { usage?: OpenAIUsageExt };
     const choice = json.choices?.[0];
+    const cached = json.usage?.prompt_tokens_details?.cached_tokens ?? 0;
     return {
       content: choice?.message?.content ?? null,
       toolCalls: choice?.message?.tool_calls,
       finishReason: choice?.finish_reason ?? 'stop',
-      usage: json.usage ? { promptTokens: json.usage.prompt_tokens, completionTokens: json.usage.completion_tokens } : null,
+      usage: json.usage
+        ? {
+            promptTokens: json.usage.prompt_tokens,
+            completionTokens: json.usage.completion_tokens,
+            ...(cached > 0 ? { cachedPromptTokens: cached } : {}),
+          }
+        : null,
     };
   }
 
   async *stream(req: UpstreamRequest, signal: AbortSignal): AsyncIterable<StreamEvent> {
     const res = await this.post(req, true, signal);
-    if (!res.body) throw new ProviderError(`${this.slug}: empty stream`, 502, true);
+    if (!res.body) throw new ProviderError(`${this.label}: empty stream`, 502, true);
     for await (const data of sseData(res.body)) {
       if (data === '[DONE]') break;
-      let chunk: ChatCompletionChunk;
+      let chunk: ChatCompletionChunk & { usage?: OpenAIUsageExt };
       try {
-        chunk = JSON.parse(data) as ChatCompletionChunk;
+        chunk = JSON.parse(data) as ChatCompletionChunk & { usage?: OpenAIUsageExt };
       } catch {
         continue;
       }
@@ -72,7 +99,15 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       }
       if (choice?.finish_reason) yield { type: 'finish', finishReason: choice.finish_reason };
       if (chunk.usage) {
-        yield { type: 'usage', usage: { promptTokens: chunk.usage.prompt_tokens, completionTokens: chunk.usage.completion_tokens } };
+        const cached = chunk.usage.prompt_tokens_details?.cached_tokens ?? 0;
+        yield {
+          type: 'usage',
+          usage: {
+            promptTokens: chunk.usage.prompt_tokens,
+            completionTokens: chunk.usage.completion_tokens,
+            ...(cached > 0 ? { cachedPromptTokens: cached } : {}),
+          },
+        };
       }
     }
   }

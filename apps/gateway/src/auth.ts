@@ -26,8 +26,16 @@ const INTERNAL_SOURCES = new Set<UsageSource>(['chat', 'arena', 'retrobuild']);
  */
 export async function authenticate(db: Db, config: GatewayConfig, headers: Headers): Promise<AuthResult> {
   const auth = headers.get('authorization') ?? '';
-  const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
-  if (!token) return { ok: false, status: 401, message: 'Missing API key. Send it as "Authorization: Bearer sk-vg-v1-…".' };
+  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+  const xApiKey = (headers.get('x-api-key') ?? '').trim();
+  const token = bearer || xApiKey;
+  if (!token) {
+    return {
+      ok: false,
+      status: 401,
+      message: 'Missing API key. Send it as "Authorization: Bearer sk-vg-v1-…" or "x-api-key: sk-vg-v1-…".',
+    };
+  }
 
   if (config.internalServiceToken && safeEqual(token, config.internalServiceToken)) {
     const accountId = headers.get('x-vigas-account') ?? '';

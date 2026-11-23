@@ -44,7 +44,7 @@ const SUGGESTIONS = [
 ];
 
 /** Abort streams that produce nothing for this long. */
-const FIRST_BYTE_MS = 30_000;
+const FIRST_BYTE_MS = 90_000;
 
 let seq = 0;
 const uid = () => `${Date.now().toString(36)}-${(++seq).toString(36)}`;

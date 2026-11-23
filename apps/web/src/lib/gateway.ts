@@ -17,7 +17,7 @@ export class GatewayHttpError extends Error {
   }
 }
 
-const HEADER_TIMEOUT_MS = 30_000;
+const HEADER_TIMEOUT_MS = 90_000;
 
 /**
  * POSTs an OpenAI-compatible chat request to the Vigas gateway on behalf of an account. Throws

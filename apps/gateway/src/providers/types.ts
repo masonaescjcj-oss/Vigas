@@ -12,6 +12,7 @@ export interface UpstreamRequest {
 export interface UpstreamUsage {
   promptTokens: number;
   completionTokens: number;
+  cachedPromptTokens?: number;
 }
 
 export type FinishReason = 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;

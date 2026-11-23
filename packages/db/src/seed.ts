@@ -23,14 +23,36 @@ export interface SeedResult {
 /** Idempotent: re-running updates catalogue and content and leaves user data alone. */
 export async function seedDatabase(db: Db, opts: SeedOptions = {}): Promise<SeedResult> {
   for (const m of seedModels) {
-    const values = { ...m, description: m.description ?? null, enabled: true, updatedAt: new Date() };
+    const values = {
+      id: m.id,
+      name: m.name,
+      org: m.org,
+      contextLength: m.contextLength,
+      inputPerMillionMicros: m.inputPerMillionMicros,
+      outputPerMillionMicros: m.outputPerMillionMicros,
+      tags: m.tags,
+      priceChange24h: m.priceChange24h,
+      auto: m.auto,
+      description: m.description ?? null,
+      enabled: true,
+      updatedAt: new Date(),
+    };
     await db.insert(models).values(values).onConflictDoUpdate({ target: models.id, set: values });
   }
   for (const e of seedEndpoints) {
+    const ep = {
+      modelId: e.modelId,
+      provider: e.provider,
+      upstreamModel: e.upstreamModel,
+      inputPerMillionMicros: e.inputPerMillionMicros,
+      outputPerMillionMicros: e.outputPerMillionMicros,
+      priority: e.priority,
+      enabled: e.enabled,
+    };
     await db
       .insert(modelEndpoints)
-      .values(e)
-      .onConflictDoUpdate({ target: [modelEndpoints.modelId, modelEndpoints.provider], set: e });
+      .values(ep)
+      .onConflictDoUpdate({ target: [modelEndpoints.modelId, modelEndpoints.provider], set: ep });
   }
   for (const a of seedAuthors) {
     await db.insert(authors).values(a).onConflictDoUpdate({ target: authors.slug, set: a });

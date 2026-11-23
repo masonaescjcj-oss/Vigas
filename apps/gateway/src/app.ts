@@ -6,6 +6,7 @@ import { authenticate } from './auth';
 import { handleChatCompletion, type GatewayDeps } from './chat';
 import type { GatewayConfig } from './config';
 import { errorResponse } from './errors';
+import { handleAnthropicMessages } from './messages';
 import { createAdapterResolver, type AdapterResolver } from './providers';
 import { CatalogCache, EndpointHealth, RateLimiter } from './state';
 
@@ -37,13 +38,20 @@ export function createApp(opts: CreateAppOptions) {
     '/v1/*',
     cors({
       origin: '*',
-      allowHeaders: ['Authorization', 'Content-Type'],
+      allowHeaders: ['Authorization', 'Content-Type', 'x-api-key', 'anthropic-version'],
       allowMethods: ['GET', 'POST', 'OPTIONS'],
       exposeHeaders: ['X-Vigas-Provider', 'X-Vigas-Model'],
     }),
   );
 
-  app.get('/', (c) => c.json({ name: 'Vigas API', docs: 'https://vigas.ai/models', openai_compatible_base_url: '/v1' }));
+  app.get('/', (c) =>
+    c.json({
+      name: 'Vigas API',
+      docs: 'https://vigas.app/models',
+      openai_compatible_base_url: '/v1',
+      anthropic_compatible_base_url: '/',
+    }),
+  );
   app.get('/health', (c) => c.json({ ok: true }));
 
   app.get('/v1/models', async () => {
@@ -56,7 +64,11 @@ export function createApp(opts: CreateAppOptions) {
       name: m.name,
       context_length: m.contextLength,
       tags: m.tags,
-      pricing: { prompt: perToken(m.inputPerMillionMicros), completion: perToken(m.outputPerMillionMicros) },
+      pricing: {
+        prompt: perToken(m.inputPerMillionMicros),
+        completion: perToken(m.outputPerMillionMicros),
+        ...(m.cachedInputPerMillionMicros !== undefined ? { input_cache_read: perToken(m.cachedInputPerMillionMicros) } : {}),
+      },
     }));
     data.unshift({
       id: AUTO_MODEL_ID,
@@ -123,6 +135,7 @@ export function createApp(opts: CreateAppOptions) {
   });
 
   app.post('/v1/chat/completions', (c) => handleChatCompletion(deps, c.req.raw));
+  app.post('/v1/messages', (c) => handleAnthropicMessages(deps, c.req.raw));
 
   app.notFound(() => errorResponse(404, 'Not found', 'not_found_error', 'not_found'));
   app.onError((err) => {

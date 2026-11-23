@@ -35,17 +35,26 @@ export function formatPricePerMillion(microsPerMillion: number): string {
 export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
+  /** Subset of `promptTokens` served from prompt cache (billed at `cachedInputPerMillionMicros` when set). */
+  cachedPromptTokens?: number;
 }
 
 export interface TokenPrice {
   inputPerMillionMicros: number;
   outputPerMillionMicros: number;
+  /** Optional discounted rate per 1M cached input tokens. Falls back to `inputPerMillionMicros`. */
+  cachedInputPerMillionMicros?: number;
 }
 
 /** Cost of a request in micros, rounded up so the platform never undercharges. */
 export function costMicros(usage: TokenUsage, price: TokenPrice): number {
+  const cached = Math.min(Math.max(0, usage.cachedPromptTokens ?? 0), Math.max(0, usage.promptTokens));
+  const uncached = Math.max(0, usage.promptTokens - cached);
+  const cachedRate = price.cachedInputPerMillionMicros ?? price.inputPerMillionMicros;
   const raw =
-    usage.promptTokens * price.inputPerMillionMicros + usage.completionTokens * price.outputPerMillionMicros;
+    uncached * price.inputPerMillionMicros +
+    cached * cachedRate +
+    usage.completionTokens * price.outputPerMillionMicros;
   return Math.ceil(raw / 1_000_000);
 }
 

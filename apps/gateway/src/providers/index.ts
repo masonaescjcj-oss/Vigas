@@ -17,11 +17,12 @@ export function createAdapterResolver(config: GatewayConfig, opts: { failing?: S
     const p = config.providers[provider];
     let adapter: ProviderAdapter | null = null;
     if (p?.apiKey) {
+      const errorLabel = p.hidden || config.hideUpstreamProviders ? (p.publicLabel ?? 'vigas-edge') : provider;
       adapter =
         p.kind === 'anthropic'
-          ? new AnthropicAdapter(provider, p.baseUrl, p.apiKey)
-          : new OpenAICompatibleAdapter(provider, p.baseUrl, p.apiKey);
-    } else if (config.mockProviders) {
+          ? new AnthropicAdapter(provider, p.baseUrl, p.apiKey, fetch, errorLabel)
+          : new OpenAICompatibleAdapter(provider, p.baseUrl, p.apiKey, fetch, errorLabel);
+    } else if (config.mockProviders && p?.allowMock !== false) {
       adapter = new MockAdapter(provider, { failing: opts.failing });
     }
     cache.set(provider, adapter);

@@ -114,21 +114,51 @@ export function toAnthropicToolChoice(choice: unknown): Record<string, unknown> 
   return name ? { type: 'tool', name } : undefined;
 }
 
+/** Normalizes an Anthropic base URL so both `https://7api.st` and `https://7api.st/v1` hit `/v1/messages`. */
+export function anthropicMessagesUrl(baseUrl: string): string {
+  const clean = baseUrl.trim().replace(/\/+$/, '');
+  if (!clean) return '';
+  if (clean.endsWith('/messages')) return clean;
+  if (clean.endsWith('/v1')) return `${clean}/messages`;
+  return `${clean}/v1/messages`;
+}
+
+function sanitizeErrorText(raw: string, baseUrl: string): string {
+  let out = raw;
+  try {
+    const host = new URL(baseUrl).host;
+    if (host) out = out.replaceAll(host, 'upstream');
+  } catch {
+    // ignore invalid URL
+  }
+  return out;
+}
+
 export class AnthropicAdapter implements ProviderAdapter {
+  private readonly label: string;
+  private readonly endpointUrl: string;
+
   constructor(
     readonly slug: string,
     private readonly baseUrl: string,
     private readonly apiKey: string,
     private readonly fetchImpl: typeof fetch = fetch,
-  ) {}
+    errorLabel?: string,
+  ) {
+    this.label = errorLabel ?? slug;
+    this.endpointUrl = anthropicMessagesUrl(baseUrl);
+  }
 
   private async post(req: UpstreamRequest, stream: boolean, signal: AbortSignal): Promise<Response> {
+    if (!this.endpointUrl) {
+      throw new ProviderError(`Provider "${this.label}" has no base URL configured`, 503, true, 'provider_not_configured');
+    }
     const { system, messages } = toAnthropic(req.messages);
     const p = req.params;
     const tools = toAnthropicTools(p.tools);
     const toolChoice = tools ? toAnthropicToolChoice(p.tool_choice) : undefined;
     const stop = typeof p.stop === 'string' ? [p.stop] : Array.isArray(p.stop) ? p.stop : undefined;
-    const res = await this.fetchImpl(`${this.baseUrl}/messages`, {
+    const res = await this.fetchImpl(this.endpointUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
@@ -154,7 +184,7 @@ export class AnthropicAdapter implements ProviderAdapter {
         // keep raw text
       }
       // Anthropic uses 529 for "overloaded".
-      throw ProviderError.fromStatus(res.status, `${this.slug}: ${message}`);
+      throw ProviderError.fromStatus(res.status, `${this.label}: ${sanitizeErrorText(message, this.baseUrl)}`);
     }
     return res;
   }
@@ -164,34 +194,59 @@ export class AnthropicAdapter implements ProviderAdapter {
     const json = (await res.json()) as {
       content: Array<{ type: string; text?: string; id?: string; name?: string; input?: unknown }>;
       stop_reason: string | null;
-      usage?: { input_tokens: number; output_tokens: number };
+      usage?: {
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_input_tokens?: number;
+        cache_creation_input_tokens?: number;
+      };
     };
     const toolCalls: OpenAIToolCall[] = json.content
       .filter((c) => c.type === 'tool_use')
       .map((c) => ({ id: c.id ?? '', type: 'function', function: { name: c.name ?? '', arguments: JSON.stringify(c.input ?? {}) } }));
     const text = json.content.filter((c) => c.type === 'text').map((c) => c.text ?? '').join('');
+    const cached = json.usage?.cache_read_input_tokens ?? 0;
+    const creation = json.usage?.cache_creation_input_tokens ?? 0;
     return {
       content: text || (toolCalls.length ? null : ''),
       ...(toolCalls.length ? { toolCalls } : {}),
       finishReason: (json.stop_reason && STOP[json.stop_reason]) || 'stop',
-      usage: json.usage ? { promptTokens: json.usage.input_tokens, completionTokens: json.usage.output_tokens } : null,
+      usage: json.usage
+        ? {
+            promptTokens: json.usage.input_tokens + cached + creation,
+            completionTokens: json.usage.output_tokens,
+            ...(cached > 0 ? { cachedPromptTokens: cached } : {}),
+          }
+        : null,
     };
   }
 
   async *stream(req: UpstreamRequest, signal: AbortSignal): AsyncIterable<StreamEvent> {
     const res = await this.post(req, true, signal);
-    if (!res.body) throw new ProviderError(`${this.slug}: empty stream`, 502, true);
+    if (!res.body) throw new ProviderError(`${this.label}: empty stream`, 502, true);
     let promptTokens = 0;
+    let cachedTokens = 0;
     // Anthropic numbers content blocks; OpenAI numbers tool calls. Map block index → tool call index.
     const toolIndex = new Map<number, number>();
     for await (const data of sseData(res.body)) {
       let ev: {
         type: string;
         index?: number;
-        message?: { usage?: { input_tokens?: number } };
+        message?: {
+          usage?: {
+            input_tokens?: number;
+            cache_read_input_tokens?: number;
+            cache_creation_input_tokens?: number;
+          };
+        };
         content_block?: { type?: string; id?: string; name?: string };
         delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string | null };
-        usage?: { output_tokens?: number; input_tokens?: number };
+        usage?: {
+          output_tokens?: number;
+          input_tokens?: number;
+          cache_read_input_tokens?: number;
+          cache_creation_input_tokens?: number;
+        };
         error?: { message?: string; type?: string };
       };
       try {
@@ -200,7 +255,9 @@ export class AnthropicAdapter implements ProviderAdapter {
         continue;
       }
       if (ev.type === 'message_start') {
-        promptTokens = ev.message?.usage?.input_tokens ?? 0;
+        const u = ev.message?.usage;
+        cachedTokens = u?.cache_read_input_tokens ?? 0;
+        promptTokens = (u?.input_tokens ?? 0) + cachedTokens + (u?.cache_creation_input_tokens ?? 0);
       } else if (ev.type === 'content_block_start' && ev.content_block?.type === 'tool_use') {
         const i = toolIndex.size;
         toolIndex.set(ev.index ?? i, i);
@@ -216,13 +273,22 @@ export class AnthropicAdapter implements ProviderAdapter {
       } else if (ev.type === 'message_delta') {
         if (ev.delta?.stop_reason) yield { type: 'finish', finishReason: STOP[ev.delta.stop_reason] ?? 'stop' };
         if (ev.usage) {
+          const cached = ev.usage.cache_read_input_tokens ?? cachedTokens;
+          const totalIn =
+            ev.usage.input_tokens !== undefined
+              ? ev.usage.input_tokens + cached + (ev.usage.cache_creation_input_tokens ?? 0)
+              : promptTokens;
           yield {
             type: 'usage',
-            usage: { promptTokens: ev.usage.input_tokens ?? promptTokens, completionTokens: ev.usage.output_tokens ?? 0 },
+            usage: {
+              promptTokens: totalIn,
+              completionTokens: ev.usage.output_tokens ?? 0,
+              ...(cached > 0 ? { cachedPromptTokens: cached } : {}),
+            },
           };
         }
       } else if (ev.type === 'error') {
-        throw new ProviderError(`${this.slug}: ${ev.error?.message ?? 'stream error'}`, 502, true);
+        throw new ProviderError(`${this.label}: ${sanitizeErrorText(ev.error?.message ?? 'stream error', this.baseUrl)}`, 502, true);
       }
     }
   }

@@ -12,6 +12,8 @@ export interface ModelInfo {
   contextLength: number;
   inputPerMillionMicros: number;
   outputPerMillionMicros: number;
+  /** Optional retail cached-input rate per 1M tokens. */
+  cachedInputPerMillionMicros?: number;
   tags: ModelTag[];
   /** Price change over the last 24h in percent (negative = cheaper). */
   priceChange24h: number;
@@ -23,12 +25,14 @@ export interface ModelInfo {
 /** One upstream that can serve a model. A model may have several (for fallback). */
 export interface ProviderEndpoint {
   modelId: string;
-  /** Provider slug, matches a gateway adapter config, e.g. "anthropic", "openai", "deepseek". */
+  /** Provider slug, matches a gateway adapter config, e.g. "anthropic", "openai", "sevenapi". */
   provider: string;
   /** Model name the provider expects, e.g. "claude-opus-5-5". */
   upstreamModel: string;
   inputPerMillionMicros: number;
   outputPerMillionMicros: number;
+  /** Optional wholesale cached-input rate per 1M tokens. */
+  cachedInputPerMillionMicros?: number;
   /** Lower runs first among equally ranked endpoints. */
   priority: number;
   enabled: boolean;

@@ -1,5 +1,6 @@
 import { usdToMicros } from '../money';
 import type { ModelInfo, ModelTag, ProviderEndpoint } from '../models';
+import { buildSevenApiExtraModels, sevenApiEndpoints } from './providers/sevenapi';
 
 /**
  * Production model catalogue synchronized with verified November 2026 Arena rankings and gateway pricing.
@@ -47,7 +48,7 @@ const ROWS: Row[] = [
   ['google/gemini-nano-banana-2.1', 'Gemini Nano Banana 2.1', 'Google', 128_000, 0.6, 2.4, ['vision'], 0, false, 'google', 'gemini-nano-banana-2.1'],
 ];
 
-export const seedModels: ModelInfo[] = ROWS.map(([id, name, org, ctx, i, o, tags, change, auto]) => ({
+const BASE_MODELS: ModelInfo[] = ROWS.map(([id, name, org, ctx, i, o, tags, change, auto]) => ({
   id,
   name,
   org,
@@ -59,7 +60,11 @@ export const seedModels: ModelInfo[] = ROWS.map(([id, name, org, ctx, i, o, tags
   auto,
 }));
 
-export const seedEndpoints: ProviderEndpoint[] = [
+const BASE_IDS = new Set(BASE_MODELS.map((m) => m.id));
+
+export const seedModels: ModelInfo[] = [...BASE_MODELS, ...buildSevenApiExtraModels(BASE_IDS)];
+
+const BASE_ENDPOINTS: ProviderEndpoint[] = [
   ...ROWS.map<ProviderEndpoint>(([id, , , , i, o, , , , provider, upstream]) => ({
     modelId: id,
     provider,
@@ -80,3 +85,5 @@ export const seedEndpoints: ProviderEndpoint[] = [
     enabled: true,
   },
 ];
+
+export const seedEndpoints: ProviderEndpoint[] = [...BASE_ENDPOINTS, ...sevenApiEndpoints];

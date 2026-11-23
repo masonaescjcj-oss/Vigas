@@ -6,16 +6,18 @@ import {
   estimateTokens,
   messageText,
   planRoute,
+  resolveModelId,
   RouteError,
   type ChatCompletion,
   type ChatCompletionChunk,
   type ChatCompletionRequest,
   type RouteCandidate,
+  type TokenPrice,
 } from '@vigas/core';
 import { randomBase62 } from '@vigas/core/server';
 import { keySpendThisMonth, reserveCredits, settleUsage, type Db } from '@vigas/db';
 import { authenticate, type Caller } from './auth';
-import type { GatewayConfig } from './config';
+import { publicProviderLabel, type GatewayConfig } from './config';
 import { errorResponse } from './errors';
 import { asProviderError, type AdapterResolver, type ProviderAdapter, type ProviderError, type StreamEvent, type UpstreamUsage } from './providers';
 import type { CatalogCache, EndpointHealth, RateLimiter } from './state';
@@ -78,13 +80,17 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
   const body = parsed.data;
 
   const snap = await deps.catalog.get();
+  const configuredEndpoints = snap.endpoints.filter((e) => e.enabled && deps.adapters(e.provider) !== null);
+  const resolvedModel = resolveModelId(body.model, snap.models, snap.endpoints) ?? body.model;
+  const resolvedFallbacks = body.models?.map((m) => resolveModelId(m, snap.models, snap.endpoints) ?? m);
+
   let plan: RouteCandidate[];
   try {
     plan = planRoute({
-      model: body.model,
-      models: body.models,
+      model: resolvedModel,
+      models: resolvedFallbacks,
       catalog: snap.models,
-      endpoints: snap.endpoints,
+      endpoints: configuredEndpoints.length ? configuredEndpoints : snap.endpoints,
       ratings: snap.ratings,
       stats: deps.health.stats(),
       options: { sort: body.route?.sort, fallbacks: body.route?.fallbacks },
@@ -112,8 +118,8 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
     return errorResponse(400, `Prompt is about ${promptEstimate} tokens; the model accepts ${smallestContext}.`, 'invalid_request_error', 'context_length_exceeded');
   }
 
-  // Reserve enough for the most expensive endpoint that might serve the request.
-  const reserve = Math.max(...attempts.map((a) => estimateMaxCostMicros(a.candidate.endpoint, promptEstimate, maxTokens)));
+  // Reserve enough for the most expensive retail/fallback rate that might serve the request.
+  const reserve = Math.max(...attempts.map((a) => estimateMaxCostMicros(customerPrice(a.candidate), promptEstimate, maxTokens)));
   if (caller.apiKeyId && caller.monthlyLimitMicros !== null && reserve > 0) {
     const spent = await keySpendThisMonth(deps.db, caller.apiKeyId);
     if (spent + reserve > caller.monthlyLimitMicros) {
@@ -127,7 +133,7 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
   }
   const holdId = await reserveCredits(deps.db, caller.accountId, reserve);
   if (!holdId) {
-    return errorResponse(402, 'Insufficient credits. Add credits at https://vigas.ai/dashboard', 'insufficient_quota', 'insufficient_credits');
+    return errorResponse(402, 'Insufficient credits. Add credits at https://vigas.app/dashboard', 'insufficient_quota', 'insufficient_credits');
   }
 
   const params: Record<string, unknown> = {};
@@ -149,8 +155,26 @@ export async function handleChatCompletion(deps: GatewayDeps, req: Request): Pro
   return body.stream ? streamCompletion(ctx) : completeOnce(ctx);
 }
 
+/**
+ * Customer billing price: bills at Vigas retail (`model`) while guaranteeing Vigas never sells
+ * below a fallback endpoint's wholesale cost.
+ */
+export function customerPrice(c: RouteCandidate): TokenPrice {
+  const input = Math.max(c.model.inputPerMillionMicros, c.endpoint.inputPerMillionMicros);
+  const output = Math.max(c.model.outputPerMillionMicros, c.endpoint.outputPerMillionMicros);
+  const cached =
+    c.model.cachedInputPerMillionMicros !== undefined || c.endpoint.cachedInputPerMillionMicros !== undefined
+      ? Math.max(c.model.cachedInputPerMillionMicros ?? 0, c.endpoint.cachedInputPerMillionMicros ?? 0)
+      : undefined;
+  return {
+    inputPerMillionMicros: input,
+    outputPerMillionMicros: output,
+    ...(cached !== undefined ? { cachedInputPerMillionMicros: cached } : {}),
+  };
+}
+
 function settle(ctx: Context, a: Attempt, usage: UpstreamUsage | null, latencyMs: number, status: 'ok' | 'error', errorCode?: string) {
-  const cost = usage ? costMicros(usage, a.candidate.endpoint) : 0;
+  const cost = usage ? costMicros(usage, customerPrice(a.candidate)) : 0;
   return settleUsage(ctx.deps.db, {
     holdId: ctx.holdId,
     accountId: ctx.caller.accountId,
@@ -194,7 +218,10 @@ function failureResponse(err: ProviderError | null): Response {
   return errorResponse(502, err.message, 'upstream_error', err.code);
 }
 
-const routeHeaders = (a: Attempt) => ({ 'X-Vigas-Provider': a.candidate.endpoint.provider, 'X-Vigas-Model': a.candidate.model.id });
+const routeHeaders = (config: GatewayConfig, a: Attempt) => ({
+  'X-Vigas-Provider': publicProviderLabel(config, a.candidate.endpoint.provider),
+  'X-Vigas-Model': a.candidate.model.id,
+});
 
 async function completeOnce(ctx: Context): Promise<Response> {
   const { deps } = ctx;
@@ -219,7 +246,7 @@ async function completeOnce(ctx: Context): Promise<Response> {
         object: 'chat.completion',
         created: ctx.created,
         model: a.candidate.model.id,
-        provider: a.candidate.endpoint.provider,
+        provider: publicProviderLabel(deps.config, a.candidate.endpoint.provider),
         choices: [
           {
             index: 0,
@@ -234,7 +261,7 @@ async function completeOnce(ctx: Context): Promise<Response> {
           cost: toUsd(cost),
         },
       };
-      return new Response(JSON.stringify(completion), { headers: { 'Content-Type': 'application/json', ...routeHeaders(a) } });
+      return new Response(JSON.stringify(completion), { headers: { 'Content-Type': 'application/json', ...routeHeaders(deps.config, a) } });
     } catch (err) {
       lastErr = asProviderError(err);
       if (lastErr.retryable) {
@@ -293,7 +320,13 @@ async function streamCompletion(ctx: Context): Promise<Response> {
     }
 
     const encoder = new TextEncoder();
-    const base = { id: ctx.id, object: 'chat.completion.chunk' as const, created: ctx.created, model: a.candidate.model.id, provider: a.candidate.endpoint.provider };
+    const base = {
+      id: ctx.id,
+      object: 'chat.completion.chunk' as const,
+      created: ctx.created,
+      model: a.candidate.model.id,
+      provider: publicProviderLabel(deps.config, a.candidate.endpoint.provider),
+    };
     const includeUsage = ctx.body.stream_options?.include_usage === true;
 
     const stream = new ReadableStream<Uint8Array>({
@@ -381,7 +414,7 @@ async function streamCompletion(ctx: Context): Promise<Response> {
         'Cache-Control': 'no-cache, no-transform',
         Connection: 'keep-alive',
         'X-Accel-Buffering': 'no',
-        ...routeHeaders(a),
+        ...routeHeaders(deps.config, a),
       },
     });
   }

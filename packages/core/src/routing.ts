@@ -109,6 +109,31 @@ export function planRoute(input: PlanRouteInput): RouteCandidate[] {
 }
 
 /**
+ * Resolves a caller-supplied model ID to a canonical Vigas catalog ID.
+ * Accepts exact catalog IDs (`anthropic/claude-opus-5.5-max`), suffix-only slugs
+ * (`claude-opus-5.5-max`), or known upstream slugs (`claude-opus-5-5-max`).
+ */
+export function resolveModelId(
+  requested: string,
+  catalog: readonly ModelInfo[],
+  endpoints: readonly ProviderEndpoint[] = [],
+): string | null {
+  const trimmed = requested.trim();
+  if (!trimmed) return null;
+  if (trimmed === AUTO_MODEL_ID) return AUTO_MODEL_ID;
+  const exact = catalog.find((m) => m.id === trimmed);
+  if (exact) return exact.id;
+  const lower = trimmed.toLowerCase();
+  const byLower = catalog.find((m) => m.id.toLowerCase() === lower);
+  if (byLower) return byLower.id;
+  const bySuffix = catalog.find((m) => m.id.split('/').pop()?.toLowerCase() === lower);
+  if (bySuffix) return bySuffix.id;
+  const byUpstream = endpoints.find((e) => e.upstreamModel.toLowerCase() === lower);
+  if (byUpstream && catalog.some((m) => m.id === byUpstream.modelId)) return byUpstream.modelId;
+  return null;
+}
+
+/**
  * Upper bound on what a request can cost, used to reserve credits before calling a provider.
  * Unused reservation is refunded after the response.
  */

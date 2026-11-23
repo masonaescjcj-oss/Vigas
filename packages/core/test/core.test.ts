@@ -53,7 +53,7 @@ describe('money', () => {
 describe('routing', () => {
   it('orders a model’s endpoints by price and keeps fallbacks', () => {
     const plan = planRoute({ model: 'deepseek/v4.1-flash', catalog: seedModels, endpoints: seedEndpoints });
-    expect(plan.map((c) => c.endpoint.provider)).toEqual(['deepseek', 'together']);
+    expect(plan.map((c) => c.endpoint.provider)).toEqual(['sevenapi', 'deepseek', 'together']);
   });
 
   it('moves unhealthy endpoints to the back instead of dropping them', () => {
@@ -61,9 +61,12 @@ describe('routing', () => {
       model: 'deepseek/v4.1-flash',
       catalog: seedModels,
       endpoints: seedEndpoints,
-      stats: { 'deepseek:deepseek/v4.1-flash': { healthy: false } },
+      stats: {
+        'sevenapi:deepseek/v4.1-flash': { healthy: false },
+        'deepseek:deepseek/v4.1-flash': { healthy: false },
+      },
     });
-    expect(plan.map((c) => c.endpoint.provider)).toEqual(['together', 'deepseek']);
+    expect(plan.map((c) => c.endpoint.provider)).toEqual(['together', 'sevenapi', 'deepseek']);
   });
 
   it('routes vigas/auto by quality, price or latency across auto-eligible models', () => {
@@ -84,7 +87,8 @@ describe('routing', () => {
       catalog: seedModels,
       endpoints: seedEndpoints,
     });
-    expect(plan.map((c) => c.model.id)).toEqual(['openai/gpt-6-astra', 'google/gemini-4-carbon']);
+    expect(plan[0]!.model.id).toBe('openai/gpt-6-astra');
+    expect(plan.some((c) => c.model.id === 'google/gemini-4-carbon')).toBe(true);
     const single = planRoute({ model: 'deepseek/v4.1-flash', catalog: seedModels, endpoints: seedEndpoints, options: { fallbacks: false } });
     expect(single).toHaveLength(1);
   });
@@ -97,6 +101,29 @@ describe('routing', () => {
     const price = { inputPerMillionMicros: usdToMicros(3), outputPerMillionMicros: usdToMicros(15) };
     const reserve = estimateMaxCostMicros(price, 1000, 1024);
     expect(reserve).toBeGreaterThanOrEqual(costMicros({ promptTokens: 1000, completionTokens: 1024 }, price));
+  });
+
+  it('bills cached input tokens at cachedInputPerMillionMicros when present', () => {
+    const price = {
+      inputPerMillionMicros: usdToMicros(0.5),
+      outputPerMillionMicros: usdToMicros(0.5),
+      cachedInputPerMillionMicros: usdToMicros(0.05),
+    };
+    const total = costMicros({ promptTokens: 1_000_000, cachedPromptTokens: 800_000, completionTokens: 200_000 }, price);
+    // 0.2M * $0.50 ($0.10) + 0.8M * $0.05 ($0.04) + 0.2M * $0.50 ($0.10) = $0.24
+    expect(total).toBe(usdToMicros(0.24));
+  });
+
+  it('registers all 41 SevenAPI models, disables down models, and resolves upstream aliases', async () => {
+    const { resolveModelId } = await import('../src');
+    const { SEVENAPI_CATALOG, sevenApiEndpoints } = await import('../src/seed');
+    expect(SEVENAPI_CATALOG).toHaveLength(41);
+    expect(sevenApiEndpoints).toHaveLength(41);
+    const disabled = sevenApiEndpoints.filter((e) => !e.enabled).map((e) => e.upstreamModel).sort();
+    expect(disabled).toEqual(['claude-fable-5-2', 'glm-5.3-flash', 'glm-5.3-flash-uncensored', 'gpt-5.6-terra']);
+    expect(resolveModelId('claude-opus-5-5-max', seedModels, seedEndpoints)).toBe('anthropic/claude-opus-5.5-max');
+    expect(resolveModelId('deepseek-v4-pro-0813', seedModels, seedEndpoints)).toBe('deepseek/v4-pro');
+    expect(resolveModelId('kimi-k3', seedModels, seedEndpoints)).toBe('moonshotai/kimi-k3');
   });
 });
 

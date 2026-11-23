@@ -223,4 +223,73 @@ describe('Anthropic tool calling', () => {
       { type: 'usage', usage: { promptTokens: 15, completionTokens: 12 } },
     ]);
   });
+
+  it('normalizes https://7api.st to /v1/messages, tracks cached input tokens, and masks upstream host/slug', async () => {
+    const { anthropicMessagesUrl } = await import('../src/providers/anthropic');
+    expect(anthropicMessagesUrl('https://7api.st')).toBe('https://7api.st/v1/messages');
+    expect(anthropicMessagesUrl('https://7api.st/v1')).toBe('https://7api.st/v1/messages');
+
+    const { f, calls } = fakeFetch(() =>
+      Response.json({
+        content: [{ type: 'text', text: 'Done' }],
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 100, cache_read_input_tokens: 400, output_tokens: 25 },
+      }),
+    );
+    const adapter = new AnthropicAdapter('sevenapi', 'https://7api.st', 'sk-secret', f, 'vigas-edge');
+    const r = await adapter.complete({ ...req, upstreamModel: 'claude-opus-5-5-max' }, new AbortController().signal);
+    expect(calls[0]!.url).toBe('https://7api.st/v1/messages');
+    expect(r.usage).toEqual({ promptTokens: 500, completionTokens: 25, cachedPromptTokens: 400 });
+
+    const errFetch = fakeFetch(() => new Response(JSON.stringify({ error: { message: '7api.st overloaded' } }), { status: 529 }));
+    const errAdapter = new AnthropicAdapter('sevenapi', 'https://7api.st', 'sk-secret', errFetch.f, 'vigas-edge');
+    await expect(errAdapter.complete(req, new AbortController().signal)).rejects.toThrow('vigas-edge: upstream overloaded');
+  });
+});
+
+describe('multi-provider config & Anthropic messages translation', () => {
+  it('loads sevenapi, dynamic UPSTREAM_PROVIDERS JSON, and PROVIDER_* env pools while masking hidden providers', async () => {
+    const { loadConfig, publicProviderLabel } = await import('../src/config');
+    const { createAdapterResolver } = await import('../src/providers');
+    const cfg = loadConfig({
+      NODE_ENV: 'development',
+      SEVENAPI_API_KEY: 'sk-test-seven',
+      SEVENAPI_BASE_URL: 'https://7api.st',
+      UPSTREAM_PROVIDERS: JSON.stringify([
+        { slug: 'pool_eu', kind: 'openai', baseUrl: 'https://pool-eu.example.com/v1', apiKey: 'sk-eu' },
+      ]),
+      PROVIDER_POOL_ASIA_KIND: 'anthropic',
+      PROVIDER_POOL_ASIA_BASE_URL: 'https://pool-asia.example.com',
+      PROVIDER_POOL_ASIA_API_KEY: 'sk-asia',
+    });
+
+    expect(cfg.providers.sevenapi?.apiKey).toBe('sk-test-seven');
+    expect(cfg.providers.sevenapi?.hidden).toBe(true);
+    expect(cfg.providers.pool_eu?.baseUrl).toBe('https://pool-eu.example.com/v1');
+    expect(cfg.providers.pool_asia?.kind).toBe('anthropic');
+    expect(publicProviderLabel(cfg, 'sevenapi')).toBe('vigas-edge');
+    expect(publicProviderLabel(cfg, 'pool_eu')).toBe('vigas-edge');
+
+    const resolve = createAdapterResolver(cfg);
+    expect(resolve('sevenapi')).not.toBeNull();
+    expect(resolve('pool_eu')).not.toBeNull();
+    expect(resolve('pool_asia')).not.toBeNull();
+
+    // Without SEVENAPI_API_KEY, sevenapi must not fall back to MockAdapter.
+    const noKeyCfg = loadConfig({ NODE_ENV: 'development' });
+    expect(createAdapterResolver(noKeyCfg)('sevenapi')).toBeNull();
+  });
+
+  it('converts Anthropic /v1/messages system, tool_use and tool_result blocks cleanly', async () => {
+    const { fromAnthropicMessages } = await import('../src/messages');
+    const msgs = fromAnthropicMessages('You are concise.', [
+      { role: 'user', content: [{ type: 'text', text: 'Weather in Tehran?' }] },
+      { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_1', name: 'get_weather', input: { city: 'Tehran' } }] },
+      { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '22C' }] },
+    ]);
+    expect(msgs).toHaveLength(4);
+    expect(msgs[0]).toEqual({ role: 'system', content: 'You are concise.' });
+    expect(msgs[2]!.role).toBe('assistant');
+    expect(msgs[3]).toEqual({ role: 'tool', tool_call_id: 'toolu_1', content: '22C' });
+  });
 });
