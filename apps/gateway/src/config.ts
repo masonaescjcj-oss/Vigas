@@ -10,7 +10,7 @@ import {
 } from '@vigas/core/seed';
 import { parseKeyPoolEnv, parseKeyRotationStrategy, type KeyRotationStrategy, type PoolKeySpec } from './providers/key-pool';
 
-export type ProviderKind = 'openai' | 'anthropic' | 'youcom';
+export type ProviderKind = 'openai' | 'anthropic' | 'youcom' | 'gemini';
 
 export interface ProviderConfig {
   slug: string;
@@ -20,7 +20,7 @@ export interface ProviderConfig {
   apiKey: string | null;
   /** Full pool of keys configured for this provider (e.g., 10 × $100 keys). */
   apiKeys: PoolKeySpec[];
-  /** Rotation mode across `apiKeys`: `round_robin` | `random` | `sequential` | `least_used`. */
+  /** Rotation mode across `apiKeys`: `round_robin` | `random` | `sequential` | `least_used` | `sticky`. */
   keyStrategy: KeyRotationStrategy;
   /**
    * Optional allowlist of Vigas model IDs (or prefixes ending with `*` / `/`) that this provider
@@ -75,10 +75,12 @@ interface BuiltinProviderSpec {
 const PROVIDERS: BuiltinProviderSpec[] = [
   { slug: 'openai', kind: 'openai', baseUrl: 'https://api.openai.com/v1' },
   { slug: 'anthropic', kind: 'anthropic', baseUrl: 'https://api.anthropic.com/v1' },
+  // Native Gemini REST (`x-goog-api-key`) supports BOTH legacy `AIza...` and 2026 `AQ....` AI Studio keys.
   {
     slug: 'google',
-    kind: 'openai',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    kind: 'gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    defaultStrategy: 'sticky',
     defaultAllowedModelsWithKeys: GOOGLE_FREE_TIER_MODELS,
   },
   { slug: 'deepseek', kind: 'openai', baseUrl: 'https://api.deepseek.com/v1' },
@@ -98,7 +100,7 @@ const PROVIDERS: BuiltinProviderSpec[] = [
     hidden: true,
     publicLabel: SEVENAPI_PUBLIC_LABEL,
     allowMock: false,
-    defaultStrategy: 'round_robin',
+    defaultStrategy: 'sticky',
   },
   // Upstream pool #2: You.com Agents API (`https://api.you.com/v1/agents/runs`).
   // Designed for multi-key pooling (e.g. 10 × $100 keys) via `YOU_API_KEYS` + `YOU_KEY_STRATEGY`.
@@ -119,6 +121,7 @@ function parseProviderKind(raw: unknown): ProviderKind {
   const s = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (s === 'anthropic') return 'anthropic';
   if (s === 'youcom' || s === 'you') return 'youcom';
+  if (s === 'gemini' || s === 'google') return 'gemini';
   return 'openai';
 }
 

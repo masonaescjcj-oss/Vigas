@@ -7,6 +7,8 @@ export interface UpstreamRequest {
   maxTokens: number;
   /** Passed through to OpenAI-compatible providers (temperature, top_p, stop, tools, …). */
   params: Record<string, unknown>;
+  /** Optional caller/account affinity key used by `sticky` key-pool rotation to preserve prompt caches. */
+  stickyKey?: string;
 }
 
 export interface UpstreamUsage {

@@ -490,59 +490,89 @@ describe('You.com adapter & multi-key env config', () => {
     expect(JSON.stringify(snaps)).not.toContain('sk-s1');
   });
 
-  it('scopes Google free-tier multi-key pool strictly to Gemini 4 Hydrogen and rotates on API_KEY_INVALID / 429', async () => {
+  it('scopes Google free-tier multi-key pool strictly to Gemini 4 Hydrogen, uses native x-goog-api-key for AIza + AQ. keys, and handles RPD daily quota + sticky affinity', async () => {
     const { isProviderAllowedForModel, loadConfig } = await import('../src/config');
-    const { createAdapterResolver } = await import('../src/providers');
+    const { createAdapterResolver, geminiEndpointUrl, KeyPool } = await import('../src/providers');
+
+    expect(geminiEndpointUrl('https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-4-hydrogen', false)).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-4-hydrogen:generateContent',
+    );
+    expect(geminiEndpointUrl('https://generativelanguage.googleapis.com/v1beta', 'gemini-4-hydrogen', true)).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-4-hydrogen:streamGenerateContent?alt=sse',
+    );
 
     const cfg = loadConfig({
       NODE_ENV: 'production',
-      GOOGLE_API_KEYS: 'AIza-bad-key,AIza-limited-key',
-      GEMINI_API_KEYS: 'AIza-good-key',
+      GOOGLE_API_KEYS: 'AIza-bad-key,AQ.daily-limit-key',
+      GEMINI_API_KEYS: 'AQ.good-key',
       GOOGLE_KEY_STRATEGY: 'sequential',
       SEVENAPI_API_KEY: 'sk-seven',
     });
 
-    expect(cfg.providers.google?.apiKeys.map((k) => k.key)).toEqual(['AIza-bad-key', 'AIza-limited-key', 'AIza-good-key']);
-    expect(cfg.providers.google?.baseUrl).toBe('https://generativelanguage.googleapis.com/v1beta/openai');
+    expect(cfg.providers.google?.kind).toBe('gemini');
+    expect(cfg.providers.google?.apiKeys.map((k) => k.key)).toEqual(['AIza-bad-key', 'AQ.daily-limit-key', 'AQ.good-key']);
+    expect(cfg.providers.google?.baseUrl).toBe('https://generativelanguage.googleapis.com/v1beta');
     // Free-tier Google keys must ONLY serve Hydrogen (paid + :free), never Carbon/Neon/Argon.
     expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-hydrogen')).toBe(true);
     expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-hydrogen:free')).toBe(true);
     expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-carbon')).toBe(false);
     expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-neon')).toBe(false);
     expect(isProviderAllowedForModel(cfg, 'google', 'google/gemini-4-argon')).toBe(false);
-    // Carbon/Neon/Argon remain allowed on sevenapi.
     expect(isProviderAllowedForModel(cfg, 'sevenapi', 'google/gemini-4-carbon')).toBe(true);
 
-    const seenAuth: string[] = [];
-    const { f } = fakeFetch((_url, init) => {
-      const auth = (init.headers as Record<string, string>).Authorization ?? '';
-      seenAuth.push(auth);
-      if (auth.includes('AIza-bad-key')) {
-        return new Response(JSON.stringify([{ error: { status: 'INVALID_ARGUMENT', message: 'API key not valid. Please pass a valid API key.' } }]), {
-          status: 400,
-        });
+    const seenKeys: string[] = [];
+    const { f, calls } = fakeFetch((_url, init) => {
+      const headers = init.headers as Record<string, string>;
+      // Native Gemini REST must send x-goog-api-key and NEVER Authorization: Bearer (prevents AQ. 400/401).
+      expect(headers.Authorization).toBeUndefined();
+      const key = headers['x-goog-api-key'] ?? '';
+      seenKeys.push(key);
+      if (key === 'AIza-bad-key') {
+        return new Response(JSON.stringify({ error: { status: 'INVALID_ARGUMENT', message: 'API key not valid.' } }), { status: 400 });
       }
-      if (auth.includes('AIza-limited-key')) {
-        return new Response(JSON.stringify([{ error: { status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded for quota metric.' } }]), {
-          status: 429,
-        });
+      if (key === 'AQ.daily-limit-key') {
+        return new Response(
+          JSON.stringify({
+            error: {
+              status: 'RESOURCE_EXHAUSTED',
+              message: 'Quota exceeded for GenerateRequestsPerDayPerProjectPerModel-FreeTier.',
+            },
+          }),
+          { status: 429 },
+        );
       }
       return Response.json({
-        choices: [{ index: 0, message: { role: 'assistant', content: 'Gemini 4 Hydrogen ready' }, finish_reason: 'stop' }],
-        usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+        candidates: [{ content: { parts: [{ thought: true, text: 'hidden thought' }, { text: 'Gemini 4 Hydrogen ready' }] }, finishReason: 'STOP' }],
+        usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 12, thoughtsTokenCount: 8, cachedContentTokenCount: 80 },
       });
     });
 
     const resolve = createAdapterResolver(cfg, { fetcher: f });
     const adapter = resolve('google')!;
-    const out = await adapter.complete({ ...req, upstreamModel: 'gemini-4-hydrogen' }, new AbortController().signal);
+    const out = await adapter.complete({ ...req, upstreamModel: 'gemini-4-hydrogen', stickyKey: 'acc_dev1' }, new AbortController().signal);
     expect(out.content).toBe('Gemini 4 Hydrogen ready');
-    expect(seenAuth).toEqual(['Bearer AIza-bad-key', 'Bearer AIza-limited-key', 'Bearer AIza-good-key']);
+    expect(out.usage).toEqual({ promptTokens: 100, completionTokens: 20, cachedPromptTokens: 80 });
+    expect(seenKeys).toEqual(['AIza-bad-key', 'AQ.daily-limit-key', 'AQ.good-key']);
+    expect(calls[0]!.url).toBe('https://generativelanguage.googleapis.com/v1beta/models/gemini-4-hydrogen:generateContent');
 
     const snaps = resolve.poolSnapshots?.() ?? {};
     expect(snaps.google?.exhausted).toBe(1);
     expect(snaps.google?.coolingDown).toBe(1);
     expect(snaps.google?.healthy).toBe(1);
+    // Daily quota key must cool down for hours (not 60s).
+    expect(snaps.google?.keys[1]?.cooldownRemainingSec).toBeGreaterThan(3600);
     expect(JSON.stringify(snaps)).not.toContain('AIza-');
+    expect(JSON.stringify(snaps)).not.toContain('AQ.');
+
+    // Verify sticky strategy pins a coding account to the same key across turns until it fails.
+    const stickyPool = new KeyPool([{ key: 'k1' }, { key: 'k2' }, { key: 'k3' }], { strategy: 'sticky' });
+    const first = stickyPool.acquire(undefined, 'acc_coder_42')!;
+    stickyPool.recordSuccess(first.index);
+    const second = stickyPool.acquire(undefined, 'acc_coder_42')!;
+    stickyPool.recordSuccess(second.index);
+    expect(second.spec.key).toBe(first.spec.key);
+    stickyPool.recordFailure(first.index, new ProviderError('RESOURCE_EXHAUSTED', 429, true, 'rate_limited'));
+    const failover = stickyPool.acquire(undefined, 'acc_coder_42')!;
+    expect(failover.spec.key).not.toBe(first.spec.key);
   });
 });

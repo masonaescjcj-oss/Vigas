@@ -1,9 +1,9 @@
 import { usdToMicros } from '@vigas/core';
 import { asProviderError, ProviderError, type ProviderAdapter, type StreamEvent, type UpstreamRequest, type UpstreamResult, type UpstreamUsage } from './types';
 
-export type KeyRotationStrategy = 'round_robin' | 'random' | 'sequential' | 'least_used';
+export type KeyRotationStrategy = 'round_robin' | 'random' | 'sequential' | 'least_used' | 'sticky';
 
-export const VALID_KEY_STRATEGIES = new Set<KeyRotationStrategy>(['round_robin', 'random', 'sequential', 'least_used']);
+export const VALID_KEY_STRATEGIES = new Set<KeyRotationStrategy>(['round_robin', 'random', 'sequential', 'least_used', 'sticky']);
 
 export function parseKeyRotationStrategy(raw: unknown, fallback: KeyRotationStrategy = 'round_robin'): KeyRotationStrategy {
   if (typeof raw !== 'string') return fallback;
@@ -18,7 +18,13 @@ export interface PoolKeySpec {
   budgetMicros?: number | null;
 }
 
-export type KeyFailureKind = 'key_exhausted' | 'rate_limited' | 'model_unavailable' | 'provider_down' | 'request_rejected';
+export type KeyFailureKind =
+  | 'key_exhausted'
+  | 'daily_quota_exhausted'
+  | 'rate_limited'
+  | 'model_unavailable'
+  | 'provider_down'
+  | 'request_rejected';
 
 const MODEL_ACCESS_RE =
   /"?code"?\s*[:=]\s*"?(model_not_found|model_not_available|unsupported_model)|no access to model|model[\s_-]{0,4}not[\s_-](found|available|supported)|unsupported model|no enabled channel for model/i;
@@ -26,21 +32,27 @@ const MODEL_ACCESS_RE =
 const CLIENT_FAULT_RE = /invalid_request|invalid_request_error|cannot unmarshal|malformed|failed to parse/i;
 
 const EXHAUSTED_PROSE_RE =
-  /insufficient|quota|exceeded your current|billing|out of credit|credit balance|balance.*exhaust|limit.*exceeded|account.*deactivated|invalid.*api.*key|api_key_invalid|api key not valid|api key expired|permission_denied|revoked/i;
+  /insufficient|exceeded your current|billing|out of credit|credit balance|balance.*exhaust|account.*deactivated|invalid.*api.*key|invalid auth key|api_key_invalid|api key not valid|api key expired|permission_denied|access_token_type_unsupported|revoked/i;
 
-const RATE_LIMIT_PROSE_RE = /resource_exhausted|rate[\s_-]?limit|too many requests|requests per minute/i;
+const DAILY_QUOTA_RE = /perday|requests per day|daily.*quota|daily.*limit|generaterequestsperday/i;
+
+const RATE_LIMIT_PROSE_RE = /resource_exhausted|quota|rate[\s_-]?limit|too many requests|requests per minute/i;
 
 /**
  * Classifies an upstream error so the pool knows whether to:
  * - rest/exhaust just this key and immediately rotate to the next key,
+ * - cool down until daily reset on RPD limits (e.g. Google Free Tier 20 RPD),
  * - skip this key for this model without harming its health, or
  * - stop immediately because the caller's request itself is malformed.
  */
 export function classifyKeyFailure(status: number, message: string): KeyFailureKind {
   if (MODEL_ACCESS_RE.test(message)) return 'model_unavailable';
+  if ((status === 429 || RATE_LIMIT_PROSE_RE.test(message)) && DAILY_QUOTA_RE.test(message)) {
+    return 'daily_quota_exhausted';
+  }
   if (status === 429 || RATE_LIMIT_PROSE_RE.test(message)) return 'rate_limited';
   if (status === 401 || status === 402 || status === 403) return 'key_exhausted';
-  // Google AI Studio returns HTTP 400 for API_KEY_INVALID / expired keys — check before CLIENT_FAULT_RE.
+  // Google AI Studio returns HTTP 400 for API_KEY_INVALID / Invalid Auth key — check before CLIENT_FAULT_RE.
   if (EXHAUSTED_PROSE_RE.test(message)) return 'key_exhausted';
   if (CLIENT_FAULT_RE.test(message)) return 'request_rejected';
   if (status >= 500 || status === 408 || status === 0) return 'provider_down';
@@ -80,9 +92,19 @@ export function parseKeyPoolEnv(opts: {
   return out;
 }
 
+function hashSticky(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 export interface KeyPoolOptions {
   strategy?: KeyRotationStrategy;
   rateLimitCooldownMs?: number;
+  dailyQuotaCooldownMs?: number;
   exhaustedCooldownMs?: number;
   providerDownCooldownMs?: number;
   failureLimit?: number;
@@ -125,16 +147,19 @@ export interface KeyPoolSnapshot {
 }
 
 /**
- * Multi-key pool supporting 4 rotation strategies:
+ * Multi-key pool supporting 5 rotation strategies:
  * - `round_robin`: cycles evenly 1 → 2 → … → N → 1 across healthy keys
  * - `random`: picks uniformly at random among healthy keys
  * - `sequential`: drains key #1 until exhausted/capped/rate-limited, then moves to #2, #3, …
  * - `least_used`: picks the healthy key with the fewest in-flight requests and total uses
+ * - `sticky`: pins each caller/session (`stickyKey`) to a consistent healthy key to preserve
+ *   upstream Prompt Caching during coding sessions, transparently failing over on 429 / RPD / errors
  */
 export class KeyPool {
   readonly strategy: KeyRotationStrategy;
   private readonly slots: KeySlot[];
   private readonly rateLimitCooldownMs: number;
+  private readonly dailyQuotaCooldownMs: number;
   private readonly exhaustedCooldownMs: number;
   private readonly providerDownCooldownMs: number;
   private readonly failureLimit: number;
@@ -146,6 +171,8 @@ export class KeyPool {
     if (keys.length === 0) throw new Error('KeyPool requires at least one key');
     this.strategy = opts.strategy ?? 'round_robin';
     this.rateLimitCooldownMs = opts.rateLimitCooldownMs ?? 60_000;
+    // Daily RPD limits (e.g. Google Free Tier 20 RPD) cool down for 4 hours instead of hammering every 60s.
+    this.dailyQuotaCooldownMs = opts.dailyQuotaCooldownMs ?? 4 * 60 * 60 * 1000;
     this.exhaustedCooldownMs = opts.exhaustedCooldownMs ?? 24 * 60 * 60 * 1000;
     this.providerDownCooldownMs = opts.providerDownCooldownMs ?? 30_000;
     this.failureLimit = opts.failureLimit ?? 3;
@@ -180,13 +207,24 @@ export class KeyPool {
     return true;
   }
 
-  acquire(exclude?: ReadonlySet<number>): { index: number; spec: PoolKeySpec } | null {
+  acquire(exclude?: ReadonlySet<number>, stickyKey?: string): { index: number; spec: PoolKeySpec } | null {
     const now = this.now();
     const eligible = this.slots.filter((s) => this.isEligible(s, now, exclude));
     if (eligible.length === 0) return null;
 
     let chosen: KeySlot;
-    if (this.strategy === 'sequential') {
+    if (this.strategy === 'sticky' && stickyKey) {
+      const n = this.slots.length;
+      const start = hashSticky(stickyKey) % n;
+      chosen = eligible[0]!;
+      for (let offset = 0; offset < n; offset++) {
+        const candidate = this.slots[(start + offset) % n]!;
+        if (this.isEligible(candidate, now, exclude)) {
+          chosen = candidate;
+          break;
+        }
+      }
+    } else if (this.strategy === 'sequential') {
       chosen = eligible[0]!;
     } else if (this.strategy === 'random') {
       const r = Math.min(eligible.length - 1, Math.max(0, Math.floor(this.rng() * eligible.length)));
@@ -196,7 +234,7 @@ export class KeyPool {
         (a, b) => a.inFlight - b.inFlight || a.uses - b.uses || a.spentMicros - b.spentMicros || a.index - b.index,
       )[0]!;
     } else {
-      // round_robin: scan forward from cursor so load spreads strictly evenly.
+      // round_robin (or sticky fallback when no stickyKey was provided): scan forward evenly.
       const n = this.slots.length;
       chosen = eligible[0]!;
       for (let offset = 0; offset < n; offset++) {
@@ -244,13 +282,17 @@ export class KeyPool {
       return { kind, rotate: false };
     }
     if (kind === 'model_unavailable') {
-      // Do not rest a healthy key just because it cannot serve one model id.
       return { kind, rotate: true };
     }
     if (kind === 'key_exhausted') {
       slot.exhausted = true;
       slot.consecutiveFailures += 1;
       slot.cooldownUntil = now + this.exhaustedCooldownMs;
+      return { kind, rotate: true };
+    }
+    if (kind === 'daily_quota_exhausted') {
+      slot.consecutiveFailures += 1;
+      slot.cooldownUntil = now + this.dailyQuotaCooldownMs;
       return { kind, rotate: true };
     }
     if (kind === 'rate_limited') {
@@ -343,7 +385,7 @@ export class MultiKeyAdapter implements ProviderAdapter {
     let lastErr: ProviderError | null = null;
 
     while (tried.size < this.maxAttempts) {
-      const lease = this.pool.acquire(tried);
+      const lease = this.pool.acquire(tried, req.stickyKey);
       if (!lease) break;
       tried.add(lease.index);
 
@@ -361,8 +403,6 @@ export class MultiKeyAdapter implements ProviderAdapter {
     }
 
     if (lastErr) {
-      // If all keys in this pool were exhausted (e.g. 401/402/403), mark retryable so the gateway
-      // can still fall over to a secondary provider if one exists.
       if (lastErr.status === 401 || lastErr.status === 402 || lastErr.status === 403) {
         throw new ProviderError(`${this.slug}: upstream key pool exhausted`, 503, true, 'pool_exhausted');
       }
@@ -376,7 +416,7 @@ export class MultiKeyAdapter implements ProviderAdapter {
     let lastErr: ProviderError | null = null;
 
     while (tried.size < this.maxAttempts) {
-      const lease = this.pool.acquire(tried);
+      const lease = this.pool.acquire(tried, req.stickyKey);
       if (!lease) break;
       tried.add(lease.index);
 

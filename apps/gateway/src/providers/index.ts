@@ -1,5 +1,6 @@
 import type { GatewayConfig, ProviderConfig } from '../config';
 import { AnthropicAdapter } from './anthropic';
+import { GeminiAdapter } from './gemini';
 import { KeyPool, MultiKeyAdapter, type KeyPoolSnapshot } from './key-pool';
 import { MockAdapter } from './mock';
 import { OpenAICompatibleAdapter } from './openai-compatible';
@@ -12,6 +13,7 @@ export type AdapterResolver = ((provider: string) => ProviderAdapter | null) & {
 
 function buildSingleAdapter(p: ProviderConfig, apiKey: string, errorLabel: string, fetcher: typeof fetch): ProviderAdapter {
   if (p.kind === 'anthropic') return new AnthropicAdapter(p.slug, p.baseUrl, apiKey, fetcher, errorLabel);
+  if (p.kind === 'gemini') return new GeminiAdapter(p.slug, p.baseUrl, apiKey, fetcher, errorLabel);
   if (p.kind === 'youcom') return new YouComAdapter(p.slug, p.baseUrl, apiKey, fetcher, errorLabel);
   return new OpenAICompatibleAdapter(p.slug, p.baseUrl, apiKey, fetcher, errorLabel);
 }
@@ -64,6 +66,7 @@ export function createAdapterResolver(
   return resolve;
 }
 
+export * from './gemini';
 export * from './key-pool';
 export * from './types';
 export * from './youcom';

@@ -347,7 +347,7 @@ export async function handleAnthropicMessages(deps: GatewayDeps, req: Request): 
       const abort = linkedAbort(req.signal, deps.config.requestTimeoutMs);
       try {
         const result = await a.adapter.complete(
-          { upstreamModel: a.candidate.endpoint.upstreamModel, messages, maxTokens, params },
+          { upstreamModel: a.candidate.endpoint.upstreamModel, messages, maxTokens, params, stickyKey: caller.accountId },
           abort.signal,
         );
         const latency = Date.now() - started;
@@ -398,7 +398,7 @@ export async function handleAnthropicMessages(deps: GatewayDeps, req: Request): 
     const started = Date.now();
     const abort = linkedAbort(req.signal, deps.config.requestTimeoutMs);
     const iterator = a.adapter
-      .stream({ upstreamModel: a.candidate.endpoint.upstreamModel, messages, maxTokens, params }, abort.signal)
+      .stream({ upstreamModel: a.candidate.endpoint.upstreamModel, messages, maxTokens, params, stickyKey: caller.accountId }, abort.signal)
       [Symbol.asyncIterator]();
 
     let first: IteratorResult<StreamEvent>;

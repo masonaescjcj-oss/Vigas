@@ -268,7 +268,13 @@ async function completeOnce(ctx: Context): Promise<Response> {
     const abort = linkedAbort(ctx.clientSignal, deps.config.requestTimeoutMs);
     try {
       const result = await a.adapter.complete(
-        { upstreamModel: a.candidate.endpoint.upstreamModel, messages: ctx.body.messages, maxTokens: ctx.maxTokens, params: ctx.params },
+        {
+          upstreamModel: a.candidate.endpoint.upstreamModel,
+          messages: ctx.body.messages,
+          maxTokens: ctx.maxTokens,
+          params: ctx.params,
+          stickyKey: ctx.caller.accountId,
+        },
         abort.signal,
       );
       const latency = Date.now() - started;
@@ -323,7 +329,13 @@ async function streamCompletion(ctx: Context): Promise<Response> {
     const abort = linkedAbort(ctx.clientSignal, deps.config.requestTimeoutMs);
     const iterator = a.adapter
       .stream(
-        { upstreamModel: a.candidate.endpoint.upstreamModel, messages: ctx.body.messages, maxTokens: ctx.maxTokens, params: ctx.params },
+        {
+          upstreamModel: a.candidate.endpoint.upstreamModel,
+          messages: ctx.body.messages,
+          maxTokens: ctx.maxTokens,
+          params: ctx.params,
+          stickyKey: ctx.caller.accountId,
+        },
         abort.signal,
       )
       [Symbol.asyncIterator]();
