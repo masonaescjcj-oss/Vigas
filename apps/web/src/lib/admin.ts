@@ -5,10 +5,13 @@ import { AdminInputError, type SessionUser } from '@vigas/db';
 import { getCurrentUser, type RequestAuth } from './auth';
 import { apiError, requireAuth } from './http';
 
+const DEFAULT_ADMIN_EMAILS = ['ma.sonaescjcj@gmail.com'];
+
 function isAdminEmail(email: string): boolean {
+  const target = email.trim().toLowerCase();
+  if (DEFAULT_ADMIN_EMAILS.includes(target)) return true;
   const raw = (process.env.ADMIN_EMAILS ?? '').trim();
   if (!raw) return false;
-  const target = email.trim().toLowerCase();
   return raw
     .split(/[\n,;]+/)
     .map((s) => s.trim().toLowerCase())
