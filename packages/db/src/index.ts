@@ -12,3 +12,4 @@ export * from './oauth';
 export * from './news-ingest';
 export { seedDatabase } from './seed';
 export { migrateDatabase } from './migrate';
+export { ensureVigasSchema } from './bootstrap';

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { revalidateTag } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { NextResponse } from 'next/server';
@@ -7,6 +8,12 @@ import { serverEnv } from './env';
 import { apiError, requireAuth } from './http';
 
 const DEFAULT_ADMIN_EMAILS = ['ma.sonaescjcj@gmail.com'];
+
+function matchesInternalToken(candidate: string): boolean {
+  const expected = serverEnv().internalToken;
+  if (!expected || expected.length < 24 || candidate.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(candidate), Buffer.from(expected));
+}
 
 export function isAdminEmail(email: string): boolean {
   const target = email.trim().toLowerCase();
@@ -63,15 +70,22 @@ export async function verifySupabaseAdminToken(accessToken: string): Promise<{ i
 /**
  * Admin access. Non-admins get a plain 404 so the admin area doesn't advertise itself.
  * Granted when users.role === 'admin' OR email is listed in DEFAULT_ADMIN_EMAILS / `ADMIN_EMAILS`
- * (supports both first-party Postgres sessions and verified Supabase Auth bearer tokens).
+ * (supports first-party Postgres sessions, verified Supabase Auth bearer tokens, and `INTERNAL_SERVICE_TOKEN`).
  */
 export async function requireAdmin(req: Request): Promise<RequestAuth | NextResponse> {
+  const bearer = readToken(req);
+  if (bearer?.via === 'bearer' && matchesInternalToken(bearer.token)) {
+    return {
+      via: 'bearer',
+      token: bearer.token,
+      user: { id: 'internal-admin', email: DEFAULT_ADMIN_EMAILS[0]!, name: 'Vigas System Admin', role: 'admin', accountId: '' },
+    };
+  }
   const auth = await requireAuth(req);
   if (!(auth instanceof NextResponse)) {
     if (!isAdminUser(auth.user)) return apiError(404, 'not_found', 'Not found.');
     return auth;
   }
-  const bearer = readToken(req);
   if (bearer?.via === 'bearer') {
     const supaAdmin = await verifySupabaseAdminToken(bearer.token);
     if (supaAdmin) {
