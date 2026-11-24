@@ -252,17 +252,41 @@ ${cssTags}
         var admLink = document.getElementById('vg-cr-admin');
         if (isAdmin && admLink) admLink.style.display = 'inline-flex';
         var isFa = /(?:^|;\\s*)vg_lang=fa(?:;|$)/.test(document.cookie);
+        var walletEl = document.getElementById('vg-cr-wallet');
+        var walletBaseLabel = isFa ? 'کیف‌پول' : 'Wallet';
         if (isFa) {
           var b = document.getElementById('vg-cr-back-lbl');
           var k = document.getElementById('vg-cr-keys');
-          var w = document.getElementById('vg-cr-wallet');
           var m = document.getElementById('vg-cr-models');
           if (b) b.textContent = 'بازگشت';
           if (k) k.textContent = 'کلید API';
-          if (w) w.textContent = 'کیف‌پول';
+          if (walletEl) walletEl.textContent = walletBaseLabel;
           if (m) m.textContent = 'مدل‌ها';
           if (admLink) admLink.textContent = 'ادمین';
         }
+        function renderBalance(micros) {
+          if (!walletEl || typeof micros !== 'number' || !isFinite(micros)) return;
+          var usd = (micros / 1000000).toFixed(2);
+          walletEl.textContent = walletBaseLabel + ' · $' + usd;
+        }
+        window.addEventListener('vigas-balance-updated', function(ev) {
+          if (ev && ev.detail && typeof ev.detail.balanceMicros === 'number') {
+            renderBalance(ev.detail.balanceMicros);
+          }
+        });
+        try {
+          var rawSess = localStorage.getItem('sb-jasgepmskcsyvqoesocc-auth-token');
+          var tok = rawSess ? (JSON.parse(rawSess) || {}).access_token : '';
+          if (tok) {
+            fetch('/api/app/welcome-wallet', {
+              credentials: 'include',
+              headers: { Authorization: 'Bearer ' + tok, Accept: 'application/json' },
+            })
+              .then(function(r) { return r.ok ? r.json() : null; })
+              .then(function(d) { if (d && typeof d.balanceMicros === 'number') renderBalance(d.balanceMicros); })
+              .catch(function() {});
+          }
+        } catch(_) {}
       } catch(_) {}
     })();
   </script>

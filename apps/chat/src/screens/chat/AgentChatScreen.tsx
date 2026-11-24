@@ -47,7 +47,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { getProjectFiles, toFileEntries, type ProjectFileEntry } from "../../services/fileService";
 import { isUuid } from "../../services/formatting";
 import { directionStyleFor } from "../../theme/direction";
-import { fetchModelCatalog } from "../../services/modelCatalog";
+import { fetchModelCatalog, VIGAS_DIRECT_MODELS } from "../../services/modelCatalog";
 import { AUTO_MODEL, type CatalogModel } from "../../core/models/tiering";
 import { ClarifyCard } from "../../components/ClarifyCard";
 import { PlanCard, TodoChecklist, type TodoItem } from "../../components/RunProgress";
@@ -101,12 +101,10 @@ import { useBreakpoint, columnStyle, COLUMN_MAX, SIDEBAR_WIDTH } from "../../the
 // ============================================================================
 
 /**
- * The picker's contents come from the `models` table via fetchModelCatalog, so
- * what the admin marks free or premium is what a user sees. This is the list
- * shown until that read returns — Auto alone, because "server decides" is the
- * one entry that is always valid and never gated.
+ * The picker's contents merge Vigas Hydrogen & Free models with the Supabase
+ * `models` table via fetchModelCatalog. Pre-populated so Hydrogen Free is ready immediately.
  */
-const INITIAL_MODELS: CatalogModel[] = [AUTO_MODEL];
+const INITIAL_MODELS: CatalogModel[] = [AUTO_MODEL, ...VIGAS_DIRECT_MODELS];
 
 /**
  * "/" shortcuts. These are prompt expansions, not backend commands — each one
@@ -404,7 +402,8 @@ export const AgentChatScreen = () => {
   // You.com's agents answer and search; they cannot call the tools Build runs
   // on, so Build never offers them. Chat offers everything.
   const isYoucom = (id: string) => id.startsWith("youcom-");
-  const modeModels = activeMode === "build" ? models.filter((m) => !isYoucom(m.id)) : models;
+  const isVigasChatOnly = (id: string) => id.includes("/");
+  const modeModels = activeMode === "build" ? models.filter((m) => !isYoucom(m.id) && !isVigasChatOnly(m.id)) : models;
   // In Chat, Auto means You.com's web search whenever the server offers it
   // (see chooseChatEngine), so the catalogue's "Default" is Build's default
   // there, and saying so in Chat would be wrong.
@@ -696,17 +695,15 @@ export const AgentChatScreen = () => {
       runStartedAtRef.current = null; // stops the agent-task poller from waking
       setIsExecuting(true);
       try {
-        // A stored chat keeps its own history server-side; incognito has no
-        // server-side anything, so the conversation travels with the request.
-        const history = isIncognito
-          ? messages
-              .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
-              .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }))
-          : undefined;
+        const clientHistory = messages
+          .filter((m) => (m.role === "user" || m.role === "assistant") && m.content)
+          .map((m) => ({ role: m.role as "user" | "assistant", content: String(m.content) }));
+        const history = isIncognito ? clientHistory : undefined;
 
         const answer = await agentService.ask({
           prompt: userPromptText,
           model: effectiveModel,
+          fallbackHistory: clientHistory,
           ...(activeSkills.length ? { skills: activeSkills } : {}),
           ...(isIncognito
             ? { history }

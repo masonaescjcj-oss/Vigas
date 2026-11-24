@@ -384,9 +384,29 @@ export function DashboardClient({
     >
       <div aria-hidden="true" className="dash-wallet-ring dash-wallet-ring-lg" />
       <div aria-hidden="true" className="dash-wallet-ring dash-wallet-ring-sm" />
-      <h2 id={`${ids}-credits`} className="lbl" style={{ margin: 0, position: 'relative' }}>
-        {isFa ? 'موجودی در دسترس · AvexPay' : 'Available credits · AvexPay'}
-      </h2>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <h2 id={`${ids}-credits`} className="lbl" style={{ margin: 0 }}>
+          {isFa ? 'موجودی در دسترس · AvexPay' : 'Available credits · AvexPay'}
+        </h2>
+        {wallet.balanceMicros > 0 && (
+          <a
+            href="/chat"
+            className="mn"
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: '3px 9px',
+              borderRadius: 999,
+              background: 'var(--vg-green-soft)',
+              color: 'var(--vg-green)',
+              border: '1px solid var(--vg-green-edge)',
+              textDecoration: 'none',
+            }}
+          >
+            {isFa ? 'فعال در چت ←' : 'Ready in Chat →'}
+          </a>
+        )}
+      </div>
       <div
         className="sf"
         aria-live="polite"
@@ -404,8 +424,8 @@ export function DashboardClient({
       </div>
       <div className="mn" style={{ position: 'relative', fontSize: 12, color: 'var(--vg-ink3)' }}>
         {isFa
-          ? `مجموع شارژ تاکنون: ${formatUsd(wallet.lifetimeTopupMicros)} · بدون انقضا`
-          : `${formatUsd(wallet.lifetimeTopupMicros)} lifetime · never expires`}
+          ? `شامل $5.00 اعتبار هدیه · قابل استفاده برای Gemini 4 Hydrogen و چت`
+          : `Includes $5.00 welcome credit · ready for Gemini 4 Hydrogen & Chat`}
       </div>
 
       {isSupabase ? (

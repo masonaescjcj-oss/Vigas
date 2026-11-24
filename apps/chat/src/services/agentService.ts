@@ -60,6 +60,63 @@ async function localApiGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+function isVigasDirectModel(model?: string): boolean {
+  return Boolean(model && model.includes("/"));
+}
+
+async function askViaVigasApi(options: {
+  prompt: string;
+  model: string;
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
+  skills?: string[];
+}): Promise<{
+  text: string;
+  follow_ups: string[];
+  stored: boolean;
+  session_id: string | null;
+  context_turns: number;
+}> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  const res = await fetch("/api/app/chat-ask", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      prompt: options.prompt,
+      model: options.model,
+      history: (options.history ?? []).slice(-ASK_HISTORY_TURNS),
+      ...(options.skills?.length ? { skills: options.skills } : {}),
+    }),
+  });
+  const body = (await res.json().catch(() => null)) as {
+    text?: string;
+    follow_ups?: string[];
+    context_turns?: number;
+    balance_micros?: number;
+    error?: { message?: string };
+  } | null;
+  if (!res.ok || !body?.text) {
+    throw new Error(body?.error?.message || `Chat model returned HTTP ${res.status}`);
+  }
+  if (typeof window !== "undefined" && typeof body.balance_micros === "number") {
+    window.dispatchEvent(
+      new CustomEvent("vigas-balance-updated", { detail: { balanceMicros: body.balance_micros } }),
+    );
+  }
+  return {
+    text: body.text,
+    follow_ups: Array.isArray(body.follow_ups) ? body.follow_ups : [],
+    stored: false,
+    session_id: null,
+    context_turns: Number(body.context_turns ?? 1),
+  };
+}
+
 export const agentService = {
   /** Create/continue a session & trigger agent-run. Returns immediately (HTTP 202). */
   async startAgentRun(
@@ -92,13 +149,9 @@ export const agentService = {
   },
 
   /**
-   * Ask a question. The answer comes back in the response — no job queue, no
-   * worker, no sandbox — because talking to a model needs none of them.
-   *
-   * With a projectId the chat is stored and the server carries the history, so
-   * a follow-up only sends the new message. Without one it is incognito:
-   * nothing is stored, so the caller sends the conversation each turn and the
-   * reply lives only in local state.
+   * Ask a question. Routes Vigas Gateway models (e.g. `google/gemini-4-hydrogen:free`,
+   * `google/gemini-4-hydrogen`, `anthropic/claude-sonnet-5.5`) directly to `/api/app/chat-ask`
+   * using the user's $5.00 welcome credit, while keeping Supabase Edge Function models working.
    */
   async ask(options: {
     prompt: string;
@@ -107,6 +160,8 @@ export const agentService = {
     title?: string;
     /** Incognito only — a stored chat rejects this, it has its own. */
     history?: Array<{ role: "user" | "assistant"; content: string }>;
+    /** Recent client turns used when routing directly to `/api/app/chat-ask`. */
+    fallbackHistory?: Array<{ role: "user" | "assistant"; content: string }>;
     model?: string;
     skills?: string[];
   }): Promise<{
@@ -117,19 +172,39 @@ export const agentService = {
     session_id: string | null;
     context_turns: number;
   }> {
-    const { prompt, projectId, sessionId, title, history, model, skills } = options;
-    return invokeFunction("agent-ask", {
-      body: {
+    const { prompt, projectId, sessionId, title, history, fallbackHistory, model, skills } = options;
+    if (isVigasDirectModel(model)) {
+      return askViaVigasApi({
         prompt,
-        ...(projectId ? { projectId } : {}),
-        ...(sessionId ? { sessionId } : {}),
-        ...(title ? { title } : {}),
-        // The endpoint caps this; trimming here keeps the request small too.
-        ...(projectId ? {} : { history: (history ?? []).slice(-ASK_HISTORY_TURNS) }),
-        ...(model && model !== "auto" ? { model } : {}),
-        ...(skills?.length ? { skills } : {}),
-      },
-    });
+        model: model!,
+        history: history ?? fallbackHistory,
+        skills,
+      });
+    }
+    try {
+      return await invokeFunction("agent-ask", {
+        body: {
+          prompt,
+          ...(projectId ? { projectId } : {}),
+          ...(sessionId ? { sessionId } : {}),
+          ...(title ? { title } : {}),
+          // The endpoint caps this; trimming here keeps the request small too.
+          ...(projectId ? {} : { history: (history ?? []).slice(-ASK_HISTORY_TURNS) }),
+          ...(model && model !== "auto" ? { model } : {}),
+          ...(skills?.length ? { skills } : {}),
+        },
+      });
+    } catch (err) {
+      if (!model || model === "auto") {
+        return askViaVigasApi({
+          prompt,
+          model: "google/gemini-4-hydrogen:free",
+          history: history ?? fallbackHistory,
+          skills,
+        });
+      }
+      throw err;
+    }
   },
 
   /** Fork a session from a specific message index. */

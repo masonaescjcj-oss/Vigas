@@ -105,6 +105,36 @@ export async function fetchSupabaseUsage(): Promise<SupabaseUsageSummary | null>
   }
 }
 
+async function fetchWelcomePromoWallet(): Promise<WalletResponse | null> {
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return null;
+    const res = await fetch('/api/app/welcome-wallet', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => null)) as Partial<WalletResponse> | null;
+    if (!body || typeof body.balanceMicros !== 'number') return null;
+    return {
+      balanceMicros: body.balanceMicros,
+      lifetimeTopupMicros: typeof body.lifetimeTopupMicros === 'number' ? body.lifetimeTopupMicros : 5_000_000,
+      feeBps: typeof body.feeBps === 'number' ? body.feeBps : 500,
+      week: Array.isArray(body.week) && body.week.length > 0 ? body.week : emptyWeekDays(),
+      bySource: Array.isArray(body.bySource) ? body.bySource : [],
+      keys: Array.isArray(body.keys) ? body.keys : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchSupabaseAccount(): Promise<SupabaseAccountState> {
   const supabase = getSupabase();
   const [rpcRes, usage] = await Promise.all([
@@ -113,8 +143,9 @@ export async function fetchSupabaseAccount(): Promise<SupabaseAccountState> {
   ]);
 
   if (rpcRes.error || !rpcRes.data) {
+    const promoWallet = await fetchWelcomePromoWallet();
     return {
-      wallet: emptyWallet(),
+      wallet: promoWallet ?? emptyWallet(),
       rpcReady: false,
       usage,
     };

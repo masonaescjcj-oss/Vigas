@@ -24,12 +24,78 @@ import {
 import { BILLING_ENABLED } from "../config/billing";
 
 /**
- * The catalogue as this account sees it, Auto first.
- *
- * Falls back to Auto alone if the tables cannot be read. That is deliberately
- * minimal: Auto always works because it means "server decides", so a user whose
- * catalogue failed to load can still run something, and we avoid inventing a
- * list that might offer a model the server would refuse.
+ * Vigas Gateway & Google AI Studio models served directly through same-origin `/api/app/chat-ask`
+ * using the user's $5.00 welcome credit (and $0 free tier for Gemini 4 Hydrogen Free).
+ */
+export const VIGAS_DIRECT_MODELS: CatalogModel[] = [
+  {
+    id: "google/gemini-4-hydrogen:free",
+    name: "Gemini 4 Hydrogen (Free)",
+    description: "Google Gemini 4 Hydrogen · 1M context · Free",
+    tone: "success",
+    icon: "zap",
+    isDefault: true,
+    minTier: null,
+    locked: false,
+    badge: "FREE",
+  },
+  {
+    id: "google/gemini-4-hydrogen",
+    name: "Gemini 4 Hydrogen",
+    description: "Google Gemini 4 Hydrogen · Priority · Uses $5 credit",
+    tone: "brandPrimary",
+    icon: "sparkles",
+    isDefault: false,
+    minTier: null,
+    locked: false,
+    badge: "$5 CREDIT",
+  },
+  {
+    id: "google/gemini-4-carbon",
+    name: "Gemini 4 Carbon",
+    description: "Google Gemini 4 Carbon · Reasoning · Uses $5 credit",
+    tone: "brandPrimary",
+    icon: "cpu",
+    isDefault: false,
+    minTier: null,
+    locked: false,
+    badge: "$5 CREDIT",
+  },
+  {
+    id: "anthropic/claude-sonnet-5.5",
+    name: "Claude Sonnet 5.5",
+    description: "Anthropic Claude Sonnet 5.5 · Coding · Uses $5 credit",
+    tone: "warning",
+    icon: "sparkles",
+    isDefault: false,
+    minTier: null,
+    locked: false,
+    badge: "$5 CREDIT",
+  },
+];
+
+function mergeWithVigasModels(remote: CatalogModel[]): CatalogModel[] {
+  const auto = remote.find((m) => m.id === AUTO_MODEL.id) ?? AUTO_MODEL;
+  const seen = new Set<string>([auto.id]);
+  const out: CatalogModel[] = [auto];
+
+  for (const m of VIGAS_DIRECT_MODELS) {
+    if (!seen.has(m.id)) {
+      seen.add(m.id);
+      out.push(m);
+    }
+  }
+  for (const m of remote) {
+    if (!seen.has(m.id)) {
+      seen.add(m.id);
+      out.push(m);
+    }
+  }
+  return out;
+}
+
+/**
+ * The catalogue as this account sees it, Auto + Vigas Hydrogen & Free models first.
  */
 export async function fetchModelCatalog(tier: string): Promise<CatalogModel[]> {
   try {
@@ -40,14 +106,15 @@ export async function fetchModelCatalog(tier: string): Promise<CatalogModel[]> {
     if (models.error) throw models.error;
     if (plans.error) throw plans.error;
 
-    return decorateModels(
+    const remote = decorateModels(
       (models.data ?? []) as ModelRow[],
       (plans.data ?? []) as PlanRow[],
       tier,
       BILLING_ENABLED,
     );
+    return mergeWithVigasModels(remote);
   } catch (e) {
     console.error("Failed to load the model catalogue:", e);
-    return [AUTO_MODEL];
+    return mergeWithVigasModels([AUTO_MODEL]);
   }
 }
