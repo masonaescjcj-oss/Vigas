@@ -53,7 +53,7 @@ async function EmbedBoard({ category }: { category: LeaderboardCategory }) {
         </div>
         <span className="mn" style={{ fontSize: 11, color: 'var(--vg-green)', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
           <span className="led" />
-          LIVE ARENA
+          LIVE BENCHMARK
         </span>
       </header>
 

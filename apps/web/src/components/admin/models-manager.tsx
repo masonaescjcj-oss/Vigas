@@ -129,6 +129,24 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModelRow[
     }
   }
 
+  async function deleteModel(modelId: string) {
+    if (!confirm(`Delete model "${modelId}" and all of its endpoint bindings?`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await adminFetch(`/api/admin/models?modelId=${encodeURIComponent(modelId)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        setError(d.error?.message ?? 'Failed to delete model.');
+        return;
+      }
+      await refresh();
+      setNotice(`Deleted model "${modelId}".`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function toggleEndpoint(ep: AdminModelRow['endpoints'][number]) {
     setBusy(true);
     setError(null);
@@ -379,8 +397,17 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModelRow[
                         <button type="button" className="chip" style={{ marginRight: 6 }} onClick={() => startBindModel(m)}>
                           + Bind
                         </button>
-                        <button type="button" className="chip" onClick={() => startEditModel(m)}>
+                        <button type="button" className="chip" style={{ marginRight: 6 }} onClick={() => startEditModel(m)}>
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="chip"
+                          style={{ color: 'var(--vg-red)' }}
+                          onClick={() => deleteModel(m.id)}
+                          disabled={busy}
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>
@@ -436,10 +463,19 @@ export function ModelsManager({ initialModels }: { initialModels: AdminModelRow[
 
                   <div className="adm-mcard-actions">
                     <button type="button" className="btn gh" style={{ flex: 1, minHeight: 36, fontSize: 12.5 }} onClick={() => startBindModel(m)}>
-                      + Bind endpoint
+                      + Bind
                     </button>
                     <button type="button" className="btn gh" style={{ flex: 1, minHeight: 36, fontSize: 12.5 }} onClick={() => startEditModel(m)}>
-                      Edit model
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn gh"
+                      style={{ minHeight: 36, padding: '0 12px', fontSize: 12.5, color: 'var(--vg-red)' }}
+                      onClick={() => deleteModel(m.id)}
+                      disabled={busy}
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>

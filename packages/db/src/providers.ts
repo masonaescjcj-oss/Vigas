@@ -1,10 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { usdToMicros, type ModelTag } from '@vigas/core';
 import { randomId, sha256Hex } from '@vigas/core/server';
 import { AdminInputError } from './admin';
 import type { Db } from './client';
-import { accounts, ledgerEntries, modelEndpoints, models, upstreamKeys, upstreamProviders, usageEvents, users } from './schema';
+import { accounts, apiKeys, ledgerEntries, modelEndpoints, models, upstreamKeys, upstreamProviders, usageEvents, users } from './schema';
 
 export type UpstreamProviderKind = 'openai' | 'anthropic' | 'gemini' | 'youcom';
 export type UpstreamKeyStrategy = 'sticky' | 'round_robin' | 'random' | 'sequential' | 'least_used';
@@ -540,6 +540,14 @@ export async function adminDeleteEndpoint(db: Db, provider: string, modelId: str
 
 // ── Admin Users & Credits ───────────────────────────────────────────────────
 
+export interface AdminUserApiKey {
+  id: string;
+  name: string;
+  display: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
 export interface AdminUserRow {
   id: string;
   email: string;
@@ -549,6 +557,7 @@ export interface AdminUserRow {
   balanceUsd: number;
   lifetimeTopupUsd: number;
   requests: number;
+  apiKeys: AdminUserApiKey[];
   createdAt: string;
 }
 
@@ -572,6 +581,36 @@ export async function adminListUsers(db: Db, search?: string, limit = 100): Prom
     .orderBy(desc(users.createdAt))
     .limit(limit);
 
+  const accountIds = rows.map((r) => r.accountId);
+  const keyRows =
+    accountIds.length > 0
+      ? await db
+          .select({
+            id: apiKeys.id,
+            accountId: apiKeys.accountId,
+            name: apiKeys.name,
+            display: apiKeys.display,
+            createdAt: apiKeys.createdAt,
+            lastUsedAt: apiKeys.lastUsedAt,
+          })
+          .from(apiKeys)
+          .where(and(inArray(apiKeys.accountId, accountIds), isNull(apiKeys.revokedAt)))
+          .orderBy(desc(apiKeys.createdAt))
+      : [];
+
+  const keysByAccount = new Map<string, AdminUserApiKey[]>();
+  for (const k of keyRows) {
+    const list = keysByAccount.get(k.accountId) ?? [];
+    list.push({
+      id: k.id,
+      name: k.name,
+      display: k.display,
+      createdAt: k.createdAt.toISOString(),
+      lastUsedAt: k.lastUsedAt ? k.lastUsedAt.toISOString() : null,
+    });
+    keysByAccount.set(k.accountId, list);
+  }
+
   return rows.map((r) => ({
     id: r.id,
     email: r.email,
@@ -581,8 +620,15 @@ export async function adminListUsers(db: Db, search?: string, limit = 100): Prom
     balanceUsd: Number((r.balanceMicros / 1_000_000).toFixed(4)),
     lifetimeTopupUsd: Number((r.lifetimeTopupMicros / 1_000_000).toFixed(2)),
     requests: Number(r.requests ?? 0),
+    apiKeys: keysByAccount.get(r.accountId) ?? [],
     createdAt: r.createdAt.toISOString(),
   }));
+}
+
+export async function adminRevokeUserKey(db: Db, keyId: string): Promise<void> {
+  const clean = keyId.trim();
+  if (!clean) throw new AdminInputError('"keyId" is required.');
+  await db.update(apiKeys).set({ revokedAt: new Date() }).where(eq(apiKeys.id, clean));
 }
 
 export async function adminGrantCredits(

@@ -1,4 +1,4 @@
-import { adminGrantCredits, adminListUsers, adminSetUserRole, getDb } from '@vigas/db';
+import { adminGrantCredits, adminListUsers, adminRevokeUserKey, adminSetUserRole, getDb } from '@vigas/db';
 import { adminErrorResponse, requireAdmin } from '@/lib/admin';
 import { apiError, privateJson } from '@/lib/http';
 
@@ -18,13 +18,14 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req);
   if (auth instanceof Response) return auth;
   let body: {
-    action?: 'credits' | 'role';
+    action?: 'credits' | 'role' | 'revoke_key';
     accountId?: string;
     deltaUsd?: number;
     kind?: 'promo' | 'adjustment' | 'refund';
     reference?: string;
     userId?: string;
     role?: 'user' | 'admin';
+    keyId?: string;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -32,6 +33,11 @@ export async function POST(req: Request) {
     return apiError(400, 'invalid_json', 'Request body must be valid JSON.');
   }
   try {
+    if (body.action === 'revoke_key') {
+      if (!body.keyId) return apiError(400, 'invalid_input', '"keyId" is required.');
+      await adminRevokeUserKey(getDb(), body.keyId);
+      return privateJson({ ok: true });
+    }
     if (body.action === 'role') {
       if (!body.userId || !body.role) return apiError(400, 'invalid_input', '"userId" and "role" are required.');
       if (body.userId === auth.user.id && body.role !== 'admin') {

@@ -74,6 +74,29 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
     }
   }
 
+  async function revokeKey(email: string, keyId: string, label: string) {
+    if (!confirm(`Revoke API key "${label}" for ${email}?`)) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await adminFetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'revoke_key', keyId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      if (!res.ok) {
+        setError(data.error?.message ?? 'Could not revoke API key.');
+        return;
+      }
+      await refresh();
+      setNotice(`Revoked API key "${label}" for ${email}.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function applyCustom(u: AdminUserRow) {
     const n = Number(customUsd[u.id]);
     if (Number.isFinite(n) && n !== 0) {
@@ -126,15 +149,15 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
           <>
             {/* Desktop Table */}
             <div className="adm-desktop" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 780 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 840 }}>
                 <thead>
                   <tr className="mn" style={{ textAlign: 'left', color: 'var(--vg-ink3)', borderBottom: '1px solid var(--vg-line)' }}>
-                    <th style={{ padding: '8px 10px' }}>User</th>
+                    <th style={{ padding: '8px 10px' }}>User &amp; API Keys</th>
                     <th style={{ padding: '8px 10px' }}>Role</th>
                     <th style={{ padding: '8px 10px' }}>Balance</th>
                     <th style={{ padding: '8px 10px' }}>Deposits</th>
                     <th style={{ padding: '8px 10px' }}>Requests</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Credits & Role</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Credits &amp; Role</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -143,6 +166,24 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
                       <td style={{ padding: '10px' }}>
                         <div style={{ fontWeight: 500 }}>{u.email}</div>
                         {u.name && <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{u.name}</div>}
+                        {u.apiKeys.length > 0 && (
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                            {u.apiKeys.map((k) => (
+                              <span key={k.id} className="mn adm-ep-pill">
+                                <span>{k.name}</span>
+                                <span style={{ color: 'var(--vg-ink3)' }}>({k.display})</span>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => revokeKey(u.email, k.id, k.name)}
+                                  style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--vg-red)', padding: 0, fontSize: 11 }}
+                                >
+                                  revoke
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="mn" style={{ padding: '10px' }}>
                         <span className={`adm-pill ${u.role === 'admin' ? 'indigo' : 'subtle'}`}>{u.role}</span>
@@ -157,8 +198,11 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
                         {u.requests}
                       </td>
                       <td style={{ padding: '10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button type="button" className="chip" style={{ marginRight: 6 }} onClick={() => grant(u, 5, 'promo')} disabled={busy}>
-                          +$5 Promo
+                        <button type="button" className="chip" style={{ marginRight: 5 }} onClick={() => grant(u, 5, 'promo')} disabled={busy}>
+                          +$5
+                        </button>
+                        <button type="button" className="chip" style={{ marginRight: 5 }} onClick={() => grant(u, 50, 'promo')} disabled={busy}>
+                          +$50
                         </button>
                         <input
                           type="number"
@@ -180,7 +224,7 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
                         <button
                           type="button"
                           className="chip"
-                          style={{ marginRight: 6 }}
+                          style={{ marginRight: 5 }}
                           disabled={busy || !customUsd[u.id]}
                           onClick={() => applyCustom(u)}
                         >
@@ -237,15 +281,43 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
                     </div>
                   </div>
 
+                  {u.apiKeys.length > 0 && (
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      {u.apiKeys.map((k) => (
+                        <span key={k.id} className="mn adm-ep-pill">
+                          <span>{k.name}</span>
+                          <span style={{ color: 'var(--vg-ink3)' }}>{k.display}</span>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => revokeKey(u.email, k.id, k.name)}
+                            style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--vg-red)', padding: '0 2px', fontSize: 11.5 }}
+                          >
+                            revoke
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                     <button
                       type="button"
                       className="btn key"
-                      style={{ minHeight: 34, padding: '0 12px', fontSize: 12.5 }}
+                      style={{ minHeight: 34, padding: '0 11px', fontSize: 12.5 }}
                       onClick={() => grant(u, 5, 'promo')}
                       disabled={busy}
                     >
-                      +$5 Promo
+                      +$5
+                    </button>
+                    <button
+                      type="button"
+                      className="btn gh"
+                      style={{ minHeight: 34, padding: '0 11px', fontSize: 12.5 }}
+                      onClick={() => grant(u, 50, 'promo')}
+                      disabled={busy}
+                    >
+                      +$50
                     </button>
                     <input
                       type="number"
@@ -254,7 +326,7 @@ export function UsersManager({ initialUsers, currentUserId }: { initialUsers: Ad
                       value={customUsd[u.id] ?? ''}
                       onChange={(e) => setCustomUsd((prev) => ({ ...prev, [u.id]: e.target.value }))}
                       className="adm-input mn"
-                      style={{ width: 84, padding: '6px 9px', fontSize: 12.5 }}
+                      style={{ width: 80, padding: '6px 8px', fontSize: 12.5 }}
                     />
                     <button
                       type="button"

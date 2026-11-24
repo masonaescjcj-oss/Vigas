@@ -472,10 +472,12 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
                       {p.kind} · {p.keyStrategy}
                     </span>
                     <span className={`adm-pill ${p.enabled ? 'ok' : 'err'}`}>{p.enabled ? 'active' : 'disabled'}</span>
+                    <span className="adm-pill subtle">AES-256-GCM · {p.keys.length} key(s)</span>
                   </div>
                   <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 5, overflowWrap: 'anywhere' }}>
                     {p.baseUrl}
                     {p.allowedModels ? ` · allowed: ${p.allowedModels.join(', ')}` : ' · all mapped models'}
+                    {p.hidden ? ` · masked as ${p.publicLabel}` : ''}
                   </div>
                   {live && (
                     <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink2)', marginTop: 6 }}>
@@ -485,6 +487,44 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
                   )}
                 </div>
                 <div className="adm-pool-actions">
+                  <button
+                    type="button"
+                    className="btn gh"
+                    onClick={async () => {
+                      setBusy(true);
+                      setError(null);
+                      try {
+                        const res = await adminFetch('/api/admin/providers', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            slug: p.slug,
+                            name: p.name,
+                            kind: p.kind,
+                            baseUrl: p.baseUrl,
+                            keyStrategy: p.keyStrategy,
+                            allowedModels: p.allowedModels,
+                            hidden: p.hidden,
+                            publicLabel: p.publicLabel,
+                            enabled: !p.enabled,
+                          }),
+                        });
+                        if (!res.ok) {
+                          const d = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+                          setError(d.error?.message ?? 'Could not toggle provider.');
+                          return;
+                        }
+                        await refresh();
+                        setNotice(`Provider "${p.slug}" ${p.enabled ? 'disabled' : 'enabled'}.`);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    disabled={busy}
+                    style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}
+                  >
+                    {p.enabled ? 'Disable' : 'Enable'}
+                  </button>
                   <button type="button" className="btn gh" onClick={() => editProvider(p)} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
                     Edit
                   </button>
