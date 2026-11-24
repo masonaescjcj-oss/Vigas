@@ -111,9 +111,9 @@ const chatShellHtml = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no" />
   <title>Vigas Chat — AI Chat &amp; App Builder</title>
-  <meta name="description" content="Chat with frontier AI models or build, run, and preview full web apps live in Vigas Chat — integrated with Vigas API, Arena leaderboards, and tools." />
+  <meta name="description" content="Chat with frontier AI models or build, run, and preview full web apps live in Vigas Chat — integrated with Vigas API, live benchmarks, and tools." />
   <link rel="canonical" href="https://vigas.app/chat" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Vigas" />
@@ -139,13 +139,84 @@ const chatShellHtml = `<!DOCTYPE html>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Vigas Chat" />
   <style id="expo-reset">
-    html, body { height: 100%; margin: 0; background: #171614; color: #EFEAE1; }
-    body { overflow: hidden; }
-    #root { display: flex; height: 100%; flex: 1; }
+    html, body { height: 100%; height: 100dvh; margin: 0; background: #171614; color: #EFEAE1; }
+    body { overflow: hidden; display: flex; flex-direction: column; }
+    #root { display: flex; flex: 1 1 0; min-height: 0; height: auto; width: 100%; }
+    #vg-chat-rail {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 46px;
+      padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px;
+      background: #12110F;
+      border-bottom: 1px solid rgba(239, 234, 225, 0.12);
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      z-index: 9999;
+      box-sizing: border-box;
+    }
+    #vg-chat-rail a, #vg-chat-rail button {
+      text-decoration: none;
+      font: 500 12.5px/1 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
+    .vg-cr-back {
+      height: 32px;
+      padding: 0 11px 0 9px;
+      border-radius: 9px;
+      border: 1px solid rgba(239, 234, 225, 0.16);
+      background: #1C1B18;
+      color: #EFEAE1;
+      transition: background .14s, border-color .14s;
+    }
+    .vg-cr-back:hover { background: #24221F; border-color: rgba(239, 234, 225, 0.28); }
+    .vg-cr-pills {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .vg-cr-pills::-webkit-scrollbar { display: none; }
+    .vg-cr-pill {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(239, 234, 225, 0.1);
+      background: #1C1B18;
+      color: #A9A298;
+      transition: color .14s, border-color .14s, background .14s;
+    }
+    .vg-cr-pill:hover { color: #EFEAE1; border-color: rgba(239, 234, 225, 0.22); }
+    .vg-cr-pill.adm {
+      display: none;
+      color: #FF8A4C;
+      background: rgba(255, 106, 26, 0.14);
+      border-color: rgba(255, 106, 26, 0.36);
+      font-weight: 600;
+    }
   </style>
 ${cssTags}
 </head>
 <body>
+  <nav id="vg-chat-rail" aria-label="Return to Vigas">
+    <button type="button" id="vg-cr-back-btn" class="vg-cr-back" aria-label="Back to Vigas">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+      <span id="vg-cr-back-lbl">Back</span>
+    </button>
+    <div class="vg-cr-pills">
+      <a href="/dashboard#keys" class="vg-cr-pill" id="vg-cr-keys">Keys</a>
+      <a href="/dashboard#credits" class="vg-cr-pill" id="vg-cr-wallet">Wallet</a>
+      <a href="/models" class="vg-cr-pill" id="vg-cr-models">Models</a>
+      <a href="/admin/providers" class="vg-cr-pill adm" id="vg-cr-admin">Admin</a>
+    </div>
+  </nav>
   <noscript>
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:64px auto;padding:24px;color:#EFEAE1;">
       <h1>Vigas Chat</h1>
@@ -154,6 +225,47 @@ ${cssTags}
     </div>
   </noscript>
   <div id="root"></div>
+  <script>
+    (function(){
+      try {
+        var backBtn = document.getElementById('vg-cr-back-btn');
+        if (backBtn) {
+          backBtn.addEventListener('click', function(){
+            try {
+              if (document.referrer && new URL(document.referrer).origin === location.origin && !new URL(document.referrer).pathname.startsWith('/chat')) {
+                location.assign(document.referrer);
+                return;
+              }
+            } catch(_) {}
+            location.assign('/dashboard');
+          });
+        }
+        var isAdmin = /(?:^|;\\s*)vigas_is_admin=1(?:;|$)/.test(document.cookie);
+        if (!isAdmin) {
+          var raw = localStorage.getItem('sb-jasgepmskcsyvqoesocc-auth-token');
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            var email = parsed && parsed.user && parsed.user.email ? String(parsed.user.email).trim().toLowerCase() : '';
+            if (email === 'ma.sonaescjcj@gmail.com') isAdmin = true;
+          }
+        }
+        var admLink = document.getElementById('vg-cr-admin');
+        if (isAdmin && admLink) admLink.style.display = 'inline-flex';
+        var isFa = /(?:^|;\\s*)vg_lang=fa(?:;|$)/.test(document.cookie);
+        if (isFa) {
+          var b = document.getElementById('vg-cr-back-lbl');
+          var k = document.getElementById('vg-cr-keys');
+          var w = document.getElementById('vg-cr-wallet');
+          var m = document.getElementById('vg-cr-models');
+          if (b) b.textContent = 'بازگشت';
+          if (k) k.textContent = 'کلید API';
+          if (w) w.textContent = 'کیف‌پول';
+          if (m) m.textContent = 'مدل‌ها';
+          if (admLink) admLink.textContent = 'ادمین';
+        }
+      } catch(_) {}
+    })();
+  </script>
 ${scriptTags}
 </body>
 </html>
