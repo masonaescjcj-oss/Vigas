@@ -25,6 +25,7 @@ function connectionOptions(url: string, maxOverride?: number) {
   return {
     max: maxOverride ?? (process.env.VERCEL ? 3 : 10),
     idle_timeout: 20,
+    connect_timeout: 10,
     ...(isTxPooler ? { prepare: false } : {}),
     ...(isSupabase && sslMode !== 'disable' ? { ssl: 'require' as const } : {}),
     onnotice: () => {},

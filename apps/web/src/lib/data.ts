@@ -45,17 +45,22 @@ export async function getModels(): Promise<ModelListItem[]> {
   cacheLife('content');
   cacheTag('models');
   if (PREVIEW_MODE) return previewModels();
-  const rows = await listModels(getDb());
-  return rows.map((m) => ({
-    id: m.id,
-    name: m.name,
-    org: m.org,
-    contextLength: m.contextLength,
-    inputPerMillionMicros: m.inputPerMillionMicros,
-    outputPerMillionMicros: m.outputPerMillionMicros,
-    tags: m.tags,
-    priceChange24h: m.priceChange24h,
-  }));
+  try {
+    const rows = await listModels(getDb());
+    if (rows.length === 0) return previewModels();
+    return rows.map((m) => ({
+      id: m.id,
+      name: m.name,
+      org: m.org,
+      contextLength: m.contextLength,
+      inputPerMillionMicros: m.inputPerMillionMicros,
+      outputPerMillionMicros: m.outputPerMillionMicros,
+      tags: m.tags,
+      priceChange24h: m.priceChange24h,
+    }));
+  } catch {
+    return previewModels();
+  }
 }
 
 export async function getNews(
@@ -65,43 +70,47 @@ export async function getNews(
   cacheLife('content');
   cacheTag('news');
   if (PREVIEW_MODE) return previewNews(opts);
-  const db = getDb();
-  const category = opts.category ?? null;
-  const lang = opts.lang ?? null;
-  const limit = opts.limit ?? 20;
-  const offset = opts.offset ?? 0;
-  const local = loadLocalArticles()
-    .filter((a) => !category || a.category === category)
-    .filter((a) => !lang || (a.lang ?? 'en') === lang)
-    .map(
-      (a): NewsListItem => ({
-        slug: a.slug,
-        title: a.title,
-        dek: a.dek,
-        category: a.category,
-        lang: a.lang ?? 'en',
-        flag: a.flag,
-        ...(a.imageUrl ? { imageUrl: a.imageUrl } : {}),
-        author: a.author,
-        publishedAt: a.publishedAt,
-        readingMinutes: a.readingMinutes,
-        cover: a.cover,
-      }),
-    );
-  const localImages = new Map(local.filter((a) => a.imageUrl).map((a) => [a.slug, a.imageUrl!]));
-  if (local.length === 0) {
-    const [items, total] = await Promise.all([listArticles(db, { category, lang, limit, offset }), countArticles(db, category, lang)]);
-    return { items, total };
+  try {
+    const db = getDb();
+    const category = opts.category ?? null;
+    const lang = opts.lang ?? null;
+    const limit = opts.limit ?? 20;
+    const offset = opts.offset ?? 0;
+    const local = loadLocalArticles()
+      .filter((a) => !category || a.category === category)
+      .filter((a) => !lang || (a.lang ?? 'en') === lang)
+      .map(
+        (a): NewsListItem => ({
+          slug: a.slug,
+          title: a.title,
+          dek: a.dek,
+          category: a.category,
+          lang: a.lang ?? 'en',
+          flag: a.flag,
+          ...(a.imageUrl ? { imageUrl: a.imageUrl } : {}),
+          author: a.author,
+          publishedAt: a.publishedAt,
+          readingMinutes: a.readingMinutes,
+          cover: a.cover,
+        }),
+      );
+    const localImages = new Map(local.filter((a) => a.imageUrl).map((a) => [a.slug, a.imageUrl!]));
+    if (local.length === 0) {
+      const [items, total] = await Promise.all([listArticles(db, { category, lang, limit, offset }), countArticles(db, category, lang)]);
+      return { items, total };
+    }
+    const [dbItems, dbTotal] = await Promise.all([
+      listArticles(db, { category, lang, limit: 100, offset: 0 }),
+      countArticles(db, category, lang),
+    ]);
+    const dbSlugs = new Set(dbItems.map((a) => a.slug));
+    const enrichedDbItems = dbItems.map((a) => (a.imageUrl ? a : localImages.has(a.slug) ? { ...a, imageUrl: localImages.get(a.slug) } : a));
+    const extraLocal = local.filter((a) => !dbSlugs.has(a.slug));
+    const merged = [...enrichedDbItems, ...extraLocal].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+    return { items: merged.slice(offset, offset + limit), total: dbTotal + extraLocal.length };
+  } catch {
+    return previewNews(opts);
   }
-  const [dbItems, dbTotal] = await Promise.all([
-    listArticles(db, { category, lang, limit: 100, offset: 0 }),
-    countArticles(db, category, lang),
-  ]);
-  const dbSlugs = new Set(dbItems.map((a) => a.slug));
-  const enrichedDbItems = dbItems.map((a) => (a.imageUrl ? a : localImages.has(a.slug) ? { ...a, imageUrl: localImages.get(a.slug) } : a));
-  const extraLocal = local.filter((a) => !dbSlugs.has(a.slug));
-  const merged = [...enrichedDbItems, ...extraLocal].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-  return { items: merged.slice(offset, offset + limit), total: dbTotal + extraLocal.length };
 }
 
 export async function getArticleBySlug(slug: string): Promise<Article | null> {
@@ -109,12 +118,16 @@ export async function getArticleBySlug(slug: string): Promise<Article | null> {
   cacheLife('content');
   cacheTag('news', `article:${slug}`);
   if (PREVIEW_MODE) return previewArticle(slug);
-  const localMatch = loadLocalArticles().find((a) => a.slug === slug) ?? null;
-  const fromDb = await getArticle(getDb(), slug);
-  if (fromDb) {
-    return fromDb.imageUrl || !localMatch?.imageUrl ? fromDb : { ...fromDb, imageUrl: localMatch.imageUrl };
+  try {
+    const localMatch = loadLocalArticles().find((a) => a.slug === slug) ?? null;
+    const fromDb = await getArticle(getDb(), slug);
+    if (fromDb) {
+      return fromDb.imageUrl || !localMatch?.imageUrl ? fromDb : { ...fromDb, imageUrl: localMatch.imageUrl };
+    }
+    return localMatch;
+  } catch {
+    return previewArticle(slug);
   }
-  return localMatch;
 }
 
 export async function getTools(
@@ -124,8 +137,13 @@ export async function getTools(
   cacheLife('catalog');
   cacheTag('tools');
   if (PREVIEW_MODE) return previewTools(opts);
-  const items = await listTools(getDb(), { category: opts.category ?? null, q: opts.q ?? null, sort: opts.sort ?? 'votes' });
-  return items.map((t) => ({ ...t, voted: false }));
+  try {
+    const items = await listTools(getDb(), { category: opts.category ?? null, q: opts.q ?? null, sort: opts.sort ?? 'votes' });
+    if (items.length === 0 && !opts.q && !opts.category) return previewTools(opts);
+    return items.map((t) => ({ ...t, voted: false }));
+  } catch {
+    return previewTools(opts);
+  }
 }
 
 export async function getToolBySlug(slug: string): Promise<ToolItem | null> {
@@ -133,9 +151,13 @@ export async function getToolBySlug(slug: string): Promise<ToolItem | null> {
   cacheLife('catalog');
   cacheTag('tools', `tool:${slug}`);
   if (PREVIEW_MODE) return previewTools({}).find((t) => t.slug === slug) ?? null;
-  const all = await listTools(getDb(), { limit: 200 });
-  const tool = all.find((t) => t.slug === slug);
-  return tool ? { ...tool, voted: false } : null;
+  try {
+    const all = await listTools(getDb(), { limit: 200 });
+    const tool = all.find((t) => t.slug === slug);
+    return tool ? { ...tool, voted: false } : previewTools({}).find((t) => t.slug === slug) ?? null;
+  } catch {
+    return previewTools({}).find((t) => t.slug === slug) ?? null;
+  }
 }
 
 export async function getLeaderboardData(category: LeaderboardCategory): Promise<LeaderboardResponse> {
@@ -143,7 +165,12 @@ export async function getLeaderboardData(category: LeaderboardCategory): Promise
   cacheLife('content');
   cacheTag('leaderboard', `leaderboard:${category}`);
   if (PREVIEW_MODE) return previewLeaderboard(category);
-  return getLeaderboard(getDb(), category);
+  try {
+    const res = await getLeaderboard(getDb(), category);
+    return res.entries.length > 0 ? res : previewLeaderboard(category);
+  } catch {
+    return previewLeaderboard(category);
+  }
 }
 
 export async function getRecentSessions(): Promise<RecentSession[]> {
@@ -152,7 +179,11 @@ export async function getRecentSessions(): Promise<RecentSession[]> {
   cacheLife({ stale: 30, revalidate: 30, expire: 300 });
   cacheTag('sessions');
   if (PREVIEW_MODE) return [];
-  return listRecentSessions(getDb(), { limit: 6 });
+  try {
+    return await listRecentSessions(getDb(), { limit: 6 });
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -201,13 +232,17 @@ export async function getSitemapData(): Promise<{
   cacheLife('content');
   cacheTag('news', 'tools');
   if (PREVIEW_MODE) return previewSitemap();
-  const db = getDb();
-  const [dbArticles, tools] = await Promise.all([listArticleSitemap(db), listToolSitemap(db)]);
-  const bySlug = new Map<string, string>();
-  for (const a of loadLocalArticles()) bySlug.set(a.slug, a.updatedAt);
-  for (const a of dbArticles) bySlug.set(a.slug, a.updatedAt.toISOString());
-  const articles = [...bySlug.entries()]
-    .map(([slug, updatedAt]) => ({ slug, updatedAt }))
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  return { articles, tools };
+  try {
+    const db = getDb();
+    const [dbArticles, tools] = await Promise.all([listArticleSitemap(db), listToolSitemap(db)]);
+    const bySlug = new Map<string, string>();
+    for (const a of loadLocalArticles()) bySlug.set(a.slug, a.updatedAt);
+    for (const a of dbArticles) bySlug.set(a.slug, a.updatedAt.toISOString());
+    const articles = [...bySlug.entries()]
+      .map(([slug, updatedAt]) => ({ slug, updatedAt }))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return { articles, tools };
+  } catch {
+    return previewSitemap();
+  }
 }
