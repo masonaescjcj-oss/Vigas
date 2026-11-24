@@ -1,9 +1,13 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Suspense, type ReactNode } from 'react';
-import { getAdminUser } from '@/lib/admin';
+import { isAdminUser } from '@/lib/admin';
+import { getCurrentUser } from '@/lib/auth';
+import { PREVIEW_MODE } from '@/lib/preview';
 import { SiteFooter } from '../site-footer';
 import { SiteHeader } from '../site-header';
 import { Breadcrumb } from '../ui';
+import { AdminClientGate } from './admin-client-gate';
 
 const TABS = [
   { id: 'providers', label: 'Providers & Keys', href: '/admin/providers' },
@@ -17,8 +21,9 @@ const TABS = [
 type ShellProps = Parameters<typeof AdminShell>[0];
 
 /**
- * Entry point for admin pages: checks the admin role before rendering any admin chrome, so other
- * visitors only ever see the header, a placeholder and then a 404.
+ * Entry point for admin pages: verifies server session first, and when no Postgres cookie is
+ * present yet (e.g. Google/Supabase SSO or PREVIEW_MODE) delegates to `AdminClientGate` to bridge
+ * the Supabase JWT instead of showing a misleading 404.
  */
 export function AdminPage(props: ShellProps) {
   return (
@@ -39,8 +44,20 @@ export function AdminPage(props: ShellProps) {
 }
 
 async function AdminGate(props: ShellProps) {
-  await getAdminUser();
-  return <AdminShell {...props} />;
+  const user = await getCurrentUser();
+  if (user) {
+    if (!isAdminUser(user)) notFound();
+    return <AdminShell {...props} />;
+  }
+  return (
+    <>
+      <SiteHeader ticker={false} />
+      <main id="main" className="wrap" style={{ paddingTop: 28, paddingBottom: 96 }}>
+        <AdminClientGate previewMode={PREVIEW_MODE} />
+      </main>
+      <SiteFooter />
+    </>
+  );
 }
 
 /** Frame for every admin page: header, breadcrumb, title and section tabs. */
