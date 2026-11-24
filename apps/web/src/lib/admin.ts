@@ -5,21 +5,36 @@ import { AdminInputError, type SessionUser } from '@vigas/db';
 import { getCurrentUser, type RequestAuth } from './auth';
 import { apiError, requireAuth } from './http';
 
+function isAdminEmail(email: string): boolean {
+  const raw = (process.env.ADMIN_EMAILS ?? '').trim();
+  if (!raw) return false;
+  const target = email.trim().toLowerCase();
+  return raw
+    .split(/[\n,;]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(target);
+}
+
+export function isAdminUser(user: Pick<SessionUser, 'role' | 'email'> | null | undefined): boolean {
+  return Boolean(user && (user.role === 'admin' || isAdminEmail(user.email)));
+}
+
 /**
  * Admin access. Non-admins get a plain 404 so the admin area doesn't advertise itself.
- * Role is stored on users.role ('admin' | 'user').
+ * Granted when users.role === 'admin' OR email is listed in server env `ADMIN_EMAILS`.
  */
 export async function requireAdmin(req: Request): Promise<RequestAuth | NextResponse> {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
-  if (auth.user.role !== 'admin') return apiError(404, 'not_found', 'Not found.');
+  if (!isAdminUser(auth.user)) return apiError(404, 'not_found', 'Not found.');
   return auth;
 }
 
 /** For request-time admin pages (inside <Suspense>). */
 export async function getAdminUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'admin') notFound();
+  if (!user || !isAdminUser(user)) notFound();
   return user;
 }
 
