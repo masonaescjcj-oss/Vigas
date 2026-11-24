@@ -99,7 +99,55 @@ export interface AdminUpstreamProviderRow {
   keys: AdminUpstreamKeyRow[];
 }
 
+let ensuredTables = false;
+let ensurePromise: Promise<void> | null = null;
+
+/**
+ * Ensures `upstream_providers` and `upstream_keys` exist on Postgres even if migration 0005
+ * hasn't been executed manually yet (idempotent, runs at most once per server process).
+ */
+export async function ensureUpstreamTables(db: Db): Promise<void> {
+  if (ensuredTables) return;
+  ensurePromise ??= (async () => {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "upstream_providers" (
+        "slug" text PRIMARY KEY NOT NULL,
+        "name" text NOT NULL,
+        "kind" text DEFAULT 'openai' NOT NULL,
+        "base_url" text NOT NULL,
+        "key_strategy" text DEFAULT 'sticky' NOT NULL,
+        "allowed_models" text[],
+        "hidden" boolean DEFAULT true NOT NULL,
+        "public_label" text DEFAULT 'vigas-edge' NOT NULL,
+        "enabled" boolean DEFAULT true NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "upstream_keys" (
+        "id" text PRIMARY KEY NOT NULL,
+        "provider_slug" text NOT NULL REFERENCES "upstream_providers"("slug") ON DELETE CASCADE,
+        "label" text NOT NULL,
+        "key_ciphertext" text NOT NULL,
+        "key_hint" text NOT NULL,
+        "key_hash" text NOT NULL,
+        "budget_micros" bigint,
+        "enabled" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "upstream_keys_provider_hash_idx" ON "upstream_keys" ("provider_slug", "key_hash")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "upstream_keys_provider_idx" ON "upstream_keys" ("provider_slug", "enabled")`);
+    ensuredTables = true;
+  })().catch((err) => {
+    ensurePromise = null;
+    throw err;
+  });
+  return ensurePromise;
+}
+
 export async function adminListUpstreamProviders(db: Db): Promise<AdminUpstreamProviderRow[]> {
+  await ensureUpstreamTables(db);
   const [providers, keys] = await Promise.all([
     db.select().from(upstreamProviders).orderBy(upstreamProviders.slug),
     db.select().from(upstreamKeys).orderBy(upstreamKeys.createdAt),
@@ -146,6 +194,7 @@ export interface SaveUpstreamProviderInput {
 }
 
 export async function adminSaveUpstreamProvider(db: Db, raw: SaveUpstreamProviderInput): Promise<{ slug: string }> {
+  await ensureUpstreamTables(db);
   const slug = String(raw.slug ?? '')
     .trim()
     .toLowerCase();
@@ -191,6 +240,7 @@ export async function adminSaveUpstreamProvider(db: Db, raw: SaveUpstreamProvide
 }
 
 export async function adminDeleteUpstreamProvider(db: Db, slug: string): Promise<void> {
+  await ensureUpstreamTables(db);
   await db.delete(upstreamProviders).where(eq(upstreamProviders.slug, slug.trim().toLowerCase()));
 }
 
@@ -199,6 +249,7 @@ export async function adminAddUpstreamKeys(
   input: { providerSlug: string; rawKeys: string; labelPrefix?: string; budgetUsd?: number | null },
   secretOverride?: string | null,
 ): Promise<{ added: number; skipped: number }> {
+  await ensureUpstreamTables(db);
   const providerSlug = String(input.providerSlug ?? '')
     .trim()
     .toLowerCase();
@@ -249,6 +300,7 @@ export async function adminUpdateUpstreamKey(
   id: string,
   patch: { enabled?: boolean; label?: string; budgetUsd?: number | null },
 ): Promise<void> {
+  await ensureUpstreamTables(db);
   const set: Partial<typeof upstreamKeys.$inferInsert> = {};
   if (typeof patch.enabled === 'boolean') set.enabled = patch.enabled;
   if (typeof patch.label === 'string' && patch.label.trim()) set.label = patch.label.trim().slice(0, 64);
@@ -261,6 +313,7 @@ export async function adminUpdateUpstreamKey(
 }
 
 export async function adminDeleteUpstreamKey(db: Db, id: string): Promise<void> {
+  await ensureUpstreamTables(db);
   await db.delete(upstreamKeys).where(eq(upstreamKeys.id, id));
 }
 
@@ -281,6 +334,7 @@ export interface ActiveDbUpstreamProvider {
  * managed in `/admin/providers` take effect live without redeploying.
  */
 export async function loadActiveUpstreamProviders(db: Db, secretOverride?: string | null): Promise<ActiveDbUpstreamProvider[]> {
+  await ensureUpstreamTables(db);
   const [providers, keys] = await Promise.all([
     db.select().from(upstreamProviders),
     db.select().from(upstreamKeys).where(eq(upstreamKeys.enabled, true)).orderBy(upstreamKeys.createdAt),
