@@ -46,6 +46,8 @@ export const ICONS = {
   bars: 'M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4',
   sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41',
   moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
+  users: 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 19v-1a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  sliders: 'M4 6h16M4 12h16M4 18h16M9 4v4M15 10v4M11 16v4',
 } as const;
 
 export type IconName = keyof typeof ICONS;

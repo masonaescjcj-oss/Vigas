@@ -1,10 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useState, type CSSProperties, type FormEvent } from 'react';
 import { ApiError } from '@vigas/api-client';
 import type { ApiKeySummary, AppError, CreatedApiKey, ModelListItem, PublicUser, WalletResponse } from '@vigas/core';
 import { formatCompact, formatUsd, shortDay } from '@/lib/fmt';
+import { isAdminHintEmail } from '@/lib/client/admin-fetch';
 import { api } from '@/lib/client/session';
 import { signOutEverywhere } from '@/lib/client/session-sync';
 import {
@@ -86,6 +88,7 @@ export function DashboardClient({
 }) {
   const isFa = lang === 'fa';
   const isSupabase = backend === 'supabase';
+  const isAdmin = isAdminHintEmail(user.email);
   const paymentsEnabled = isSupabase || paymentMode !== 'none';
   const router = useRouter();
   const ids = useId();
@@ -117,8 +120,22 @@ export function DashboardClient({
     setTab(next);
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${next}`);
+      window.dispatchEvent(new Event('vigas-hash'));
     }
   };
+
+  useEffect(() => {
+    const onHash = () => {
+      const next = tabFromHash(window.location.hash);
+      if (next) setTab(next);
+    };
+    window.addEventListener('hashchange', onHash);
+    window.addEventListener('vigas-hash', onHash);
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      window.removeEventListener('vigas-hash', onHash);
+    };
+  }, []);
 
   const refresh = async () => {
     if (isSupabase) {
@@ -765,10 +782,10 @@ export function DashboardClient({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Top account bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: -8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--vg-green)', display: 'inline-block' }} />
-          <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14.5 }}>
+      <div className="dash-top-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--vg-green)', display: 'inline-block', flexShrink: 0 }} />
+          <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14, overflowWrap: 'anywhere' }}>
             {isFa ? 'حساب فعال: ' : 'Signed in as '}
             <b dir="ltr" style={{ color: 'var(--vg-ink)', fontWeight: 600 }}>
               {user.name ? `${user.name} · ` : ''}
@@ -781,16 +798,32 @@ export function DashboardClient({
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn key" onClick={() => switchTab('credits')} style={{ minHeight: 38, fontSize: 13.5 }}>
+        <div className="dash-top-actions">
+          {isAdmin && (
+            <Link
+              href="/admin/providers"
+              className="btn gh"
+              style={{
+                minHeight: 38,
+                fontSize: 13,
+                borderColor: 'var(--vg-orange-edge)',
+                color: 'var(--vg-orange-text)',
+                background: 'var(--vg-orange-soft)',
+              }}
+            >
+              <Icon name="shield" size={15} />
+              {isFa ? 'پنل ادمین' : 'Admin Panel'}
+            </Link>
+          )}
+          <button type="button" className="btn key" onClick={() => switchTab('credits')} style={{ minHeight: 38, fontSize: 13 }}>
             <Icon name="wallet" size={15} />
-            {isFa ? 'خرید اعتبار API' : 'Add credits'}
+            {isFa ? 'خرید اعتبار' : 'Add credits'}
           </button>
-          <a href="/chat" className="btn gh" style={{ minHeight: 38, fontSize: 13.5 }}>
+          <a href="/chat" className="btn gh" style={{ minHeight: 38, fontSize: 13 }}>
             <Icon name="spark" size={15} />
-            {isFa ? 'باز کردن چت AI' : 'Open AI Chat'}
+            {isFa ? 'چت AI' : 'AI Chat'}
           </a>
-          <button type="button" className="btn gh" onClick={signOut} style={{ minHeight: 38, fontSize: 13.5 }}>
+          <button type="button" className="btn gh" onClick={signOut} style={{ minHeight: 38, fontSize: 13 }}>
             <Icon name="logout" size={15} />
             {isFa ? 'خروج' : 'Sign out'}
           </button>
@@ -798,10 +831,10 @@ export function DashboardClient({
       </div>
 
       {/* KPI Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+      <div className="dash-kpi-grid">
         <div className="card" style={kpiCard}>
           <span className="lbl">{isFa ? 'موجودی کیف‌پول API' : 'API balance'}</span>
-          <div className="sf" dir="ltr" style={{ fontSize: 32, lineHeight: 1.1, marginTop: 6, textAlign: isFa ? 'right' : 'left' }}>
+          <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
             {formatUsd(wallet.balanceMicros)}
           </div>
           <span className="mn" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', marginTop: 4 }}>
@@ -811,7 +844,7 @@ export function DashboardClient({
 
         <div className="card" style={kpiCard}>
           <span className="lbl">{isFa ? 'کلیدهای فعال' : 'Active API keys'}</span>
-          <div className="sf" dir="ltr" style={{ fontSize: 32, lineHeight: 1.1, marginTop: 6, textAlign: isFa ? 'right' : 'left' }}>
+          <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
             {wallet.keys.length}
           </div>
           <button
@@ -825,7 +858,7 @@ export function DashboardClient({
 
         <div className="card" style={kpiCard}>
           <span className="lbl">{isFa ? 'مصرف ۷ روز گذشته' : '7-day spend'}</span>
-          <div className="sf" dir="ltr" style={{ fontSize: 32, lineHeight: 1.1, marginTop: 6, textAlign: isFa ? 'right' : 'left' }}>
+          <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
             {formatUsd(weekTotal, { maxDecimals: 4 })}
           </div>
           <span className="mn" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', marginTop: 4 }}>
@@ -842,7 +875,7 @@ export function DashboardClient({
         <div className="card" style={kpiCard}>
           <span className="lbl">{isFa ? 'آدرس گیت‌وی (Base URL)' : 'Gateway base URL'}</span>
           <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <code className="mn" style={{ fontSize: 12.5, color: 'var(--vg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            <code className="mn" style={{ fontSize: 12, color: 'var(--vg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
               {API_BASE_URL}
             </code>
             <CopyButton text={API_BASE_URL} label={isFa ? 'کپی Base URL' : 'Copy Base URL'} copiedText={isFa ? 'کپی شد' : 'Copied'} style={{ minHeight: 28, padding: '0 8px', fontSize: 11.5, borderRadius: 7 }}>
@@ -860,19 +893,7 @@ export function DashboardClient({
       </div>
 
       {/* Console Tab Bar */}
-      <nav
-        aria-label={isFa ? 'بخش‌های پنل کاربری' : 'API Console sections'}
-        role="tablist"
-        style={{
-          display: 'flex',
-          gap: 6,
-          flexWrap: 'wrap',
-          padding: 6,
-          borderRadius: 16,
-          background: 'var(--vg-surface)',
-          border: '1px solid var(--vg-line2)',
-        }}
-      >
+      <nav aria-label={isFa ? 'بخش‌های پنل کاربری' : 'API Console sections'} role="tablist" className="dash-tabs scroll-x">
         {CONSOLE_TABS.map((item) => {
           const active = tab === item.id;
           return (
@@ -882,20 +903,7 @@ export function DashboardClient({
               role="tab"
               aria-selected={active}
               onClick={() => switchTab(item.id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                minHeight: 40,
-                padding: '0 14px',
-                borderRadius: 11,
-                border: active ? '1px solid var(--vg-orange-edge)' : '1px solid transparent',
-                background: active ? 'var(--vg-orange-soft)' : 'transparent',
-                color: active ? 'var(--vg-orange-text)' : 'var(--vg-ink2)',
-                fontWeight: active ? 600 : 500,
-                fontSize: 14,
-                cursor: 'pointer',
-              }}
+              className={`dash-tab${active ? ' on' : ''}`}
             >
               <Icon name={item.icon} size={15} />
               <span>{isFa ? item.fa : item.en}</span>

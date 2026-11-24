@@ -28,3 +28,17 @@ export function hasStoredSession(): boolean {
     return false;
   }
 }
+
+/** Reads the email of the locally cached Supabase session (UI navigation hint only; never for auth). */
+export function getStoredSessionEmail(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SUPABASE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { user?: { email?: string } } | null;
+    const email = parsed?.user?.email?.trim().toLowerCase();
+    return email || null;
+  } catch {
+    return null;
+  }
+}

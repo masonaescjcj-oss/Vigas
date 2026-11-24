@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
+import { useAdminHint } from '@/lib/client/admin-fetch';
 import { useSignedInHint } from '@/lib/client/session';
 import { LanguageSwitch } from './language-switch';
 import { ThemeToggle } from './theme-toggle';
@@ -22,6 +23,7 @@ export function MobileNav({
   const pathname = usePathname();
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const signedIn = useSignedInHint();
+  const isAdmin = useAdminHint();
   const isFa = lang === 'fa';
 
   const close = () => {
@@ -89,6 +91,19 @@ export function MobileNav({
                 {id === 'tools' && <span className="mn hdr-menu-tag">{isFa ? '۲۴ ابزار' : '24 apps'}</span>}
               </Link>
             ),
+          )}
+          {isAdmin && (
+            <Link
+              href="/admin/providers"
+              aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+              onClick={close}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="shield" size={15} style={{ color: 'var(--vg-orange-text)' }} />
+                {isFa ? 'پنل ادمین' : 'Admin Panel'}
+              </span>
+              <span className="mn hdr-menu-tag">Admin</span>
+            </Link>
           )}
         </div>
 

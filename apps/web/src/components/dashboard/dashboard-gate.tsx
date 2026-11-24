@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { ModelListItem, PublicUser, WalletResponse } from '@vigas/core';
 import { api } from '@/lib/client/session';
+import { isAdminHintEmail } from '@/lib/client/admin-fetch';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
 import { consumeAuthNext, getSupabase, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
 import { fetchSupabaseAccount, type SupabaseUsageSummary } from '@/lib/client/supabase-account';
@@ -51,7 +52,24 @@ export function DashboardGate({
     const resolveFromSession = async (session: { access_token: string; user: { id: string; email?: string; user_metadata?: Record<string, unknown> } }) => {
       if (!active || !session.user?.email) return;
       syncSignedInHint(true);
-      consumeAuthNext();
+      const savedNext = consumeAuthNext();
+
+      // Pre-warm the signed httpOnly admin bridge cookie for admin accounts so /admin/* opens in 1 tap with zero flicker.
+      if (isAdminHintEmail(session.user.email)) {
+        const warm = fetch('/api/admin/session', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Authorization: `Bearer ${session.access_token}`, Accept: 'application/json' },
+          cache: 'no-store',
+        }).catch(() => undefined);
+        if (savedNext && savedNext.startsWith('/admin')) {
+          await warm;
+          if (active) {
+            window.location.assign(savedNext);
+            return;
+          }
+        }
+      }
 
       const userName =
         (typeof session.user.user_metadata?.full_name === 'string' && session.user.user_metadata.full_name) ||

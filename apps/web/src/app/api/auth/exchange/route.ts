@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import type { AuthResponse } from '@vigas/core';
 import { createSession, findOrCreateExternalUser, getDb } from '@vigas/db';
+import { extractDbError, isAdminEmail, setAdminBridgeCookies } from '@/lib/admin';
 import { setSessionCookies, toPublicUser } from '@/lib/auth';
 import { serverEnv } from '@/lib/env';
 import { apiError, clientIp, originMismatch, rateLimit, readJson } from '@/lib/http';
@@ -23,9 +24,9 @@ interface SupabaseUserPayload {
 /**
  * Exchanges a verified Supabase Auth JWT (created by RetroCode /chat, Google OAuth, or unified
  * email/OTP login) for a first-party Vigas session cookie + bearer token backed by `@vigas/db`.
+ * Also sets signed admin bridge cookies for verified admin emails even if Postgres is temporarily down.
  */
 export async function POST(req: Request) {
-  if (PREVIEW_MODE) return apiError(503, 'preview_mode', PREVIEW_MESSAGE);
   const bad = originMismatch(req);
   if (bad) return bad;
   const limited = rateLimit(`exchange:${clientIp(req)}`, 30, 60_000);
@@ -61,17 +62,41 @@ export async function POST(req: Request) {
   }
 
   const name = supaUser?.user_metadata?.full_name || supaUser?.user_metadata?.name || null;
-  const db = getDb();
-  const user = await findOrCreateExternalUser(db, {
-    email,
-    name,
-    welcomeBonusMicros: env.signupBonusMicros,
-    welcomeReference: 'welcome:youcom',
-  });
-  const token = await createSession(db, user.id, req.headers.get('user-agent'));
+  const adminIdentity = isAdminEmail(email)
+    ? { id: supaUser?.id ?? `supa:${email}`, email, name }
+    : null;
 
-  const payload: AuthResponse = { user: toPublicUser(user), token };
-  const res = NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
-  setSessionCookies(res, token);
-  return res;
+  if (PREVIEW_MODE) {
+    const res = apiError(503, 'preview_mode', PREVIEW_MESSAGE);
+    if (adminIdentity) setAdminBridgeCookies(res, adminIdentity);
+    return res;
+  }
+
+  try {
+    const db = getDb();
+    const user = await findOrCreateExternalUser(db, {
+      email,
+      name,
+      welcomeBonusMicros: env.signupBonusMicros,
+      welcomeReference: 'welcome:youcom',
+    });
+    const token = await createSession(db, user.id, req.headers.get('user-agent'));
+
+    const payload: AuthResponse = { user: toPublicUser(user), token };
+    const res = NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store' } });
+    setSessionCookies(res, token);
+    if (adminIdentity) setAdminBridgeCookies(res, { id: user.id, email: user.email, name: user.name });
+    return res;
+  } catch (err) {
+    const dbErr = extractDbError(err);
+    const res = apiError(
+      503,
+      dbErr?.code ?? 'db_unavailable',
+      dbErr?.code === '28P01'
+        ? 'Postgres password authentication failed (28P01). Continuing on Supabase session.'
+        : dbErr?.message ?? 'Database is temporarily unavailable.',
+    );
+    if (adminIdentity) setAdminBridgeCookies(res, adminIdentity);
+    return res;
+  }
 }

@@ -10,7 +10,9 @@ export async function POST(req: Request) {
     const bad = originMismatch(req);
     if (bad) return bad;
   }
-  if (t && !PREVIEW_MODE) await deleteSession(getDb(), t.token);
+  if (t && !PREVIEW_MODE) {
+    await deleteSession(getDb(), t.token).catch(() => {});
+  }
   const res = NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'private, no-store' } });
   clearSessionCookies(res);
   return res;

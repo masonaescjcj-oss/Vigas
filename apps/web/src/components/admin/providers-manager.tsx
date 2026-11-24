@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { AdminUpstreamProviderRow, UpstreamKeyStrategy, UpstreamProviderKind } from '@vigas/db';
 import type { GatewayPoolTelemetry } from '@/lib/admin-gateway';
+import { adminFetch } from '@/lib/client/admin-fetch';
+import { Icon } from '../ui';
 
 interface Props {
   initialProviders: AdminUpstreamProviderRow[];
@@ -62,10 +64,10 @@ const PRESETS: Array<{
 ];
 
 const STRATEGIES: Array<{ value: UpstreamKeyStrategy; label: string }> = [
-  { value: 'sticky', label: 'sticky — Pin user session (best for coding Prompt Cache)' },
+  { value: 'sticky', label: 'sticky — Pin user session (Prompt Cache)' },
   { value: 'round_robin', label: 'round_robin — Even rotation (1 → 2 → … → N)' },
   { value: 'random', label: 'random — Random healthy key per request' },
-  { value: 'sequential', label: 'sequential — Drain key #1 to cap/limit, then #2…' },
+  { value: 'sequential', label: 'sequential — Drain key #1, then #2…' },
   { value: 'least_used', label: 'least_used — Lowest active load & usage' },
 ];
 
@@ -82,6 +84,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [formOpen, setFormOpen] = useState(initialProviders.length === 0);
 
   // Provider form state
   const [slug, setSlug] = useState('');
@@ -100,7 +103,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
   const [bulkPrefix, setBulkPrefix] = useState<Record<string, string>>({});
 
   async function refresh() {
-    const res = await fetch('/api/admin/providers', { cache: 'no-store' });
+    const res = await adminFetch('/api/admin/providers');
     if (!res.ok) return;
     const data = (await res.json()) as { providers: AdminUpstreamProviderRow[]; gateway: typeof gateway };
     setProviders(data.providers);
@@ -117,8 +120,9 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     setPublicLabel('vigas-edge');
     setHidden(true);
     setEnabled(true);
+    setFormOpen(true);
     setError(null);
-    setNotice(`Preset "${p.label}" loaded — click Save Provider to activate.`);
+    setNotice(`Preset "${p.label}" loaded — tap Save Provider to activate.`);
   }
 
   function editProvider(p: AdminUpstreamProviderRow) {
@@ -131,6 +135,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     setPublicLabel(p.publicLabel);
     setHidden(p.hidden);
     setEnabled(p.enabled);
+    setFormOpen(true);
     setError(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -145,7 +150,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
         .split(/[\n,;]+/)
         .map((s) => s.trim())
         .filter(Boolean);
-      const res = await fetch('/api/admin/providers', {
+      const res = await adminFetch('/api/admin/providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -160,14 +165,14 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
           enabled,
         }),
       });
-      const data = (await res.json()) as { error?: { message?: string }; reload?: { reloaded?: boolean } };
+      const data = (await res.json().catch(() => ({}))) as { error?: { message?: string }; reload?: { reloaded?: boolean } };
       if (!res.ok) {
         setError(data.error?.message ?? 'Could not save provider.');
         return;
       }
       await refresh();
       setNotice(
-        `Provider "${slug}" saved${data.reload?.reloaded ? ' and hot-reloaded in gateway.' : ' (gateway will auto-sync within 30s).'}`,
+        `Provider "${slug}" saved${data.reload?.reloaded ? ' and hot-reloaded in gateway.' : ' (gateway auto-syncs within 30s).'}`,
       );
     } finally {
       setBusy(false);
@@ -179,9 +184,9 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/providers?slug=${encodeURIComponent(targetSlug)}`, { method: 'DELETE' });
+      const res = await adminFetch(`/api/admin/providers?slug=${encodeURIComponent(targetSlug)}`, { method: 'DELETE' });
       if (!res.ok) {
-        const d = (await res.json()) as { error?: { message?: string } };
+        const d = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
         setError(d.error?.message ?? 'Delete failed.');
         return;
       }
@@ -204,7 +209,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     try {
       const budgetStr = (bulkBudget[providerSlug] ?? '').trim();
       const budgetUsd = budgetStr ? Number(budgetStr) : null;
-      const res = await fetch('/api/admin/providers/keys', {
+      const res = await adminFetch('/api/admin/providers/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -214,7 +219,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
           budgetUsd: Number.isFinite(budgetUsd) && (budgetUsd ?? 0) > 0 ? budgetUsd : null,
         }),
       });
-      const data = (await res.json()) as {
+      const data = (await res.json().catch(() => ({}))) as {
         added?: number;
         skipped?: number;
         reload?: { reloaded?: boolean };
@@ -238,11 +243,16 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await fetch('/api/admin/providers/keys', {
+      const res = await adminFetch('/api/admin/providers/keys', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, enabled: nextEnabled }),
       });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        setError(d.error?.message ?? 'Could not update key.');
+        return;
+      }
       await refresh();
     } finally {
       setBusy(false);
@@ -254,7 +264,12 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     setBusy(true);
     setError(null);
     try {
-      await fetch(`/api/admin/providers/keys?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const res = await adminFetch(`/api/admin/providers/keys?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        setError(d.error?.message ?? 'Could not remove key.');
+        return;
+      }
       await refresh();
     } finally {
       setBusy(false);
@@ -265,8 +280,17 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/providers/reload', { method: 'POST' });
-      const data = (await res.json()) as { reloaded?: boolean; syncedProviders?: number; totalDbKeys?: number };
+      const res = await adminFetch('/api/admin/providers/reload', { method: 'POST' });
+      const data = (await res.json().catch(() => ({}))) as {
+        reloaded?: boolean;
+        syncedProviders?: number;
+        totalDbKeys?: number;
+        error?: { message?: string };
+      };
+      if (!res.ok) {
+        setError(data.error?.message ?? 'Reload failed.');
+        return;
+      }
       await refresh();
       setNotice(
         data.reloaded
@@ -278,223 +302,219 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '9px 12px',
-    borderRadius: 10,
-    border: '1px solid var(--vg-line2)',
-    background: 'var(--vg-bg)',
-    color: 'var(--vg-ink)',
-    fontSize: 14,
-  };
+  const totalActiveKeys = providers.reduce((n, p) => n + p.keys.filter((k) => k.enabled).length, 0);
 
   return (
-    <div style={{ display: 'grid', gap: 22 }}>
-      {/* Gateway live sync status bar */}
-      <div
-        className="card"
-        style={{
-          padding: '14px 18px',
-          borderRadius: 18,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+    <div style={{ display: 'grid', gap: 16 }}>
+      {/* Gateway live sync & summary bar */}
+      <div className="card adm-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
           <span
             style={{
-              width: 10,
-              height: 10,
+              width: 9,
+              height: 9,
               borderRadius: 99,
               background: gateway.reachable ? 'var(--vg-green)' : 'var(--vg-sand)',
               display: 'inline-block',
+              flexShrink: 0,
             }}
           />
           <span style={{ fontWeight: 500, fontSize: 14 }}>
-            Gateway sync: {gateway.reachable ? 'Connected & live' : 'Standby (DB auto-syncs every 30s when gateway runs)'}
+            Gateway: {gateway.reachable ? 'Connected & live' : 'Standby (30s sync)'}
           </span>
           <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-            {providers.length} DB provider(s) · {providers.reduce((n, p) => n + p.keys.filter((k) => k.enabled).length, 0)} active key(s)
+            {providers.length} pool(s) · {totalActiveKeys} active key(s)
           </span>
         </div>
-        <button type="button" className="btn" onClick={forceReloadGateway} disabled={busy}>
-          Hot-reload gateway
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={formOpen ? 'btn gh' : 'btn key'}
+            onClick={() => setFormOpen((v) => !v)}
+            style={{ minHeight: 38, padding: '0 14px', fontSize: 13 }}
+          >
+            <Icon name={formOpen ? 'x' : 'plus'} size={15} />
+            {formOpen ? 'Hide form' : 'Add provider'}
+          </button>
+          <button
+            type="button"
+            className="btn gh"
+            onClick={forceReloadGateway}
+            disabled={busy}
+            style={{ minHeight: 38, padding: '0 14px', fontSize: 13 }}
+          >
+            <Icon name="refresh" size={14} />
+            Reload gateway
+          </button>
+        </div>
       </div>
 
       {notice && (
-        <div className="card" style={{ padding: '12px 16px', borderRadius: 14, borderColor: 'var(--vg-green)', color: 'var(--vg-green)', fontSize: 14 }}>
+        <div className="card" style={{ padding: '12px 15px', borderRadius: 14, borderColor: 'var(--vg-green-edge)', color: 'var(--vg-green)', fontSize: 13.5 }}>
           {notice}
         </div>
       )}
       {error && (
-        <div className="card" style={{ padding: '12px 16px', borderRadius: 14, borderColor: 'var(--vg-red)', color: 'var(--vg-red)', fontSize: 14 }}>
+        <div className="card" style={{ padding: '12px 15px', borderRadius: 14, borderColor: 'var(--vg-red-edge)', color: 'var(--vg-red)', fontSize: 13.5 }}>
           {error}
         </div>
       )}
 
-      {/* Add / Edit Provider Card */}
-      <form onSubmit={saveProvider} className="card" style={{ padding: 20, borderRadius: 20, display: 'grid', gap: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+      {/* Quick Presets Row */}
+      <div className="scroll-x" style={{ display: 'flex', gap: 8, paddingBottom: 2 }}>
+        {PRESETS.map((preset) => (
+          <button key={preset.slug} type="button" className="chip" onClick={() => applyPreset(preset)}>
+            + {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Collapsible Add / Edit Provider Form */}
+      {formOpen && (
+        <form onSubmit={saveProvider} className="card adm-form-card">
           <div>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Add / Edit Upstream Provider</h2>
+            <h2 style={{ margin: 0, fontSize: 17 }}>Add / Edit Upstream Provider</h2>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--vg-ink3)' }}>
               Register unlimited upstream pools (Google, You.com, SevenAPI, or custom OpenAI/Anthropic relays). Keys are encrypted with AES-256-GCM.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {PRESETS.map((preset) => (
-              <button key={preset.slug} type="button" className="chip" onClick={() => applyPreset(preset)}>
-                + {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
-          <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-            <span style={{ color: 'var(--vg-ink2)' }}>Slug (matches endpoint provider)</span>
-            <input style={inputStyle} value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="google | you | sevenapi | pool2" required />
-          </label>
-          <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-            <span style={{ color: 'var(--vg-ink2)' }}>Display name</span>
-            <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Google Gemini (Free Hydrogen)" required />
-          </label>
-          <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-            <span style={{ color: 'var(--vg-ink2)' }}>Protocol adapter</span>
-            <select style={inputStyle} value={kind} onChange={(e) => setKind(e.target.value as UpstreamProviderKind)}>
-              {KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-            <span style={{ color: 'var(--vg-ink2)' }}>Base URL</span>
+          <div className="adm-form-grid">
+            <label className="adm-field">
+              <span>Slug (endpoint provider)</span>
+              <input className="adm-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="google | you | sevenapi" required />
+            </label>
+            <label className="adm-field">
+              <span>Display name</span>
+              <input className="adm-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Google Gemini (Free Hydrogen)" required />
+            </label>
+            <label className="adm-field">
+              <span>Protocol adapter</span>
+              <select className="adm-input" value={kind} onChange={(e) => setKind(e.target.value as UpstreamProviderKind)}>
+                {KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="adm-field">
+              <span>Base URL</span>
+              <input
+                className="adm-input"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://generativelanguage.googleapis.com/v1beta"
+                required
+              />
+            </label>
+            <label className="adm-field">
+              <span>Multi-key rotation strategy</span>
+              <select className="adm-input" value={keyStrategy} onChange={(e) => setKeyStrategy(e.target.value as UpstreamKeyStrategy)}>
+                {STRATEGIES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="adm-field">
+              <span>Public masked label</span>
+              <input className="adm-input" value={publicLabel} onChange={(e) => setPublicLabel(e.target.value)} placeholder="vigas-edge" />
+            </label>
+          </div>
+
+          <label className="adm-field">
+            <span>Allowed models (optional — comma-separated for strict scoping)</span>
             <input
-              style={inputStyle}
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://generativelanguage.googleapis.com/v1beta"
-              required
+              className="adm-input"
+              value={allowedModels}
+              onChange={(e) => setAllowedModels(e.target.value)}
+              placeholder="google/gemini-4-hydrogen, google/gemini-4-hydrogen:free"
             />
           </label>
-          <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-            <span style={{ color: 'var(--vg-ink2)' }}>Multi-key rotation strategy</span>
-            <select style={inputStyle} value={keyStrategy} onChange={(e) => setKeyStrategy(e.target.value as UpstreamKeyStrategy)}>
-              {STRATEGIES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-            <span style={{ color: 'var(--vg-ink2)' }}>Public masked label</span>
-            <input style={inputStyle} value={publicLabel} onChange={(e) => setPublicLabel(e.target.value)} placeholder="vigas-edge" />
-          </label>
-        </div>
 
-        <label style={{ display: 'grid', gap: 5, fontSize: 13 }}>
-          <span style={{ color: 'var(--vg-ink2)' }}>Allowed models (optional — leave blank for all models; comma-separated for strict scoping)</span>
-          <input
-            style={inputStyle}
-            value={allowedModels}
-            onChange={(e) => setAllowedModels(e.target.value)}
-            placeholder="google/gemini-4-hydrogen, google/gemini-4-hydrogen:free"
-          />
-        </label>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 16, fontSize: 14 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
-              Mask upstream name/host from customers
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-              Enabled
-            </label>
+          <div className="adm-form-foot">
+            <div style={{ display: 'flex', gap: 16, fontSize: 13.5, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
+                Mask upstream host
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+                Enabled
+              </label>
+            </div>
+            <button type="submit" className="btn key adm-full-xs" disabled={busy}>
+              Save Provider
+            </button>
           </div>
-          <button type="submit" className="btn key" disabled={busy}>
-            Save Provider
-          </button>
-        </div>
-      </form>
+        </form>
+      )}
 
       {/* Provider Pool Cards */}
       {providers.length === 0 ? (
-        <div className="card" style={{ padding: 24, borderRadius: 20, color: 'var(--vg-ink2)', fontSize: 14 }}>
-          No DB providers configured yet. Click a preset above (e.g. <strong>+ Google Gemini (Free Hydrogen)</strong> or{' '}
-          <strong>+ You.com Multi-Key ($100)</strong>), save it, then bulk-paste all your API keys below it.
+        <div className="card" style={{ padding: 22, borderRadius: 20, color: 'var(--vg-ink2)', fontSize: 14, lineHeight: 1.6 }}>
+          No DB providers configured yet. Tap a preset above (e.g. <strong>+ Google Gemini (Free Hydrogen)</strong> or{' '}
+          <strong>+ SevenAPI Relay</strong>), save it, then bulk-paste all your API keys below it.
         </div>
       ) : (
         providers.map((p) => {
           const live = gateway.pools[p.slug];
           return (
-            <div key={p.slug} className="card" style={{ padding: 20, borderRadius: 20, display: 'grid', gap: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: 18 }}>{p.name}</h3>
-                    <span className="mn" style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, background: 'var(--vg-raised)' }}>
-                      {p.slug}
-                    </span>
-                    <span className="mn" style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, background: 'var(--vg-raised)', color: 'var(--vg-indigo)' }}>
+            <div key={p.slug} className="card adm-pool-card">
+              <div className="adm-pool-head">
+                <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: 17 }}>{p.name}</h3>
+                    <span className="adm-pill subtle">{p.slug}</span>
+                    <span className="adm-pill indigo">
                       {p.kind} · {p.keyStrategy}
                     </span>
-                    <span
-                      className="mn"
-                      style={{
-                        fontSize: 12,
-                        padding: '2px 8px',
-                        borderRadius: 6,
-                        background: 'var(--vg-raised)',
-                        color: p.enabled ? 'var(--vg-green)' : 'var(--vg-red)',
-                      }}
-                    >
-                      {p.enabled ? 'active' : 'disabled'}
-                    </span>
+                    <span className={`adm-pill ${p.enabled ? 'ok' : 'err'}`}>{p.enabled ? 'active' : 'disabled'}</span>
                   </div>
-                  <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 4 }}>
+                  <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 5, overflowWrap: 'anywhere' }}>
                     {p.baseUrl}
-                    {p.allowedModels ? ` · allowed: ${p.allowedModels.join(', ')}` : ' · allowed: all mapped models'}
+                    {p.allowedModels ? ` · allowed: ${p.allowedModels.join(', ')}` : ' · all mapped models'}
                   </div>
                   {live && (
                     <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink2)', marginTop: 6 }}>
                       Live pool: <strong style={{ color: 'var(--vg-green)' }}>{live.healthy} healthy</strong> · {live.coolingDown} cooling ·{' '}
-                      {live.exhausted} exhausted · {live.budgetCapped} budget-capped (total {live.total})
+                      {live.exhausted} exhausted · {live.budgetCapped} capped ({live.total} total)
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" className="btn" onClick={() => editProvider(p)}>
+                <div className="adm-pool-actions">
+                  <button type="button" className="btn gh" onClick={() => editProvider(p)} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
                     Edit
                   </button>
-                  <button type="button" className="btn" style={{ color: 'var(--vg-red)' }} onClick={() => deleteProvider(p.slug)} disabled={busy}>
+                  <button
+                    type="button"
+                    className="btn gh"
+                    style={{ minHeight: 36, padding: '0 12px', fontSize: 13, color: 'var(--vg-red)' }}
+                    onClick={() => deleteProvider(p.slug)}
+                    disabled={busy}
+                  >
                     Delete
                   </button>
                 </div>
               </div>
 
               {/* Bulk Paste Multi-Keys */}
-              <div style={{ padding: 14, borderRadius: 14, background: 'var(--vg-bg2)', display: 'grid', gap: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>Bulk add API keys (separate by newline, comma, or `/`)</div>
+              <div className="adm-bulk-box">
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Bulk add API keys (newline, comma, or `/`)</div>
                 <textarea
                   rows={3}
-                  style={{ ...inputStyle, fontFamily: 'var(--font-mono, monospace)', fontSize: 13 }}
-                  placeholder="AQ.Ab8... / AQ.Ab8... / AIzaSy...  (or one key per line)"
+                  className="adm-input mn"
+                  style={{ fontSize: 12.5, lineHeight: 1.5 }}
+                  placeholder="AQ.Ab8... / AIzaSy...  (or one key per line)"
                   value={bulkText[p.slug] ?? ''}
                   onChange={(e) => setBulkText((prev) => ({ ...prev, [p.slug]: e.target.value }))}
                 />
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div className="adm-bulk-row">
                   <input
-                    style={{ ...inputStyle, width: 170 }}
-                    placeholder="Label prefix (optional)"
+                    className="adm-input"
+                    placeholder="Label prefix (opt.)"
                     value={bulkPrefix[p.slug] ?? ''}
                     onChange={(e) => setBulkPrefix((prev) => ({ ...prev, [p.slug]: e.target.value }))}
                   />
@@ -502,84 +522,140 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
                     type="number"
                     min="0"
                     step="1"
-                    style={{ ...inputStyle, width: 180 }}
-                    placeholder="Per-key budget USD (e.g. 100)"
+                    className="adm-input"
+                    placeholder="Budget USD (e.g. 100)"
                     value={bulkBudget[p.slug] ?? ''}
                     onChange={(e) => setBulkBudget((prev) => ({ ...prev, [p.slug]: e.target.value }))}
                   />
-                  <button type="button" className="btn key" onClick={() => addBulkKeys(p.slug)} disabled={busy}>
+                  <button type="button" className="btn key adm-full-xs" onClick={() => addBulkKeys(p.slug)} disabled={busy} style={{ minHeight: 40 }}>
                     + Add & Activate Keys
                   </button>
                 </div>
               </div>
 
-              {/* Stored Keys Table */}
+              {/* Stored Keys: Desktop Table */}
               {p.keys.length > 0 && (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr className="mn" style={{ textAlign: 'left', color: 'var(--vg-ink3)', borderBottom: '1px solid var(--vg-line)' }}>
-                        <th style={{ padding: '8px 10px' }}>Label</th>
-                        <th style={{ padding: '8px 10px' }}>Masked Key</th>
-                        <th style={{ padding: '8px 10px' }}>Budget Cap</th>
-                        <th style={{ padding: '8px 10px' }}>Status</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {p.keys.map((k) => {
-                        const liveKey = live?.keys.find((lk) => lk.label === k.label);
-                        return (
-                          <tr key={k.id} style={{ borderTop: '1px solid var(--vg-line)' }}>
-                            <td className="mn" style={{ padding: '9px 10px', fontWeight: 500 }}>
+                <>
+                  <div className="adm-desktop" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr className="mn" style={{ textAlign: 'left', color: 'var(--vg-ink3)', borderBottom: '1px solid var(--vg-line)' }}>
+                          <th style={{ padding: '8px 10px' }}>Label</th>
+                          <th style={{ padding: '8px 10px' }}>Masked Key</th>
+                          <th style={{ padding: '8px 10px' }}>Budget Cap</th>
+                          <th style={{ padding: '8px 10px' }}>Status</th>
+                          <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {p.keys.map((k) => {
+                          const liveKey = live?.keys.find((lk) => lk.label === k.label);
+                          const statusTone = !k.enabled
+                            ? 'subtle'
+                            : liveKey?.status === 'exhausted' || liveKey?.status === 'budget_capped'
+                              ? 'err'
+                              : liveKey?.status === 'cooling_down'
+                                ? 'warn'
+                                : 'ok';
+                          return (
+                            <tr key={k.id} style={{ borderTop: '1px solid var(--vg-line)' }}>
+                              <td className="mn" style={{ padding: '9px 10px', fontWeight: 500 }}>
+                                {k.label}
+                              </td>
+                              <td className="mn" style={{ padding: '9px 10px', color: 'var(--vg-ink2)' }}>
+                                {k.keyHint}
+                              </td>
+                              <td className="mn" style={{ padding: '9px 10px', color: 'var(--vg-ink2)' }}>
+                                {k.budgetUsd !== null ? `$${k.budgetUsd.toFixed(2)}` : 'Unlimited'}
+                                {liveKey ? ` (uses: ${liveKey.uses}, $${liveKey.spentUsd})` : ''}
+                              </td>
+                              <td className="mn" style={{ padding: '9px 10px' }}>
+                                <span className={`adm-pill ${statusTone}`}>
+                                  {!k.enabled ? 'disabled' : liveKey ? liveKey.status : 'active'}
+                                  {liveKey?.cooldownRemainingSec ? ` (${liveKey.cooldownRemainingSec}s)` : ''}
+                                </span>
+                              </td>
+                              <td style={{ padding: '9px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <button
+                                  type="button"
+                                  className="chip"
+                                  style={{ marginRight: 6 }}
+                                  onClick={() => toggleKey(k.id, !k.enabled)}
+                                  disabled={busy}
+                                >
+                                  {k.enabled ? 'Disable' : 'Enable'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="chip"
+                                  style={{ color: 'var(--vg-red)' }}
+                                  onClick={() => removeKey(k.id)}
+                                  disabled={busy}
+                                >
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Stored Keys: Mobile Stacked Cards */}
+                  <div className="adm-mobile-list">
+                    {p.keys.map((k) => {
+                      const liveKey = live?.keys.find((lk) => lk.label === k.label);
+                      const statusTone = !k.enabled
+                        ? 'subtle'
+                        : liveKey?.status === 'exhausted' || liveKey?.status === 'budget_capped'
+                          ? 'err'
+                          : liveKey?.status === 'cooling_down'
+                            ? 'warn'
+                            : 'ok';
+                      return (
+                        <div key={k.id} className="adm-key-card">
+                          <div className="adm-mcard-row">
+                            <span className="mn" style={{ fontWeight: 600, fontSize: 13 }}>
                               {k.label}
-                            </td>
-                            <td className="mn" style={{ padding: '9px 10px', color: 'var(--vg-ink2)' }}>
-                              {k.keyHint}
-                            </td>
-                            <td className="mn" style={{ padding: '9px 10px', color: 'var(--vg-ink2)' }}>
+                            </span>
+                            <span className={`adm-pill ${statusTone}`}>
+                              {!k.enabled ? 'disabled' : liveKey ? liveKey.status : 'active'}
+                              {liveKey?.cooldownRemainingSec ? ` (${liveKey.cooldownRemainingSec}s)` : ''}
+                            </span>
+                          </div>
+                          <div className="adm-mcard-row mn" style={{ fontSize: 12, color: 'var(--vg-ink2)' }}>
+                            <span>{k.keyHint}</span>
+                            <span>
                               {k.budgetUsd !== null ? `$${k.budgetUsd.toFixed(2)}` : 'Unlimited'}
-                              {liveKey ? ` (uses: ${liveKey.uses}, $${liveKey.spentUsd})` : ''}
-                            </td>
-                            <td className="mn" style={{ padding: '9px 10px' }}>
-                              <span
-                                style={{
-                                  padding: '2px 7px',
-                                  borderRadius: 6,
-                                  background: 'var(--vg-raised)',
-                                  color: !k.enabled
-                                    ? 'var(--vg-ink3)'
-                                    : liveKey?.status === 'exhausted' || liveKey?.status === 'budget_capped'
-                                      ? 'var(--vg-red)'
-                                      : liveKey?.status === 'cooling_down'
-                                        ? 'var(--vg-sand)'
-                                        : 'var(--vg-green)',
-                                }}
-                              >
-                                {!k.enabled ? 'disabled' : liveKey ? liveKey.status : 'active'}
-                                {liveKey?.cooldownRemainingSec ? ` (${liveKey.cooldownRemainingSec}s)` : ''}
-                              </span>
-                            </td>
-                            <td style={{ padding: '9px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <button
-                                type="button"
-                                className="chip"
-                                style={{ marginRight: 6 }}
-                                onClick={() => toggleKey(k.id, !k.enabled)}
-                                disabled={busy}
-                              >
-                                {k.enabled ? 'Disable' : 'Enable'}
-                              </button>
-                              <button type="button" className="chip" style={{ color: 'var(--vg-red)' }} onClick={() => removeKey(k.id)} disabled={busy}>
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                              {liveKey ? ` · ${liveKey.uses} req` : ''}
+                            </span>
+                          </div>
+                          <div className="adm-mcard-actions">
+                            <button
+                              type="button"
+                              className="btn gh"
+                              style={{ flex: 1, minHeight: 36, fontSize: 12.5 }}
+                              onClick={() => toggleKey(k.id, !k.enabled)}
+                              disabled={busy}
+                            >
+                              {k.enabled ? 'Disable' : 'Enable'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn gh"
+                              style={{ flex: 1, minHeight: 36, fontSize: 12.5, color: 'var(--vg-red)' }}
+                              onClick={() => removeKey(k.id)}
+                              disabled={busy}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           );

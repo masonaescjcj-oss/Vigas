@@ -12,6 +12,10 @@ export const SESSION_COOKIE = 'vigas_session';
  * request. It never grants access: every API call re-checks the session cookie or bearer token.
  */
 export const SIGNED_IN_COOKIE = 'vigas_signed_in';
+/** Signed httpOnly cookie bridging a verified Supabase admin session into SSR `/admin/*` pages. */
+export const ADMIN_BRIDGE_COOKIE = 'vigas_admin_bridge';
+/** Readable non-secret UI hint ("1") so mobile nav & dashboard can surface the Admin shortcut. */
+export const ADMIN_HINT_COOKIE = 'vigas_is_admin';
 
 export type AuthVia = 'cookie' | 'bearer';
 
@@ -46,8 +50,12 @@ export async function getRequestAuth(req: Request): Promise<RequestAuth | null> 
   if (PREVIEW_MODE) return null;
   const t = readToken(req);
   if (!t || t.token.length > 200) return null;
-  const user = await getSessionUser(getDb(), t.token);
-  return user ? { user, via: t.via, token: t.token } : null;
+  try {
+    const user = await getSessionUser(getDb(), t.token);
+    return user ? { user, via: t.via, token: t.token } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** For request-time Server Components. Must be rendered inside <Suspense>. */
@@ -58,7 +66,11 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   // The session lookup compares expiry with the current time; tell Next this runs per request,
   // otherwise it reports `new Date()` during prerendering.
   await connection();
-  return getSessionUser(getDb(), token);
+  try {
+    return await getSessionUser(getDb(), token);
+  } catch {
+    return null;
+  }
 }
 
 export const toPublicUser = (u: Pick<SessionUser, 'id' | 'email' | 'name'>): PublicUser => ({
@@ -82,4 +94,6 @@ export function setSessionCookies(res: NextResponse, token: string): void {
 export function clearSessionCookies(res: NextResponse): void {
   res.cookies.set(SESSION_COOKIE, '', { ...cookieBase(), httpOnly: true, maxAge: 0 });
   res.cookies.set(SIGNED_IN_COOKIE, '', { ...cookieBase(), httpOnly: false, maxAge: 0 });
+  res.cookies.set(ADMIN_BRIDGE_COOKIE, '', { ...cookieBase(), httpOnly: true, maxAge: 0 });
+  res.cookies.set(ADMIN_HINT_COOKIE, '', { ...cookieBase(), httpOnly: false, maxAge: 0 });
 }

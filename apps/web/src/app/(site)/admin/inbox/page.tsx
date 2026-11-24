@@ -23,7 +23,7 @@ export default function InboxPage() {
 
 async function Inbox() {
   await getAdminUser();
-  const items = await adminListNewsItems(getDb(), { statuses: ['new', 'error', 'drafted', 'ignored'], limit: 100 });
+  const items = await adminListNewsItems(getDb(), { statuses: ['new', 'error', 'drafted', 'ignored'], limit: 100 }).catch(() => []);
   if (items.length === 0) {
     return (
       <div className="card" style={{ borderRadius: 20, padding: 20 }}>

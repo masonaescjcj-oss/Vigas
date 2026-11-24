@@ -28,7 +28,14 @@ export default function AdminToolsPage() {
 
 async function ToolList() {
   await getAdminUser();
-  const tools = await listTools(getDb(), { limit: 200 });
+  const tools = await listTools(getDb(), { limit: 200 }).catch(() => []);
+  if (tools.length === 0) {
+    return (
+      <div className="card" style={{ borderRadius: 18, padding: 20, color: 'var(--vg-ink2)', fontSize: 14 }}>
+        No tools loaded yet (or waiting for Postgres connection).
+      </div>
+    );
+  }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
       {tools.map((t) => (

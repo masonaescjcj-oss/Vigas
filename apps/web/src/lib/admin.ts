@@ -1,18 +1,104 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { revalidateTag } from 'next/cache';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { NextResponse } from 'next/server';
-import { AdminInputError, type SessionUser } from '@vigas/db';
-import { getCurrentUser, readToken, type RequestAuth } from './auth';
+import { connection, NextResponse } from 'next/server';
+import { AdminInputError, getDb, probeDb, type SessionUser } from '@vigas/db';
+import { ADMIN_BRIDGE_COOKIE, ADMIN_HINT_COOKIE, getCurrentUser, readToken, type RequestAuth } from './auth';
 import { serverEnv } from './env';
-import { apiError, requireAuth } from './http';
+import { apiError, originMismatch, requireAuth } from './http';
+import { PREVIEW_MODE } from './preview';
 
-const DEFAULT_ADMIN_EMAILS = ['ma.sonaescjcj@gmail.com'];
+export const DEFAULT_ADMIN_EMAILS = ['ma.sonaescjcj@gmail.com'];
+const ADMIN_BRIDGE_TTL_SEC = 60 * 60 * 12; // 12 hours
+
+interface AdminBridgePayload {
+  id: string;
+  email: string;
+  name: string | null;
+  exp: number;
+}
 
 function matchesInternalToken(candidate: string): boolean {
   const expected = serverEnv().internalToken;
   if (!expected || expected.length < 24 || candidate.length !== expected.length) return false;
   return timingSafeEqual(Buffer.from(candidate), Buffer.from(expected));
+}
+
+function adminBridgeSecret(): Buffer | null {
+  const env = serverEnv();
+  const raw = env.internalToken || (process.env.UPSTREAM_KEYS_SECRET ?? '').trim() || (!env.production ? `dev:${env.supabaseAnonKey}` : '');
+  if (!raw) return null;
+  return createHash('sha256').update(`vigas-admin-bridge:v1:${raw}`).digest();
+}
+
+export function createAdminBridgeToken(user: { id: string; email: string; name: string | null }): string | null {
+  const secret = adminBridgeSecret();
+  if (!secret || !isAdminEmail(user.email)) return null;
+  const payload: AdminBridgePayload = {
+    id: user.id,
+    email: user.email.trim().toLowerCase(),
+    name: user.name ?? null,
+    exp: Math.floor(Date.now() / 1000) + ADMIN_BRIDGE_TTL_SEC,
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = createHmac('sha256', secret).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+
+export function verifyAdminBridgeToken(token: string | undefined | null): SessionUser | null {
+  if (!token) return null;
+  const secret = adminBridgeSecret();
+  if (!secret) return null;
+  const dot = token.indexOf('.');
+  if (dot <= 0 || dot >= token.length - 1) return null;
+  const body = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  const expected = createHmac('sha256', secret).update(body).digest('base64url');
+  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as Partial<AdminBridgePayload>;
+    if (!parsed.email || !parsed.exp || parsed.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!isAdminEmail(parsed.email)) return null;
+    return {
+      id: typeof parsed.id === 'string' && parsed.id ? parsed.id : `supa:${parsed.email}`,
+      email: parsed.email.trim().toLowerCase(),
+      name: typeof parsed.name === 'string' ? parsed.name : null,
+      role: 'admin',
+      accountId: '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminBridgeCookies(res: NextResponse, user: { id: string; email: string; name: string | null }): boolean {
+  const token = createAdminBridgeToken(user);
+  if (!token) return false;
+  const base = {
+    sameSite: 'lax' as const,
+    path: '/',
+    secure: serverEnv().production,
+    maxAge: ADMIN_BRIDGE_TTL_SEC,
+  };
+  res.cookies.set(ADMIN_BRIDGE_COOKIE, token, { ...base, httpOnly: true });
+  res.cookies.set(ADMIN_HINT_COOKIE, '1', { ...base, httpOnly: false });
+  return true;
+}
+
+function readCookieValue(cookieHeader: string | null, name: string): string | null {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === name) {
+      const value = decodeURIComponent(part.slice(i + 1).trim());
+      if (value) return value;
+    }
+  }
+  return null;
 }
 
 export function isAdminEmail(email: string): boolean {
@@ -67,10 +153,38 @@ export async function verifySupabaseAdminToken(accessToken: string): Promise<{ i
   }
 }
 
+export interface AdminDbHealth {
+  previewMode: boolean;
+  connected: boolean;
+  code?: string;
+  message?: string;
+}
+
+/** Safe, non-throwing Postgres health probe for Admin pages and status endpoints. */
+export async function probeAdminDb(): Promise<AdminDbHealth> {
+  if (PREVIEW_MODE) {
+    return {
+      previewMode: true,
+      connected: false,
+      code: 'preview_mode',
+      message: 'DATABASE_URL is not configured.',
+    };
+  }
+  const res = await probeDb(getDb());
+  if (res.ok) return { previewMode: false, connected: true };
+  return {
+    previewMode: false,
+    connected: false,
+    code: res.code,
+    message: res.message,
+  };
+}
+
 /**
  * Admin access. Non-admins get a plain 404 so the admin area doesn't advertise itself.
  * Granted when users.role === 'admin' OR email is listed in DEFAULT_ADMIN_EMAILS / `ADMIN_EMAILS`
- * (supports first-party Postgres sessions, verified Supabase Auth bearer tokens, and `INTERNAL_SERVICE_TOKEN`).
+ * (supports first-party Postgres sessions, verified Supabase Auth bearer tokens, signed
+ * `vigas_admin_bridge` cookies, and `INTERNAL_SERVICE_TOKEN`).
  */
 export async function requireAdmin(req: Request): Promise<RequestAuth | NextResponse> {
   const bearer = readToken(req);
@@ -96,14 +210,45 @@ export async function requireAdmin(req: Request): Promise<RequestAuth | NextResp
       };
     }
   }
+  const bridgeRaw = readCookieValue(req.headers.get('cookie'), ADMIN_BRIDGE_COOKIE);
+  const bridgeUser = verifyAdminBridgeToken(bridgeRaw);
+  if (bridgeUser) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const bad = originMismatch(req);
+      if (bad) return bad;
+    }
+    return {
+      via: 'cookie',
+      token: bridgeRaw!,
+      user: bridgeUser,
+    };
+  }
   return auth;
+}
+
+/**
+ * Resolves the signed-in admin for request-time Server Components from either the Postgres
+ * `vigas_session` cookie or the signed `vigas_admin_bridge` cookie (zero DB dependency).
+ */
+export async function getCurrentAdminUser(): Promise<{ user: SessionUser; via: 'postgres' | 'supabase_bridge' } | null> {
+  const user = await getCurrentUser();
+  if (user) {
+    if (!isAdminUser(user)) return null;
+    return { user, via: 'postgres' };
+  }
+  const bridgeRaw = (await cookies()).get(ADMIN_BRIDGE_COOKIE)?.value;
+  if (!bridgeRaw) return null;
+  await connection();
+  const bridgeUser = verifyAdminBridgeToken(bridgeRaw);
+  if (!bridgeUser) return null;
+  return { user: bridgeUser, via: 'supabase_bridge' };
 }
 
 /** For request-time admin pages (inside <Suspense>). */
 export async function getAdminUser(): Promise<SessionUser> {
-  const user = await getCurrentUser();
-  if (!user || !isAdminUser(user)) notFound();
-  return user;
+  const resolved = await getCurrentAdminUser();
+  if (!resolved) notFound();
+  return resolved.user;
 }
 
 /** Makes edits visible right away on cached public pages. */
@@ -114,8 +259,33 @@ export function refreshContent(kind: 'news' | 'tools', slugs: Array<string | nul
   }
 }
 
-/** Turns validation errors from @vigas/db into a 400; rethrows anything else. */
+/** Extracts a concise Postgres / driver error code if present. */
+export function extractDbError(err: unknown): { code: string; message: string } | null {
+  const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
+  if (!e) return null;
+  const code = e.code || e.cause?.code;
+  const message = e.cause?.message || e.message || '';
+  if (
+    code ||
+    /password authentication failed|connect_timeout|econnrefused|enotfound|database_url|relation .* does not exist/i.test(message)
+  ) {
+    return { code: String(code || 'db_error'), message: message || 'Database unavailable.' };
+  }
+  return null;
+}
+
+/** Turns validation errors from @vigas/db into 400 and DB connectivity errors into 503. */
 export function adminErrorResponse(err: unknown): NextResponse {
   if (err instanceof AdminInputError) return apiError(400, 'invalid_input', err.message);
+  const dbErr = extractDbError(err);
+  if (dbErr) {
+    const hint =
+      dbErr.code === '28P01'
+        ? 'Postgres password authentication failed (28P01). Update DATABASE_URL in Vercel Environment Variables and run Bootstrap.'
+        : dbErr.code === '42P01'
+          ? 'Vigas schema tables are not initialized yet (42P01). Tap "Bootstrap vigas schema" to initialize.'
+          : `Database unavailable (${dbErr.code}): ${dbErr.message}`;
+    return apiError(503, dbErr.code, hint);
+  }
   throw err;
 }

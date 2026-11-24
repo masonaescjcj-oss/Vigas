@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
@@ -8,6 +9,10 @@ export interface DbHandle {
   db: Db;
   close: () => Promise<void>;
 }
+
+export type DbProbeResult =
+  | { ok: true }
+  | { ok: false; code: string; message: string };
 
 function connectionOptions(url: string, maxOverride?: number) {
   let parsed: URL | null = null;
@@ -44,4 +49,17 @@ let shared: DbHandle | undefined;
 export function getDb(): Db {
   shared ??= createDb();
   return shared.db;
+}
+
+/** Lightweight, non-throwing Postgres connectivity check. */
+export async function probeDb(db: Db): Promise<DbProbeResult> {
+  try {
+    await db.execute(sql`SELECT 1`);
+    return { ok: true };
+  } catch (err) {
+    const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } };
+    const code = String(e.code || e.cause?.code || 'db_error');
+    const message = String(e.cause?.message || e.message || 'Database connection failed.');
+    return { ok: false, code, message };
+  }
 }

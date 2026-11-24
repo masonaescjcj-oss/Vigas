@@ -27,9 +27,9 @@ async function Editor({ params }: { params: Params }) {
   const { slug } = await params;
   const db = getDb();
   const [article, authors, models] = await Promise.all([
-    slug === 'new' ? Promise.resolve(null) : adminGetArticle(db, slug),
-    adminListAuthors(db),
-    listModels(db),
+    slug === 'new' ? Promise.resolve(null) : adminGetArticle(db, slug).catch(() => null),
+    adminListAuthors(db).catch(() => []),
+    listModels(db).catch(() => []),
   ]);
   if (slug !== 'new' && !article) notFound();
   return (

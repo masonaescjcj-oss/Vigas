@@ -4,20 +4,59 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
-import { getSupabase, hydrateSessionFromUrl } from '@/lib/client/supabase';
+import { getSupabase, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
+import { Icon } from '../ui';
+
+const RELOAD_GUARD_KEY = 'vigas_admin_bridge_reload_ts';
+
+function canReloadOnce(pathname: string): boolean {
+  try {
+    const raw = window.sessionStorage.getItem(RELOAD_GUARD_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { path?: string; ts?: number };
+      if (parsed.path === pathname && typeof parsed.ts === 'number' && Date.now() - parsed.ts < 15_000) {
+        return false;
+      }
+    }
+    window.sessionStorage.setItem(RELOAD_GUARD_KEY, JSON.stringify({ path: pathname, ts: Date.now() }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearReloadGuard() {
+  try {
+    window.sessionStorage.removeItem(RELOAD_GUARD_KEY);
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+interface AdminSessionResponse {
+  ok?: boolean;
+  email?: string;
+  previewMode?: boolean;
+  dbConnected?: boolean;
+  dbCode?: string | null;
+  dbError?: string | null;
+  bridgeSet?: boolean;
+}
 
 /**
- * Client-side bridge for `/admin/*` when a first-party Postgres `vigas_session` cookie isn't
- * present yet (e.g., user signed in via Google/Supabase Auth, or Vercel is running in PREVIEW_MODE
- * without DATABASE_URL). Exchanges the Supabase session automatically or guides the admin cleanly.
+ * Client-side bridge for `/admin/*` when neither `vigas_session` nor `vigas_admin_bridge` cookie
+ * is present yet (e.g., user signed in via Google/Supabase Auth). Calls `POST /api/admin/session`
+ * to mint the signed httpOnly `vigas_admin_bridge` cookie (which works even when Postgres has 28P01),
+ * performs at most ONE reload guarded by sessionStorage, and never enters a reload loop.
  */
 export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
   const router = useRouter();
   const pathname = usePathname() || '/admin/providers';
+  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<
     | { status: 'checking' }
     | { status: 'denied'; email?: string }
-    | { status: 'preview_admin'; email: string }
+    | { status: 'bridge_blocked'; email: string; dbConnected: boolean; dbCode?: string | null; dbError?: string | null }
     | { status: 'error'; message: string }
   >({ status: 'checking' });
 
@@ -25,50 +64,73 @@ export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
     let active = true;
 
     const run = async () => {
+      setState({ status: 'checking' });
       const hydrated = await hydrateSessionFromUrl().catch(() => ({ session: null }));
       let session = hydrated.session;
       if (!session) {
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 220));
         const { data } = await getSupabase().auth.getSession();
         session = data.session;
       }
       if (!active) return;
 
       if (!session?.access_token) {
+        clearReloadGuard();
         router.replace(`/signin?next=${encodeURIComponent(pathname)}`);
         return;
       }
 
-      // If Postgres is configured, exchange the Supabase JWT for a vigas_session cookie and reload SSR Admin.
-      if (!previewMode) {
-        const exchanged = await exchangeSupabaseSession(session.access_token).catch(() => false);
-        if (!active) return;
-        if (exchanged) {
-          router.refresh();
-          // Give Next.js a moment to re-render the Server Component with the new cookie.
-          await new Promise((r) => setTimeout(r, 600));
-        }
-      }
+      syncSignedInHint(true);
 
-      // Verify admin status server-side using the Supabase access token.
+      // Step 1: Mint signed httpOnly `vigas_admin_bridge` cookie (zero DB dependency) + probe DB.
       try {
         const res = await fetch('/api/admin/session', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            Accept: 'application/json',
+          },
           cache: 'no-store',
         });
         if (!active) return;
+
         if (!res.ok) {
+          clearReloadGuard();
           setState({ status: 'denied', email: session.user?.email ?? undefined });
           return;
         }
-        const data = (await res.json()) as { email: string; previewMode: boolean };
-        if (!data.previewMode) {
-          window.location.reload();
+
+        const data = (await res.json()) as AdminSessionResponse;
+        const email = data.email ?? session.user?.email ?? 'admin';
+
+        // Step 2: Best-effort Postgres cookie exchange ONLY if Postgres is actually connected.
+        if (!previewMode && data.dbConnected) {
+          await exchangeSupabaseSession(session.access_token).catch(() => false);
+        }
+        if (!active) return;
+
+        // Step 3: Reload at most ONCE so SSR AdminGate picks up the newly set cookie and renders full AdminShell.
+        if (data.bridgeSet && canReloadOnce(pathname)) {
+          window.location.replace(pathname);
           return;
         }
-        setState({ status: 'preview_admin', email: data.email });
+
+        // Guard fired (or cookies blocked): NEVER loop! Show clear status + manual action.
+        setState({
+          status: 'bridge_blocked',
+          email,
+          dbConnected: Boolean(data.dbConnected),
+          dbCode: data.dbCode,
+          dbError: data.dbError,
+        });
       } catch {
-        if (active) setState({ status: 'error', message: 'Could not verify admin session right now. Try refreshing.' });
+        if (active) {
+          setState({
+            status: 'error',
+            message: 'Could not verify admin session right now. Check your connection and retry.',
+          });
+        }
       }
     };
 
@@ -76,27 +138,31 @@ export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
     return () => {
       active = false;
     };
-  }, [pathname, previewMode, router]);
+  }, [attempt, pathname, previewMode, router]);
 
   if (state.status === 'checking') {
     return (
-      <div className="card" style={{ padding: 28, borderRadius: 20 }}>
-        <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Verifying admin session…</p>
+      <div className="card" style={{ padding: 26, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="spin" aria-hidden="true" />
+        <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14.5 }}>Verifying admin session…</p>
       </div>
     );
   }
 
   if (state.status === 'denied') {
     return (
-      <div className="card" style={{ padding: 28, borderRadius: 20, display: 'grid', gap: 12 }}>
+      <div className="card" style={{ padding: 26, borderRadius: 20, display: 'grid', gap: 14 }}>
         <h2 style={{ margin: 0, fontSize: 22 }}>Admin access required</h2>
-        <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14 }}>
+        <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14, lineHeight: 1.6 }}>
           You are signed in as <code className="mn">{state.email ?? 'a non-admin account'}</code>, which does not have admin privileges. Sign in with
           your admin email to continue.
         </p>
-        <div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Link href={`/signin?next=${encodeURIComponent(pathname)}`} className="btn key">
             Switch account
+          </Link>
+          <Link href="/dashboard" className="btn gh">
+            Back to API Console
           </Link>
         </div>
       </div>
@@ -105,36 +171,56 @@ export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
 
   if (state.status === 'error') {
     return (
-      <div className="card" style={{ padding: 28, borderRadius: 20 }}>
-        <p style={{ margin: 0, color: 'var(--vg-red)' }}>{state.message}</p>
+      <div className="card" style={{ padding: 26, borderRadius: 20, display: 'grid', gap: 14 }}>
+        <p style={{ margin: 0, color: 'var(--vg-red)', fontSize: 14.5 }}>{state.message}</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn key"
+            onClick={() => {
+              clearReloadGuard();
+              setAttempt((n) => n + 1);
+            }}
+          >
+            <Icon name="refresh" size={15} />
+            Retry verification
+          </button>
+          <Link href="/dashboard" className="btn gh">
+            Back to API Console
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="card" style={{ padding: 26, borderRadius: 20, display: 'grid', gap: 16 }}>
+    <div className="card" style={{ padding: 24, borderRadius: 20, display: 'grid', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ width: 10, height: 10, borderRadius: 99, background: 'var(--vg-green)', display: 'inline-block' }} />
-        <strong>Signed in as Admin ({state.email})</strong>
-        <span className="mn" style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, background: 'var(--vg-raised)', color: 'var(--vg-sand)' }}>
-          PREVIEW_MODE (No DATABASE_URL)
-        </span>
+        <span className="led" aria-hidden="true" />
+        <strong>Admin verified ({state.email})</strong>
+        {!state.dbConnected && (
+          <span className="adm-pill warn">DB {state.dbCode ?? 'offline'}</span>
+        )}
       </div>
       <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14, lineHeight: 1.6 }}>
-        Your admin authentication works! To save upstream providers, encrypted multi-key pools (Google / You.com / SevenAPI), models, and user
-        credits, connect a Postgres database by adding <code className="mn">DATABASE_URL</code> in{' '}
-        <strong>Vercel → Settings → Environment Variables</strong> and redeploying.
+        Your Supabase admin session is verified, but the browser did not retain the admin session cookie (or cookies are restricted in this view).
+        Tap below to open the Admin Panel again, or make sure first-party cookies are enabled for <code className="mn">vigas.app</code>.
       </p>
-      <div style={{ padding: 14, borderRadius: 12, background: 'var(--vg-bg2)', fontFamily: 'var(--font-mono, monospace)', fontSize: 12, lineHeight: 1.7 }}>
-        <div>DATABASE_URL=postgres://user:pass@host:5432/vigas?sslmode=require</div>
-        <div>GATEWAY_URL=https://api.vigas.ai</div>
-        <div>INTERNAL_SERVICE_TOKEN=your-random-32-char-secret</div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn key"
+          onClick={() => {
+            clearReloadGuard();
+            window.location.replace(pathname);
+          }}
+        >
+          Open Admin Panel
+        </button>
+        <Link href="/dashboard" className="btn gh">
+          API Console
+        </Link>
       </div>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--vg-ink3)' }}>
-        Tip: You can copy the Postgres connection string directly from your Supabase project (<strong>Project Settings → Database → Connection
-        string → URI</strong>) or Neon. Tables (<code className="mn">upstream_providers</code>, <code className="mn">upstream_keys</code>) are
-        created automatically on first visit.
-      </p>
     </div>
   );
 }

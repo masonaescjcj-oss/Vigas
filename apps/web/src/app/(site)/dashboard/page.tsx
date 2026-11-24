@@ -38,7 +38,7 @@ async function DashboardInner() {
 
   const env = serverEnv();
   const [user, models] = await Promise.all([getCurrentUser(), getModels()]);
-  const wallet = user ? await getWallet(getDb(), user.accountId, env.topupFeeBps) : null;
+  const wallet = user ? await getWallet(getDb(), user.accountId, env.topupFeeBps).catch(() => null) : null;
 
   const content = (
     <>
