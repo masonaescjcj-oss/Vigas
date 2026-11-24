@@ -20,6 +20,7 @@ import {
 } from '@/lib/client/supabase-account';
 import { API_BASE_URL } from '@/lib/client/supabase-config';
 import { CopyButton } from '../copy-button';
+import { ThemeToggle } from '../theme-toggle';
 import { Icon, type IconName } from '../ui';
 import { DashboardConnect } from './dashboard-connect';
 import { DashboardModels } from './dashboard-models';
@@ -94,6 +95,7 @@ export function DashboardClient({
   const ids = useId();
 
   const [tab, setTab] = useState<ConsoleTab>('overview');
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>('vigas/auto');
   const [wallet, setWallet] = useState(initial);
   const [rpcReady, setRpcReady] = useState(supabaseRpcReady);
@@ -123,6 +125,15 @@ export function DashboardClient({
       window.dispatchEvent(new Event('vigas-hash'));
     }
   };
+
+  useEffect(() => {
+    if (!accountSheetOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAccountSheetOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [accountSheetOpen]);
 
   useEffect(() => {
     const onHash = () => {
@@ -365,22 +376,41 @@ export function DashboardClient({
   const sourceLabels = isFa ? SOURCE_LABEL_FA : SOURCE_LABEL_EN;
 
   const renderCreditsSection = () => (
-    <section id="credits" aria-labelledby={`${ids}-credits`} className="card" style={{ ...card, flex: '1 1 380px', scrollMarginTop: 24 }}>
-      <h2 id={`${ids}-credits`} className="lbl" style={{ margin: 0 }}>
-        {isFa ? 'خرید اعتبار API · درگاه AvexPay' : 'Buy API credits · AvexPay'}
+    <section
+      id="credits"
+      aria-labelledby={`${ids}-credits`}
+      className="card dash-wallet-hero"
+      style={{ ...card, flex: '1 1 380px', scrollMarginTop: 24, position: 'relative', overflow: 'hidden' }}
+    >
+      <div aria-hidden="true" className="dash-wallet-ring dash-wallet-ring-lg" />
+      <div aria-hidden="true" className="dash-wallet-ring dash-wallet-ring-sm" />
+      <h2 id={`${ids}-credits`} className="lbl" style={{ margin: 0, position: 'relative' }}>
+        {isFa ? 'موجودی در دسترس · AvexPay' : 'Available credits · AvexPay'}
       </h2>
-      <div className="sf" aria-live="polite" dir="ltr" style={{ fontSize: 'clamp(40px,5vw,60px)', lineHeight: 1.05, letterSpacing: '-.03em', margin: '10px 0 6px', textAlign: isFa ? 'right' : 'left' }}>
+      <div
+        className="sf"
+        aria-live="polite"
+        dir="ltr"
+        style={{
+          position: 'relative',
+          fontSize: 'clamp(46px,11vw,60px)',
+          lineHeight: 1.02,
+          letterSpacing: '-.03em',
+          margin: '10px 0 6px',
+          textAlign: isFa ? 'right' : 'left',
+        }}
+      >
         {formatUsd(wallet.balanceMicros)}
       </div>
-      <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+      <div className="mn" style={{ position: 'relative', fontSize: 12, color: 'var(--vg-ink3)' }}>
         {isFa
-          ? `مجموع شارژ تاکنون: ${formatUsd(wallet.lifetimeTopupMicros)} · بدون انقضا برای همه مدل‌ها`
-          : `${formatUsd(wallet.lifetimeTopupMicros)} lifetime top-ups · never expires across all models`}
+          ? `مجموع شارژ تاکنون: ${formatUsd(wallet.lifetimeTopupMicros)} · بدون انقضا`
+          : `${formatUsd(wallet.lifetimeTopupMicros)} lifetime · never expires`}
       </div>
 
       {isSupabase ? (
         <>
-          <div role="group" aria-label={isFa ? 'بسته شارژ اعتبار' : 'Credit pack'} dir="ltr" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 8, margin: '18px 0 14px' }}>
+          <div role="group" aria-label={isFa ? 'بسته شارژ اعتبار' : 'Credit pack'} dir="ltr" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 8, margin: '18px 0 12px' }}>
             {SUPABASE_CREDIT_PACKS.map((p) => {
               const on = supaPack === p.id;
               return (
@@ -391,8 +421,8 @@ export function DashboardClient({
                   onClick={() => setSupaPack(p.id)}
                   className="mn"
                   style={{
-                    height: 50,
-                    borderRadius: 12,
+                    height: 48,
+                    borderRadius: 14,
                     cursor: 'pointer',
                     fontSize: 15,
                     fontWeight: 600,
@@ -406,24 +436,28 @@ export function DashboardClient({
               );
             })}
           </div>
-          <button type="button" className="btn key" onClick={topup} disabled={topupBusy} style={{ width: '100%', minHeight: 50, fontSize: 15 }}>
+          <button
+            type="button"
+            className="btn key dash-pay-cta"
+            onClick={topup}
+            disabled={topupBusy}
+            style={{ position: 'relative', width: '100%', minHeight: 52, borderRadius: 16, fontSize: 15.5, fontWeight: 600 }}
+          >
             {topupBusy
               ? isFa
                 ? 'در حال انتقال به درگاه AvexPay…'
                 : 'Opening AvexPay checkout…'
               : isFa
-                ? `شارژ $${selectedPack.usd} با AvexPay (رمزارز و Stars)`
-                : `Pay $${selectedPack.usd} with AvexPay (Crypto & Stars)`}
+                ? `شارژ $${selectedPack.usd} با AvexPay`
+                : `Add $${selectedPack.usd}.00 with AvexPay`}
           </button>
-          <p style={{ fontSize: 13, color: 'var(--vg-ink3)', margin: '10px 0 0' }}>
-            {isFa
-              ? 'درگاه امن AvexPay.net · پرداخت آنی با USDT (TRC20/TON/BEP20)، BTC، ETH و Telegram Stars.'
-              : 'Powered by AvexPay.net · instant settlement with USDT, BTC, ETH, TON & Telegram Stars.'}
+          <p className="mn" style={{ position: 'relative', fontSize: 11.5, color: 'var(--vg-ink3)', textAlign: 'center', margin: '10px 0 0' }}>
+            {isFa ? 'USDT · BTC · ETH · TON · Telegram Stars' : 'USDT · BTC · ETH · TON · Telegram Stars'}
           </p>
         </>
       ) : (
         <>
-          <div role="group" aria-label={isFa ? 'انتخاب مبلغ شارژ' : 'Top-up amount'} dir="ltr" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: 6, margin: '18px 0 10px' }}>
+          <div role="group" aria-label={isFa ? 'انتخاب مبلغ شارژ' : 'Top-up amount'} dir="ltr" style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: 6, margin: '18px 0 10px' }}>
             {PRESETS.map((a) => {
               const on = !custom && amount === a;
               return (
@@ -437,11 +471,11 @@ export function DashboardClient({
                   }}
                   className="mn"
                   style={{
-                    height: 44,
-                    borderRadius: 11,
+                    height: 46,
+                    borderRadius: 13,
                     cursor: 'pointer',
                     fontSize: 14,
-                    fontWeight: 500,
+                    fontWeight: 600,
                     background: on ? 'var(--vg-orange-soft)' : 'var(--vg-bg2)',
                     color: on ? 'var(--vg-orange-text)' : 'var(--vg-ink)',
                     border: `1px solid ${on ? 'var(--vg-orange-edge)' : 'var(--vg-line2)'}`,
@@ -452,7 +486,7 @@ export function DashboardClient({
               );
             })}
           </div>
-          <label className="field" dir="ltr" style={{ height: 44, marginBottom: 12 }}>
+          <label className="field" dir="ltr" style={{ position: 'relative', height: 46, borderRadius: 13, marginBottom: 12 }}>
             <span className="mn" style={{ fontSize: 14 }}>
               $
             </span>
@@ -469,7 +503,13 @@ export function DashboardClient({
               style={{ font: '14px var(--vg-font-mono)' }}
             />
           </label>
-          <button type="button" className="btn key" onClick={topup} disabled={!amountValid || topupBusy || !paymentsEnabled} style={{ width: '100%', minHeight: 50, fontSize: 15 }}>
+          <button
+            type="button"
+            className="btn key dash-pay-cta"
+            onClick={topup}
+            disabled={!amountValid || topupBusy || !paymentsEnabled}
+            style={{ position: 'relative', width: '100%', minHeight: 52, borderRadius: 16, fontSize: 15.5, fontWeight: 600 }}
+          >
             {topupBusy
               ? paymentMode === 'avexpay'
                 ? isFa
@@ -490,119 +530,207 @@ export function DashboardClient({
                   ? 'مبلغی بین $1 تا $1,000 وارد کنید'
                   : 'Enter $1 – $1,000'}
           </button>
-          <p className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', textAlign: 'center', margin: '8px 0 0' }}>
+          <p className="mn" style={{ position: 'relative', fontSize: 11.5, color: 'var(--vg-ink3)', textAlign: 'center', margin: '10px 0 0' }}>
             {amountValid
               ? q.fee
                 ? isFa
-                  ? `پرداختی شما ${formatUsd(q.total)} · شامل ${formatUsd(q.fee)} کارمزد`
-                  : `You pay ${formatUsd(q.total)} · includes ${formatUsd(q.fee)} fee`
+                  ? `مبلغ نهایی ${formatUsd(q.total)} · شامل ${formatUsd(q.fee)} کارمزد`
+                  : `Total ${formatUsd(q.total)} · includes ${formatUsd(q.fee)} fee`
                 : isFa
-                  ? `پرداختی شما ${formatUsd(q.total)} · بدون کارمزد`
-                  : `You pay ${formatUsd(q.total)} · no fee`
+                  ? `مبلغ نهایی ${formatUsd(q.total)} · بدون کارمزد`
+                  : `Total ${formatUsd(q.total)} · $0 fee`
               : '\u00A0'}
-          </p>
-          <p style={{ fontSize: 13, color: 'var(--vg-ink3)', margin: '10px 0 0' }}>
-            {paymentMode === 'avexpay'
-              ? isFa
-                ? 'درگاه امن AvexPay.net · پرداخت با رمزارزها (USDT/BTC/ETH/TON) و Telegram Stars.'
-                : 'Powered by AvexPay.net · pay securely with Crypto or Telegram Stars.'
-              : paymentMode === 'test'
-                ? isFa
-                  ? 'حالت آزمایشی: اعتبار فوراً اضافه می‌شود و هیچ وجهی کسر نمی‌گردد.'
-                  : 'Test mode: credits are added instantly and no payment is charged.'
-                : isFa
-                  ? 'درگاه پرداخت در حال حاضر متصل نیست.'
-                  : 'Payments are not connected yet.'}
           </p>
         </>
       )}
 
       {topupMsg && (
-        <p role={topupMsg.ok ? 'status' : 'alert'} className={`notice ${topupMsg.ok ? 'ok' : 'err'}`} style={{ margin: '12px 0 0' }}>
+        <p role={topupMsg.ok ? 'status' : 'alert'} className={`notice ${topupMsg.ok ? 'ok' : 'err'}`} style={{ position: 'relative', margin: '12px 0 0' }}>
           {topupMsg.text}
         </p>
       )}
     </section>
   );
 
-  const renderKeysSection = () => (
-    <section id="keys" aria-labelledby={`${ids}-keys`} className="card" style={{ ...card, scrollMarginTop: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h2 id={`${ids}-keys`} className="sf" style={{ fontSize: isFa ? 24 : 28, margin: 0, fontWeight: isFa ? 700 : 400 }}>
-          {isFa ? 'مدیریت کلیدهای API' : 'API keys'}
+  const renderUsageSection = () => (
+    <section aria-labelledby={`${ids}-usage`} className="card dash-card" style={{ ...card, flex: '1.4 1 460px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+        <h2 id={`${ids}-usage`} className="sf" style={{ fontSize: isFa ? 22 : 26, margin: 0, fontWeight: isFa ? 700 : 400 }}>
+          {isFa ? 'مصرف این هفته' : 'This week'}
         </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-            {isFa ? `${wallet.keys.length} کلید فعال` : `${wallet.keys.length} active`}
-          </span>
-          <button type="button" className="btn gh" onClick={() => switchTab('connect')} style={{ minHeight: 32, padding: '0 10px', fontSize: 12 }}>
-            <Icon name="code" size={14} />
-            {isFa ? 'نمونه کد و اتصال ابزارها' : 'Code & tool setup'}
-          </button>
-        </div>
+        <span className="mn" dir="ltr" style={{ fontSize: 13.5, color: 'var(--vg-ink2)' }}>
+          {formatUsd(weekTotal, { maxDecimals: 4 })}
+        </span>
+      </div>
+      <ol aria-label={isFa ? 'هزینه روزانه' : 'Spend per day'} dir="ltr" style={{ listStyle: 'none', margin: '18px 0 0', padding: 0, display: 'flex', alignItems: 'flex-end', gap: 8, height: 140, borderBottom: '1px solid var(--vg-line)' }}>
+        {wallet.week.map((d, i) => {
+          const last = i === wallet.week.length - 1;
+          const h = d.costMicros ? Math.max(8, Math.round((d.costMicros / weekMax) * 104)) : 4;
+          return (
+            <li key={d.date} style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <span className="mn" style={{ fontSize: 10.5, color: last ? 'var(--vg-orange-text)' : 'var(--vg-ink3)', whiteSpace: 'nowrap' }}>
+                {d.costMicros ? formatUsd(d.costMicros, { maxDecimals: 4 }) : '$0'}
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  display: 'block',
+                  width: '74%',
+                  maxWidth: 32,
+                  height: h,
+                  borderRadius: '6px 6px 2px 2px',
+                  background: last ? 'var(--vg-orange)' : 'var(--vg-pillar)',
+                }}
+              />
+              <span className="sr-only">{shortDay(d.date)}</span>
+            </li>
+          );
+        })}
+      </ol>
+      <div aria-hidden="true" dir="ltr" style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        {wallet.week.map((d, i) => {
+          const last = i === wallet.week.length - 1;
+          return (
+            <span
+              key={d.date}
+              className="mn"
+              style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center', fontSize: 11, color: last ? 'var(--vg-ink)' : 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden' }}
+            >
+              {shortDay(d.date)}
+            </span>
+          );
+        })}
       </div>
 
-      {isSupabase && !rpcReady && (
-        <div
-          role="status"
-          style={{
-            marginTop: 14,
-            padding: '12px 14px',
-            borderRadius: 12,
-            background: 'var(--vg-sand-soft)',
-            border: '1px solid var(--vg-sand-edge)',
-            color: 'var(--vg-ink)',
-            fontSize: 13.5,
-            lineHeight: 1.6,
-          }}
-        >
-          {isFa
-            ? 'ساخت و ذخیره کلید API نیازمند اجرای مایگریشن کیف‌پول روی دیتابیس Supabase (فایل 20261119090000_vigas_wallet_api_keys.sql) یا تنظیم DATABASE_URL روی Vercel است.'
-            : 'Persistent API key creation requires applying the Supabase wallet migration (20261119090000_vigas_wallet_api_keys.sql) or configuring DATABASE_URL on Vercel.'}
-        </div>
-      )}
-
-      <form onSubmit={onCreateKey} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', margin: '18px 0 6px' }}>
-        <label style={{ flex: '2 1 240px', minWidth: 0 }}>
-          <span style={fieldLabel}>{isFa ? 'نام کلید' : 'Key name'}</span>
-          <input
-            className="input"
-            value={keyName}
-            maxLength={80}
-            placeholder={isFa ? 'مثلاً سرور اصلی، Cursor یا ربات تلگرام' : 'e.g. Production server, Cursor, Bot'}
-            onChange={(e) => setKeyName(e.target.value)}
-            style={{ height: 46 }}
-          />
-        </label>
-        <label style={{ flex: '1 1 180px', minWidth: 0 }}>
-          <span style={fieldLabel}>
-            {isFa ? 'سقف ماهانه ' : 'Monthly limit '}
-            <span style={{ color: 'var(--vg-ink3)' }}>{isFa ? '(اختیاری، دلاری)' : '(optional, $)'}</span>
-          </span>
-          <input
-            className="input"
-            type="number"
-            dir="ltr"
-            inputMode="decimal"
-            min={1}
-            max={100000}
-            step="0.01"
-            value={keyLimit}
-            placeholder={isFa ? 'نامحدود' : 'No limit'}
-            onChange={(e) => setKeyLimit(e.target.value)}
-            style={{ height: 46, fontFamily: 'var(--vg-font-mono)' }}
-          />
-        </label>
-        <button type="submit" className="btn key" disabled={keyBusy || (isSupabase && !rpcReady)} style={{ minHeight: 46 }}>
-          <Icon name="plus" size={16} />
-          {keyBusy ? (isFa ? 'در حال ساخت…' : 'Creating…') : isFa ? 'ساخت کلید جدید' : 'Create key'}
-        </button>
-      </form>
-      {keyErr && (
-        <p role="alert" className="notice err" style={{ margin: '10px 0 0' }}>
-          {keyErr}
+      <h3 className="lbl" style={{ margin: '22px 0 10px' }}>
+        {isFa ? 'بر اساس بخش · ۳۰ روز گذشته' : 'By product · last 30 days'}
+      </h3>
+      {wallet.bySource.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--vg-ink3)', lineHeight: 1.6 }}>
+          {isFa ? 'هنوز مصرفی ثبت نشده است. با اولین درخواست API نمودار زنده می‌شود.' : 'No usage yet. Make your first API call to see live breakdown here.'}
         </p>
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {wallet.bySource.map((s) => (
+            <li key={s.source} style={{ display: 'grid', gridTemplateColumns: '96px minmax(0,1fr) 76px', gap: 10, alignItems: 'center', fontSize: 13.5 }}>
+              <span>{sourceLabels[s.source] ?? s.source}</span>
+              <span aria-hidden="true" style={{ height: 6, borderRadius: 3, background: 'var(--vg-raised)', overflow: 'hidden' }}>
+                <span style={{ display: 'block', height: '100%', width: `${sourceTotal ? (s.costMicros / sourceTotal) * 100 : 0}%`, background: SOURCE_COLOR[s.source] ?? 'var(--vg-blue)', borderRadius: 3 }} />
+              </span>
+              <span className="mn" dir="ltr" style={{ fontSize: 12.5, textAlign: 'end' }}>
+                {formatUsd(s.costMicros, { maxDecimals: 4 })}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
+    </section>
+  );
+
+  const renderKeysSection = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Compact single-row Gateway Endpoint strip on mobile */}
+      <div className="dash-mob-only dash-endpoint-bar">
+        <span className="mn" style={{ fontSize: 10.5, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.08em', flexShrink: 0 }}>
+          API
+        </span>
+        <code className="mn" dir="ltr" style={{ fontSize: 12.5, color: 'var(--vg-green)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+          {API_BASE_URL}
+        </code>
+        <CopyButton text={API_BASE_URL} label={isFa ? 'کپی Base URL' : 'Copy Base URL'} copiedText={isFa ? 'کپی شد' : 'Copied'} style={{ minHeight: 30, padding: '0 10px', fontSize: 11.5, borderRadius: 9 }}>
+          {isFa ? 'کپی' : 'Copy'}
+        </CopyButton>
+      </div>
+
+      <section id="keys" aria-labelledby={`${ids}-keys`} className="card dash-card" style={{ ...card, scrollMarginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 id={`${ids}-keys`} className="sf" style={{ fontSize: isFa ? 22 : 26, margin: 0, fontWeight: isFa ? 700 : 400 }}>
+            {isFa ? 'ساخت کلید جدید' : 'Create API key'}
+          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+              {isFa ? `${wallet.keys.length} کلید فعال` : `${wallet.keys.length} active`}
+            </span>
+            <button type="button" className="btn gh dash-desk-only" onClick={() => switchTab('connect')} style={{ minHeight: 32, padding: '0 10px', fontSize: 12 }}>
+              <Icon name="code" size={14} />
+              {isFa ? 'نمونه کد و اتصال ابزارها' : 'Code & tool setup'}
+            </button>
+          </div>
+        </div>
+
+        {isSupabase && !rpcReady && (
+          <div
+            role="status"
+            style={{
+              marginTop: 12,
+              padding: '10px 12px',
+              borderRadius: 12,
+              background: 'var(--vg-sand-soft)',
+              border: '1px solid var(--vg-sand-edge)',
+              color: 'var(--vg-ink2)',
+              fontSize: 12.5,
+              lineHeight: 1.55,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span>
+              {isFa
+                ? 'ساخت کلید دائمی پس از فعال‌سازی دیتابیس کیف‌پول آماده می‌شود.'
+                : 'Persistent API keys unlock as soon as the wallet database is connected.'}
+            </span>
+            {isAdmin && (
+              <Link href="/admin/providers" className="mn" style={{ fontSize: 11.5, color: 'var(--vg-orange-text)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                {isFa ? 'تنظیم در پنل ادمین ←' : 'Configure in Admin →'}
+              </Link>
+            )}
+          </div>
+        )}
+
+        <form onSubmit={onCreateKey} className="dash-key-form" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', margin: '14px 0 4px' }}>
+          <label style={{ flex: '2 1 220px', minWidth: 0 }}>
+            <span style={fieldLabel}>{isFa ? 'نام کلید' : 'Key name'}</span>
+            <input
+              className="input"
+              value={keyName}
+              maxLength={80}
+              placeholder={isFa ? 'مثلاً سرور اصلی، Cursor یا ربات تلگرام' : 'e.g. Production, Cursor, Bot'}
+              onChange={(e) => setKeyName(e.target.value)}
+              style={{ height: 46, borderRadius: 13 }}
+            />
+          </label>
+          <label style={{ flex: '1 1 160px', minWidth: 0 }}>
+            <span style={fieldLabel}>
+              {isFa ? 'سقف ماهانه ' : 'Monthly limit '}
+              <span style={{ color: 'var(--vg-ink3)' }}>{isFa ? '(اختیاری، $)' : '(optional, $)'}</span>
+            </span>
+            <input
+              className="input"
+              type="number"
+              dir="ltr"
+              inputMode="decimal"
+              min={1}
+              max={100000}
+              step="0.01"
+              value={keyLimit}
+              placeholder={isFa ? 'نامحدود' : 'No limit'}
+              onChange={(e) => setKeyLimit(e.target.value)}
+              style={{ height: 46, borderRadius: 13, fontFamily: 'var(--vg-font-mono)' }}
+            />
+          </label>
+          <button type="submit" className="btn key dash-create-btn" disabled={keyBusy || (isSupabase && !rpcReady)} style={{ minHeight: 46, borderRadius: 14 }}>
+            <Icon name="plus" size={16} />
+            {keyBusy ? (isFa ? 'در حال ساخت…' : 'Creating…') : isFa ? 'ساخت کلید جدید' : 'Create key'}
+          </button>
+        </form>
+        {keyErr && (
+          <p role="alert" className="notice err" style={{ margin: '10px 0 0' }}>
+            {keyErr}
+          </p>
+        )}
 
       {created && (
         <div role="status" style={{ margin: '16px 0 4px', padding: 16, borderRadius: 14, background: 'var(--vg-green-soft)', border: '1px solid var(--vg-green-edge)' }}>
@@ -776,13 +904,176 @@ export function DashboardClient({
           })}
         </ul>
       )}
-    </section>
+      </section>
+    </div>
   );
 
+  const initials = (user.name || user.email || 'VG').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '').slice(0, 2).toUpperCase() || 'VG';
+  const mobileTitle =
+    tab === 'credits'
+      ? isFa
+        ? 'کیف‌پول'
+        : 'Wallet'
+      : tab === 'connect'
+        ? isFa
+          ? 'اتصال ابزارها'
+          : 'Connect tools'
+        : tab === 'models'
+          ? isFa
+            ? 'مدل‌ها و تعرفه'
+            : 'Models'
+          : isFa
+            ? 'کلیدهای API'
+            : 'API keys';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* Top account bar */}
-      <div className="dash-top-bar">
+    <div className="dash-root" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Native Mobile Top App Bar (visible ONLY <= 860px) */}
+      <header className="dash-mhdr">
+        <div className="dash-mhdr-start">
+          {tab === 'connect' && (
+            <button
+              type="button"
+              className="dash-mhdr-back"
+              onClick={() => switchTab('keys')}
+              aria-label={isFa ? 'بازگشت به کلیدها' : 'Back to API keys'}
+            >
+              <Icon name="arrow" size={18} style={{ transform: isFa ? undefined : 'rotate(180deg)' }} />
+            </button>
+          )}
+          <h1 className="sf dash-mhdr-title">{mobileTitle}</h1>
+        </div>
+        <div className="dash-mhdr-end">
+          {(tab === 'keys' || tab === 'overview') && (
+            <button type="button" className="dash-mhdr-pill" onClick={() => switchTab('connect')}>
+              <Icon name="code" size={14} />
+              <span>{isFa ? 'کد اتصال' : 'Code'}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="dash-mhdr-avatar"
+            onClick={() => setAccountSheetOpen(true)}
+            aria-label={isFa ? 'تنظیمات حساب' : 'Account menu'}
+            aria-expanded={accountSheetOpen}
+          >
+            <span>{initials}</span>
+            <span className="dash-mhdr-dot" aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      {/* Native Android Slide-Up Account Sheet */}
+      {accountSheetOpen && (
+        <div
+          className="vg-sheet-scrim"
+          role="dialog"
+          aria-modal="true"
+          aria-label={isFa ? 'حساب کاربری' : 'Account'}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAccountSheetOpen(false);
+          }}
+        >
+          <div className="vg-sheet">
+            <div className="vg-sheet-handle" aria-hidden="true" />
+            <div className="vg-sheet-head">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+                <span className="adm-avatar" style={{ width: 38, height: 38, borderRadius: 12, fontSize: 13 }}>
+                  {initials}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.name || user.email}
+                  </div>
+                  <div className="mn" dir="ltr" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.email}
+                    {usageSummary?.tier ? ` · ${usageSummary.tier.toUpperCase()}` : ''}
+                  </div>
+                </div>
+              </div>
+              <button type="button" className="ib" onClick={() => setAccountSheetOpen(false)} aria-label={isFa ? 'بستن' : 'Close'}>
+                <Icon name="x" size={17} />
+              </button>
+            </div>
+
+            <div className="vg-sheet-grid">
+              {isAdmin && (
+                <Link href="/admin/providers" className="vg-sheet-tile accent" onClick={() => setAccountSheetOpen(false)}>
+                  <Icon name="shield" size={18} style={{ color: 'var(--vg-orange-text)' }} />
+                  <div>
+                    <strong>{isFa ? 'پنل ادمین' : 'Admin Panel'}</strong>
+                    <small>{isFa ? 'پروایدرها و کلیدها' : 'Providers & keys'}</small>
+                  </div>
+                </Link>
+              )}
+              <a href="/chat" className="vg-sheet-tile" onClick={() => setAccountSheetOpen(false)}>
+                <Icon name="chat" size={18} style={{ color: 'var(--vg-orange-text)' }} />
+                <div>
+                  <strong>{isFa ? 'چت هوشمند' : 'AI Chat'}</strong>
+                  <small>{isFa ? 'گفتگو با مدل‌ها' : 'Launch workspace'}</small>
+                </div>
+              </a>
+              <button
+                type="button"
+                className="vg-sheet-tile"
+                style={{ textAlign: 'start', cursor: 'pointer' }}
+                onClick={() => {
+                  setAccountSheetOpen(false);
+                  switchTab('connect');
+                }}
+              >
+                <Icon name="code" size={18} style={{ color: 'var(--vg-indigo)' }} />
+                <div>
+                  <strong>{isFa ? 'اتصال ابزارها' : 'Connect tools'}</strong>
+                  <small>Cursor · Python · Node</small>
+                </div>
+              </button>
+              <Link href={isFa ? '/fa' : '/'} className="vg-sheet-tile" onClick={() => setAccountSheetOpen(false)}>
+                <Icon name="globe" size={18} style={{ color: 'var(--vg-ink2)' }} />
+                <div>
+                  <strong>{isFa ? 'صفحه اصلی' : 'Home'}</strong>
+                  <small>vigas.app</small>
+                </div>
+              </Link>
+            </div>
+
+            <div className="vg-sheet-controls">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <span className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                  {isFa ? 'زبان و ظاهر' : 'Language & Theme'}
+                </span>
+                <div className="hdr-lang">
+                  <Link href="/" aria-current={!isFa ? 'page' : undefined} onClick={() => setAccountSheetOpen(false)}>
+                    EN
+                  </Link>
+                  <Link href="/fa" className="fa-ui" aria-current={isFa ? 'page' : undefined} onClick={() => setAccountSheetOpen(false)}>
+                    فارسی
+                  </Link>
+                </div>
+              </div>
+              <ThemeToggle variant="drawer" lang={lang} />
+            </div>
+
+            <div className="vg-sheet-foot">
+              <button
+                type="button"
+                className="btn gh"
+                onClick={() => {
+                  setAccountSheetOpen(false);
+                  void signOut();
+                }}
+                style={{ width: '100%', minHeight: 44, borderRadius: 13, color: 'var(--vg-red)', borderColor: 'var(--vg-red-edge)' }}
+              >
+                <Icon name="logout" size={15} />
+                {isFa ? 'خروج از حساب' : 'Sign out'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Top account bar (hidden on mobile <= 860px) */}
+      <div className="dash-top-bar dash-desk-only">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--vg-green)', display: 'inline-block', flexShrink: 0 }} />
           <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14, overflowWrap: 'anywhere' }}>
@@ -830,8 +1121,8 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* KPI Strip */}
-      <div className="dash-kpi-grid">
+      {/* Desktop KPI Strip (hidden on mobile <= 860px) */}
+      <div className="dash-kpi-grid dash-desk-only">
         <div className="card" style={kpiCard}>
           <span className="lbl">{isFa ? 'موجودی کیف‌پول API' : 'API balance'}</span>
           <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
@@ -892,8 +1183,8 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Console Tab Bar */}
-      <nav aria-label={isFa ? 'بخش‌های پنل کاربری' : 'API Console sections'} role="tablist" className="dash-tabs scroll-x">
+      {/* Desktop Console Tab Bar (hidden on mobile <= 860px — zero duplicate menu!) */}
+      <nav aria-label={isFa ? 'بخش‌های پنل کاربری' : 'API Console sections'} role="tablist" className="dash-tabs dash-desk-only scroll-x">
         {CONSOLE_TABS.map((item) => {
           const active = tab === item.id;
           return (
@@ -915,74 +1206,10 @@ export function DashboardClient({
       {/* Active Panel View */}
       {tab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
+          {/* Desktop overview shows Wallet + Usage; mobile focuses cleanly on Keys to match the active Bottom Bar tab */}
+          <div className="dash-desk-only" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
             {renderCreditsSection()}
-
-            {/* Usage chart */}
-            <section aria-labelledby={`${ids}-usage`} className="card" style={{ ...card, flex: '1.4 1 460px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                <h2 id={`${ids}-usage`} className="sf" style={{ fontSize: isFa ? 24 : 28, margin: 0, fontWeight: isFa ? 700 : 400 }}>
-                  {isFa ? 'مصرف · ۷ روز گذشته' : 'Usage · last 7 days'}
-                </h2>
-                <span className="mn" dir="ltr" style={{ fontSize: 13 }}>
-                  {formatUsd(weekTotal, { maxDecimals: 4 })}
-                </span>
-              </div>
-              <ol aria-label={isFa ? 'هزینه روزانه' : 'Spend per day'} dir="ltr" style={{ listStyle: 'none', margin: '20px 0 0', padding: 0, display: 'flex', alignItems: 'flex-end', gap: 8, height: 180, borderBottom: '1px solid var(--vg-line2)' }}>
-                {wallet.week.map((d, i) => {
-                  const last = i === wallet.week.length - 1;
-                  const h = d.costMicros ? Math.max(4, Math.round((d.costMicros / weekMax) * 140)) : 2;
-                  return (
-                    <li key={d.date} style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                      <span className="mn" style={{ fontSize: 11, color: last ? 'var(--vg-orange-text)' : 'var(--vg-ink3)', whiteSpace: 'nowrap' }}>
-                        {d.costMicros ? formatUsd(d.costMicros, { maxDecimals: 4 }) : '$0'}
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          display: 'block',
-                          width: '70%',
-                          height: h,
-                          borderRadius: '3px 3px 0 0',
-                          background: last ? 'repeating-linear-gradient(90deg,#FF6A1A 0 5px,#C9520F 5px 6px)' : 'var(--vg-pillar)',
-                        }}
-                      />
-                      <span className="sr-only">{shortDay(d.date)}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-              <div aria-hidden="true" dir="ltr" style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                {wallet.week.map((d) => (
-                  <span key={d.date} className="mn" style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center', fontSize: 11, color: 'var(--vg-ink3)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                    {shortDay(d.date)}
-                  </span>
-                ))}
-              </div>
-
-              <h3 className="lbl" style={{ margin: '26px 0 10px' }}>
-                {isFa ? 'بر اساس بخش · ۳۰ روز گذشته' : 'By product · last 30 days'}
-              </h3>
-              {wallet.bySource.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 14, color: 'var(--vg-ink2)' }}>
-                  {isFa ? 'هنوز مصرفی ثبت نشده است. با ساخت کلید API و اولین درخواست، نمودار اینجا زنده می‌شود.' : 'No usage yet. Create an API key and make your first request to see live spend here.'}
-                </p>
-              ) : (
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {wallet.bySource.map((s) => (
-                    <li key={s.source} style={{ display: 'grid', gridTemplateColumns: '104px minmax(0,1fr) 84px', gap: 12, alignItems: 'center', fontSize: 14 }}>
-                      <span>{sourceLabels[s.source] ?? s.source}</span>
-                      <span aria-hidden="true" style={{ height: 8, borderRadius: 4, background: 'var(--vg-raised)', overflow: 'hidden' }}>
-                        <span style={{ display: 'block', height: '100%', width: `${sourceTotal ? (s.costMicros / sourceTotal) * 100 : 0}%`, background: SOURCE_COLOR[s.source] ?? 'var(--vg-blue)' }} />
-                      </span>
-                      <span className="mn" dir="ltr" style={{ fontSize: 13, textAlign: 'end' }}>
-                        {formatUsd(s.costMicros, { maxDecimals: 4 })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            {renderUsageSection()}
           </div>
 
           {renderKeysSection()}
@@ -992,9 +1219,10 @@ export function DashboardClient({
       {tab === 'keys' && renderKeysSection()}
 
       {tab === 'credits' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <div className="dash-wallet-stack">
           {renderCreditsSection()}
-          <section className="card" style={card}>
+          {renderUsageSection()}
+          <section className="card dash-desk-only" style={card}>
             <div className="lbl">{isFa ? 'چرا اعتبار پیش‌پرداخت ویگاس؟' : 'How Vigas prepaid credits work'}</div>
             <h3 className="sf" style={{ fontSize: isFa ? 22 : 26, margin: '8px 0 12px', fontWeight: isFa ? 700 : 400 }}>
               {isFa ? 'یک موجودی برای ۲۵+ مدل پیشتاز' : 'One balance across 25+ frontier models'}
@@ -1050,6 +1278,6 @@ export function DashboardClient({
   );
 }
 
-const card: CSSProperties = { minWidth: 0, borderRadius: 22, padding: 24 };
+const card: CSSProperties = { minWidth: 0, borderRadius: 24, padding: 22 };
 const kpiCard: CSSProperties = { minWidth: 0, borderRadius: 18, padding: '16px 18px', display: 'flex', flexDirection: 'column' };
 const fieldLabel: CSSProperties = { display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 8, color: 'var(--vg-ink2)' };

@@ -42,29 +42,33 @@ async function DashboardInner() {
 
   const content = (
     <>
-      <SiteHeader ticker={false} lang={lang} />
-      <main id="main" className="wrap" style={{ paddingBottom: 96 }}>
-        <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: isFa ? 'پنل API' : 'API Console' }]} style={{ paddingTop: 28 }} />
-        <h1
-          className="sf"
-          style={{
-            fontSize: isFa ? 'clamp(32px,4.4vw,52px)' : 'clamp(40px,5vw,66px)',
-            lineHeight: isFa ? 1.15 : 1,
-            letterSpacing: isFa ? 0 : '-.03em',
-            fontWeight: isFa ? 700 : 400,
-            margin: '16px 0 22px',
-          }}
-        >
-          {isFa ? (
-            <>
-              پنل <em className="hi">فروش و مدیریت API.</em>
-            </>
-          ) : (
-            <>
-              Vigas <em className="hi">API Console.</em>
-            </>
-          )}
-        </h1>
+      <div className="dash-desk-only">
+        <SiteHeader ticker={false} lang={lang} />
+      </div>
+      <main id="main" className="wrap dash-main">
+        <div className="dash-desk-only">
+          <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: isFa ? 'پنل API' : 'API Console' }]} style={{ paddingTop: 28 }} />
+          <h1
+            className="sf"
+            style={{
+              fontSize: isFa ? 'clamp(32px,4.4vw,52px)' : 'clamp(40px,5vw,66px)',
+              lineHeight: isFa ? 1.15 : 1,
+              letterSpacing: isFa ? 0 : '-.03em',
+              fontWeight: isFa ? 700 : 400,
+              margin: '16px 0 22px',
+            }}
+          >
+            {isFa ? (
+              <>
+                پنل <em className="hi">فروش و مدیریت API.</em>
+              </>
+            ) : (
+              <>
+                Vigas <em className="hi">API Console.</em>
+              </>
+            )}
+          </h1>
+        </div>
         <DashboardGate
           initialUser={user ? toPublicUser(user) : null}
           initialWallet={wallet}
@@ -73,7 +77,9 @@ async function DashboardInner() {
           lang={lang}
         />
       </main>
-      <SiteFooter lang={lang} />
+      <div className="dash-desk-only">
+        <SiteFooter lang={lang} />
+      </div>
     </>
   );
 
@@ -90,23 +96,25 @@ async function DashboardInner() {
 function DashboardShellSkeleton() {
   return (
     <>
-      <SiteHeader ticker={false} lang="en" />
-      <main id="main" className="wrap" style={{ paddingBottom: 96 }}>
-        <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'API Console' }]} style={{ paddingTop: 28 }} />
-        <h1 className="sf" style={{ fontSize: 'clamp(40px,5vw,66px)', lineHeight: 1, letterSpacing: '-.03em', margin: '16px 0 22px' }}>
-          Vigas <em className="hi">API Console.</em>
-        </h1>
-        <div aria-busy="true" aria-label="Loading your API Console">
-          <p style={{ margin: '-8px 0 24px', color: 'var(--vg-ink3)' }}>Loading your account…</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12, marginBottom: 16 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="card" style={{ height: 104, borderRadius: 18 }} />
-            ))}
-          </div>
-          <div className="card" style={{ height: 340, borderRadius: 22 }} />
+      <div className="dash-desk-only">
+        <SiteHeader ticker={false} lang="en" />
+      </div>
+      <main id="main" className="wrap dash-main">
+        <div className="dash-desk-only">
+          <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'API Console' }]} style={{ paddingTop: 28 }} />
+          <h1 className="sf" style={{ fontSize: 'clamp(40px,5vw,66px)', lineHeight: 1, letterSpacing: '-.03em', margin: '16px 0 22px' }}>
+            Vigas <em className="hi">API Console.</em>
+          </h1>
+        </div>
+        <div aria-busy="true" aria-label="Loading your API Console" style={{ paddingTop: 18 }}>
+          <p style={{ margin: '0 0 16px', color: 'var(--vg-ink3)', fontSize: 14 }}>Loading your account…</p>
+          <div className="card" style={{ height: 220, borderRadius: 24, marginBottom: 14 }} />
+          <div className="card" style={{ height: 180, borderRadius: 22 }} />
         </div>
       </main>
-      <SiteFooter lang="en" />
+      <div className="dash-desk-only">
+        <SiteFooter lang="en" />
+      </div>
     </>
   );
 }

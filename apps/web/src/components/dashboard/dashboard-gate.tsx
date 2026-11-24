@@ -144,16 +144,12 @@ export function DashboardGate({
 
   if (!resolved) {
     return (
-      <div aria-busy="true" aria-label={isFa ? 'در حال بارگذاری پنل کاربری' : 'Loading your API console'}>
-        <p style={{ margin: '-8px 0 24px', color: 'var(--vg-ink3)' }}>
-          {isFa ? 'در حال اتصال به حساب و بارگذاری پنل API…' : 'Connecting your account and loading API console…'}
+      <div aria-busy="true" aria-label={isFa ? 'در حال بارگذاری پنل کاربری' : 'Loading your API console'} style={{ paddingTop: 18 }}>
+        <p style={{ margin: '0 0 16px', color: 'var(--vg-ink3)', fontSize: 14 }}>
+          {isFa ? 'در حال اتصال به حساب…' : 'Connecting your account…'}
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12, marginBottom: 16 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="card" style={{ height: 104, borderRadius: 18 }} />
-          ))}
-        </div>
-        <div className="card" style={{ height: 340, borderRadius: 22 }} />
+        <div className="card" style={{ height: 210, borderRadius: 24, marginBottom: 14 }} />
+        <div className="card" style={{ height: 180, borderRadius: 22 }} />
       </div>
     );
   }

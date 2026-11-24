@@ -118,43 +118,36 @@ export function AdminDbBanner({ email, authVia, initialDb }: Props) {
   return (
     <div className="card adm-db-alert" role="status">
       <div className="adm-db-alert-top">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
           <span className="led orange" aria-hidden="true" />
-          <strong style={{ fontSize: 14.5 }}>Signed in as Admin ({email})</strong>
-          <span className="adm-pill warn">
-            {db.previewMode ? 'No DATABASE_URL' : isAuthErr ? 'DB Password Error · 28P01' : `DB Offline · ${db.code ?? 'error'}`}
-          </span>
+          <strong style={{ fontSize: 13.5 }}>{isAuthErr ? 'Postgres password mismatch (28P01)' : db.previewMode ? 'Database not linked' : 'Database offline'}</strong>
+          <span className="adm-pill warn">{email}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn gh" onClick={recheck} disabled={busy} style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }}>
-            <Icon name="refresh" size={14} />
+        <div className="adm-db-alert-btns">
+          <button type="button" className="btn gh" onClick={recheck} disabled={busy} style={{ minHeight: 34, padding: '0 11px', fontSize: 12.5 }}>
+            <Icon name="refresh" size={13} />
             {busy ? 'Checking…' : 'Test DB'}
           </button>
           {!db.previewMode && (
-            <button type="button" className="btn key" onClick={runBootstrap} disabled={busy} style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}>
-              <Icon name="bolt" size={14} />
-              {busy ? 'Bootstrapping…' : 'Bootstrap vigas schema'}
+            <button type="button" className="btn key" onClick={runBootstrap} disabled={busy} style={{ minHeight: 34, padding: '0 12px', fontSize: 12.5 }}>
+              <Icon name="bolt" size={13} />
+              {busy ? 'Syncing…' : 'Bootstrap vigas'}
             </button>
           )}
         </div>
       </div>
-      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--vg-ink2)', lineHeight: 1.55 }}>
+      <p className="adm-db-alert-desc">
         {db.previewMode ? (
           <>
-            Your admin session is active via Supabase Auth. Add <code className="mn">DATABASE_URL</code> in Vercel Environment Variables to store
-            upstream providers, encrypted multi-key pools, models, and user credits inside the isolated <code className="mn">vigas</code> schema.
+            Admin SSO is active. Set <code className="mn">DATABASE_URL</code> in Vercel to save providers, keys &amp; models inside <code className="mn">vigas.*</code>.
           </>
         ) : isAuthErr ? (
           <>
-            Your admin access is verified, so you can browse all tabs freely — but Postgres rejected <code className="mn">DATABASE_URL</code> with{' '}
-            <code className="mn">28P01 (password authentication failed)</code>. Reset the Supabase DB password (or set a Neon URI) in Vercel{' '}
-            <strong>Environment Variables</strong>, redeploy, then tap <strong>Bootstrap vigas schema</strong> (strictly isolated to{' '}
-            <code className="mn">vigas.*</code>; never touches <code className="mn">public</code> or <code className="mn">duskyr</code>).
+            Admin SSO verified. Update <code className="mn">DATABASE_URL</code> with the reset DB password in Vercel, redeploy, then tap <strong>Bootstrap vigas</strong> (isolated to <code className="mn">vigas.*</code>).
           </>
         ) : (
           <>
-            Your admin access is verified, but Postgres could not be reached{db.message ? ` (${db.message})` : ''}. Fix{' '}
-            <code className="mn">DATABASE_URL</code> and tap <strong>Test DB</strong> or <strong>Bootstrap vigas schema</strong>.
+            Admin SSO verified, but Postgres is unreachable{db.message ? ` (${db.message})` : ''}. Update <code className="mn">DATABASE_URL</code> and tap <strong>Test DB</strong>.
           </>
         )}
       </p>

@@ -36,7 +36,11 @@ export function MobileBottomNav() {
   useEffect(() => {
     const syncHash = () => setHash(window.location.hash.replace(/^#/, '').toLowerCase());
     const syncLang = () => {
-      const docFa = document.documentElement.lang === 'fa' || document.documentElement.dir === 'rtl';
+      const docFa =
+        document.documentElement.lang === 'fa' ||
+        document.documentElement.dir === 'rtl' ||
+        document.cookie.includes('vg_lang=fa') ||
+        Boolean(document.querySelector('[lang="fa"][dir="rtl"]'));
       const pathFa = pathname === '/fa' || pathname.startsWith('/news/fa') || pathname.startsWith('/fa-app');
       setIsFa(docFa || pathFa);
     };
@@ -62,7 +66,7 @@ export function MobileBottomNav() {
         { id: 'adm_models', href: '/admin/models', en: 'Models', fa: 'مدل‌ها', icon: 'cube' },
         { id: 'adm_users', href: '/admin/users', en: 'Users', fa: 'کاربران', icon: 'users' },
         { id: 'adm_content', href: '/admin', en: 'Content', fa: 'محتوا', icon: 'text' },
-        { id: 'adm_exit', href: '/dashboard', en: 'Exit App', fa: 'بازگشت', icon: 'logout', exit: true },
+        { id: 'adm_exit', href: '/dashboard', en: 'Exit', fa: 'بازگشت', icon: 'logout', exit: true },
       ]
     : [
         { id: 'chat', href: '/chat', en: 'Chat', fa: 'چت', icon: 'chat', external: true },
@@ -110,7 +114,8 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label={inAdmin ? (isFa ? 'ناوبری پنل ادمین' : 'Admin navigation') : isFa ? 'ناوبری موبایل' : 'Mobile navigation'}
-      className="vg-bnav"
+      dir={isFa ? 'rtl' : 'ltr'}
+      className={`vg-bnav${isFa ? ' fa-ui' : ''}`}
     >
       <div className="vg-bnav-inner">
         {items.map((item) => {
@@ -118,7 +123,7 @@ export function MobileBottomNav() {
           const content = (
             <>
               <span className="vg-bnav-ico">
-                <Icon name={item.icon} size={19} />
+                <Icon name={item.icon} size={20} />
                 {item.accent && <span className="vg-bnav-dot" aria-hidden="true" />}
               </span>
               <span className="vg-bnav-lbl">{isFa ? item.fa : item.en}</span>
