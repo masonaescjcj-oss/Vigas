@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1793885056935,
-      "tag": "0000_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793886650061,
-      "tag": "0001_key_monthly_limit",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793887156276,
-      "tag": "0002_oauth_codes",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1793887298032,
-      "tag": "0003_news_pipeline",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1794653912619,
-      "tag": "0004_ambiguous_tony_stark",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1795450000000,
-      "tag": "0005_upstream_pools",
+      "when": 1795519885212,
+      "tag": "0000_vigas_schema_init",
       "breakpoints": true
     }
   ]

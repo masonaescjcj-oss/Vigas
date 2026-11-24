@@ -1,12 +1,12 @@
 {
-  "id": "021fad70-e18d-4ab3-b356-b3d67f8cb49c",
+  "id": "4213877c-7bd0-485e-811e-23144f0b733a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.accounts": {
+    "vigas.accounts": {
       "name": "accounts",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -48,6 +48,7 @@
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "user_id"
           ],
@@ -72,9 +73,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.api_keys": {
+    "vigas.api_keys": {
       "name": "api_keys",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -105,6 +106,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "monthly_limit_micros": {
+          "name": "monthly_limit_micros",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -148,6 +155,7 @@
           "name": "api_keys_account_id_accounts_id_fk",
           "tableFrom": "api_keys",
           "tableTo": "accounts",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "account_id"
           ],
@@ -172,9 +180,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.arena_battles": {
+    "vigas.arena_battles": {
       "name": "arena_battles",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -294,6 +302,7 @@
           "name": "arena_battles_user_id_users_id_fk",
           "tableFrom": "arena_battles",
           "tableTo": "users",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "user_id"
           ],
@@ -310,9 +319,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.articles": {
+    "vigas.articles": {
       "name": "articles",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "slug": {
           "name": "slug",
@@ -337,6 +346,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "lang": {
+          "name": "lang",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
         },
         "flag": {
           "name": "flag",
@@ -457,6 +473,7 @@
           "name": "articles_author_slug_authors_slug_fk",
           "tableFrom": "articles",
           "tableTo": "authors",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "author_slug"
           ],
@@ -473,9 +490,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.authors": {
+    "vigas.authors": {
       "name": "authors",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "slug": {
           "name": "slug",
@@ -510,9 +527,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.credit_holds": {
+    "vigas.credit_holds": {
       "name": "credit_holds",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -558,7 +575,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"credit_holds\".\"released_at\" is null",
+          "where": "\"vigas\".\"credit_holds\".\"released_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -569,6 +586,7 @@
           "name": "credit_holds_account_id_accounts_id_fk",
           "tableFrom": "credit_holds",
           "tableTo": "accounts",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "account_id"
           ],
@@ -585,9 +603,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.leaderboard_entries": {
+    "vigas.leaderboard_entries": {
       "name": "leaderboard_entries",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "category": {
           "name": "category",
@@ -680,9 +698,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.leaderboard_meta": {
+    "vigas.leaderboard_meta": {
       "name": "leaderboard_meta",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "category": {
           "name": "category",
@@ -713,9 +731,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.ledger_entries": {
+    "vigas.ledger_entries": {
       "name": "ledger_entries",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -783,6 +801,7 @@
           "name": "ledger_entries_account_id_accounts_id_fk",
           "tableFrom": "ledger_entries",
           "tableTo": "accounts",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "account_id"
           ],
@@ -799,9 +818,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.model_endpoints": {
+    "vigas.model_endpoints": {
       "name": "model_endpoints",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -882,6 +901,7 @@
           "name": "model_endpoints_model_id_models_id_fk",
           "tableFrom": "model_endpoints",
           "tableTo": "models",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "model_id"
           ],
@@ -898,9 +918,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.models": {
+    "vigas.models": {
       "name": "models",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -988,9 +1008,317 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.sessions": {
+    "vigas.news_items": {
+      "name": "news_items",
+      "schema": "vigas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "guid": {
+          "name": "guid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'new'"
+        },
+        "article_slug": {
+          "name": "article_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "news_items_source_guid_idx": {
+          "name": "news_items_source_guid_idx",
+          "columns": [
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "guid",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "news_items_status_idx": {
+          "name": "news_items_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "news_items_source_id_news_sources_id_fk": {
+          "name": "news_items_source_id_news_sources_id_fk",
+          "tableFrom": "news_items",
+          "tableTo": "news_sources",
+          "schemaTo": "vigas",
+          "columnsFrom": [
+            "source_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "vigas.news_sources": {
+      "name": "news_sources",
+      "schema": "vigas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "feed_url": {
+          "name": "feed_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "last_fetched_at": {
+          "name": "last_fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "news_sources_feed_url_unique": {
+          "name": "news_sources_feed_url_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "feed_url"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "vigas.oauth_codes": {
+      "name": "oauth_codes",
+      "schema": "vigas",
+      "columns": {
+        "code_hash": {
+          "name": "code_hash",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_name": {
+          "name": "app_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "callback_url": {
+          "name": "callback_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_challenge": {
+          "name": "code_challenge",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "challenge_method": {
+          "name": "challenge_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_limit_micros": {
+          "name": "key_limit_micros",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "oauth_codes_user_id_users_id_fk": {
+          "name": "oauth_codes_user_id_users_id_fk",
+          "tableFrom": "oauth_codes",
+          "tableTo": "users",
+          "schemaTo": "vigas",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "oauth_codes_account_id_accounts_id_fk": {
+          "name": "oauth_codes_account_id_accounts_id_fk",
+          "tableFrom": "oauth_codes",
+          "tableTo": "accounts",
+          "schemaTo": "vigas",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "vigas.sessions": {
       "name": "sessions",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -1052,6 +1380,7 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "user_id"
           ],
@@ -1076,9 +1405,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.tool_votes": {
+    "vigas.tool_votes": {
       "name": "tool_votes",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "tool_slug": {
           "name": "tool_slug",
@@ -1106,6 +1435,7 @@
           "name": "tool_votes_tool_slug_tools_slug_fk",
           "tableFrom": "tool_votes",
           "tableTo": "tools",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "tool_slug"
           ],
@@ -1119,6 +1449,7 @@
           "name": "tool_votes_user_id_users_id_fk",
           "tableFrom": "tool_votes",
           "tableTo": "users",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "user_id"
           ],
@@ -1143,9 +1474,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.tools": {
+    "vigas.tools": {
       "name": "tools",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "slug": {
           "name": "slug",
@@ -1209,6 +1540,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "highlights": {
+          "name": "highlights",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
         "url": {
           "name": "url",
           "type": "text",
@@ -1245,9 +1589,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.topups": {
+    "vigas.topups": {
       "name": "topups",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -1312,6 +1656,7 @@
           "name": "topups_account_id_accounts_id_fk",
           "tableFrom": "topups",
           "tableTo": "accounts",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "account_id"
           ],
@@ -1328,9 +1673,215 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.usage_events": {
+    "vigas.upstream_keys": {
+      "name": "upstream_keys",
+      "schema": "vigas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "provider_slug": {
+          "name": "provider_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_ciphertext": {
+          "name": "key_ciphertext",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_hint": {
+          "name": "key_hint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_hash": {
+          "name": "key_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "budget_micros": {
+          "name": "budget_micros",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "upstream_keys_provider_hash_idx": {
+          "name": "upstream_keys_provider_hash_idx",
+          "columns": [
+            {
+              "expression": "provider_slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "key_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "upstream_keys_provider_idx": {
+          "name": "upstream_keys_provider_idx",
+          "columns": [
+            {
+              "expression": "provider_slug",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "enabled",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "upstream_keys_provider_slug_upstream_providers_slug_fk": {
+          "name": "upstream_keys_provider_slug_upstream_providers_slug_fk",
+          "tableFrom": "upstream_keys",
+          "tableTo": "upstream_providers",
+          "schemaTo": "vigas",
+          "columnsFrom": [
+            "provider_slug"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "vigas.upstream_providers": {
+      "name": "upstream_providers",
+      "schema": "vigas",
+      "columns": {
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'openai'"
+        },
+        "base_url": {
+          "name": "base_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key_strategy": {
+          "name": "key_strategy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sticky'"
+        },
+        "allowed_models": {
+          "name": "allowed_models",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hidden": {
+          "name": "hidden",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "public_label": {
+          "name": "public_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'vigas-edge'"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "vigas.usage_events": {
       "name": "usage_events",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -1465,6 +2016,7 @@
           "name": "usage_events_account_id_accounts_id_fk",
           "tableFrom": "usage_events",
           "tableTo": "accounts",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "account_id"
           ],
@@ -1478,6 +2030,7 @@
           "name": "usage_events_api_key_id_api_keys_id_fk",
           "tableFrom": "usage_events",
           "tableTo": "api_keys",
+          "schemaTo": "vigas",
           "columnsFrom": [
             "api_key_id"
           ],
@@ -1494,9 +2047,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.users": {
+    "vigas.users": {
       "name": "users",
-      "schema": "",
+      "schema": "vigas",
       "columns": {
         "id": {
           "name": "id",
@@ -1555,7 +2108,9 @@
     }
   },
   "enums": {},
-  "schemas": {},
+  "schemas": {
+    "vigas": "vigas"
+  },
   "sequences": {},
   "roles": {},
   "policies": {},

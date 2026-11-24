@@ -109,8 +109,9 @@ let ensurePromise: Promise<void> | null = null;
 export async function ensureUpstreamTables(db: Db): Promise<void> {
   if (ensuredTables) return;
   ensurePromise ??= (async () => {
+    await db.execute(sql`CREATE SCHEMA IF NOT EXISTS "vigas"`);
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS "upstream_providers" (
+      CREATE TABLE IF NOT EXISTS "vigas"."upstream_providers" (
         "slug" text PRIMARY KEY NOT NULL,
         "name" text NOT NULL,
         "kind" text DEFAULT 'openai' NOT NULL,
@@ -124,9 +125,9 @@ export async function ensureUpstreamTables(db: Db): Promise<void> {
       )
     `);
     await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS "upstream_keys" (
+      CREATE TABLE IF NOT EXISTS "vigas"."upstream_keys" (
         "id" text PRIMARY KEY NOT NULL,
-        "provider_slug" text NOT NULL REFERENCES "upstream_providers"("slug") ON DELETE CASCADE,
+        "provider_slug" text NOT NULL REFERENCES "vigas"."upstream_providers"("slug") ON DELETE CASCADE,
         "label" text NOT NULL,
         "key_ciphertext" text NOT NULL,
         "key_hint" text NOT NULL,
@@ -136,8 +137,8 @@ export async function ensureUpstreamTables(db: Db): Promise<void> {
         "created_at" timestamp with time zone DEFAULT now() NOT NULL
       )
     `);
-    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "upstream_keys_provider_hash_idx" ON "upstream_keys" ("provider_slug", "key_hash")`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS "upstream_keys_provider_idx" ON "upstream_keys" ("provider_slug", "enabled")`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "upstream_keys_provider_hash_idx" ON "vigas"."upstream_keys" ("provider_slug", "key_hash")`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS "upstream_keys_provider_idx" ON "vigas"."upstream_keys" ("provider_slug", "enabled")`);
     ensuredTables = true;
   })().catch((err) => {
     ensurePromise = null;

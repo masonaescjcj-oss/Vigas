@@ -6,7 +6,7 @@ import {
   index,
   integer,
   jsonb,
-  pgTable,
+  pgSchema,
   primaryKey,
   real,
   serial,
@@ -16,12 +16,19 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { Cover, FaqItem } from '@vigas/core';
 
+/**
+ * Dedicated PostgreSQL schema for all Vigas tables so Vigas can safely share a Postgres instance
+ * (e.g. Supabase projects with existing `public` / `duskyr` schemas) with zero table collisions.
+ */
+export const vigasSchema = pgSchema('vigas');
+const vigasTable = vigasSchema.table;
+
 const micros = (name: string) => bigint(name, { mode: 'number' });
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
 // ── Identity ────────────────────────────────────────────────────────────────
 
-export const users = pgTable('users', {
+export const users = vigasTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name'),
@@ -30,7 +37,7 @@ export const users = pgTable('users', {
   createdAt: createdAt(),
 });
 
-export const sessions = pgTable(
+export const sessions = vigasTable(
   'sessions',
   {
     id: text('id').primaryKey(),
@@ -49,7 +56,7 @@ export const sessions = pgTable(
  * One billing account per user for now (teams later). `balanceMicros` is the spendable balance:
  * the sum of ledger entries minus active credit holds.
  */
-export const accounts = pgTable('accounts', {
+export const accounts = vigasTable('accounts', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   balanceMicros: micros('balance_micros').notNull().default(0),
@@ -57,7 +64,7 @@ export const accounts = pgTable('accounts', {
   createdAt: createdAt(),
 });
 
-export const apiKeys = pgTable(
+export const apiKeys = vigasTable(
   'api_keys',
   {
     id: text('id').primaryKey(),
@@ -75,7 +82,7 @@ export const apiKeys = pgTable(
 );
 
 /** Every real money movement. Positive = credit, negative = debit. */
-export const ledgerEntries = pgTable(
+export const ledgerEntries = vigasTable(
   'ledger_entries',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
@@ -89,7 +96,7 @@ export const ledgerEntries = pgTable(
 );
 
 /** Credits reserved while a request is in flight. Released on settle or by the cleanup job. */
-export const creditHolds = pgTable(
+export const creditHolds = vigasTable(
   'credit_holds',
   {
     id: text('id').primaryKey(),
@@ -101,7 +108,7 @@ export const creditHolds = pgTable(
   (t) => [index('holds_open_idx').on(t.createdAt).where(sql`${t.releasedAt} is null`)],
 );
 
-export const topups = pgTable('topups', {
+export const topups = vigasTable('topups', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
   amountMicros: micros('amount_micros').notNull(),
@@ -113,7 +120,7 @@ export const topups = pgTable('topups', {
   completedAt: timestamp('completed_at', { withTimezone: true }),
 });
 
-export const usageEvents = pgTable(
+export const usageEvents = vigasTable(
   'usage_events',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
@@ -137,7 +144,7 @@ export const usageEvents = pgTable(
  * One-time codes for the "Sign in with Vigas" PKCE flow (used by RetroBuild and other apps).
  * The app exchanges a code plus its PKCE verifier for an API key on the user's account.
  */
-export const oauthCodes = pgTable('oauth_codes', {
+export const oauthCodes = vigasTable('oauth_codes', {
   codeHash: text('code_hash').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   accountId: text('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
@@ -153,7 +160,7 @@ export const oauthCodes = pgTable('oauth_codes', {
 
 // ── Catalogue ───────────────────────────────────────────────────────────────
 
-export const models = pgTable('models', {
+export const models = vigasTable('models', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   org: text('org').notNull(),
@@ -168,7 +175,7 @@ export const models = pgTable('models', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const modelEndpoints = pgTable(
+export const modelEndpoints = vigasTable(
   'model_endpoints',
   {
     id: serial('id').primaryKey(),
@@ -185,14 +192,14 @@ export const modelEndpoints = pgTable(
 
 // ── Content ─────────────────────────────────────────────────────────────────
 
-export const authors = pgTable('authors', {
+export const authors = vigasTable('authors', {
   slug: text('slug').primaryKey(),
   name: text('name').notNull(),
   role: text('role').notNull(),
   color: text('color').notNull(),
 });
 
-export const articles = pgTable(
+export const articles = vigasTable(
   'articles',
   {
     slug: text('slug').primaryKey(),
@@ -216,7 +223,7 @@ export const articles = pgTable(
 );
 
 /** RSS/Atom feeds the news pipeline watches. */
-export const newsSources = pgTable('news_sources', {
+export const newsSources = vigasTable('news_sources', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   feedUrl: text('feed_url').notNull().unique(),
@@ -226,7 +233,7 @@ export const newsSources = pgTable('news_sources', {
 });
 
 /** Items seen in feeds. Each can become one draft article for an editor to review. */
-export const newsItems = pgTable(
+export const newsItems = vigasTable(
   'news_items',
   {
     id: serial('id').primaryKey(),
@@ -244,7 +251,7 @@ export const newsItems = pgTable(
   (t) => [uniqueIndex('news_items_source_guid_idx').on(t.sourceId, t.guid), index('news_items_status_idx').on(t.status, t.createdAt)],
 );
 
-export const tools = pgTable('tools', {
+export const tools = vigasTable('tools', {
   slug: text('slug').primaryKey(),
   name: text('name').notNull(),
   tagline: text('tagline').notNull(),
@@ -264,7 +271,7 @@ export const tools = pgTable('tools', {
   createdAt: createdAt(),
 });
 
-export const toolVotes = pgTable(
+export const toolVotes = vigasTable(
   'tool_votes',
   {
     toolSlug: text('tool_slug').notNull().references(() => tools.slug, { onDelete: 'cascade' }),
@@ -276,7 +283,7 @@ export const toolVotes = pgTable(
 
 // ── Arena & leaderboard ─────────────────────────────────────────────────────
 
-export const arenaBattles = pgTable(
+export const arenaBattles = vigasTable(
   'arena_battles',
   {
     id: text('id').primaryKey(),
@@ -294,7 +301,7 @@ export const arenaBattles = pgTable(
   (t) => [index('battles_user_idx').on(t.userId, t.createdAt), index('battles_voted_idx').on(t.category, t.votedAt)],
 );
 
-export const leaderboardEntries = pgTable(
+export const leaderboardEntries = vigasTable(
   'leaderboard_entries',
   {
     category: text('category').notNull(),
@@ -313,7 +320,7 @@ export const leaderboardEntries = pgTable(
   (t) => [primaryKey({ columns: [t.category, t.modelId] })],
 );
 
-export const leaderboardMeta = pgTable('leaderboard_meta', {
+export const leaderboardMeta = vigasTable('leaderboard_meta', {
   category: text('category').primaryKey(),
   totalSessions: bigint('total_sessions', { mode: 'number' }).notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -321,7 +328,7 @@ export const leaderboardMeta = pgTable('leaderboard_meta', {
 
 // ── Admin-managed upstream providers & multi-key pools ──────────────────────
 
-export const upstreamProviders = pgTable('upstream_providers', {
+export const upstreamProviders = vigasTable('upstream_providers', {
   slug: text('slug').primaryKey(),
   name: text('name').notNull(),
   kind: text('kind', { enum: ['openai', 'anthropic', 'gemini', 'youcom'] }).notNull().default('openai'),
@@ -337,7 +344,7 @@ export const upstreamProviders = pgTable('upstream_providers', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const upstreamKeys = pgTable(
+export const upstreamKeys = vigasTable(
   'upstream_keys',
   {
     id: text('id').primaryKey(),
