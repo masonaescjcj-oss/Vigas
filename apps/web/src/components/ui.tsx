@@ -101,16 +101,11 @@ export function LogoMark({
       style={{ flexShrink: 0, display: 'block', color: ink }}
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id="vg-sig-mark" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FFB36B" />
-          <stop offset="1" stopColor="#FF4D1A" />
-        </linearGradient>
-      </defs>
       <rect width="32" height="32" rx="9" fill="currentColor" fillOpacity="0.065" />
       <path d="M7.5 8.5 L16 24" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" />
-      <path d="M24.5 8.5 L16 24" stroke="url(#vg-sig-mark)" strokeWidth="3.4" strokeLinecap="round" />
-      <circle cx="24.5" cy="8.5" r="2.6" fill={color} />
+      <path d="M24.5 8.5 L16 24" stroke={color} strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M24.5 8.5 L20.2 16.3" stroke="#FFA35C" strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.7" />
+      <circle cx="24.5" cy="8.5" r="2.7" fill="#FF8A3D" />
     </svg>
   );
 }

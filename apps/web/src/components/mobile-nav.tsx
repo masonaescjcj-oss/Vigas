@@ -65,8 +65,8 @@ export function MobileNav({
           onClick={() => setOpen(true)}
         >
           <LogoMark size={20} />
-          <span className="sf" style={{ fontSize: 22, lineHeight: 1, letterSpacing: '-.01em' }}>
-            Vigas
+          <span className="dsp" dir="ltr" style={{ fontSize: 19, lineHeight: 1 }}>
+            vigas
           </span>
           {currentLabel && active !== 'home' && active !== 'none' && <span className="mn hdr-menu-cur">{currentLabel}</span>}
           <Icon name="chevDown" size={14} className="hdr-menu-chev" />
