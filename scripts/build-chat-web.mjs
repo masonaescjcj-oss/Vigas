@@ -139,7 +139,7 @@ const chatShellHtml = `<!DOCTYPE html>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Vigas Chat" />
   <style id="expo-reset">
-    html, body { height: 100%; height: 100dvh; margin: 0; background: #171614; color: #EFEAE1; }
+    html, body { height: 100%; height: 100dvh; margin: 0; background: #0A0A0B; color: #F5F3EF; }
     body { overflow: hidden; display: flex; flex-direction: column; }
     #root { display: flex; flex: 1 1 0; min-height: 0; height: auto; width: 100%; }
     #vg-chat-rail {
@@ -148,17 +148,17 @@ const chatShellHtml = `<!DOCTYPE html>
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      min-height: 46px;
+      min-height: 48px;
       padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px;
-      background: #12110F;
-      border-bottom: 1px solid rgba(239, 234, 225, 0.12);
-      font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #101012;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: 'Geist', 'Vazirmatn', Inter, system-ui, -apple-system, sans-serif;
       z-index: 9999;
       box-sizing: border-box;
     }
     #vg-chat-rail a, #vg-chat-rail button {
       text-decoration: none;
-      font: 500 12.5px/1 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font: 500 12.5px/1 'Geist', 'Vazirmatn', Inter, system-ui, -apple-system, sans-serif;
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -167,38 +167,38 @@ const chatShellHtml = `<!DOCTYPE html>
       box-sizing: border-box;
     }
     .vg-cr-back {
-      height: 32px;
-      padding: 0 11px 0 9px;
-      border-radius: 9px;
-      border: 1px solid rgba(239, 234, 225, 0.16);
-      background: #1C1B18;
-      color: #EFEAE1;
+      height: 34px;
+      padding: 0 13px 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #141416;
+      color: #F5F3EF;
       transition: background .14s, border-color .14s;
     }
-    .vg-cr-back:hover { background: #24221F; border-color: rgba(239, 234, 225, 0.28); }
+    .vg-cr-back:hover { background: #1B1B1E; border-color: rgba(255, 255, 255, 0.24); }
     .vg-cr-pills {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       overflow-x: auto;
       scrollbar-width: none;
     }
     .vg-cr-pills::-webkit-scrollbar { display: none; }
     .vg-cr-pill {
-      height: 30px;
-      padding: 0 10px;
+      height: 32px;
+      padding: 0 12px;
       border-radius: 999px;
-      border: 1px solid rgba(239, 234, 225, 0.1);
-      background: #1C1B18;
-      color: #A9A298;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #141416;
+      color: #A6A5AB;
       transition: color .14s, border-color .14s, background .14s;
     }
-    .vg-cr-pill:hover { color: #EFEAE1; border-color: rgba(239, 234, 225, 0.22); }
+    .vg-cr-pill:hover { color: #F5F3EF; border-color: rgba(255, 255, 255, 0.22); }
     .vg-cr-pill.adm {
       display: none;
-      color: #FF8A4C;
-      background: rgba(255, 106, 26, 0.14);
-      border-color: rgba(255, 106, 26, 0.36);
+      color: #FF7A45;
+      background: rgba(255, 90, 31, 0.14);
+      border-color: rgba(255, 90, 31, 0.4);
       font-weight: 600;
     }
   </style>

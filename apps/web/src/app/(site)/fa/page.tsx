@@ -6,6 +6,7 @@ import { Colonnade } from '@/components/colonnade';
 import { HeroApiPanel } from '@/components/hero-api-panel';
 import { LanguageSwitch } from '@/components/language-switch';
 import { NewsletterForm } from '@/components/newsletter-form';
+import { RouterViz } from '@/components/obsidian-viz';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { ArrowLink, Avatar, Icon, JsonLd, OrgMark, ToolMark } from '@/components/ui';
@@ -90,38 +91,38 @@ export default async function PersianHomePage() {
         <section style={{ position: 'relative', overflow: 'hidden', borderBottom: line }}>
           <div
             aria-hidden="true"
+            className="dot-grid"
             style={{
               position: 'absolute',
               inset: 0,
-              backgroundImage: 'radial-gradient(var(--vg-dot) 1px,transparent 1.3px)',
-              backgroundSize: '24px 24px',
-              WebkitMaskImage: 'radial-gradient(ellipse 55% 75% at 20% 40%,#000 15%,transparent 72%)',
-              maskImage: 'radial-gradient(ellipse 55% 75% at 20% 40%,#000 15%,transparent 72%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 60% 75% at 70% 35%,#000 15%,transparent 72%)',
+              maskImage: 'radial-gradient(ellipse 60% 75% at 70% 35%,#000 15%,transparent 72%)',
             }}
           />
-          <div className="wrap hero-inner">
+          <div aria-hidden="true" className="hero-glow" />
+          <div className="wrap hero-inner" style={{ position: 'relative' }}>
             <div style={{ flex: '1.05 1 460px', minWidth: 0 }}>
               <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                 <span className="led" />
                 {toFaDigits(models.length)} مدل · {toFaDigits(providers)} آزمایشگاه · ۰٪ کارمزد
               </div>
-              <h1 style={{ fontSize: 'clamp(34px,5.2vw,66px)', lineHeight: 1.18, fontWeight: 700, margin: '14px 0 14px' }}>
+              <h1 style={{ fontSize: 'clamp(36px,5.4vw,68px)', lineHeight: 1.15, fontWeight: 800, margin: '16px 0 16px' }}>
                 سریع‌ترین API.
                 <br />
                 <em className="hi" style={{ color: 'var(--vg-sand)' }}>ارزان‌ترین نرخ</em> توکن.
               </h1>
-              <p style={{ fontSize: 'clamp(15px,1.4vw,17px)', color: 'var(--vg-ink2)', maxWidth: 480, margin: '0 0 20px', lineHeight: 1.75 }}>
+              <p style={{ fontSize: 'clamp(15px,1.4vw,17.5px)', color: 'var(--vg-ink2)', maxWidth: 490, margin: '0 0 24px', lineHeight: 1.8 }}>
                 یک کلید API سازگار با OpenAI برای تمام مدل‌های پیشتاز؛ با تعرفه مستقیم و مسیریابی زیر ۱۲۰ms.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <a href="/chat" className="btn key" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
+                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
                   ورود به چت AI
                   <Icon name="arrow" size={16} style={{ transform: 'scaleX(-1)' }} />
                 </a>
-                <Link href="/models" className="btn gh" style={{ minHeight: 46, padding: '0 20px', fontSize: 14.5 }}>
+                <Link href="/models" className="btn gh" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
                   مدل‌ها و قیمت‌ها
                 </Link>
-                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 46, padding: '0 18px', fontSize: 14.5 }}>
+                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
                   دریافت کلید API
                 </Link>
               </div>
@@ -132,7 +133,7 @@ export default async function PersianHomePage() {
                 <span>·</span>
                 <span>Failover خودکار</span>
                 <span>·</span>
-                <span>بدون کارمزد تا ۵ دلار اول</span>
+                <span style={{ color: 'var(--vg-green)' }}>۵ دلار اعتبار هدیه</span>
               </div>
             </div>
 
@@ -143,7 +144,7 @@ export default async function PersianHomePage() {
         </section>
 
         {/* ── Numbers ──────────────────────────────────────────────────── */}
-        <section aria-label="آمار ویگاس" style={{ borderBottom: line }}>
+        <section aria-label="آمار ویگاس" style={{ borderBottom: line, background: 'var(--vg-bg2)' }}>
           <div className="stats">
             {[
               [toFaDigits(models.length), 'مدل آنلاین در گیت‌وی'],
@@ -160,6 +161,36 @@ export default async function PersianHomePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── Obsidian Signal Statement · یک کلید. همه‌ی مغزها. ────────── */}
+        <section className="router-band" aria-label="یک کلید برای همه مدل‌های هوش مصنوعی">
+          <div
+            aria-hidden="true"
+            className="line-grid"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              WebkitMaskImage: 'radial-gradient(ellipse 65% 70% at 50% 55%, #000, transparent 74%)',
+              maskImage: 'radial-gradient(ellipse 65% 70% at 50% 55%, #000, transparent 74%)',
+            }}
+          />
+          <div className="router-band-grid">
+            <div>
+              <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--vg-orange-text)' }}>§</span> وعده ما
+              </div>
+              <h2 className="dsp" style={{ fontSize: 'clamp(40px,5.4vw,72px)', margin: '16px 0 18px' }}>
+                یک کلید.
+                <br />
+                <span className="text-signal">همه‌ی مغزها.</span>
+              </h2>
+              <p style={{ fontSize: 16.5, lineHeight: 1.85, color: 'var(--vg-ink2)', maxWidth: 460, margin: 0 }}>
+                Anthropic، OpenAI، Google، DeepSeek، Meta، xAI و You.com — همه از یک اندپوینت سازگار با OpenAI، با Failover خودکار در چند میلی‌ثانیه.
+              </p>
+            </div>
+            <RouterViz />
           </div>
         </section>
 

@@ -115,9 +115,9 @@ export function SiteFooter({ lang = 'en', altHref }: { lang?: 'en' | 'fa'; altHr
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '36px 28px' }}>
           <div style={{ flex: '2 1 300px', minWidth: 0 }}>
             <Link href={isFa ? '/fa' : '/'} aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <LogoMark />
-              <span className="sf" style={{ fontSize: 27, lineHeight: 1 }}>
-                Vigas
+              <LogoMark size={28} />
+              <span className="dsp" dir="ltr" style={{ fontSize: 25, lineHeight: 1 }}>
+                vigas
               </span>
             </Link>
             <p style={{ color: 'var(--vg-ink2)', maxWidth: 320, margin: '16px 0 18px', fontSize: 14, lineHeight: isFa ? 1.8 : 1.6 }}>
@@ -183,8 +183,8 @@ export function SiteFooter({ lang = 'en', altHref }: { lang?: 'en' | 'fa'; altHr
             </nav>
           ))}
         </div>
-        <div aria-hidden="true" className="sf footer-wordmark">
-          Vigas
+        <div aria-hidden="true" className="dsp footer-wordmark" dir="ltr">
+          vigas
         </div>
         <div
           className="mn"

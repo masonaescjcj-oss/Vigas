@@ -121,9 +121,9 @@ export function AdminShell({
       <aside className="adm-rail" aria-label="Admin navigation">
         <div className="adm-rail-brand">
           <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
-            <LogoMark size={22} />
-            <span className="sf" style={{ fontSize: 24, lineHeight: 1 }}>
-              Vigas
+            <LogoMark size={24} />
+            <span className="dsp" dir="ltr" style={{ fontSize: 20, lineHeight: 1 }}>
+              vigas
             </span>
           </Link>
           <span className="adm-pill orange">ADMIN</span>

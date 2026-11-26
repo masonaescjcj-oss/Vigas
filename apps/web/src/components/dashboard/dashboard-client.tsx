@@ -20,6 +20,7 @@ import {
 } from '@/lib/client/supabase-account';
 import { API_BASE_URL } from '@/lib/client/supabase-config';
 import { CopyButton } from '../copy-button';
+import { SignalRings } from '../obsidian-viz';
 import { ThemeToggle } from '../theme-toggle';
 import { Icon, type IconName } from '../ui';
 import { DashboardConnect } from './dashboard-connect';
@@ -382,11 +383,13 @@ export function DashboardClient({
       className="card dash-wallet-hero"
       style={{ ...card, flex: '1 1 380px', scrollMarginTop: 24, position: 'relative', overflow: 'hidden' }}
     >
-      <div aria-hidden="true" className="dash-wallet-ring dash-wallet-ring-lg" />
-      <div aria-hidden="true" className="dash-wallet-ring dash-wallet-ring-sm" />
+      <SignalRings
+        size={210}
+        style={{ position: 'absolute', insetInlineEnd: -54, top: -54, opacity: 0.72 }}
+      />
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <h2 id={`${ids}-credits`} className="lbl" style={{ margin: 0 }}>
-          {isFa ? 'موجودی در دسترس · AvexPay' : 'Available credits · AvexPay'}
+          {isFa ? 'کیف‌پول ویگاس · AvexPay' : 'Vigas wallet · AvexPay'}
         </h2>
         {wallet.balanceMicros > 0 && (
           <a
@@ -395,7 +398,7 @@ export function DashboardClient({
             style={{
               fontSize: 11,
               fontWeight: 600,
-              padding: '3px 9px',
+              padding: '4px 10px',
               borderRadius: 999,
               background: 'var(--vg-green-soft)',
               color: 'var(--vg-green)',
@@ -408,15 +411,15 @@ export function DashboardClient({
         )}
       </div>
       <div
-        className="sf"
+        className="dsp"
         aria-live="polite"
         dir="ltr"
         style={{
           position: 'relative',
-          fontSize: 'clamp(46px,11vw,60px)',
+          fontSize: 'clamp(52px,13vw,68px)',
           lineHeight: 1.02,
-          letterSpacing: '-.03em',
-          margin: '10px 0 6px',
+          letterSpacing: '-.04em',
+          margin: '12px 0 8px',
           textAlign: isFa ? 'right' : 'left',
         }}
       >
@@ -595,11 +598,15 @@ export function DashboardClient({
                 aria-hidden="true"
                 style={{
                   display: 'block',
-                  width: '74%',
-                  maxWidth: 32,
+                  width: '78%',
+                  maxWidth: 34,
                   height: h,
-                  borderRadius: '6px 6px 2px 2px',
-                  background: last ? 'var(--vg-orange)' : 'var(--vg-pillar)',
+                  borderRadius: '10px 10px 3px 3px',
+                  background: last
+                    ? 'linear-gradient(180deg, #ff8a3d 0%, #ff5a1f 100%)'
+                    : 'var(--vg-raised)',
+                  boxShadow: last ? '0 0 18px rgba(255, 90, 31, .32)' : 'inset 0 0 0 1px var(--vg-line)',
+                  transition: 'height .25s ease',
                 }}
               />
               <span className="sr-only">{shortDay(d.date)}</span>
@@ -996,16 +1003,47 @@ export function DashboardClient({
         >
           <div className="vg-sheet">
             <div className="vg-sheet-handle" aria-hidden="true" />
-            <div className="vg-sheet-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
-                <span className="adm-avatar" style={{ width: 38, height: 38, borderRadius: 12, fontSize: 13 }}>
+            <div className="vg-sheet-head" style={{ paddingBottom: 14, borderBottom: '1px solid var(--vg-line)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                <span
+                  className="bg-signal-grad"
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 16,
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: '#fff',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    boxShadow: '0 8px 22px rgba(255, 90, 31, .32)',
+                  }}
+                >
                   {initials}
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {user.name || user.email}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 15.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user.name || user.email}
+                    </span>
+                    <span
+                      className="mn"
+                      dir="ltr"
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        padding: '2px 9px',
+                        borderRadius: 999,
+                        background: 'var(--vg-orange-soft)',
+                        color: 'var(--vg-orange-text)',
+                        border: '1px solid var(--vg-orange-edge)',
+                      }}
+                    >
+                      {formatUsd(wallet.balanceMicros)}
+                    </span>
                   </div>
-                  <div className="mn" dir="ltr" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
                     {user.email}
                     {usageSummary?.tier ? ` · ${usageSummary.tier.toUpperCase()}` : ''}
                   </div>
@@ -1016,44 +1054,56 @@ export function DashboardClient({
               </button>
             </div>
 
-            <div className="vg-sheet-grid">
+            <div className="vg-acc-list" style={{ marginTop: 14 }}>
               {isAdmin && (
-                <Link href="/admin/providers" className="vg-sheet-tile accent" onClick={() => setAccountSheetOpen(false)}>
-                  <Icon name="shield" size={18} style={{ color: 'var(--vg-orange-text)' }} />
-                  <div>
-                    <strong>{isFa ? 'پنل ادمین' : 'Admin Panel'}</strong>
-                    <small>{isFa ? 'پروایدرها و کلیدها' : 'Providers & keys'}</small>
+                <Link href="/admin/providers" className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
+                  <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', flexShrink: 0 }}>
+                    <Icon name="shield" size={18} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'پنل ادمین' : 'Admin Panel'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{isFa ? 'مدیریت پروایدرها، کلیدها و کاتالوگ' : 'Providers, keys & catalog'}</div>
                   </div>
+                  <span className="mn" style={{ fontSize: 11, color: 'var(--vg-orange-text)' }}>ADMIN</span>
                 </Link>
               )}
-              <a href="/chat" className="vg-sheet-tile" onClick={() => setAccountSheetOpen(false)}>
-                <Icon name="chat" size={18} style={{ color: 'var(--vg-orange-text)' }} />
-                <div>
-                  <strong>{isFa ? 'چت هوشمند' : 'AI Chat'}</strong>
-                  <small>{isFa ? 'گفتگو با مدل‌ها' : 'Launch workspace'}</small>
+              <a href="/chat" className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
+                <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-indigo-soft)', color: 'var(--vg-indigo)', flexShrink: 0 }}>
+                  <Icon name="chat" size={18} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'چت هوشمند ویگاس' : 'Vigas AI Chat'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{isFa ? 'گفتگو با هیدروژن، جمنای و کلود' : 'Chat with Hydrogen, Gemini & Claude'}</div>
                 </div>
+                <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
               </a>
               <button
                 type="button"
-                className="vg-sheet-tile"
-                style={{ textAlign: 'start', cursor: 'pointer' }}
+                className="vg-acc-row"
+                style={{ width: '100%', textAlign: 'start', background: 'transparent', border: 'none', cursor: 'pointer' }}
                 onClick={() => {
                   setAccountSheetOpen(false);
                   switchTab('connect');
                 }}
               >
-                <Icon name="code" size={18} style={{ color: 'var(--vg-indigo)' }} />
-                <div>
-                  <strong>{isFa ? 'اتصال ابزارها' : 'Connect tools'}</strong>
-                  <small>Cursor · Python · Node</small>
+                <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-green-soft)', color: 'var(--vg-green)', flexShrink: 0 }}>
+                  <Icon name="code" size={18} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'اتصال ابزارها و IDE' : 'Connect tools & IDEs'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>Cursor · Python · Node · cURL</div>
                 </div>
+                <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
               </button>
-              <Link href={isFa ? '/fa' : '/'} className="vg-sheet-tile" onClick={() => setAccountSheetOpen(false)}>
-                <Icon name="globe" size={18} style={{ color: 'var(--vg-ink2)' }} />
-                <div>
-                  <strong>{isFa ? 'صفحه اصلی' : 'Home'}</strong>
-                  <small>vigas.app</small>
+              <Link href={isFa ? '/fa' : '/'} className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
+                <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-raised)', color: 'var(--vg-ink2)', flexShrink: 0 }}>
+                  <Icon name="globe" size={18} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'صفحه اصلی ویگاس' : 'Vigas Home'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>vigas.app</div>
                 </div>
+                <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
               </Link>
             </div>
 
@@ -1077,12 +1127,20 @@ export function DashboardClient({
             <div className="vg-sheet-foot">
               <button
                 type="button"
-                className="btn gh"
+                className="btn"
                 onClick={() => {
                   setAccountSheetOpen(false);
                   void signOut();
                 }}
-                style={{ width: '100%', minHeight: 44, borderRadius: 13, color: 'var(--vg-red)', borderColor: 'var(--vg-red-edge)' }}
+                style={{
+                  width: '100%',
+                  minHeight: 46,
+                  borderRadius: 999,
+                  background: 'var(--vg-red-soft)',
+                  color: 'var(--vg-red)',
+                  boxShadow: 'inset 0 0 0 1px var(--vg-red-edge)',
+                  fontWeight: 600,
+                }}
               >
                 <Icon name="logout" size={15} />
                 {isFa ? 'خروج از حساب' : 'Sign out'}

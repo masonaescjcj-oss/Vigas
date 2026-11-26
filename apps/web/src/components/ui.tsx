@@ -81,32 +81,36 @@ export function Icon({
   );
 }
 
-/** The Vigas dual-reel cassette brand mark. */
+/** The 2026 Vigas mark: two converging strokes — many models, one signal. */
 export function LogoMark({
-  size = 24,
-  color = 'var(--vg-orange)',
+  size = 28,
+  color = '#FF5A1F',
   ink = 'var(--vg-ink)',
 }: {
   size?: number;
   color?: string;
   ink?: string;
 }) {
-  const height = Math.round(size * 0.75);
-  const width = Math.round(height * 1.8);
+  const s = Math.max(20, Math.round(size * 1.08));
   return (
     <svg
-      viewBox="5 26 90 50"
-      width={width}
-      height={height}
+      viewBox="0 0 32 32"
+      width={s}
+      height={s}
       fill="none"
-      style={{ flexShrink: 0, display: 'block' }}
+      style={{ flexShrink: 0, display: 'block', color: ink }}
       aria-hidden="true"
     >
-      <circle cx="29" cy="50" r="17" stroke={ink} strokeWidth="6.5" />
-      <circle cx="71" cy="50" r="17" stroke={ink} strokeWidth="6.5" />
-      <line x1="29" y1="67" x2="71" y2="67" stroke={ink} strokeWidth="6.5" strokeLinecap="round" />
-      <circle cx="29" cy="50" r="6.2" fill={color} />
-      <circle cx="71" cy="50" r="3.4" fill={ink} />
+      <defs>
+        <linearGradient id="vg-sig-mark" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFB36B" />
+          <stop offset="1" stopColor="#FF4D1A" />
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="9" fill="currentColor" fillOpacity="0.065" />
+      <path d="M7.5 8.5 L16 24" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M24.5 8.5 L16 24" stroke="url(#vg-sig-mark)" strokeWidth="3.4" strokeLinecap="round" />
+      <circle cx="24.5" cy="8.5" r="2.6" fill={color} />
     </svg>
   );
 }

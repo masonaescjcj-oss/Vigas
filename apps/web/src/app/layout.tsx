@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Instrument_Serif, Inter, JetBrains_Mono, Vazirmatn } from 'next/font/google';
+import { Bricolage_Grotesque, Geist, Geist_Mono, Instrument_Serif, Vazirmatn } from 'next/font/google';
 import { colors, cssVariables } from '@vigas/tokens';
 import { AuthHashBridge } from '@/components/auth-hash-bridge';
 import { SITE_NAME, SITE_URL } from '@/lib/env';
@@ -14,9 +14,15 @@ const serif = Instrument_Serif({
   variable: '--font-serif',
   display: 'swap',
 });
-const sans = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
-const fa = Vazirmatn({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700'], variable: '--font-fa', display: 'swap' });
+const display = Bricolage_Grotesque({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const sans = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
+const fa = Vazirmatn({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-fa', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -49,7 +55,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: colors.bg },
-    { media: '(prefers-color-scheme: light)', color: '#FBF8F3' },
+    { media: '(prefers-color-scheme: light)', color: '#F6F4F0' },
   ],
   colorScheme: 'dark light',
 };
@@ -61,7 +67,7 @@ const INIT_THEME_SCRIPT = `(function(){try{var d=document.documentElement;var m=
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning className={`${serif.variable} ${sans.variable} ${mono.variable} ${fa.variable}`}>
+    <html lang="en" dir="ltr" suppressHydrationWarning className={`${serif.variable} ${display.variable} ${sans.variable} ${mono.variable} ${fa.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: INIT_THEME_SCRIPT }} />
         <style dangerouslySetInnerHTML={{ __html: tokenCss }} />

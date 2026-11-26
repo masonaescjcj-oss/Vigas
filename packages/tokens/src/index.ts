@@ -1,37 +1,37 @@
 /**
- * Vigas design tokens — the "Sand & Signal" Graphite theme from the premium design canvas.
- * Shared by the website (CSS variables) and the Android app (StyleSheet values).
+ * Vigas design tokens — the "Obsidian Signal" 2026 visual language.
+ * Shared by the website (CSS variables) and mobile surfaces.
  */
 
 export const colors = {
-  bg: '#12110F',
-  bg2: '#171614',
-  surface: '#1C1B18',
-  raised: '#24221F',
-  strong: '#302D29',
-  pillar: '#3A3631',
-  code: '#0D0C0B',
-  footer: '#0F0E0C',
-  ink: '#EFEAE1',
-  ink2: '#A9A298',
-  /** Muted text. Passes 4.5:1 on bg, surface and raised. */
-  ink3: '#958E84',
-  line: 'rgba(239,234,225,0.075)',
-  line2: 'rgba(239,234,225,0.14)',
-  line3: 'rgba(239,234,225,0.24)',
-  orange: '#FF6A1A',
-  orangeEdge: '#A8420C',
-  orangeDeep: '#C9520F',
-  orangeText: '#FF8A4C',
-  orangeSoft: 'rgba(255,106,26,0.13)',
-  onOrange: '#160903',
+  bg: '#0A0A0B',
+  bg2: '#101012',
+  surface: '#141416',
+  raised: '#1B1B1E',
+  strong: '#26262A',
+  pillar: '#26262A',
+  code: '#070708',
+  footer: '#08080A',
+  ink: '#F5F3EF',
+  ink2: '#A6A5AB',
+  /** Muted text with clear contrast on obsidian surfaces. */
+  ink3: '#6F6E76',
+  line: 'rgba(255,255,255,0.07)',
+  line2: 'rgba(255,255,255,0.12)',
+  line3: 'rgba(255,255,255,0.22)',
+  orange: '#FF5A1F',
+  orangeEdge: '#C73D0B',
+  orangeDeep: '#FF4D14',
+  orangeText: '#FF7A45',
+  orangeSoft: 'rgba(255,90,31,0.13)',
+  onOrange: '#FFFFFF',
   sand: '#E3B65C',
   sandDeep: '#B88E3F',
-  indigo: '#9A9DFA',
-  green: '#6FCF73',
-  red: '#F07A72',
+  indigo: '#8F8CFF',
+  green: '#3EE39B',
+  red: '#FF6B81',
   teal: '#5DB7B0',
-  blue: '#5B8FD6',
+  blue: '#5CC8FF',
   bar: '#2C5A8F',
 } as const;
 
@@ -39,17 +39,19 @@ export type ColorToken = keyof typeof colors;
 
 export const fonts = {
   serif: 'Instrument Serif',
-  sans: 'Inter',
-  mono: 'JetBrains Mono',
+  display: 'Bricolage Grotesque',
+  sans: 'Geist',
+  mono: 'Geist Mono',
 } as const;
 
 export const fontStacks = {
   serif: "'Instrument Serif', Georgia, serif",
-  sans: "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
-  mono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
+  display: "'Bricolage Grotesque', 'Vazirmatn', ui-sans-serif, system-ui, sans-serif",
+  sans: "'Geist', 'Vazirmatn', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
+  mono: "'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
 } as const;
 
-export const radii = { sm: 8, md: 12, lg: 16, xl: 20, xxl: 26, pill: 999 } as const;
+export const radii = { sm: 8, md: 14, lg: 18, xl: 24, xxl: 28, pill: 999 } as const;
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 10: 40, 12: 48, 16: 64, 24: 96 } as const;
 

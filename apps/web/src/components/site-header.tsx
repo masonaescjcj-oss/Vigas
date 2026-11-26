@@ -50,8 +50,8 @@ export function SiteHeader({
             fallback={
               <span className="hdr-menu hdr-menu-pill" aria-hidden="true">
                 <LogoMark size={20} />
-                <span className="sf" style={{ fontSize: 23, lineHeight: 1 }}>
-                  Vigas
+                <span className="dsp" dir="ltr" style={{ fontSize: 19, lineHeight: 1 }}>
+                  vigas
                 </span>
                 <Icon name="chevDown" size={14} className="hdr-menu-chev" />
               </span>
@@ -60,9 +60,9 @@ export function SiteHeader({
             <MobileNav active={active} nav={nav} lang={lang} altHref={altHref} />
           </Suspense>
           <Link href={homeHref} aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'} className="hdr-logo">
-            <LogoMark />
-            <span className="sf" style={{ fontSize: 27, lineHeight: 1, letterSpacing: '-.01em' }}>
-              Vigas
+            <LogoMark size={26} />
+            <span className="dsp" dir="ltr" style={{ fontSize: 22, lineHeight: 1 }}>
+              vigas
             </span>
           </Link>
           <nav aria-label={isFa ? 'منوی اصلی' : 'Primary'} className="hdr-nav">
@@ -156,8 +156,8 @@ async function Ticker({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
 
   return (
     <section className="ticker" aria-label={isFa ? 'به‌روزرسانی زنده' : 'Live updates'}>
-      <div className="ticker-live" aria-hidden="true">
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--vg-on-orange)', display: 'inline-block' }} />
+      <div className="ticker-live bg-signal-grad" aria-hidden="true" style={{ color: '#fff', fontWeight: 700, letterSpacing: '.08em' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'inline-block', boxShadow: '0 0 8px rgba(255,255,255,.8)' }} />
         LIVE
       </div>
       <div className="ticker-viewport">

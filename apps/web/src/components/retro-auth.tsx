@@ -13,6 +13,7 @@ import {
   syncSignedInHint,
 } from '@/lib/client/supabase';
 import { LanguageSwitch } from './language-switch';
+import { SignalRings } from './obsidian-viz';
 import { ThemeToggle } from './theme-toggle';
 import { Icon, LogoMark } from './ui';
 
@@ -368,101 +369,162 @@ export function RetroAuth({
     <div
       dir={isFa ? 'rtl' : 'ltr'}
       lang={isFa ? 'fa' : 'en'}
-      className={isFa ? 'fa-ui' : undefined}
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '28px 20px 56px',
-      }}
+      className={`auth-split${isFa ? ' fa-ui' : ''}`}
     >
-      <div style={{ width: '100%', maxWidth: 440 }}>
-        {/* RetroCode-style minimal top bar */}
+      {/* Desktop Obsidian Signal 2026 Brand Panel */}
+      <aside className="auth-split-brand" aria-hidden="true">
+        <div
+          className="line-grid"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            WebkitMaskImage: 'radial-gradient(circle at 50% 60%, #000, transparent 72%)',
+            maskImage: 'radial-gradient(circle at 50% 60%, #000, transparent 72%)',
+          }}
+        />
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 28,
-            gap: 12,
+            position: 'absolute',
+            bottom: -180,
+            insetInlineStart: -80,
+            width: 560,
+            height: 560,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,90,31,0.28) 0%, rgba(255,90,31,0) 68%)',
+            filter: 'blur(64px)',
+            pointerEvents: 'none',
           }}
-        >
-          <Link
-            href={isFa ? '/fa' : '/'}
-            className="mn"
-            style={{
-              fontSize: 12,
-              color: 'var(--vg-ink3)',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span>{isFa ? '→' : '←'}</span>
-            <span>vigas.app</span>
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ThemeToggle variant="icon" lang={lang} />
-            <LanguageSwitch variant="header" lang={lang} />
+        />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <LogoMark size={32} />
+          <span className="dsp" dir="ltr" style={{ fontSize: 26, lineHeight: 1 }}>
+            vigas
+          </span>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <SignalRings size={172} />
+          <h2 className="dsp" style={{ fontSize: isFa ? 52 : 66, margin: '28px 0 0' }}>
+            {isFa ? 'همه مدل‌های' : 'Every frontier'}
+            <br />
+            <span className="text-signal">{isFa ? 'پیشتاز. یک ورود.' : 'model. One login.'}</span>
+          </h2>
+          <div style={{ display: 'flex', gap: 36, marginTop: 32 }}>
+            {[
+              ['25+', isFa ? 'مدل فعال' : 'models'],
+              ['0%', isFa ? 'کارمزد' : 'markup'],
+              ['112ms', isFa ? 'میانه تأخیر' : 'p50 latency'],
+            ].map(([val, lbl]) => (
+              <div key={lbl}>
+                <div className="mn" dir="ltr" style={{ fontSize: 26, fontWeight: 600 }}>
+                  {val}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--vg-ink3)', marginTop: 2 }}>{lbl}</div>
+              </div>
+            ))}
           </div>
         </div>
+        <div className="mn" style={{ position: 'relative', fontSize: 12, color: 'var(--vg-ink3)' }}>
+          © 2026 Vigas · vigas.app
+        </div>
+      </aside>
 
-        {/* Brand mark + wordmark header */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <LogoMark size={38} />
-            <span
+      {/* Form Column */}
+      <div className="auth-split-form dot-grid">
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          {/* Minimal top bar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 24,
+              gap: 12,
+            }}
+          >
+            <Link
+              href={isFa ? '/fa' : '/'}
+              className="mn"
               style={{
-                fontFamily: "'Bricolage Grotesque', var(--vg-font-sans)",
-                fontSize: 30,
-                fontWeight: 700,
-                letterSpacing: '-0.04em',
-                lineHeight: 1,
+                fontSize: 12,
+                color: 'var(--vg-ink3)',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>{isFa ? '→' : '←'}</span>
+              <span>vigas.app</span>
+            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ThemeToggle variant="icon" lang={lang} />
+              <LanguageSwitch variant="header" lang={lang} />
+            </div>
+          </div>
+
+          {/* Brand mark + wordmark header */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <LogoMark size={30} />
+              <span className="dsp" dir="ltr" style={{ fontSize: 24, lineHeight: 1 }}>
+                vigas
+              </span>
+            </div>
+
+            <h1
+              className="dsp"
+              style={{
+                margin: 0,
+                fontSize: isFa ? 28 : 36,
+                lineHeight: isFa ? 1.25 : 1.05,
                 color: 'var(--vg-ink)',
               }}
             >
-              vigas<span style={{ color: 'var(--vg-orange)' }}>.</span>
-            </span>
+              {step === 'signin' && (isFa ? 'خوش برگشتید.' : 'Welcome back.')}
+              {step === 'signup' && (isFa ? 'ساخت حساب کاربری.' : 'Create an account.')}
+              {step === 'forgot' && (isFa ? 'بازیابی رمز عبور.' : 'Reset password.')}
+              {step === 'verify' && (isFa ? 'تأیید ایمیل.' : 'Check your email.')}
+            </h1>
+            <p style={{ margin: '8px 0 0', fontSize: 15, lineHeight: 1.6, color: 'var(--vg-ink2)' }}>
+              {step === 'signin' &&
+                (isFa
+                  ? 'با یک حساب واحد وارد چت AI، کلیدهای API و کیف‌پول ویگاس شوید.'
+                  : 'One account for Vigas AI Chat, API keys, credits, and your projects.')}
+              {step === 'signup' &&
+                (isFa
+                  ? 'با یک حساب، هم به چت هوش مصنوعی و اپ‌ساز و هم به گیت‌وی API دسترسی دارید.'
+                  : 'Chat with frontier AI, build apps live, and manage your API keys in one place.')}
+              {step === 'forgot' &&
+                (isFa
+                  ? 'ایمیل خود را وارد کنید تا لینک تنظیم رمز عبور جدید برایتان ارسال شود.'
+                  : 'Enter your email and we will send you a password reset link.')}
+              {step === 'verify' &&
+                (isFa
+                  ? 'کد ۶ رقمی ارسال‌شده به ایمیل خود را وارد کنید.'
+                  : 'Enter the 6-digit verification code we sent to your inbox.')}
+            </p>
+            {(step === 'signin' || step === 'signup') && (
+              <div
+                className="mn"
+                style={{
+                  marginTop: 14,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '6px 12px',
+                  borderRadius: 999,
+                  background: 'var(--vg-green-soft)',
+                  border: '1px solid var(--vg-green-edge)',
+                  color: 'var(--vg-green)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                <Icon name="spark" size={13} />
+                {isFa ? '۵ دلار اعتبار هدیه هنگام ثبت‌نام' : '$5.00 welcome credit included on signup'}
+              </div>
+            )}
           </div>
-
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: isFa ? 'var(--vg-font-fa)' : "'Bricolage Grotesque', var(--vg-font-sans)",
-              fontSize: isFa ? 30 : 38,
-              fontWeight: 700,
-              lineHeight: isFa ? 1.25 : 1.05,
-              letterSpacing: isFa ? 0 : '-0.035em',
-              color: 'var(--vg-ink)',
-            }}
-          >
-            {step === 'signin' && (isFa ? 'خوش برگشتید.' : 'Welcome back.')}
-            {step === 'signup' && (isFa ? 'ساخت حساب کاربری.' : 'Create an account.')}
-            {step === 'forgot' && (isFa ? 'بازیابی رمز عبور.' : 'Reset password.')}
-            {step === 'verify' && (isFa ? 'تأیید ایمیل.' : 'Check your email.')}
-          </h1>
-          <p style={{ margin: '8px 0 0', fontSize: 15, lineHeight: 1.6, color: 'var(--vg-ink2)' }}>
-            {step === 'signin' &&
-              (isFa
-                ? 'با یک حساب واحد وارد چت AI، کلیدهای API و کیف‌پول ویگاس شوید.'
-                : 'One account for Vigas AI Chat, API keys, credits, and your projects.')}
-            {step === 'signup' &&
-              (isFa
-                ? 'با یک حساب، هم به چت هوش مصنوعی و اپ‌ساز و هم به گیت‌وی API دسترسی دارید.'
-                : 'Chat with frontier AI, build apps live, and manage your API keys in one place.')}
-            {step === 'forgot' &&
-              (isFa
-                ? 'ایمیل خود را وارد کنید تا لینک تنظیم رمز عبور جدید برایتان ارسال شود.'
-                : 'Enter your email and we will send you a password reset link.')}
-            {step === 'verify' &&
-              (isFa
-                ? 'کد ۶ رقمی ارسال‌شده به ایمیل خود را وارد کنید.'
-                : 'Enter the 6-digit verification code we sent to your inbox.')}
-          </p>
-        </div>
 
         {/* RetroCode-style segmented pill switcher for Sign in / Create account */}
         {(step === 'signin' || step === 'signup') && (
@@ -962,6 +1024,7 @@ export function RetroAuth({
             <Icon name="shield" size={14} style={{ color: 'var(--vg-green)' }} />
             {isFa ? 'یک حساب واحد برای پنل API، کیف‌پول و چت هوش مصنوعی' : 'One account for API Console, wallet credits & AI Chat'}
           </span>
+        </div>
         </div>
       </div>
     </div>
