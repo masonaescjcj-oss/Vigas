@@ -459,10 +459,10 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
           <strong>+ SevenAPI Relay</strong>), save it, then bulk-paste all your API keys below it.
         </div>
       ) : (
-        providers.map((p) => {
+        providers.map((p, idx) => {
           const live = gateway.pools[p.slug];
           return (
-            <div key={p.slug} className="card adm-pool-card">
+            <div key={p.slug} className={`card adm-pool-card${idx === 0 ? ' glow-signal' : ''}`} style={{ borderRadius: 24 }}>
               <div className="adm-pool-head">
                 <div style={{ minWidth: 0, flex: '1 1 240px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
@@ -472,7 +472,7 @@ export function ProvidersManager({ initialProviders, initialGateway }: Props) {
                       {p.kind} · {p.keyStrategy}
                     </span>
                     <span className={`adm-pill ${p.enabled ? 'ok' : 'err'}`}>{p.enabled ? 'active' : 'disabled'}</span>
-                    <span className="adm-pill subtle">AES-256-GCM · {p.keys.length} key(s)</span>
+                    <span className="adm-pill ok">AES-256-GCM · {p.keys.length} key(s)</span>
                   </div>
                   <div className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 5, overflowWrap: 'anywhere' }}>
                     {p.baseUrl}

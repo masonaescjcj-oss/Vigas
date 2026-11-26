@@ -130,19 +130,30 @@ export function RankingTable({
           <tbody>
             {rows.map((a) => {
               const s = spark(a.trend);
+              const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][a.rank - 1] ?? String(a.rank);
               return (
-                <tr key={a.modelId} className="hov" style={{ borderTop: '1px solid var(--vg-line-soft)' }}>
-                  <td className="mn" dir="ltr" style={{ ...td, textAlign: 'start', fontSize: 14, fontWeight: 600, color: a.rank <= 3 ? 'var(--vg-orange-text)' : 'var(--vg-ink3)' }}>
-                    {a.rank}
+                <tr key={a.modelId} className="hov" style={{ borderTop: '1px solid var(--vg-line)' }}>
+                  <td
+                    className="sf"
+                    dir="ltr"
+                    style={{
+                      ...td,
+                      textAlign: 'start',
+                      fontSize: 21,
+                      lineHeight: 1,
+                      color: a.rank === 1 ? 'var(--vg-orange-text)' : a.rank <= 3 ? 'var(--vg-sand)' : 'var(--vg-ink3)',
+                    }}
+                  >
+                    {roman}
                   </td>
                   <th scope="row" style={{ ...td, textAlign: 'start', fontWeight: 400 }}>
                     <Link href={`/models?q=${encodeURIComponent(a.modelId)}`} style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, color: 'var(--vg-ink)' }}>
-                      <OrgMark org={a.org} size={30} radius={9} fontSize={15} />
+                      <OrgMark org={a.org} size={34} radius={10} fontSize={16} />
                       <span style={{ minWidth: 0 }}>
-                        <b dir="ltr" style={{ display: 'block', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : 'left' }}>
+                        <b dir="ltr" style={{ display: 'block', fontWeight: 600, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : 'left' }}>
                           {a.name}
                         </b>
-                        <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 12, color: 'var(--vg-ink3)', textAlign: isFa ? 'right' : 'left' }}>
+                        <span className="mn" dir="ltr" style={{ display: 'block', fontSize: 11.5, color: 'var(--vg-ink3)', textAlign: isFa ? 'right' : 'left' }}>
                           {a.org}
                         </span>
                       </span>
@@ -150,18 +161,19 @@ export function RankingTable({
                   </th>
                   <td style={td}>
                     <span dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span aria-hidden="true" style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--vg-raised)', overflow: 'hidden' }}>
+                      <span aria-hidden="true" style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--vg-raised)', overflow: 'hidden' }}>
                         <span
+                          className={a.rank === 1 ? 'bg-signal-grad' : undefined}
                           style={{
                             display: 'block',
                             height: '100%',
                             width: `${((a.winRate / max) * 100).toFixed(1)}%`,
-                            background: a.rank === 1 ? 'var(--vg-orange)' : a.rank <= 3 ? 'var(--vg-sand-fill)' : 'var(--vg-blue)',
-                            borderRadius: 3,
+                            background: a.rank === 1 ? undefined : a.rank <= 3 ? 'var(--vg-sand-fill)' : 'var(--vg-indigo)',
+                            borderRadius: 999,
                           }}
                         />
                       </span>
-                      <span className="mn" style={{ fontSize: 13, width: 58, textAlign: 'right' }}>
+                      <span className="mn" style={{ fontSize: 12.5, width: 58, textAlign: 'right', color: 'var(--vg-ink2)' }}>
                         {a.winRate.toFixed(2)}%
                       </span>
                     </span>

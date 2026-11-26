@@ -449,39 +449,63 @@ export async function NewsContent({
           )}
         </div>
 
-        <aside style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }} aria-label={isFa ? 'بیشتر از تحریریه' : 'More from the newsroom'}>
+        <aside style={{ flex: '1 1 310px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }} aria-label={isFa ? 'بیشتر از تحریریه' : 'More from the newsroom'}>
           {brief.length > 0 && (
-            <div className="card" style={{ padding: 22 }}>
-              <div className="lbl">{isFa ? '§ خلاصه سریع' : '§ The brief'}</div>
-              <h2 className={isFa ? 'fa-ui' : 'sf'} style={{ fontSize: isFa ? 22 : 26, margin: '6px 0 12px', fontWeight: isFa ? 700 : 400 }}>
-                {isFa ? 'در ۶۰ ثانیه بخوانید' : 'In 60 seconds'}
-              </h2>
-              <ul
+            <div className="card" style={{ padding: 24, borderRadius: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
+                <Icon name="chart" size={16} style={{ color: 'var(--vg-orange-text)' }} />
+                <span>{isFa ? 'پربازدیدهای تحریریه' : 'Trending'}</span>
+              </div>
+              <ol
                 style={{
-                  margin: 0,
-                  paddingLeft: isFa ? 0 : 18,
-                  paddingRight: isFa ? 18 : 0,
-                  color: 'var(--vg-ink2)',
-                  fontSize: 14,
+                  listStyle: 'none',
+                  margin: '18px 0 0',
+                  padding: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 9,
+                  gap: 16,
                 }}
               >
-                {brief.map((n) => (
-                  <li key={n.slug}>
-                    <Link href={`/news/${n.slug}`} style={{ color: 'var(--vg-ink2)' }}>
+                {brief.map((n, idx) => (
+                  <li key={n.slug} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                    <span className="dsp" dir="ltr" style={{ fontSize: 28, lineHeight: 0.95, color: 'var(--vg-ink3)', opacity: 0.55, flexShrink: 0 }}>
+                      {idx + 1}
+                    </span>
+                    <Link href={`/news/${n.slug}`} style={{ fontSize: 14.5, fontWeight: 500, lineHeight: 1.55, color: 'var(--vg-ink)' }}>
                       {n.title}
                     </Link>
                   </li>
                 ))}
-              </ul>
-              <Link href="/models#quickstart" className="btn gh" style={{ width: '100%', marginTop: 16 }}>
-                <Icon name="code" size={16} />
-                {isFa ? 'دریافت API سریع و ارزان' : 'Use Vigas API & live rates'}
-              </Link>
+              </ol>
             </div>
           )}
+
+          {/* Signal Orange Price Drop highlight card (matches vigas-design-2026 DNews) */}
+          <Link
+            href="/models?q=deepseek"
+            className="bg-signal-grad lift"
+            style={{
+              display: 'block',
+              borderRadius: 24,
+              padding: 24,
+              color: '#fff',
+              textDecoration: 'none',
+              boxShadow: '0 24px 60px -22px rgba(255, 90, 31, .45)',
+            }}
+          >
+            <div className="mn" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.16em', color: 'rgba(255,255,255,.76)' }}>
+              {isFa ? 'کاهش قیمت API' : 'Price drop'}
+            </div>
+            <div dir="ltr" style={{ marginTop: 10, fontSize: 19, fontWeight: 700, color: '#fff', textAlign: 'start' }}>
+              DeepSeek V4.1 Flash
+            </div>
+            <div className="dsp" dir="ltr" style={{ marginTop: 4, fontSize: 54, lineHeight: 1, color: '#fff', textAlign: 'start' }}>
+              −22%
+            </div>
+            <div className="mn" dir="ltr" style={{ marginTop: 8, fontSize: 13, color: 'rgba(255,255,255,.84)', textAlign: 'start' }}>
+              $0.09 → $0.07 / 1M
+            </div>
+          </Link>
 
           {longReads.length > 0 && (
             <div className="card" style={{ padding: 22 }}>

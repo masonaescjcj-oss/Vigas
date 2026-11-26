@@ -255,8 +255,8 @@ export async function ArticleView({ slug }: { slug: string }) {
           </div>
         </header>
 
-        <figure style={{ maxWidth: 1180, margin: '0 auto 48px', padding: '0 var(--vg-gutter)' }}>
-          <div style={{ position: 'relative', aspectRatio: '16/9', maxHeight: 540, borderRadius: 20, overflow: 'hidden', border: '1px solid var(--vg-line)', background: 'var(--vg-media-bg)' }}>
+        <figure style={{ maxWidth: 1240, margin: '0 auto 48px', padding: '0 var(--vg-gutter)' }}>
+          <div style={{ position: 'relative', aspectRatio: '21/9', minHeight: 240, maxHeight: 540, borderRadius: 30, overflow: 'hidden', border: '1px solid var(--vg-line)', background: 'var(--vg-media-bg)' }}>
             <img
               src={coverImage}
               alt={article.title}
@@ -273,15 +273,19 @@ export async function ArticleView({ slug }: { slug: string }) {
 
         <div className="wrap article-layout">
           {toc.length > 1 && (
-            <nav aria-label={isFa ? 'در این صفحه' : 'On this page'} className="toc article-toc">
-              <div className="lbl" style={{ marginBottom: 10 }}>
-                {isFa ? 'در این صفحه' : 'On this page'}
+            <nav aria-label={isFa ? 'در این مطلب' : 'In this story'} className="toc article-toc">
+              <div className="lbl" style={{ marginBottom: 12 }}>
+                {isFa ? 'در این مطلب' : 'In this story'}
               </div>
               {toc.map((t) => (
                 <a key={t.id} href={`#${t.id}`}>
                   {t.text}
                 </a>
               ))}
+              <a href="/chat" className="btn key" style={{ width: '100%', marginTop: 18, minHeight: 40, fontSize: 13 }}>
+                <Icon name="spark" size={14} />
+                {isFa ? 'امتحان این مدل‌ها' : 'Try these models'}
+              </a>
             </nav>
           )}
 

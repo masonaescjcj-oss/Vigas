@@ -1,9 +1,9 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { formatContext, formatPricePerMillion } from '@vigas/core';
 import { orgMark } from '@vigas/tokens';
-import { CopyButton } from '@/components/copy-button';
 import { CreditsCard } from '@/components/credits-card';
 import { ModelsCatalogue } from '@/components/models-catalogue';
+import { TokenCalculatorCard } from '@/components/models/token-calculator';
 import { QuickstartTabs } from '@/components/quickstart-tabs';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -103,80 +103,77 @@ export async function ModelsView({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
         ]}
       />
       <SiteHeader active="models" lang={lang} />
-      <main id="main" className="wrap">
-        <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: isFa ? 'مدل‌ها و تعرفه' : 'Models' }]} style={{ paddingTop: 28 }} />
-        <header
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 32,
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            padding: '22px 0 40px',
-            borderBottom: '1px solid var(--vg-line)',
-          }}
-        >
-          <div style={{ flex: '1 1 560px', minWidth: 0 }}>
-            <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <span className="led" />
-              {isFa ? 'API · کمترین تعرفه مستقیم توکن' : 'API · Lowest pass-through pricing'}
-            </div>
-            <h1
-              className="sf"
-              style={{
-                fontSize: isFa ? 'clamp(36px,5.2vw,66px)' : 'clamp(46px,6vw,84px)',
-                lineHeight: isFa ? 1.15 : 0.98,
-                letterSpacing: isFa ? 0 : '-.03em',
-                fontWeight: isFa ? 700 : 400,
-                margin: '16px 0',
-              }}
-            >
-              {isFa ? (
-                <>
-                  همه مدل‌ها، <em className="hi">کمترین نرخ.</em>
-                </>
-              ) : (
-                <>
-                  Every model, <em className="hi">lowest rate.</em>
-                </>
-              )}
-            </h1>
-            <p style={{ fontSize: isFa ? 16.5 : 18, color: 'var(--vg-ink2)', maxWidth: 600, margin: 0, lineHeight: isFa ? 1.8 : undefined }}>
-              {isFa
-                ? 'مسیریابی پرسرعت از لبه با تعرفه واقعی توکن مستقیماً از هر آزمایشگاه؛ بدون کارمزد اضافی روی ۵ دلار اول و با Failover خودکار.'
-                : 'Fast edge routing with honest per-1M token prices passed straight from each provider. Zero markup on your first $5 — and instant failover built in.'}
-            </p>
-          </div>
-          <div style={{ flex: '0 1 auto', display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, maxWidth: '100%' }}>
-            <span className="lbl" id="base-url">
-              {isFa ? 'آدرس پایه API' : 'Base URL'}
-            </span>
-            <div
-              dir="ltr"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '6px 6px 6px 16px',
-                borderRadius: 12,
-                background: 'var(--vg-surface)',
-                border: '1px solid var(--vg-line2)',
-              }}
-            >
-              <code className="mn" aria-labelledby="base-url" style={{ fontSize: 14, color: 'var(--vg-green)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {API_BASE_URL}
-              </code>
-              <CopyButton
-                text={API_BASE_URL}
-                label={isFa ? 'کپی آدرس پایه API' : 'Copy base URL'}
-                copiedText={isFa ? 'کپی شد' : 'Copied'}
-                style={{ marginInlineStart: 'auto' }}
+      <main id="main">
+        {/* Obsidian Signal 2026 Full-Bleed PageHead */}
+        <section style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid var(--vg-line)' }}>
+          <div
+            aria-hidden="true"
+            className="dot-grid"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              WebkitMaskImage: 'linear-gradient(to bottom, #000, transparent)',
+              maskImage: 'linear-gradient(to bottom, #000, transparent)',
+            }}
+          />
+          <div aria-hidden="true" className="hero-glow" />
+          <div
+            className="wrap"
+            style={{
+              position: 'relative',
+              paddingTop: 28,
+              paddingBottom: 48,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
+              gap: 'clamp(28px, 4vw, 52px)',
+              alignItems: 'end',
+            }}
+          >
+            <div>
+              <Breadcrumb
+                lang={lang}
+                items={[
+                  { name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' },
+                  { name: isFa ? 'مدل‌ها و API' : 'Models & API' },
+                ]}
               />
+              <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 22 }}>
+                <span className="led" />
+                {isFa ? `${models.length} مدل · قیمت‌ها زنده به‌روز می‌شوند` : `${models.length} models · live pass-through prices`}
+              </div>
+              <h1
+                className="sf"
+                style={{
+                  fontSize: isFa ? 'clamp(38px,5.2vw,68px)' : 'clamp(48px,6.2vw,92px)',
+                  lineHeight: isFa ? 1.15 : 0.96,
+                  letterSpacing: isFa ? 0 : '-.032em',
+                  fontWeight: isFa ? 800 : 400,
+                  margin: '16px 0',
+                }}
+              >
+                {isFa ? (
+                  <>
+                    همه مدل‌ها. <em className="hi">قیمت مستقیم.</em>
+                  </>
+                ) : (
+                  <>
+                    Every model. <em className="hi">Lab price.</em>
+                  </>
+                )}
+              </h1>
+              <p style={{ fontSize: isFa ? 16.5 : 18, color: 'var(--vg-ink2)', maxWidth: 560, margin: 0, lineHeight: isFa ? 1.8 : 1.65 }}>
+                {isFa
+                  ? 'تعرفه مستقیم هر توکن از خود آزمایشگاه. مقایسه کنید، شناسه مدل را کپی کنید و بدون کارمزد روی ۵ دلار اول منتشر کنید.'
+                  : 'Direct per-token pricing from each lab. Compare, copy the model ID, and ship with zero markup on your first $5.'}
+              </p>
             </div>
-          </div>
-        </header>
 
-        <ModelsCatalogue models={rows} providers={providers} lang={lang} />
+            <TokenCalculatorCard models={models} lang={lang} />
+          </div>
+        </section>
+
+        <div className="wrap">
+          <ModelsCatalogue models={rows} providers={providers} baseUrl={API_BASE_URL} lang={lang} />
 
         <section id="quickstart" aria-labelledby="quickstart-title" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, paddingBottom: 72, scrollMarginTop: 24 }}>
           <div className="card" style={{ flex: '1.6 1 520px', minWidth: 0, borderRadius: 22, padding: 24 }}>
@@ -236,6 +233,7 @@ export async function ModelsView({ lang = 'en' }: { lang?: 'en' | 'fa' }) {
             ))}
           </div>
         </section>
+        </div>
       </main>
       <SiteFooter lang={lang} />
     </>

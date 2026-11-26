@@ -152,11 +152,98 @@ export async function ToolsIndexView({ lang = 'en' }: { lang?: 'en' | 'fa' } = {
               {isFa ? `${tools.length} ابزار تأییدشده · رتبه‌بندی با رأی کاربران` : `${tools.length} verified apps · ranked by builders`}
             </span>
           </div>
-          <a href="#submit" className="btn gh" style={{ minHeight: 38, padding: '0 14px', fontSize: 13 }}>
+          <a href="#submit" className="btn gh" style={{ minHeight: 40, padding: '0 16px', fontSize: 13.5 }}>
             <Icon name="plus" size={15} />
             {isFa ? 'ثبت ابزار جدید' : 'Submit app'}
           </a>
         </header>
+
+        {/* Ranked this week strip (matches vigas-design-2026 DTools) */}
+        {tools.length >= 4 && (
+          <section
+            aria-label={isFa ? 'برترین‌های هفته' : 'Ranked this week'}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
+              gap: 14,
+              marginBottom: 26,
+            }}
+          >
+            <Link
+              href={`/tools/${tools[0]!.slug}`}
+              className="bg-signal-grad lift"
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: 22,
+                padding: '22px 24px',
+                color: '#fff',
+                textDecoration: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: '0 24px 60px -22px rgba(255, 90, 31, .45)',
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  insetInlineEnd: -36,
+                  top: -36,
+                  width: 150,
+                  height: 150,
+                  borderRadius: '50%',
+                  border: '18px solid rgba(255,255,255,.15)',
+                }}
+              />
+              <div className="mn" style={{ position: 'relative', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.16em', color: 'rgba(255,255,255,.78)' }}>
+                {isFa ? 'این هفته · رتبه ۱' : 'This week · #1'}
+              </div>
+              <div
+                className={isFa ? 'fa-ui' : 'sf'}
+                style={{ position: 'relative', fontSize: isFa ? 24 : 30, lineHeight: isFa ? 1.3 : 1.05, fontWeight: isFa ? 800 : 400, marginTop: 10, color: '#fff' }}
+              >
+                {isFa ? `${tools[0]!.name} صدرنشین شد` : `${tools[0]!.name} tops the directory`}
+              </div>
+              <div className="mn" dir="ltr" style={{ position: 'relative', marginTop: 10, fontSize: 12.5, color: 'rgba(255,255,255,.85)', textAlign: 'start' }}>
+                ▲ {tools[0]!.votes.toLocaleString('en-US')} · ★ {tools[0]!.rating.toFixed(1)}
+              </div>
+            </Link>
+
+            {tools.slice(1, 4).map((tl, idx) => (
+              <Link
+                key={tl.slug}
+                href={`/tools/${tl.slug}`}
+                className="lift"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  borderRadius: 22,
+                  border: '1px solid var(--vg-line)',
+                  background: 'var(--vg-surface)',
+                  padding: '18px 20px',
+                  color: 'var(--vg-ink)',
+                  textDecoration: 'none',
+                }}
+              >
+                <span className="sf" dir="ltr" style={{ fontSize: 38, lineHeight: 1, color: 'var(--vg-sand)', flexShrink: 0 }}>
+                  {['II', 'III', 'IV'][idx]}
+                </span>
+                <ToolMark slug={tl.slug} iconUrl={tl.iconUrl} color={tl.color} letter={tl.letter} size={42} radius={12} fontSize={18} />
+                <div style={{ minWidth: 0 }}>
+                  <div dir="ltr" style={{ fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : 'left' }}>
+                    {tl.name}
+                  </div>
+                  <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 2, textAlign: isFa ? 'right' : 'left' }}>
+                    ▲ {tl.votes.toLocaleString('en-US')} · ★ {tl.rating.toFixed(1)}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </section>
+        )}
 
         <section id="dir" aria-label={isFa ? 'دایرکتوری ابزارهای هوش مصنوعی' : 'AI tools directory'} style={{ paddingBottom: 56, scrollMarginTop: 24 }}>
           <ToolsDirectory tools={tools} categories={TOOL_CATEGORIES} lang={lang} />
@@ -456,19 +543,25 @@ export async function ToolDetailPageView({ slug, lang = 'en' }: { slug: string; 
             </p>
           </div>
 
-          <aside aria-label={isFa ? 'پیش‌نمایش و جزئیات ابزار' : 'App preview and details'} style={{ flex: '1 1 340px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <aside aria-label={isFa ? 'پیش‌نمایش و جزئیات ابزار' : 'App preview and details'} style={{ flex: '1 1 360px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {previewUrl && (
-              <div className="tool-hero-media">
-                <img src={previewUrl} alt={`${tool.name} — ${tool.category} application interface preview`} width={640} height={360} />
+              <div style={{ overflow: 'hidden', borderRadius: 24, border: '1px solid var(--vg-line2)', background: 'var(--vg-surface)', boxShadow: '0 32px 80px -32px rgba(0,0,0,.6)' }}>
+                <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 7, height: 34, padding: '0 14px', borderBottom: '1px solid var(--vg-line)', background: 'var(--vg-bg2)' }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ff5f57' }} />
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#febc2e' }} />
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#28c840' }} />
+                  <span className="mn" style={{ margin: '0 auto', fontSize: 11, color: 'var(--vg-ink3)' }}>{tool.slug}</span>
+                </div>
+                <img src={previewUrl} alt={`${tool.name} — ${tool.category} application interface preview`} width={640} height={360} style={{ width: '100%', height: 'auto', display: 'block' }} />
               </div>
             )}
-            <div className="card" style={{ borderRadius: 20, padding: 20 }}>
+            <div className="card" style={{ borderRadius: 24, padding: 22 }}>
               <h2 className="lbl" style={{ margin: '0 0 6px' }}>
                 {isFa ? 'در یک نگاه' : 'At a glance'}
               </h2>
               <dl style={{ margin: 0 }}>
                 {facts.map((f) => (
-                  <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: '1px solid var(--vg-line-soft)', fontSize: 14 }}>
+                  <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: '1px solid var(--vg-line)', fontSize: 14 }}>
                     <dt style={{ color: 'var(--vg-ink3)' }}>{f.label}</dt>
                     <dd className="mn" dir={f.ltr ? 'ltr' : undefined} style={{ margin: 0, textAlign: 'end', fontSize: 13 }}>
                       {f.key === 'Category' ? (
@@ -483,16 +576,16 @@ export async function ToolDetailPageView({ slug, lang = 'en' }: { slug: string; 
                 ))}
               </dl>
               {tool.runsOnVigas && (
-                <div style={{ marginTop: 14, padding: 14, borderRadius: 14, background: 'var(--vg-orange-soft)', border: '1px solid var(--vg-orange-edge)', display: 'flex', gap: 10 }}>
-                  <Icon name="verified" size={18} style={{ color: 'var(--vg-blue)', marginTop: 2 }} />
-                  <p style={{ margin: 0, fontSize: 14, color: 'var(--vg-ink2)' }}>
+                <div style={{ marginTop: 14, padding: 14, borderRadius: 16, background: 'var(--vg-orange-soft)', border: '1px solid var(--vg-orange-edge)', display: 'flex', gap: 10 }}>
+                  <Icon name="verified" size={18} style={{ color: 'var(--vg-orange-text)', marginTop: 2, flexShrink: 0 }} />
+                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: 'var(--vg-ink2)' }}>
                     {isFa ? (
                       <>
-                        <b style={{ color: 'var(--vg-ink)', fontWeight: 500 }}>متصل به Vigas API.</b> با یک کلید و اعتبار مشترک خود از این ابزار استفاده کنید — بدون اشتراک جداگانه.
+                        <b style={{ color: 'var(--vg-ink)', fontWeight: 600 }}>روی API ویگاس اجرا می‌شود.</b> با کلید و اعتبار ویگاس — بدون اشتراک جداگانه مدل.
                       </>
                     ) : (
                       <>
-                        <b style={{ color: 'var(--vg-ink)', fontWeight: 500 }}>Runs on the Vigas API.</b> Use your Vigas key and credits — no separate model subscription.
+                        <b style={{ color: 'var(--vg-ink)', fontWeight: 600 }}>Runs on the Vigas API.</b> Use your Vigas key and credits — no separate model subscription.
                       </>
                     )}
                   </p>
@@ -502,7 +595,7 @@ export async function ToolDetailPageView({ slug, lang = 'en' }: { slug: string; 
           </aside>
         </section>
 
-        <section aria-labelledby="why" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 16, padding: '56px 0' }}>
+        <section aria-labelledby="why" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap: 18, padding: '52px 0' }}>
           <h2 id="why" className="sr-only">
             {isFa ? `چرا سازندگان ${tool.name} را انتخاب می‌کنند` : `Why builders pick ${tool.name}`}
           </h2>
@@ -538,6 +631,69 @@ export async function ToolDetailPageView({ slug, lang = 'en' }: { slug: string; 
             </div>
           ))}
         </section>
+
+        {/* Set up in 30 seconds · Connect to Vigas (matches vigas-design-2026 DToolDetail) */}
+        {tool.runsOnVigas && (
+          <section
+            style={{
+              marginBottom: 56,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
+              gap: 'clamp(22px, 4vw, 44px)',
+              alignItems: 'center',
+              borderRadius: 28,
+              border: '1px solid var(--vg-line)',
+              background: 'var(--vg-surface)',
+              padding: 'clamp(22px, 3.6vw, 40px)',
+            }}
+          >
+            <div>
+              <div className="lbl" style={{ color: 'var(--vg-orange-text)' }}>
+                {isFa ? '§ راه‌اندازی در ۳۰ ثانیه' : '§ Set up in 30 seconds'}
+              </div>
+              <h2 className="sf" style={{ fontSize: isFa ? 'clamp(26px,3.2vw,38px)' : 'clamp(32px,3.6vw,44px)', margin: '10px 0 18px', lineHeight: isFa ? 1.25 : 1.05, fontWeight: isFa ? 700 : 400 }}>
+                {isFa ? (
+                  <>
+                    اتصال {tool.name} به <span className="text-signal">ویگاس</span>
+                  </>
+                ) : (
+                  <>
+                    Connect {tool.name} to <span className="text-signal">Vigas</span>
+                  </>
+                )}
+              </h2>
+              <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 15, color: 'var(--vg-ink2)' }}>
+                {(isFa
+                  ? [
+                      `وارد تنظیمات ${tool.name} → بخش API Provider شوید`,
+                      'گزینه «OpenAI Compatible» را انتخاب کنید',
+                      'آدرس پایه و کلید API ویگاس خود را وارد کنید',
+                    ]
+                  : [
+                      `Open ${tool.name} → Settings → API Provider`,
+                      'Choose “OpenAI Compatible”',
+                      'Paste the Vigas Base URL and your API key',
+                    ]
+                ).map((step, idx) => (
+                  <li key={step} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span className="mn" style={{ width: 28, height: 28, borderRadius: 999, background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                      {idx + 1}
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div dir="ltr" className="mn" style={{ borderRadius: 20, background: '#070708', border: '1px solid var(--vg-line2)', padding: 22, fontSize: 13, lineHeight: 2, color: 'rgba(255,255,255,.85)' }}>
+              <div style={{ color: 'rgba(255,255,255,.42)', fontSize: 11.5 }}>Base URL</div>
+              <div style={{ color: '#3EE39B' }}>https://api.vigas.ai/v1</div>
+              <div style={{ color: 'rgba(255,255,255,.42)', fontSize: 11.5, marginTop: 8 }}>API Key</div>
+              <div style={{ color: '#3EE39B' }}>sk-vg-v1-••••••••</div>
+              <div style={{ color: 'rgba(255,255,255,.42)', fontSize: 11.5, marginTop: 8 }}>Model</div>
+              <div>google/gemini-4-hydrogen</div>
+            </div>
+          </section>
+        )}
 
         {similar.length > 0 && (
           <>

@@ -284,44 +284,62 @@ export async function LeaderboardView({
             </a>
           </div>
         </div>
-        <div className="card" style={{ flex: '1 1 380px', minWidth: 0, padding: '20px 22px' }}>
-          <h2 className="lbl" style={{ margin: '0 0 6px' }}>
-            {isFa ? `بیشترین رشد هفته · ${label}` : `Rising this week · ${label}`}
+        <div className="card" style={{ flex: '1 1 380px', minWidth: 0, padding: '22px 24px', borderRadius: 24 }}>
+          <h2 className="lbl" style={{ margin: '0 0 8px' }}>
+            {isFa ? `صعودی این هفته · ${label}` : `Rising this week · ${label}`}
           </h2>
-          {risers.map(({ e, delta }) => (
-            <Link
-              key={e.modelId}
-              href={`/models?q=${encodeURIComponent(e.modelId)}`}
-              className="hov"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '38px minmax(0,1fr) 18px',
-                gap: 12,
-                alignItems: 'center',
-                padding: '12px 6px',
-                margin: '0 -6px',
-                borderRadius: 10,
-                borderTop: '1px solid var(--vg-line-soft)',
-              }}
-            >
-              <OrgMark org={e.org} size={38} radius={11} fontSize={18} />
-              <span style={{ minWidth: 0 }}>
-                <b dir="ltr" style={{ display: 'block', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : 'left' }}>
-                  {shortName(e.name)}
-                </b>
-                <span style={{ fontSize: 13, color: 'var(--vg-ink2)' }}>
-                  {isFa
-                    ? `${delta >= 0 ? 'رشد' : 'کاهش'} ${Math.abs(delta).toFixed(2)} امتیاز · رتبه `
-                    : `${delta >= 0 ? 'up' : 'down'} ${Math.abs(delta).toFixed(2)} pts · `}
-                  <b className="mn" dir="ltr" style={{ color: 'var(--vg-sand)', fontWeight: 500 }}>
-                    #{e.rank}
+          {risers.map(({ e, delta }) => {
+            const pts = e.trend.length > 1 ? e.trend : [2, 3, 3, 4, 6, 5, 8];
+            const minV = Math.min(...pts);
+            const maxV = Math.max(...pts);
+            const spanV = maxV - minV || 1;
+            const sparkPts = pts
+              .map((v, idx) => `${((idx / (pts.length - 1)) * 66 + 2).toFixed(1)},${(22 - ((v - minV) / spanV) * 18).toFixed(1)}`)
+              .join(' ');
+            return (
+              <Link
+                key={e.modelId}
+                href={`/models?q=${encodeURIComponent(e.modelId)}`}
+                className="hov"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '40px minmax(0,1fr) 72px',
+                  gap: 14,
+                  alignItems: 'center',
+                  padding: '13px 6px',
+                  margin: '0 -6px',
+                  borderRadius: 12,
+                  borderTop: '1px solid var(--vg-line)',
+                }}
+              >
+                <OrgMark org={e.org} size={40} radius={12} fontSize={18} />
+                <span style={{ minWidth: 0 }}>
+                  <b dir="ltr" style={{ display: 'block', fontSize: 15, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: isFa ? 'right' : 'left' }}>
+                    {shortName(e.name)}
                   </b>
-                  {isFa ? ` در ${label}` : ` in ${label}`}
+                  <span style={{ fontSize: 13, color: 'var(--vg-ink3)' }}>
+                    {isFa
+                      ? `${delta >= 0 ? 'صعود' : 'افت'} ${Math.abs(delta).toFixed(2)} امتیاز · `
+                      : `${delta >= 0 ? 'up' : 'down'} ${Math.abs(delta).toFixed(2)} pts · `}
+                    <b className="mn" dir="ltr" style={{ color: 'var(--vg-sand)', fontWeight: 600 }}>
+                      #{e.rank}
+                    </b>
+                    {isFa ? ` در ${label}` : ` in ${label}`}
+                  </span>
                 </span>
-              </span>
-              <Icon name="chevRight" size={16} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'scaleX(-1)' : undefined }} />
-            </Link>
-          ))}
+                <svg viewBox="0 0 70 26" width="70" height="26" aria-hidden="true">
+                  <polyline
+                    points={sparkPts}
+                    fill="none"
+                    stroke={delta >= 0 ? '#3EE39B' : '#FF6B81'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            );
+          })}
         </div>
       </header>
 

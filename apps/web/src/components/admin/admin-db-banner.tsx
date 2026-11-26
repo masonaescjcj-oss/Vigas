@@ -89,17 +89,27 @@ export function AdminDbBanner({ email, authVia, initialDb }: Props) {
 
   if (db.connected) {
     return (
-      <div className="adm-status-strip">
+      <div
+        className="adm-status-strip"
+        style={{
+          borderRadius: 16,
+          border: '1px solid rgba(62, 227, 155, 0.28)',
+          background: 'rgba(62, 227, 155, 0.08)',
+          padding: '11px 18px',
+        }}
+      >
         <div className="adm-status-meta">
           <span className="led" aria-hidden="true" />
-          <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink2)' }}>
-            Admin <b style={{ color: 'var(--vg-ink)', fontWeight: 600 }}>{email}</b>
+          <span className="mn" style={{ fontSize: 12, fontWeight: 700, color: 'var(--vg-green)', letterSpacing: '.08em' }}>
+            DB
           </span>
-          <span className="adm-pill ok">vigas schema online</span>
+          <span className="mn" style={{ fontSize: 12.5, color: 'var(--vg-ink2)' }}>
+            vigas schema online · isolated · <b style={{ color: 'var(--vg-ink)', fontWeight: 600 }}>{email}</b>
+          </span>
           {authVia === 'supabase_bridge' && <span className="adm-pill subtle">Supabase SSO</span>}
         </div>
         <div className="adm-status-actions">
-          <button type="button" className="chip" onClick={runBootstrap} disabled={busy} style={{ minHeight: 30, padding: '0 11px', fontSize: 12 }}>
+          <button type="button" className="chip" onClick={runBootstrap} disabled={busy} style={{ minHeight: 30, padding: '0 12px', fontSize: 12, borderRadius: 999 }}>
             <Icon name="refresh" size={13} />
             {busy ? 'Syncing…' : 'Bootstrap schema'}
           </button>
