@@ -78,23 +78,23 @@ export default async function HomePage() {
                 <span className="led" />
                 {models.length} models · {providers} labs · $0 markup
               </div>
-              <h1 className="sf" style={{ fontSize: 'clamp(44px,6.6vw,92px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '16px 0 16px' }}>
+              <h1 className="sf" style={{ fontSize: 'clamp(50px,12vw,96px)', lineHeight: 0.94, letterSpacing: '-.032em', margin: '16px 0 18px' }}>
                 Fastest API.
                 <br />
                 <em className="hi">Lowest cost</em> per token.
               </h1>
               <p style={{ fontSize: 'clamp(15px,1.4vw,18px)', color: 'var(--vg-ink2)', maxWidth: 480, margin: '0 0 24px', lineHeight: 1.65 }}>
-                One OpenAI‑compatible key for frontier AI — wholesale pricing and sub‑120ms routing.
+                Every frontier model through one OpenAI‑compatible key, at the lab&apos;s own price.
               </p>
               <div className="home-cta-row">
-                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
+                <a href="/chat" className="btn key" style={{ minHeight: 54, padding: '0 22px', fontSize: 15.5 }}>
                   <Icon name="spark" size={16} />
-                  Open AI Chat
+                  Open Chat
                 </a>
-                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
+                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 54, padding: '0 20px', fontSize: 15.5 }}>
                   Get API key
                 </Link>
-                <Link href="/models" className="btn gh home-cta-third" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
+                <Link href="/models" className="btn gh home-cta-third" style={{ minHeight: 54, padding: '0 20px', fontSize: 15 }}>
                   Models &amp; pricing
                 </Link>
               </div>

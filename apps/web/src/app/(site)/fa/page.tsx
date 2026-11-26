@@ -106,23 +106,23 @@ export default async function PersianHomePage() {
                 <span className="led" />
                 {toFaDigits(models.length)} مدل · {toFaDigits(providers)} آزمایشگاه · ۰٪ کارمزد
               </div>
-              <h1 style={{ fontSize: 'clamp(36px,5.4vw,68px)', lineHeight: 1.15, fontWeight: 800, margin: '16px 0 16px' }}>
+              <h1 style={{ fontSize: 'clamp(44px,11.5vw,68px)', lineHeight: 1.08, fontWeight: 800, margin: '16px 0 18px' }}>
                 سریع‌ترین API.
                 <br />
-                <em className="hi" style={{ color: 'var(--vg-sand)' }}>ارزان‌ترین نرخ</em> توکن.
+                <em className="hi" style={{ color: 'var(--vg-sand)' }}>ارزان‌ترین</em> نرخ توکن.
               </h1>
               <p style={{ fontSize: 'clamp(15px,1.4vw,17.5px)', color: 'var(--vg-ink2)', maxWidth: 490, margin: '0 0 24px', lineHeight: 1.8 }}>
-                یک کلید API سازگار با OpenAI برای تمام مدل‌های پیشتاز؛ با تعرفه مستقیم و مسیریابی زیر ۱۲۰ms.
+                همه مدل‌های پیشتاز با یک کلید سازگار با OpenAI، با قیمت خود آزمایشگاه.
               </p>
               <div className="home-cta-row">
-                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
+                <a href="/chat" className="btn key" style={{ minHeight: 54, padding: '0 22px', fontSize: 15.5 }}>
                   <Icon name="spark" size={16} />
-                  ورود به چت AI
+                  ورود به چت
                 </a>
-                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
-                  دریافت کلید API
+                <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 54, padding: '0 20px', fontSize: 15.5 }}>
+                  دریافت کلید
                 </Link>
-                <Link href="/models" className="btn gh home-cta-third" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
+                <Link href="/models" className="btn gh home-cta-third" style={{ minHeight: 54, padding: '0 20px', fontSize: 15 }}>
                   مدل‌ها و قیمت‌ها
                 </Link>
               </div>

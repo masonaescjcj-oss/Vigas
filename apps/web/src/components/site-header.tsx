@@ -7,24 +7,24 @@ import { LanguageSwitch } from './language-switch';
 import { MobileNav } from './mobile-nav';
 import { QuickSearch } from './quick-search';
 import { ThemeToggle } from './theme-toggle';
-import { Icon, LogoMark } from './ui';
+import { LogoMark } from './ui';
 
 export type NavKey = 'home' | 'chat' | 'models' | 'leaderboard' | 'news' | 'tools' | 'none';
 
 const EN_NAV: Array<[NavKey, string, string]> = [
-  ['chat', 'Chat', '/chat'],
-  ['models', 'Models & API', '/models'],
-  ['leaderboard', 'Leaderboard', '/leaderboard'],
-  ['news', 'News', '/news'],
+  ['models', 'Models', '/models'],
+  ['leaderboard', 'Benchmarks', '/leaderboard'],
   ['tools', 'Tools', '/tools'],
+  ['news', 'News', '/news'],
+  ['chat', 'Chat', '/chat'],
 ];
 
 const FA_NAV: Array<[NavKey, string, string]> = [
-  ['chat', 'چت AI', '/chat'],
-  ['models', 'مدل‌ها و تعرفه', '/models'],
-  ['leaderboard', 'لیدربورد', '/leaderboard'],
-  ['news', 'اخبار AI', '/news/fa'],
+  ['models', 'مدل‌ها', '/models'],
+  ['leaderboard', 'بنچمارک', '/leaderboard'],
   ['tools', 'ابزارها', '/tools'],
+  ['news', 'اخبار', '/news/fa'],
+  ['chat', 'چت', '/chat'],
 ];
 
 export function SiteHeader({
@@ -48,13 +48,15 @@ export function SiteHeader({
         <div className="hdr">
           <Suspense
             fallback={
-              <span className="hdr-menu hdr-menu-pill" aria-hidden="true">
-                <LogoMark size={20} />
-                <span className="dsp" dir="ltr" style={{ fontSize: 19, lineHeight: 1 }}>
-                  vigas
-                </span>
-                <Icon name="chevDown" size={14} className="hdr-menu-chev" />
-              </span>
+              <div className="hdr-mob-bar" aria-hidden="true">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                  <LogoMark size={24} />
+                  <span className="dsp" dir="ltr" style={{ fontSize: 21, lineHeight: 1 }}>
+                    vigas
+                  </span>
+                </div>
+                <span className="hdr-mob-avatar bg-signal-grad">VG</span>
+              </div>
             }
           >
             <MobileNav active={active} nav={nav} lang={lang} altHref={altHref} />

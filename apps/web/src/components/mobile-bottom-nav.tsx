@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type MouseEvent } from 'react';
-import { useAdminHint } from '@/lib/client/admin-fetch';
 import { Icon, type IconName } from './ui';
 
 interface DockItem {
@@ -29,7 +28,6 @@ const HIDDEN_PREFIXES = ['/embed', '/signin', '/signup', '/auth', '/fa-app/signi
  */
 export function MobileBottomNav() {
   const pathname = usePathname() || '/';
-  const isAdmin = useAdminHint();
   const [hash, setHash] = useState('');
   const [isFa, setIsFa] = useState(false);
 
@@ -62,20 +60,18 @@ export function MobileBottomNav() {
 
   const items: DockItem[] = inAdmin
     ? [
-        { id: 'adm_providers', href: '/admin/providers', en: 'Providers', fa: 'پروایدرها', icon: 'key' },
-        { id: 'adm_models', href: '/admin/models', en: 'Models', fa: 'مدل‌ها', icon: 'cube' },
+        { id: 'adm_providers', href: '/admin/providers', en: 'Providers', fa: 'ارائه‌دهنده', icon: 'key' },
+        { id: 'adm_models', href: '/admin/models', en: 'Models', fa: 'مدل‌ها', icon: 'cpu' },
         { id: 'adm_users', href: '/admin/users', en: 'Users', fa: 'کاربران', icon: 'users' },
         { id: 'adm_content', href: '/admin', en: 'Content', fa: 'محتوا', icon: 'text' },
-        { id: 'adm_exit', href: '/dashboard', en: 'Exit', fa: 'بازگشت', icon: 'logout', exit: true },
+        { id: 'adm_exit', href: '/dashboard', en: 'Exit', fa: 'خروج', icon: 'logout', exit: true },
       ]
     : [
         { id: 'chat', href: '/chat', en: 'Chat', fa: 'چت', icon: 'chat', external: true },
-        { id: 'keys', href: '/dashboard#keys', en: 'Keys', fa: 'کلید API', icon: 'key', dashboardHash: 'keys' },
+        { id: 'keys', href: '/dashboard#keys', en: 'API Keys', fa: 'کلید API', icon: 'key', dashboardHash: 'keys' },
         { id: 'wallet', href: '/dashboard#credits', en: 'Wallet', fa: 'کیف‌پول', icon: 'wallet', dashboardHash: 'credits' },
-        { id: 'models', href: '/models', en: 'Models', fa: 'مدل‌ها', icon: 'cube' },
-        isAdmin
-          ? { id: 'admin', href: '/admin/providers', en: 'Admin', fa: 'ادمین', icon: 'shield', accent: true }
-          : { id: 'ranks', href: '/leaderboard', en: 'Ranks', fa: 'رتبه‌بندی', icon: 'bars' },
+        { id: 'models', href: '/models', en: 'Models', fa: 'مدل‌ها', icon: 'cpu' },
+        { id: 'explore', href: isFa ? '/fa' : '/', en: 'Explore', fa: 'کاوش', icon: 'compass' },
       ];
 
   const isActive = (item: DockItem): boolean => {
@@ -97,7 +93,17 @@ export function MobileBottomNav() {
     if (item.id === 'keys') return pathname === '/dashboard' && (hash === 'keys' || hash === 'connect' || hash === 'overview' || hash === '');
     if (item.id === 'wallet') return pathname === '/dashboard' && hash === 'credits';
     if (item.id === 'models') return pathname === '/models' || pathname === '/fa-app/models' || (pathname === '/dashboard' && hash === 'models');
-    if (item.id === 'ranks') return pathname.startsWith('/leaderboard') || pathname.startsWith('/fa-app/leaderboard');
+    if (item.id === 'explore') {
+      return (
+        pathname === '/' ||
+        pathname === '/fa' ||
+        pathname.startsWith('/leaderboard') ||
+        pathname.startsWith('/fa-app/leaderboard') ||
+        pathname.startsWith('/tools') ||
+        pathname.startsWith('/fa-app/tools') ||
+        pathname.startsWith('/news')
+      );
+    }
     return false;
   };
 
@@ -122,17 +128,20 @@ export function MobileBottomNav() {
           const active = isActive(item);
           const content = (
             <>
-              <span className="vg-bnav-ico">
-                <Icon name={item.icon} size={20} />
-                {item.accent && <span className="vg-bnav-dot" aria-hidden="true" />}
-              </span>
-              <span className="vg-bnav-lbl">{isFa ? item.fa : item.en}</span>
+              <Icon name={item.icon} size={19} />
+              {active && <span className="vg-bnav-lbl">{isFa ? item.fa : item.en}</span>}
             </>
           );
 
           if (item.external) {
             return (
-              <a key={item.id} href={item.href} className={`vg-bnav-item${active ? ' on' : ''}`} aria-current={active ? 'page' : undefined}>
+              <a
+                key={item.id}
+                href={item.href}
+                className={`vg-bnav-item${active ? ' on' : ''}`}
+                aria-current={active ? 'page' : undefined}
+                aria-label={isFa ? item.fa : item.en}
+              >
                 {content}
               </a>
             );
@@ -142,8 +151,9 @@ export function MobileBottomNav() {
             <Link
               key={item.id}
               href={item.href}
-              className={`vg-bnav-item${active ? ' on' : ''}${item.accent ? ' accent' : ''}${item.exit ? ' exit' : ''}`}
+              className={`vg-bnav-item${active ? ' on' : ''}${item.exit ? ' exit' : ''}`}
               aria-current={active ? 'page' : undefined}
+              aria-label={isFa ? item.fa : item.en}
               onClick={item.dashboardHash ? (e) => handleDashboardHash(e, item.dashboardHash!) : undefined}
             >
               {content}

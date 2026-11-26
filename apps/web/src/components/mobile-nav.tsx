@@ -42,7 +42,11 @@ export function MobileNav({
     };
   }, [open]);
 
-  const currentLabel = active === 'home' ? 'Vigas' : (nav?.find(([id]) => id === active)?.[1] ?? '');
+  const homeHref = isFa ? '/fa' : '/';
+  const currentLabel =
+    active === 'home' || active === 'none'
+      ? 'Vigas'
+      : (nav?.find(([id]) => id === active)?.[1] ?? 'Vigas');
 
   return (
     <>
@@ -57,20 +61,34 @@ export function MobileNav({
           <Icon name="menu" size={18} />
         </button>
       ) : (
-        <button
-          type="button"
-          className="hdr-menu hdr-menu-pill"
-          aria-expanded={open}
-          aria-label={isFa ? 'باز کردن منو' : 'Open navigation menu'}
-          onClick={() => setOpen(true)}
-        >
-          <LogoMark size={20} />
-          <span className="dsp" dir="ltr" style={{ fontSize: 19, lineHeight: 1 }}>
-            vigas
-          </span>
-          {currentLabel && active !== 'home' && active !== 'none' && <span className="mn hdr-menu-cur">{currentLabel}</span>}
-          <Icon name="chevDown" size={14} className="hdr-menu-chev" />
-        </button>
+        <div className="hdr-mob-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0, flex: 1 }}>
+            <Link
+              href={homeHref}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'var(--vg-ink)', flexShrink: 0 }}
+              aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'}
+            >
+              <LogoMark size={24} />
+              <span className="dsp" dir="ltr" style={{ fontSize: 21, lineHeight: 1 }}>
+                vigas
+              </span>
+            </Link>
+            <span aria-hidden="true" style={{ width: 1, height: 20, background: 'var(--vg-line2)', flexShrink: 0 }} />
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--vg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentLabel}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="hdr-mob-avatar bg-signal-grad"
+            aria-expanded={open}
+            aria-label={isFa ? 'منوی حساب و ناوبری' : 'Account and navigation menu'}
+            onClick={() => setOpen(true)}
+          >
+            {signedIn ? (isAdmin ? 'AD' : 'VG') : <Icon name="users" size={16} />}
+          </button>
+        </div>
       )}
 
       {open && (
@@ -85,14 +103,30 @@ export function MobileNav({
         >
           <div className="vg-sheet">
             <div className="vg-sheet-handle" aria-hidden="true" />
-            <div className="vg-sheet-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <LogoMark size={22} />
+            <div className="vg-sheet-head" style={{ paddingBottom: 14, borderBottom: '1px solid var(--vg-line)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span
+                  className="bg-signal-grad"
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 999,
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: '#fff',
+                    flexShrink: 0,
+                    boxShadow: '0 8px 22px rgba(255, 90, 31, .35)',
+                  }}
+                >
+                  {signedIn ? (isAdmin ? 'AD' : 'VG') : <Icon name="users" size={18} />}
+                </span>
                 <div>
-                  <strong style={{ display: 'block', fontSize: 15.5, lineHeight: 1.2 }}>
-                    {isFa ? 'ناوبری سریع ویگاس' : 'Vigas Navigation'}
+                  <strong style={{ display: 'block', fontSize: 16, lineHeight: 1.25 }}>
+                    {signedIn ? (isFa ? 'حساب کاربری ویگاس' : 'Vigas Account') : isFa ? 'خوش آمدید به ویگاس' : 'Welcome to Vigas'}
                   </strong>
-                  <span className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)' }}>
+                  <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
                     {isAdmin ? 'Admin · vigas.app' : 'vigas.app'}
                   </span>
                 </div>
