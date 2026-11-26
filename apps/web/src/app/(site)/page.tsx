@@ -86,16 +86,16 @@ export default async function HomePage() {
               <p style={{ fontSize: 'clamp(15px,1.4vw,18px)', color: 'var(--vg-ink2)', maxWidth: 480, margin: '0 0 24px', lineHeight: 1.65 }}>
                 One OpenAI‑compatible key for frontier AI — wholesale pricing and sub‑120ms routing.
               </p>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
+              <div className="home-cta-row">
+                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
+                  <Icon name="spark" size={16} />
                   Open AI Chat
-                  <Icon name="arrow" size={16} />
                 </a>
-                <Link href="/models" className="btn gh" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
-                  Models &amp; pricing
-                </Link>
                 <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
                   Get API key
+                </Link>
+                <Link href="/models" className="btn gh home-cta-third" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
+                  Models &amp; pricing
                 </Link>
               </div>
               <div className="mn hero-spec-strip">
@@ -107,14 +107,76 @@ export default async function HomePage() {
               </div>
             </div>
 
+            {/* Mobile-only compact RouterViz card right below hero CTA (matches vigas-design-2026 MHome) */}
+            <div className="home-mob-only" style={{ width: '100%' }}>
+              <div
+                style={{
+                  borderRadius: 24,
+                  border: line,
+                  background: 'var(--vg-surface)',
+                  padding: '16px 16px 8px',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span className="lbl" style={{ color: 'var(--vg-ink2)' }}>One key. Every mind.</span>
+                  <span className="mn" style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999, background: 'var(--vg-green-soft)', color: 'var(--vg-green)' }}>
+                    p50 112ms
+                  </span>
+                </div>
+                <RouterViz width={340} height={225} compact style={{ marginTop: 4 }} />
+              </div>
+            </div>
+
             <div style={{ flex: '1 1 430px', minWidth: 0 }}>
               <HeroApiPanel models={models} lang="en" />
+
+              {/* Mobile-only 3-tile quick nav + vibrant $5 welcome credit card */}
+              <div className="home-mob-only">
+                <div className="home-quick-grid">
+                  <Link href="/leaderboard" className="home-quick-tile">
+                    <Icon name="bars" size={20} style={{ color: 'var(--vg-sand)' }} />
+                    <span>Benchmarks</span>
+                  </Link>
+                  <Link href="/tools" className="home-quick-tile">
+                    <Icon name="sliders" size={20} style={{ color: 'var(--vg-indigo)' }} />
+                    <span>Tools</span>
+                  </Link>
+                  <Link href="/news" className="home-quick-tile">
+                    <Icon name="text" size={20} style={{ color: 'var(--vg-green)' }} />
+                    <span>News</span>
+                  </Link>
+                </div>
+                <Link href="/signup?next=/dashboard" className="home-gift-banner bg-signal-grad">
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      insetInlineEnd: -34,
+                      top: -34,
+                      width: 140,
+                      height: 140,
+                      borderRadius: '50%',
+                      border: '18px solid rgba(255,255,255,.15)',
+                    }}
+                  />
+                  <div style={{ position: 'relative' }}>
+                    <Icon name="spark" size={20} style={{ color: '#fff' }} />
+                    <div className="dsp" style={{ fontSize: 42, lineHeight: 1.05, color: '#fff', marginTop: 8 }}>
+                      $5.00
+                    </div>
+                    <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.9)', marginTop: 4 }}>
+                      Welcome credit on signup — no card required
+                    </div>
+                  </div>
+                </Link>
+              </div>
             </div>
           </div>
         </section>
 
         {/* ── Numbers ──────────────────────────────────────────────────── */}
-        <section aria-label="Vigas in numbers" style={{ borderBottom: line, background: 'var(--vg-bg2)' }}>
+        <section aria-label="Vigas in numbers" className="home-desk-only" style={{ borderBottom: line, background: 'var(--vg-bg2)' }}>
           <div className="stats">
             {[
               [String(models.length), null, 'Models online'],
@@ -136,7 +198,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── Obsidian Signal Statement · One key. Every mind. ────────── */}
-        <section className="router-band" aria-label="One key, every frontier model">
+        <section className="router-band home-desk-only" aria-label="One key, every frontier model">
           <div
             aria-hidden="true"
             className="line-grid"
@@ -306,16 +368,140 @@ export default async function HomePage() {
                 </div>
               </Link>
 
-              <div className="bento-card" style={{ flex: '1 1 320px' }}>
-                <span className="lbl">Everywhere · Android</span>
-                <h3 className="sf" style={{ fontSize: 32, lineHeight: 1.05, margin: 0, letterSpacing: '-.016em' }}>
-                  Vigas, <em className="hi">in your pocket.</em>
+              <div className="pocket-card bg-signal-grad" style={{ flex: '1 1 320px' }}>
+                <span className="mn" style={{ fontSize: 12, color: 'rgba(255,255,255,.8)' }}>Everywhere · Android &amp; iOS</span>
+                <h3 className="sf" style={{ fontSize: 36, lineHeight: 1.04, margin: 0, letterSpacing: '-.02em', color: '#fff' }}>
+                  Vigas,
+                  <br />
+                  <em style={{ fontStyle: 'italic' }}>in your pocket.</em>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>API usage, rankings, news and your wallet — native, fast and smooth.</p>
-                <span className="btn gh" style={{ marginTop: 'auto', alignSelf: 'flex-start', cursor: 'default' }}>
-                  <Icon name="phone" size={16} />
-                  Android app · coming soon
+                <p style={{ margin: 0, color: 'rgba(255,255,255,.86)', maxWidth: 200, fontSize: 14, lineHeight: 1.6 }}>
+                  API usage, rankings, news and your wallet — native and fast.
+                </p>
+                <div className="pocket-phone" aria-hidden="true">
+                  <div style={{ width: 34, height: 4, borderRadius: 99, background: 'rgba(255,255,255,.22)', margin: '0 auto' }} />
+                  <div className="mn" style={{ marginTop: 12, fontSize: 17, fontWeight: 700, color: '#fff' }}>$5.00</div>
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', gap: 4, height: 54 }}>
+                    {[30, 55, 40, 86, 28, 62, 48].map((h, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          flex: 1,
+                          height: `${h}%`,
+                          borderRadius: 3,
+                          background: idx === 3 ? '#FF5A1F' : 'rgba(255,255,255,.2)',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    marginTop: 'auto',
+                    alignSelf: 'flex-start',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    background: 'rgba(0,0,0,.25)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#fff',
+                  }}
+                >
+                  <Icon name="phone" size={14} />
+                  Coming soon
                 </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Drop-in Code Playground (Obsidian Signal 2026) ──────────── */}
+        <section className="playground-band" aria-label="One-line OpenAI SDK integration">
+          <div className="playground-grid">
+            <div>
+              <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--vg-orange-text)' }}>§</span> Drop-in compatible
+              </div>
+              <h2 className="sf" style={{ fontSize: 'clamp(38px,4.8vw,60px)', lineHeight: 1.0, letterSpacing: '-.025em', margin: '14px 0 24px' }}>
+                Change one line.
+                <br />
+                <span className="text-signal">Keep everything else.</span>
+              </h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {[
+                  ['OpenAI SDK compatible', 'Python, Node, Go, cURL & Cursor — your existing code works today.'],
+                  ['Automatic edge fallbacks', 'If a lab hiccups, Vigas reroutes in milliseconds with zero downtime.'],
+                  ['One invoice, every model', 'Top up with Card, USDT, BTC, ETH, TON or Telegram Stars via AvexPay.'],
+                ].map(([head, desc]) => (
+                  <li key={head} style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}>
+                    <span style={{ width: 28, height: 28, borderRadius: 999, background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2 }}>
+                      <Icon name="check" size={14} />
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 15.5, fontWeight: 600 }}>{head}</div>
+                      <div style={{ fontSize: 14, color: 'var(--vg-ink2)', lineHeight: 1.6, marginTop: 2 }}>{desc}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="playground-terminal">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 18px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57' }} />
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e' }} />
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
+                <div style={{ display: 'flex', gap: 4, marginLeft: 14 }}>
+                  {['Python', 'TypeScript', 'cURL', 'Cursor'].map((tabLabel, idx) => (
+                    <span
+                      key={tabLabel}
+                      className="mn"
+                      style={{
+                        fontSize: 11.5,
+                        padding: '4px 11px',
+                        borderRadius: 999,
+                        background: idx === 0 ? 'rgba(255,255,255,.11)' : 'transparent',
+                        color: idx === 0 ? '#fff' : 'rgba(255,255,255,.45)',
+                      }}
+                    >
+                      {tabLabel}
+                    </span>
+                  ))}
+                </div>
+                <span className="mn" style={{ marginLeft: 'auto', fontSize: 11.5, padding: '4px 10px', borderRadius: 999, border: '1px solid rgba(255,255,255,.1)', color: 'rgba(255,255,255,.78)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF5A1F' }} />
+                  gemini-4-hydrogen
+                </span>
+              </div>
+              <pre
+                className="mn"
+                style={{
+                  margin: 0,
+                  padding: '22px 22px',
+                  fontSize: 13.5,
+                  lineHeight: 1.75,
+                  overflowX: 'auto',
+                  color: '#e7e5e0',
+                }}
+              >{`from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.vigas.ai/v1",
+    api_key="sk-vg-v1-••••••••",
+)
+
+res = client.chat.completions.create(
+    model="google/gemini-4-hydrogen",
+    messages=[{"role": "user", "content": "Hello Vigas!"}],
+)`}</pre>
+              <div className="mn" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 18px', borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 12, color: 'rgba(255,255,255,.55)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3EE39B' }} />
+                  200 OK · streamed 412 tokens
+                </span>
+                <span style={{ color: '#3EE39B' }}>$0.0000 (Free)</span>
               </div>
             </div>
           </div>
@@ -607,30 +793,39 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Newsletter ───────────────────────────────────────────────── */}
+        {/* ── Final CTA · Ship with every model ────────────────────────── */}
         <section className="sec-pad" aria-labelledby="daily-token">
           <div className="wrap">
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 40,
-                alignItems: 'center',
-                padding: 'clamp(24px,4vw,56px)',
-                borderRadius: 28,
-                background: 'var(--vg-surface)',
-                border: line,
-              }}
-            >
-              <div style={{ flex: '1 1 420px', minWidth: 0 }}>
-                <div className="lbl">§ The Daily Token</div>
-                <h2 id="daily-token" className="sf" style={{ fontSize: 'clamp(36px,4vw,54px)', lineHeight: 1.02, letterSpacing: '-.022em', margin: '12px 0' }}>
-                  Five minutes. <em className="hi">Every model that matters.</em>
-                </h2>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)' }}>Launches, price moves and the one chart you need — every weekday morning.</p>
-              </div>
-              <div style={{ flex: '1 1 380px', minWidth: 0 }}>
-                <NewsletterForm lang="en" />
+            <div className="final-cta-card">
+              <div
+                aria-hidden="true"
+                className="line-grid"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  WebkitMaskImage: 'linear-gradient(90deg, transparent, #000)',
+                  maskImage: 'linear-gradient(90deg, transparent, #000)',
+                }}
+              />
+              <div aria-hidden="true" className="final-cta-glow" />
+              <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 40, alignItems: 'center' }}>
+                <div style={{ flex: '1.2 1 420px', minWidth: 0 }}>
+                  <div className="lbl">§ The Daily Token</div>
+                  <h2 id="daily-token" className="sf" style={{ fontSize: 'clamp(42px,5.2vw,72px)', lineHeight: 0.98, letterSpacing: '-.026em', margin: '14px 0 0' }}>
+                    Ship with every model.
+                    <br />
+                    <span className="text-signal">Pay like it&apos;s one.</span>
+                  </h2>
+                </div>
+                <div style={{ flex: '1 1 360px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, fontSize: 14.5, color: 'var(--vg-ink2)' }}>
+                    <span style={{ width: 34, height: 34, borderRadius: 999, background: 'var(--vg-green-soft)', color: 'var(--vg-green)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <Icon name="spark" size={16} />
+                    </span>
+                    <span>$5.00 free credit on signup — no card required.</span>
+                  </div>
+                  <NewsletterForm lang="en" />
+                </div>
               </div>
             </div>
           </div>

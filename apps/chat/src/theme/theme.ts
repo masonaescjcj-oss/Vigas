@@ -81,111 +81,109 @@ export const themeColors: Record<ThemeMode, ColorTokens> = {
   // the darkest orange that is still orange: white text on it passes 4.5:1,
   // and so does it as text on white.
   light: {
-    canvasBase: "#FFFFFF",
-    surfaceRaised: "#F6F5F4",
-    surfaceMuted: "#EEEDEB",
-    surfaceStrong: "#E4E2DF",
-    surfaceCode: "#F3F2F0",
+    canvasBase: "#F6F4F0",
+    surfaceRaised: "#FFFFFF",
+    surfaceMuted: "#F1EEE9",
+    surfaceStrong: "#E6E1D9",
+    surfaceCode: "#121214",
 
-    inkPrimary: "#1C1A18",
-    inkSecondary: "#57534E",
-    inkMuted: "#736D66",
+    inkPrimary: "#111113",
+    inkSecondary: "#4B4A52",
+    inkMuted: "#7E7D86",
 
-    brandPrimary: "#C94A0E",
-    brandSoft: "rgba(201, 74, 14, 0.09)",
-    brandEdge: "#8F3309",
-    accentTeal: "#C94A0E",
-    capEdge: "rgba(28, 26, 24, 0.12)",
+    brandPrimary: "#E04712",
+    brandSoft: "rgba(224, 71, 18, 0.10)",
+    brandEdge: "#B5360B",
+    accentTeal: "#E04712",
+    capEdge: "rgba(17, 17, 19, 0.10)",
 
-    bubbleUser: "#F1F0EE",
+    bubbleUser: "#EFECE6",
 
-    borderHairline: "rgba(28, 26, 24, 0.09)",
+    borderHairline: "rgba(17, 17, 19, 0.08)",
 
-    success: "#2F7A3A",
-    successSoft: "rgba(47, 122, 58, 0.09)",
-    failed: "#B8392E",
-    failedSoft: "rgba(184, 57, 46, 0.09)",
-    warning: "#8A6A00",
-    warningSoft: "rgba(138, 106, 0, 0.10)",
-    running: "#C94A0E",
+    success: "#0F8A56",
+    successSoft: "rgba(15, 138, 86, 0.10)",
+    failed: "#CC2F49",
+    failedSoft: "rgba(204, 47, 73, 0.10)",
+    warning: "#9C6D11",
+    warningSoft: "rgba(156, 109, 17, 0.10)",
+    running: "#E04712",
 
-    incognito: "#6B4FA8",
-    incognitoSoft: "rgba(107, 79, 168, 0.09)",
+    incognito: "#5855D6",
+    incognitoSoft: "rgba(88, 85, 214, 0.10)",
 
-    scrim: "rgba(28, 26, 24, 0.32)",
+    scrim: "rgba(17, 17, 19, 0.36)",
   },
 
-  // Graphite: a step lighter than Black, for people who find near-black hard.
   dark: {
-    canvasBase: "#221F1C",
-    surfaceRaised: "#2D2A26",
-    surfaceMuted: "#38342F",
-    surfaceStrong: "#45403A",
-    surfaceCode: "#181614",
+    canvasBase: "#101012",
+    surfaceRaised: "#18181B",
+    surfaceMuted: "#222226",
+    surfaceStrong: "#2C2C32",
+    surfaceCode: "#070708",
 
-    inkPrimary: "#F1ECE3",
-    inkSecondary: "#B0A99E",
-    inkMuted: "#9D968B",
+    inkPrimary: "#F5F3EF",
+    inkSecondary: "#A6A5AB",
+    inkMuted: "#6F6E76",
 
-    brandPrimary: "#FF7A2E",
-    brandSoft: "rgba(255, 122, 46, 0.15)",
-    brandEdge: "#B3561F",
-    accentTeal: "#FF7A2E",
-    capEdge: "rgba(0, 0, 0, 0.40)",
-
-    bubbleUser: "#38342F",
-
-    borderHairline: "rgba(241, 236, 227, 0.09)",
-
-    success: "#86CB84",
-    successSoft: "rgba(134, 203, 132, 0.15)",
-    failed: "#F38A82",
-    failedSoft: "rgba(243, 138, 130, 0.15)",
-    warning: "#EACB4A",
-    warningSoft: "rgba(234, 203, 74, 0.15)",
-    running: "#FF7A2E",
-
-    incognito: "#BBA6F3",
-    incognitoSoft: "rgba(187, 166, 243, 0.15)",
-
-    scrim: "rgba(10, 9, 8, 0.62)",
-  },
-
-  // Black: the default. Warm graphite rather than #000, so the keys and wells
-  // have something to stand up from and sink into.
-  darkest: {
-    canvasBase: "#171614",
-    surfaceRaised: "#24221F",
-    surfaceMuted: "#2E2B27",
-    surfaceStrong: "#3A3631",
-    surfaceCode: "#0F0E0D",
-
-    inkPrimary: "#EFEAE1",
-    inkSecondary: "#A8A197",
-    inkMuted: "#948D82",
-
-    brandPrimary: "#FF6A1A",
-    brandSoft: "rgba(255, 106, 26, 0.14)",
-    brandEdge: "#B24A12",
-    accentTeal: "#FF6A1A",
+    brandPrimary: "#FF5A1F",
+    brandSoft: "rgba(255, 90, 31, 0.14)",
+    brandEdge: "#C43E10",
+    accentTeal: "#FF5A1F",
     capEdge: "rgba(0, 0, 0, 0.45)",
 
-    bubbleUser: "#2E2B27",
+    bubbleUser: "#1B1B1E",
 
-    borderHairline: "rgba(239, 234, 225, 0.08)",
+    borderHairline: "rgba(255, 255, 255, 0.08)",
 
-    success: "#7CC47A",
-    successSoft: "rgba(124, 196, 122, 0.14)",
-    failed: "#F07A72",
-    failedSoft: "rgba(240, 122, 114, 0.14)",
-    warning: "#E6C229",
-    warningSoft: "rgba(230, 194, 41, 0.14)",
-    running: "#FF6A1A",
+    success: "#3EE39B",
+    successSoft: "rgba(62, 227, 155, 0.14)",
+    failed: "#FF6B81",
+    failedSoft: "rgba(255, 107, 129, 0.14)",
+    warning: "#E3B65C",
+    warningSoft: "rgba(227, 182, 92, 0.14)",
+    running: "#FF5A1F",
 
-    incognito: "#B39DF0",
-    incognitoSoft: "rgba(179, 157, 240, 0.14)",
+    incognito: "#8F8CFF",
+    incognitoSoft: "rgba(143, 140, 255, 0.14)",
 
-    scrim: "rgba(8, 7, 6, 0.68)",
+    scrim: "rgba(6, 6, 7, 0.72)",
+  },
+
+  // Obsidian Signal 2026 default: Deep Obsidian #0A0A0B with Signal Orange #FF5A1F
+  darkest: {
+    canvasBase: "#0A0A0B",
+    surfaceRaised: "#141416",
+    surfaceMuted: "#1B1B1E",
+    surfaceStrong: "#26262A",
+    surfaceCode: "#070708",
+
+    inkPrimary: "#F5F3EF",
+    inkSecondary: "#A6A5AB",
+    inkMuted: "#6F6E76",
+
+    brandPrimary: "#FF5A1F",
+    brandSoft: "rgba(255, 90, 31, 0.14)",
+    brandEdge: "#C43E10",
+    accentTeal: "#FF5A1F",
+    capEdge: "rgba(0, 0, 0, 0.50)",
+
+    bubbleUser: "#1B1B1E",
+
+    borderHairline: "rgba(255, 255, 255, 0.07)",
+
+    success: "#3EE39B",
+    successSoft: "rgba(62, 227, 155, 0.14)",
+    failed: "#FF6B81",
+    failedSoft: "rgba(255, 107, 129, 0.14)",
+    warning: "#E3B65C",
+    warningSoft: "rgba(227, 182, 92, 0.14)",
+    running: "#FF5A1F",
+
+    incognito: "#8F8CFF",
+    incognitoSoft: "rgba(143, 140, 255, 0.14)",
+
+    scrim: "rgba(5, 5, 6, 0.76)",
   },
 };
 

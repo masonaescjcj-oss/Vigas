@@ -2,9 +2,6 @@ import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { getDb, getWallet } from '@vigas/db';
 import { DashboardGate } from '@/components/dashboard/dashboard-gate';
-import { SiteFooter } from '@/components/site-footer';
-import { SiteHeader } from '@/components/site-header';
-import { Breadcrumb } from '@/components/ui';
 import { activePaymentMode } from '@/lib/avexpay';
 import { getCurrentUser, toPublicUser } from '@/lib/auth';
 import { getModels } from '@/lib/data';
@@ -41,46 +38,15 @@ async function DashboardInner() {
   const wallet = user ? await getWallet(getDb(), user.accountId, env.topupFeeBps).catch(() => null) : null;
 
   const content = (
-    <>
-      <div className="dash-desk-only">
-        <SiteHeader ticker={false} lang={lang} />
-      </div>
-      <main id="main" className="wrap dash-main">
-        <div className="dash-desk-only">
-          <Breadcrumb lang={lang} items={[{ name: isFa ? 'خانه' : 'Home', href: isFa ? '/fa' : '/' }, { name: isFa ? 'پنل API' : 'API Console' }]} style={{ paddingTop: 28 }} />
-          <h1
-            className="sf"
-            style={{
-              fontSize: isFa ? 'clamp(32px,4.4vw,52px)' : 'clamp(40px,5vw,66px)',
-              lineHeight: isFa ? 1.15 : 1,
-              letterSpacing: isFa ? 0 : '-.03em',
-              fontWeight: isFa ? 700 : 400,
-              margin: '16px 0 22px',
-            }}
-          >
-            {isFa ? (
-              <>
-                پنل <em className="hi">فروش و مدیریت API.</em>
-              </>
-            ) : (
-              <>
-                Vigas <em className="hi">API Console.</em>
-              </>
-            )}
-          </h1>
-        </div>
-        <DashboardGate
-          initialUser={user ? toPublicUser(user) : null}
-          initialWallet={wallet}
-          models={models}
-          paymentMode={activePaymentMode(env)}
-          lang={lang}
-        />
-      </main>
-      <div className="dash-desk-only">
-        <SiteFooter lang={lang} />
-      </div>
-    </>
+    <main id="main" className="dash-main">
+      <DashboardGate
+        initialUser={user ? toPublicUser(user) : null}
+        initialWallet={wallet}
+        models={models}
+        paymentMode={activePaymentMode(env)}
+        lang={lang}
+      />
+    </main>
   );
 
   if (isFa) {
@@ -95,26 +61,15 @@ async function DashboardInner() {
 
 function DashboardShellSkeleton() {
   return (
-    <>
-      <div className="dash-desk-only">
-        <SiteHeader ticker={false} lang="en" />
-      </div>
-      <main id="main" className="wrap dash-main">
-        <div className="dash-desk-only">
-          <Breadcrumb items={[{ name: 'Home', href: '/' }, { name: 'API Console' }]} style={{ paddingTop: 28 }} />
-          <h1 className="sf" style={{ fontSize: 'clamp(40px,5vw,66px)', lineHeight: 1, letterSpacing: '-.03em', margin: '16px 0 22px' }}>
-            Vigas <em className="hi">API Console.</em>
-          </h1>
+    <main id="main" className="dash-shell">
+      <aside className="dash-rail dash-desk-only" aria-hidden="true" />
+      <div className="dash-workspace">
+        <div className="dash-body" aria-busy="true" aria-label="Loading your API Console">
+          <p style={{ margin: '0 0 12px', color: 'var(--vg-ink3)', fontSize: 14 }}>Loading your workspace…</p>
+          <div className="card" style={{ height: 220, borderRadius: 24 }} />
+          <div className="card" style={{ height: 180, borderRadius: 24 }} />
         </div>
-        <div aria-busy="true" aria-label="Loading your API Console" style={{ paddingTop: 18 }}>
-          <p style={{ margin: '0 0 16px', color: 'var(--vg-ink3)', fontSize: 14 }}>Loading your account…</p>
-          <div className="card" style={{ height: 220, borderRadius: 24, marginBottom: 14 }} />
-          <div className="card" style={{ height: 180, borderRadius: 22 }} />
-        </div>
-      </main>
-      <div className="dash-desk-only">
-        <SiteFooter lang="en" />
       </div>
-    </>
+    </main>
   );
 }

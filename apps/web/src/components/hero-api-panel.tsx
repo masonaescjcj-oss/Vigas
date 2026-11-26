@@ -58,33 +58,48 @@ export function HeroApiPanel({
               href={`/models?q=${encodeURIComponent(model.id)}`}
               className={i === 0 ? 'hero-rate-row' : 'hero-rate-row hero-rate-sep'}
             >
-              <OrgMark org={model.org} size={32} />
+              <OrgMark org={model.org} size={40} radius={12} />
               <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--vg-ink)', whiteSpace: 'nowrap' }}>{shortName}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--vg-ink)', whiteSpace: 'nowrap' }}>{shortName}</span>
                   <span
                     className="pill hero-rate-tag"
                     style={{
                       fontSize: 10.5,
-                      padding: '1px 6px',
-                      color: isFree ? 'var(--vg-green)' : 'var(--vg-sand)',
-                      background: isFree ? 'var(--vg-green-soft)' : 'var(--vg-sand-soft)',
+                      padding: '2px 8px',
+                      borderRadius: 999,
+                      color:
+                        isFree || i === 0
+                          ? 'var(--vg-green)'
+                          : i === 1
+                            ? 'var(--vg-indigo)'
+                            : i === 3
+                              ? 'var(--vg-orange-text)'
+                              : 'var(--vg-sand)',
+                      background:
+                        isFree || i === 0
+                          ? 'var(--vg-green-soft)'
+                          : i === 1
+                            ? 'var(--vg-indigo-soft)'
+                            : i === 3
+                              ? 'var(--vg-orange-soft)'
+                              : 'var(--vg-sand-soft)',
                     }}
                   >
                     {isFa ? spec.faTag : spec.enTag}
                   </span>
                 </div>
-                <div className="mn" dir="ltr" style={{ fontSize: 11, color: 'var(--vg-ink3)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <span style={{ color: isSub120 ? 'var(--vg-green)' : 'var(--vg-ink2)' }}>{speed}</span>
                   {' · '}
                   {model.id}
                 </div>
               </div>
               <div dir="ltr" style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div className="mn" style={{ fontSize: 13, fontWeight: 600, color: isFree ? 'var(--vg-green)' : 'var(--vg-ink)' }}>
+                <div className="mn" style={{ fontSize: 14.5, fontWeight: 600, color: isFree ? 'var(--vg-green)' : 'var(--vg-ink)' }}>
                   {isFree ? 'FREE' : `${formatPricePerMillion(model.inputPerMillionMicros)} / ${formatPricePerMillion(model.outputPerMillionMicros)}`}
                 </div>
-                <div className="mn" style={{ fontSize: 10, color: 'var(--vg-ink3)' }}>
+                <div className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)' }}>
                   {isFree ? 'per 1M' : 'in / out · 1M'}
                 </div>
               </div>

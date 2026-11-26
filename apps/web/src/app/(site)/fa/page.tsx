@@ -114,16 +114,16 @@ export default async function PersianHomePage() {
               <p style={{ fontSize: 'clamp(15px,1.4vw,17.5px)', color: 'var(--vg-ink2)', maxWidth: 490, margin: '0 0 24px', lineHeight: 1.8 }}>
                 یک کلید API سازگار با OpenAI برای تمام مدل‌های پیشتاز؛ با تعرفه مستقیم و مسیریابی زیر ۱۲۰ms.
               </p>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 24px', fontSize: 15 }}>
+              <div className="home-cta-row">
+                <a href="/chat" className="btn key" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
+                  <Icon name="spark" size={16} />
                   ورود به چت AI
-                  <Icon name="arrow" size={16} style={{ transform: 'scaleX(-1)' }} />
                 </a>
-                <Link href="/models" className="btn gh" style={{ minHeight: 50, padding: '0 22px', fontSize: 15 }}>
-                  مدل‌ها و قیمت‌ها
-                </Link>
                 <Link href="/signup?next=/dashboard%23keys" className="btn gh" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
                   دریافت کلید API
+                </Link>
+                <Link href="/models" className="btn gh home-cta-third" style={{ minHeight: 50, padding: '0 20px', fontSize: 15 }}>
+                  مدل‌ها و قیمت‌ها
                 </Link>
               </div>
               <div className="hero-spec-strip">
@@ -137,14 +137,76 @@ export default async function PersianHomePage() {
               </div>
             </div>
 
+            {/* Mobile-only compact RouterViz card right below hero CTA (matches vigas-design-2026 MHome) */}
+            <div className="home-mob-only" style={{ width: '100%' }}>
+              <div
+                style={{
+                  borderRadius: 24,
+                  border: line,
+                  background: 'var(--vg-surface)',
+                  padding: '16px 16px 8px',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span className="lbl" style={{ color: 'var(--vg-ink2)' }}>یک کلید. همه‌ی مغزها.</span>
+                  <span className="mn" dir="ltr" style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999, background: 'var(--vg-green-soft)', color: 'var(--vg-green)' }}>
+                    p50 112ms
+                  </span>
+                </div>
+                <RouterViz width={340} height={225} compact style={{ marginTop: 4 }} />
+              </div>
+            </div>
+
             <div style={{ flex: '1 1 430px', minWidth: 0 }}>
               <HeroApiPanel models={models} lang="fa" />
+
+              {/* Mobile-only 3-tile quick nav + vibrant $5 welcome credit card (matches vigas-design-2026 MHome) */}
+              <div className="home-mob-only">
+                <div className="home-quick-grid">
+                  <Link href="/leaderboard" className="home-quick-tile">
+                    <Icon name="bars" size={20} style={{ color: 'var(--vg-sand)' }} />
+                    <span>بنچمارک</span>
+                  </Link>
+                  <Link href="/tools" className="home-quick-tile">
+                    <Icon name="sliders" size={20} style={{ color: 'var(--vg-indigo)' }} />
+                    <span>ابزارها</span>
+                  </Link>
+                  <Link href="/news/fa" className="home-quick-tile">
+                    <Icon name="text" size={20} style={{ color: 'var(--vg-green)' }} />
+                    <span>اخبار AI</span>
+                  </Link>
+                </div>
+                <Link href="/signup?next=/dashboard" className="home-gift-banner bg-signal-grad">
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      insetInlineEnd: -34,
+                      top: -34,
+                      width: 140,
+                      height: 140,
+                      borderRadius: '50%',
+                      border: '18px solid rgba(255,255,255,.15)',
+                    }}
+                  />
+                  <div style={{ position: 'relative' }}>
+                    <Icon name="spark" size={20} style={{ color: '#fff' }} />
+                    <div className="dsp" dir="ltr" style={{ fontSize: 42, lineHeight: 1.05, color: '#fff', marginTop: 8, textAlign: 'start' }}>
+                      $5.00
+                    </div>
+                    <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.9)', marginTop: 4 }}>
+                      اعتبار هدیه هنگام ثبت‌نام — بدون نیاز به کارت
+                    </div>
+                  </div>
+                </Link>
+              </div>
             </div>
           </div>
         </section>
 
         {/* ── Numbers ──────────────────────────────────────────────────── */}
-        <section aria-label="آمار ویگاس" style={{ borderBottom: line, background: 'var(--vg-bg2)' }}>
+        <section aria-label="آمار ویگاس" className="home-desk-only" style={{ borderBottom: line, background: 'var(--vg-bg2)' }}>
           <div className="stats">
             {[
               [toFaDigits(models.length), 'مدل آنلاین در گیت‌وی'],
@@ -165,7 +227,7 @@ export default async function PersianHomePage() {
         </section>
 
         {/* ── Obsidian Signal Statement · یک کلید. همه‌ی مغزها. ────────── */}
-        <section className="router-band" aria-label="یک کلید برای همه مدل‌های هوش مصنوعی">
+        <section className="router-band home-desk-only" aria-label="یک کلید برای همه مدل‌های هوش مصنوعی">
           <div
             aria-hidden="true"
             className="line-grid"
@@ -325,18 +387,140 @@ export default async function PersianHomePage() {
                 </div>
               </Link>
 
-              <div className="bento-card" style={{ flex: '1 1 320px' }}>
-                <span className="lbl">همه‌جا · نسخه اندروید</span>
-                <h3 style={{ fontSize: 26, lineHeight: 1.28, margin: 0, fontWeight: 700 }}>
-                  ویگاس، <em className="hi">در جیب شما.</em>
+              <div className="pocket-card bg-signal-grad" style={{ flex: '1 1 320px' }}>
+                <span className="mn" style={{ fontSize: 12, color: 'rgba(255,255,255,.8)' }}>همه‌جا · اندروید و iOS</span>
+                <h3 style={{ fontSize: 30, lineHeight: 1.2, margin: 0, fontWeight: 800, color: '#fff' }}>
+                  ویگاس،
+                  <br />
+                  <span style={{ opacity: 0.92 }}>در جیب شما.</span>
                 </h3>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)', lineHeight: 1.75 }}>
-                  مانیتورینگ مصرف API، رتبه‌بندی مدل‌ها، اخبار روز و کیف پول اعتباری — سریع و بومی.
+                <p style={{ margin: 0, color: 'rgba(255,255,255,.86)', maxWidth: 200, fontSize: 14, lineHeight: 1.7 }}>
+                  مصرف API، رتبه‌بندی، اخبار و کیف‌پول — بومی و سریع.
                 </p>
-                <span className="btn gh" style={{ marginTop: 'auto', alignSelf: 'flex-start', cursor: 'default' }}>
-                  <Icon name="phone" size={16} />
-                  اپ اندروید · به‌زودی
+                <div className="pocket-phone" aria-hidden="true" dir="ltr">
+                  <div style={{ width: 34, height: 4, borderRadius: 99, background: 'rgba(255,255,255,.22)', margin: '0 auto' }} />
+                  <div className="mn" style={{ marginTop: 12, fontSize: 17, fontWeight: 700, color: '#fff' }}>$5.00</div>
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-end', gap: 4, height: 54 }}>
+                    {[30, 55, 40, 86, 28, 62, 48].map((h, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          flex: 1,
+                          height: `${h}%`,
+                          borderRadius: 3,
+                          background: idx === 3 ? '#FF5A1F' : 'rgba(255,255,255,.2)',
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    marginTop: 'auto',
+                    alignSelf: 'flex-start',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    background: 'rgba(0,0,0,.25)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#fff',
+                  }}
+                >
+                  <Icon name="phone" size={14} />
+                  به‌زودی
                 </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Drop-in Code Playground (Obsidian Signal 2026) ──────────── */}
+        <section className="playground-band" aria-label="اتصال یک‌خطی API">
+          <div className="playground-grid">
+            <div>
+              <div className="lbl" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--vg-orange-text)' }}>§</span> جایگزین مستقیم
+              </div>
+              <h2 style={{ fontSize: 'clamp(32px,4vw,52px)', lineHeight: 1.18, fontWeight: 800, margin: '14px 0 24px' }}>
+                فقط یک خط را
+                <br />
+                <span className="text-signal">عوض کنید.</span>
+              </h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {[
+                  ['سازگار با SDK اوپن‌ای‌آی', 'پایتون، نود، گو، cURL و Cursor — کد فعلی شما همین حالا کار می‌کند.'],
+                  ['Failover خودکار در میلی‌ثانیه', 'اگر یک ارائه‌دهنده کند یا قطع شود، مسیر به‌صورت خودکار تغییر می‌کند.'],
+                  ['یک فاکتور برای همه مدل‌ها', 'شارژ آسان با رمزارز (USDT، TON، BTC) و Telegram Stars از AvexPay.'],
+                ].map(([head, desc]) => (
+                  <li key={head} style={{ display: 'flex', gap: 13, alignItems: 'flex-start' }}>
+                    <span style={{ width: 28, height: 28, borderRadius: 999, background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2 }}>
+                      <Icon name="check" size={14} />
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 15.5, fontWeight: 700 }}>{head}</div>
+                      <div style={{ fontSize: 14, color: 'var(--vg-ink2)', lineHeight: 1.7, marginTop: 2 }}>{desc}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="playground-terminal" dir="ltr">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 18px', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57' }} />
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e' }} />
+                <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
+                <div style={{ display: 'flex', gap: 4, marginLeft: 14 }}>
+                  {['Python', 'TypeScript', 'cURL', 'Cursor'].map((tabLabel, idx) => (
+                    <span
+                      key={tabLabel}
+                      className="mn"
+                      style={{
+                        fontSize: 11.5,
+                        padding: '4px 11px',
+                        borderRadius: 999,
+                        background: idx === 0 ? 'rgba(255,255,255,.11)' : 'transparent',
+                        color: idx === 0 ? '#fff' : 'rgba(255,255,255,.45)',
+                      }}
+                    >
+                      {tabLabel}
+                    </span>
+                  ))}
+                </div>
+                <span className="mn" style={{ marginLeft: 'auto', fontSize: 11.5, padding: '4px 10px', borderRadius: 999, border: '1px solid rgba(255,255,255,.1)', color: 'rgba(255,255,255,.78)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#FF5A1F' }} />
+                  gemini-4-hydrogen
+                </span>
+              </div>
+              <pre
+                className="mn"
+                style={{
+                  margin: 0,
+                  padding: '22px 22px',
+                  fontSize: 13.5,
+                  lineHeight: 1.75,
+                  overflowX: 'auto',
+                  color: '#e7e5e0',
+                }}
+              >{`from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.vigas.ai/v1",
+    api_key="sk-vg-v1-••••••••",
+)
+
+res = client.chat.completions.create(
+    model="google/gemini-4-hydrogen",
+    messages=[{"role": "user", "content": "Hello Vigas!"}],
+)`}</pre>
+              <div className="mn" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 18px', borderTop: '1px solid rgba(255,255,255,.08)', fontSize: 12, color: 'rgba(255,255,255,.55)' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#3EE39B' }} />
+                  200 OK · streamed 412 tokens
+                </span>
+                <span style={{ color: '#3EE39B' }}>$0.0000 (Free)</span>
               </div>
             </div>
           </div>
@@ -607,32 +791,39 @@ export default async function PersianHomePage() {
           </div>
         </section>
 
-        {/* ── Newsletter ───────────────────────────────────────────────── */}
+        {/* ── Final CTA · با همه مدل‌ها بسازید ─────────────────────────── */}
         <section className="sec-pad" aria-labelledby="daily-token-fa">
           <div className="wrap">
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 40,
-                alignItems: 'center',
-                padding: 'clamp(24px,4vw,56px)',
-                borderRadius: 28,
-                background: 'var(--vg-surface)',
-                border: line,
-              }}
-            >
-              <div style={{ flex: '1 1 420px', minWidth: 0 }}>
-                <div className="lbl">§ خبرنامه روزانه The Daily Token</div>
-                <h2 id="daily-token-fa" style={{ fontSize: 'clamp(28px,3.6vw,44px)', lineHeight: 1.24, fontWeight: 700, margin: '12px 0' }}>
-                  پنج دقیقه مطالعه. <em className="hi">هر مدل مهمی که باید بشناسید.</em>
-                </h2>
-                <p style={{ margin: 0, color: 'var(--vg-ink2)', lineHeight: 1.75 }}>
-                  رونمایی‌های جدید، کاهش قیمت API و نمودارهای کلیدی هر هفته در ایمیل شما.
-                </p>
-              </div>
-              <div style={{ flex: '1 1 380px', minWidth: 0 }}>
-                <NewsletterForm lang="fa" />
+            <div className="final-cta-card">
+              <div
+                aria-hidden="true"
+                className="line-grid"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  WebkitMaskImage: 'linear-gradient(-90deg, transparent, #000)',
+                  maskImage: 'linear-gradient(-90deg, transparent, #000)',
+                }}
+              />
+              <div aria-hidden="true" className="final-cta-glow" />
+              <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 40, alignItems: 'center' }}>
+                <div style={{ flex: '1.2 1 420px', minWidth: 0 }}>
+                  <div className="lbl">§ شروع سریع و خبرنامه ویگاس</div>
+                  <h2 id="daily-token-fa" style={{ fontSize: 'clamp(34px,4.5vw,58px)', lineHeight: 1.16, fontWeight: 800, margin: '14px 0 0' }}>
+                    با همه مدل‌ها بسازید.
+                    <br />
+                    <span className="text-signal">مثل یکی پرداخت کنید.</span>
+                  </h2>
+                </div>
+                <div style={{ flex: '1 1 360px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, fontSize: 14.5, color: 'var(--vg-ink2)' }}>
+                    <span style={{ width: 34, height: 34, borderRadius: 999, background: 'var(--vg-green-soft)', color: 'var(--vg-green)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <Icon name="spark" size={16} />
+                    </span>
+                    <span>۵ دلار اعتبار هدیه هنگام ثبت‌نام — بدون نیاز به کارت.</span>
+                  </div>
+                  <NewsletterForm lang="fa" />
+                </div>
               </div>
             </div>
           </div>

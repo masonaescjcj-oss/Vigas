@@ -20,9 +20,10 @@ import {
 } from '@/lib/client/supabase-account';
 import { API_BASE_URL } from '@/lib/client/supabase-config';
 import { CopyButton } from '../copy-button';
+import { LanguageSwitch } from '../language-switch';
 import { SignalRings } from '../obsidian-viz';
 import { ThemeToggle } from '../theme-toggle';
-import { Icon, type IconName } from '../ui';
+import { Icon, LogoMark, type IconName } from '../ui';
 import { DashboardConnect } from './dashboard-connect';
 import { DashboardModels } from './dashboard-models';
 
@@ -953,409 +954,497 @@ export function DashboardClient({
             ? 'کلیدهای API'
             : 'API keys';
 
+  const activeTabMeta = CONSOLE_TABS.find((t) => t.id === tab) ?? CONSOLE_TABS[0]!;
+  const desktopTitle = isFa ? activeTabMeta.fa : activeTabMeta.en;
+  const walletBudgetPct = Math.min(100, Math.max(8, Math.round((wallet.balanceMicros / 10_000_000) * 100)));
+
   return (
-    <div className="dash-root" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Native Mobile Top App Bar (visible ONLY <= 860px) */}
-      <header className="dash-mhdr">
-        <div className="dash-mhdr-start">
-          {tab === 'connect' && (
-            <button
-              type="button"
-              className="dash-mhdr-back"
-              onClick={() => switchTab('keys')}
-              aria-label={isFa ? 'بازگشت به کلیدها' : 'Back to API keys'}
-            >
-              <Icon name="arrow" size={18} style={{ transform: isFa ? undefined : 'rotate(180deg)' }} />
-            </button>
-          )}
-          <h1 className="sf dash-mhdr-title">{mobileTitle}</h1>
-        </div>
-        <div className="dash-mhdr-end">
-          {(tab === 'keys' || tab === 'overview') && (
-            <button type="button" className="dash-mhdr-pill" onClick={() => switchTab('connect')}>
-              <Icon name="code" size={14} />
-              <span>{isFa ? 'کد اتصال' : 'Code'}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="dash-mhdr-avatar"
-            onClick={() => setAccountSheetOpen(true)}
-            aria-label={isFa ? 'تنظیمات حساب' : 'Account menu'}
-            aria-expanded={accountSheetOpen}
-          >
-            <span>{initials}</span>
-            <span className="dash-mhdr-dot" aria-hidden="true" />
-          </button>
-        </div>
-      </header>
-
-      {/* Native Android Slide-Up Account Sheet */}
-      {accountSheetOpen && (
-        <div
-          className="vg-sheet-scrim"
-          role="dialog"
-          aria-modal="true"
-          aria-label={isFa ? 'حساب کاربری' : 'Account'}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setAccountSheetOpen(false);
-          }}
-        >
-          <div className="vg-sheet">
-            <div className="vg-sheet-handle" aria-hidden="true" />
-            <div className="vg-sheet-head" style={{ paddingBottom: 14, borderBottom: '1px solid var(--vg-line)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                <span
-                  className="bg-signal-grad"
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 16,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: '#fff',
-                    display: 'grid',
-                    placeItems: 'center',
-                    flexShrink: 0,
-                    boxShadow: '0 8px 22px rgba(255, 90, 31, .32)',
-                  }}
-                >
-                  {initials}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 15.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {user.name || user.email}
-                    </span>
-                    <span
-                      className="mn"
-                      dir="ltr"
-                      style={{
-                        fontSize: 11.5,
-                        fontWeight: 600,
-                        padding: '2px 9px',
-                        borderRadius: 999,
-                        background: 'var(--vg-orange-soft)',
-                        color: 'var(--vg-orange-text)',
-                        border: '1px solid var(--vg-orange-edge)',
-                      }}
-                    >
-                      {formatUsd(wallet.balanceMicros)}
-                    </span>
-                  </div>
-                  <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
-                    {user.email}
-                    {usageSummary?.tier ? ` · ${usageSummary.tier.toUpperCase()}` : ''}
-                  </div>
-                </div>
-              </div>
-              <button type="button" className="ib" onClick={() => setAccountSheetOpen(false)} aria-label={isFa ? 'بستن' : 'Close'}>
-                <Icon name="x" size={17} />
-              </button>
-            </div>
-
-            <div className="vg-acc-list" style={{ marginTop: 14 }}>
-              {isAdmin && (
-                <Link href="/admin/providers" className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
-                  <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', flexShrink: 0 }}>
-                    <Icon name="shield" size={18} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'پنل ادمین' : 'Admin Panel'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{isFa ? 'مدیریت پروایدرها، کلیدها و کاتالوگ' : 'Providers, keys & catalog'}</div>
-                  </div>
-                  <span className="mn" style={{ fontSize: 11, color: 'var(--vg-orange-text)' }}>ADMIN</span>
-                </Link>
-              )}
-              <a href="/chat" className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
-                <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-indigo-soft)', color: 'var(--vg-indigo)', flexShrink: 0 }}>
-                  <Icon name="chat" size={18} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'چت هوشمند ویگاس' : 'Vigas AI Chat'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{isFa ? 'گفتگو با هیدروژن، جمنای و کلود' : 'Chat with Hydrogen, Gemini & Claude'}</div>
-                </div>
-                <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
-              </a>
-              <button
-                type="button"
-                className="vg-acc-row"
-                style={{ width: '100%', textAlign: 'start', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                onClick={() => {
-                  setAccountSheetOpen(false);
-                  switchTab('connect');
-                }}
-              >
-                <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-green-soft)', color: 'var(--vg-green)', flexShrink: 0 }}>
-                  <Icon name="code" size={18} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'اتصال ابزارها و IDE' : 'Connect tools & IDEs'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>Cursor · Python · Node · cURL</div>
-                </div>
-                <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
-              </button>
-              <Link href={isFa ? '/fa' : '/'} className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
-                <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-raised)', color: 'var(--vg-ink2)', flexShrink: 0 }}>
-                  <Icon name="globe" size={18} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'صفحه اصلی ویگاس' : 'Vigas Home'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>vigas.app</div>
-                </div>
-                <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
-              </Link>
-            </div>
-
-            <div className="vg-sheet-controls">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <span className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                  {isFa ? 'زبان و ظاهر' : 'Language & Theme'}
-                </span>
-                <div className="hdr-lang">
-                  <Link href="/" aria-current={!isFa ? 'page' : undefined} onClick={() => setAccountSheetOpen(false)}>
-                    EN
-                  </Link>
-                  <Link href="/fa" className="fa-ui" aria-current={isFa ? 'page' : undefined} onClick={() => setAccountSheetOpen(false)}>
-                    فارسی
-                  </Link>
-                </div>
-              </div>
-              <ThemeToggle variant="drawer" lang={lang} />
-            </div>
-
-            <div className="vg-sheet-foot">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  setAccountSheetOpen(false);
-                  void signOut();
-                }}
-                style={{
-                  width: '100%',
-                  minHeight: 46,
-                  borderRadius: 999,
-                  background: 'var(--vg-red-soft)',
-                  color: 'var(--vg-red)',
-                  boxShadow: 'inset 0 0 0 1px var(--vg-red-edge)',
-                  fontWeight: 600,
-                }}
-              >
-                <Icon name="logout" size={15} />
-                {isFa ? 'خروج از حساب' : 'Sign out'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Desktop Top account bar (hidden on mobile <= 860px) */}
-      <div className="dash-top-bar dash-desk-only">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 }}>
-          <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--vg-green)', display: 'inline-block', flexShrink: 0 }} />
-          <p style={{ margin: 0, color: 'var(--vg-ink2)', fontSize: 14, overflowWrap: 'anywhere' }}>
-            {isFa ? 'حساب فعال: ' : 'Signed in as '}
-            <b dir="ltr" style={{ color: 'var(--vg-ink)', fontWeight: 600 }}>
-              {user.name ? `${user.name} · ` : ''}
-              {user.email}
-            </b>
-          </p>
+    <div className="dash-shell">
+      {/* Obsidian Signal 2026 Desktop 260px Sidebar Rail (hidden on mobile <= 860px) */}
+      <aside className="dash-rail dash-desk-only" aria-label={isFa ? 'منوی پنل کاربری' : 'Console navigation'}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 8px' }}>
+          <Link href={isFa ? '/fa' : '/'} style={{ display: 'inline-flex', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'var(--vg-ink)' }}>
+            <LogoMark size={24} />
+            <span className="dsp" dir="ltr" style={{ fontSize: 21, lineHeight: 1 }}>
+              vigas
+            </span>
+          </Link>
           {usageSummary?.tier && (
-            <span className="mn" style={{ fontSize: 11, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', border: '1px solid var(--vg-orange-edge)' }}>
+            <span className="mn" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 999, background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>
               {usageSummary.tier}
             </span>
           )}
         </div>
-        <div className="dash-top-actions">
+
+        {/* User profile card */}
+        <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 16, border: '1px solid var(--vg-line)', background: 'var(--vg-surface)' }}>
+          <span
+            className="bg-signal-grad"
+            style={{ width: 34, height: 34, borderRadius: 11, display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}
+          >
+            {initials}
+          </span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user.name || user.email}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isFa ? 'فضای کاری شخصی' : 'Personal workspace'}
+            </div>
+          </div>
+        </div>
+
+        <div className="dash-rail-sec">{isFa ? 'کنسول' : 'Console'}</div>
+        <nav role="tablist" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {CONSOLE_TABS.map((item) => {
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => switchTab(item.id)}
+                className={`dash-rail-link${active ? ' on' : ''}`}
+              >
+                <Icon name={item.icon} size={17} />
+                <span style={{ flex: 1 }}>{isFa ? item.fa : item.en}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="dash-rail-sec">{isFa ? 'میانبر' : 'Jump to'}</div>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <a href="/chat" className="dash-rail-link">
+            <Icon name="chat" size={17} />
+            <span style={{ flex: 1 }}>{isFa ? 'چت هوش مصنوعی' : 'AI Chat'}</span>
+          </a>
           {isAdmin && (
-            <Link
-              href="/admin/providers"
-              className="btn gh"
-              style={{
-                minHeight: 38,
-                fontSize: 13,
-                borderColor: 'var(--vg-orange-edge)',
-                color: 'var(--vg-orange-text)',
-                background: 'var(--vg-orange-soft)',
-              }}
-            >
-              <Icon name="shield" size={15} />
-              {isFa ? 'پنل ادمین' : 'Admin Panel'}
+            <Link href="/admin/providers" className="dash-rail-link">
+              <Icon name="shield" size={17} style={{ color: 'var(--vg-orange-text)' }} />
+              <span style={{ flex: 1 }}>{isFa ? 'پنل ادمین' : 'Admin Panel'}</span>
+              <span className="mn" style={{ fontSize: 9.5, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)' }}>ADMIN</span>
             </Link>
           )}
-          <button type="button" className="btn key" onClick={() => switchTab('credits')} style={{ minHeight: 38, fontSize: 13 }}>
-            <Icon name="wallet" size={15} />
-            {isFa ? 'خرید اعتبار' : 'Add credits'}
-          </button>
-          <a href="/chat" className="btn gh" style={{ minHeight: 38, fontSize: 13 }}>
-            <Icon name="spark" size={15} />
-            {isFa ? 'چت AI' : 'AI Chat'}
-          </a>
-          <button type="button" className="btn gh" onClick={signOut} style={{ minHeight: 38, fontSize: 13 }}>
-            <Icon name="logout" size={15} />
-            {isFa ? 'خروج' : 'Sign out'}
-          </button>
-        </div>
-      </div>
+          <Link href={isFa ? '/fa' : '/'} className="dash-rail-link">
+            <Icon name="globe" size={17} />
+            <span style={{ flex: 1 }}>{isFa ? 'سایت عمومی' : 'Public site'}</span>
+          </Link>
+          <Link href="/models#quickstart" className="dash-rail-link">
+            <Icon name="text" size={17} />
+            <span style={{ flex: 1 }}>{isFa ? 'مستندات API' : 'API Docs'}</span>
+          </Link>
+        </nav>
 
-      {/* Desktop KPI Strip (hidden on mobile <= 860px) */}
-      <div className="dash-kpi-grid dash-desk-only">
-        <div className="card" style={kpiCard}>
-          <span className="lbl">{isFa ? 'موجودی کیف‌پول API' : 'API balance'}</span>
-          <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
+        {/* Pinned Bottom Wallet Card */}
+        <div
+          onClick={() => switchTab('credits')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') switchTab('credits');
+          }}
+          style={{
+            marginTop: 'auto',
+            padding: 14,
+            borderRadius: 18,
+            border: '1px solid var(--vg-line)',
+            background: 'var(--vg-surface)',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--vg-ink3)' }}>
+            <span>{isFa ? 'موجودی کیف‌پول' : 'Wallet balance'}</span>
+            <Icon name="wallet" size={14} />
+          </div>
+          <div className="mn" dir="ltr" style={{ marginTop: 4, fontSize: 24, fontWeight: 700, letterSpacing: '-.02em', textAlign: 'start' }}>
             {formatUsd(wallet.balanceMicros)}
           </div>
-          <span className="mn" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', marginTop: 4 }}>
-            {isFa ? 'شارژ آنی با AvexPay' : 'Instant top-up via AvexPay'}
-          </span>
+          <div style={{ marginTop: 10, height: 6, borderRadius: 999, background: 'var(--vg-raised)', overflow: 'hidden' }}>
+            <div className="bg-signal-grad" style={{ height: '100%', width: `${walletBudgetPct}%`, borderRadius: 999 }} />
+          </div>
+          <div style={{ marginTop: 7, fontSize: 11, color: 'var(--vg-green)' }}>
+            {isFa ? 'شارژ آنی با AvexPay ←' : 'Top up with AvexPay →'}
+          </div>
         </div>
 
-        <div className="card" style={kpiCard}>
-          <span className="lbl">{isFa ? 'کلیدهای فعال' : 'Active API keys'}</span>
-          <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
-            {wallet.keys.length}
-          </div>
-          <button
-            type="button"
-            onClick={() => switchTab('keys')}
-            style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, cursor: 'pointer', fontSize: 12, color: 'var(--vg-orange-text)', textAlign: 'start' }}
-          >
-            {isFa ? 'ساخت یا مدیریت کلیدها ←' : 'Create or manage keys →'}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={signOut}
+          className="dash-rail-link"
+          style={{ marginTop: 8, color: 'var(--vg-ink3)' }}
+        >
+          <Icon name="logout" size={15} />
+          <span>{isFa ? 'خروج از حساب' : 'Sign out'}</span>
+        </button>
+      </aside>
 
-        <div className="card" style={kpiCard}>
-          <span className="lbl">{isFa ? 'مصرف ۷ روز گذشته' : '7-day spend'}</span>
-          <div className="sf dash-kpi-val" dir="ltr" style={{ textAlign: isFa ? 'right' : 'left' }}>
-            {formatUsd(weekTotal, { maxDecimals: 4 })}
+      {/* Main Workspace Area */}
+      <div className="dash-workspace">
+        {/* Desktop 68px Top Header Bar */}
+        <header className="dash-topbar dash-desk-only">
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: isFa ? 0 : '-.015em' }}>{desktopTitle}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              dir="ltr"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                height: 38,
+                padding: '0 6px 0 14px',
+                borderRadius: 999,
+                border: '1px solid var(--vg-line2)',
+                background: 'var(--vg-surface)',
+                fontSize: 12.5,
+              }}
+            >
+              <span style={{ color: 'var(--vg-ink3)' }}>Base URL</span>
+              <code className="mn" style={{ color: 'var(--vg-ink)' }}>{API_BASE_URL.replace(/^https?:\/\//, '')}</code>
+              <CopyButton text={API_BASE_URL} label={isFa ? 'کپی Base URL' : 'Copy Base URL'} copiedText={isFa ? 'کپی شد' : 'Copied'} style={{ minHeight: 28, padding: '0 10px', fontSize: 11.5, borderRadius: 999 }}>
+                {isFa ? 'کپی' : 'Copy'}
+              </CopyButton>
+            </div>
+            <ThemeToggle variant="icon" lang={lang} />
+            <LanguageSwitch variant="header" lang={lang} />
+            <button type="button" className="btn key" onClick={() => switchTab('credits')} style={{ minHeight: 38, padding: '0 16px', fontSize: 13 }}>
+              <Icon name="plus" size={14} />
+              {isFa ? 'شارژ اعتبار' : 'Add credits'}
+            </button>
           </div>
-          <span className="mn" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', marginTop: 4 }}>
-            {usageSummary && usageSummary.planLimitTokens > 0
-              ? isFa
-                ? `${formatCompact(usageSummary.remainingTokens)} توکن باقی‌مانده چت`
-                : `${formatCompact(usageSummary.remainingTokens)} chat tokens remaining`
-              : isFa
-                ? `${models.length} مدل در دسترس`
-                : `${models.length} models ready`}
-          </span>
-        </div>
+        </header>
 
-        <div className="card" style={kpiCard}>
-          <span className="lbl">{isFa ? 'آدرس گیت‌وی (Base URL)' : 'Gateway base URL'}</span>
-          <div dir="ltr" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <code className="mn" style={{ fontSize: 12, color: 'var(--vg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-              {API_BASE_URL}
-            </code>
-            <CopyButton text={API_BASE_URL} label={isFa ? 'کپی Base URL' : 'Copy Base URL'} copiedText={isFa ? 'کپی شد' : 'Copied'} style={{ minHeight: 28, padding: '0 8px', fontSize: 11.5, borderRadius: 7 }}>
-              {isFa ? 'کپی' : 'Copy'}
-            </CopyButton>
-          </div>
-          <button
-            type="button"
-            onClick={() => switchTab('connect')}
-            style={{ background: 'none', border: 'none', padding: 0, marginTop: 6, cursor: 'pointer', fontSize: 12, color: 'var(--vg-indigo)', textAlign: 'start' }}
-          >
-            {isFa ? 'اتصال به Cursor / Python / Node ←' : 'Connect Cursor / Python / Node →'}
-          </button>
+        <div className="dash-body">
+          {/* Native Mobile Top App Bar (visible ONLY <= 860px) */}
+          <header className="dash-mhdr">
+            <div className="dash-mhdr-start">
+              {tab === 'connect' && (
+                <button
+                  type="button"
+                  className="dash-mhdr-back"
+                  onClick={() => switchTab('keys')}
+                  aria-label={isFa ? 'بازگشت به کلیدها' : 'Back to API keys'}
+                >
+                  <Icon name="arrow" size={18} style={{ transform: isFa ? undefined : 'rotate(180deg)' }} />
+                </button>
+              )}
+              <h1 className="sf dash-mhdr-title">{mobileTitle}</h1>
+            </div>
+            <div className="dash-mhdr-end">
+              {(tab === 'keys' || tab === 'overview') && (
+                <button type="button" className="dash-mhdr-pill" onClick={() => switchTab('connect')}>
+                  <Icon name="code" size={14} />
+                  <span>{isFa ? 'کد اتصال' : 'Code'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="dash-mhdr-avatar"
+                onClick={() => setAccountSheetOpen(true)}
+                aria-label={isFa ? 'تنظیمات حساب' : 'Account menu'}
+                aria-expanded={accountSheetOpen}
+              >
+                <span>{initials}</span>
+                <span className="dash-mhdr-dot" aria-hidden="true" />
+              </button>
+            </div>
+          </header>
+
+          {/* Native Android Slide-Up Account Sheet */}
+          {accountSheetOpen && (
+            <div
+              className="vg-sheet-scrim"
+              role="dialog"
+              aria-modal="true"
+              aria-label={isFa ? 'حساب کاربری' : 'Account'}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setAccountSheetOpen(false);
+              }}
+            >
+              <div className="vg-sheet">
+                <div className="vg-sheet-handle" aria-hidden="true" />
+                <div className="vg-sheet-head" style={{ paddingBottom: 14, borderBottom: '1px solid var(--vg-line)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <span
+                      className="bg-signal-grad"
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 16,
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: '#fff',
+                        display: 'grid',
+                        placeItems: 'center',
+                        flexShrink: 0,
+                        boxShadow: '0 8px 22px rgba(255, 90, 31, .32)',
+                      }}
+                    >
+                      {initials}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 15.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user.name || user.email}
+                        </span>
+                        <span
+                          className="mn"
+                          dir="ltr"
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            padding: '2px 9px',
+                            borderRadius: 999,
+                            background: 'var(--vg-orange-soft)',
+                            color: 'var(--vg-orange-text)',
+                            border: '1px solid var(--vg-orange-edge)',
+                          }}
+                        >
+                          {formatUsd(wallet.balanceMicros)}
+                        </span>
+                      </div>
+                      <div className="mn" dir="ltr" style={{ fontSize: 12, color: 'var(--vg-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                        {user.email}
+                        {usageSummary?.tier ? ` · ${usageSummary.tier.toUpperCase()}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" className="ib" onClick={() => setAccountSheetOpen(false)} aria-label={isFa ? 'بستن' : 'Close'}>
+                    <Icon name="x" size={17} />
+                  </button>
+                </div>
+
+                <div className="vg-acc-list" style={{ marginTop: 14 }}>
+                  {isAdmin && (
+                    <Link href="/admin/providers" className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
+                      <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-orange-soft)', color: 'var(--vg-orange-text)', flexShrink: 0 }}>
+                        <Icon name="shield" size={18} />
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'پنل ادمین' : 'Admin Panel'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{isFa ? 'مدیریت پروایدرها، کلیدها و کاتالوگ' : 'Providers, keys & catalog'}</div>
+                      </div>
+                      <span className="mn" style={{ fontSize: 11, color: 'var(--vg-orange-text)' }}>ADMIN</span>
+                    </Link>
+                  )}
+                  <a href="/chat" className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
+                    <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-indigo-soft)', color: 'var(--vg-indigo)', flexShrink: 0 }}>
+                      <Icon name="chat" size={18} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'چت هوشمند ویگاس' : 'Vigas AI Chat'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>{isFa ? 'گفتگو با هیدروژن، جمنای و کلود' : 'Chat with Hydrogen, Gemini & Claude'}</div>
+                    </div>
+                    <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
+                  </a>
+                  <button
+                    type="button"
+                    className="vg-acc-row"
+                    style={{ width: '100%', textAlign: 'start', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                    onClick={() => {
+                      setAccountSheetOpen(false);
+                      switchTab('connect');
+                    }}
+                  >
+                    <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-green-soft)', color: 'var(--vg-green)', flexShrink: 0 }}>
+                      <Icon name="code" size={18} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'اتصال ابزارها و IDE' : 'Connect tools & IDEs'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>Cursor · Python · Node · cURL</div>
+                    </div>
+                    <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
+                  </button>
+                  <Link href={isFa ? '/fa' : '/'} className="vg-acc-row" onClick={() => setAccountSheetOpen(false)}>
+                    <span style={{ width: 36, height: 36, borderRadius: 12, display: 'grid', placeItems: 'center', background: 'var(--vg-raised)', color: 'var(--vg-ink2)', flexShrink: 0 }}>
+                      <Icon name="globe" size={18} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--vg-ink)' }}>{isFa ? 'صفحه اصلی ویگاس' : 'Vigas Home'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>vigas.app</div>
+                    </div>
+                    <Icon name="arrow" size={15} style={{ color: 'var(--vg-ink3)', transform: isFa ? 'rotate(180deg)' : undefined }} />
+                  </Link>
+                </div>
+
+                <div className="vg-sheet-controls">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <span className="mn" style={{ fontSize: 11, color: 'var(--vg-ink3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                      {isFa ? 'زبان و ظاهر' : 'Language & Theme'}
+                    </span>
+                    <div className="hdr-lang">
+                      <Link href="/" aria-current={!isFa ? 'page' : undefined} onClick={() => setAccountSheetOpen(false)}>
+                        EN
+                      </Link>
+                      <Link href="/fa" className="fa-ui" aria-current={isFa ? 'page' : undefined} onClick={() => setAccountSheetOpen(false)}>
+                        فارسی
+                      </Link>
+                    </div>
+                  </div>
+                  <ThemeToggle variant="drawer" lang={lang} />
+                </div>
+
+                <div className="vg-sheet-foot">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setAccountSheetOpen(false);
+                      void signOut();
+                    }}
+                    style={{
+                      width: '100%',
+                      minHeight: 46,
+                      borderRadius: 999,
+                      background: 'var(--vg-red-soft)',
+                      color: 'var(--vg-red)',
+                      boxShadow: 'inset 0 0 0 1px var(--vg-red-edge)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Icon name="logout" size={15} />
+                    {isFa ? 'خروج از حساب' : 'Sign out'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop KPI Strip (visible on Overview & desktop only) */}
+          {tab === 'overview' && (
+            <div className="dash-kpi-grid dash-desk-only">
+              <div className="card" style={kpiCard}>
+                <span className="lbl">{isFa ? 'موجودی کیف‌پول' : 'Balance'}</span>
+                <div className="mn dash-kpi-val" dir="ltr" style={{ fontWeight: 700, textAlign: isFa ? 'right' : 'left' }}>
+                  {formatUsd(wallet.balanceMicros)}
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--vg-green)', marginTop: 4 }}>
+                  {isFa ? 'اعتبار هدیه فعال' : 'Welcome credit active'}
+                </span>
+              </div>
+
+              <div className="card" style={kpiCard}>
+                <span className="lbl">{isFa ? 'مصرف · ۷ روز' : 'Spend · 7 days'}</span>
+                <div className="mn dash-kpi-val" dir="ltr" style={{ fontWeight: 700, textAlign: isFa ? 'right' : 'left' }}>
+                  {formatUsd(weekTotal, { maxDecimals: 4 })}
+                </div>
+                <span className="mn" style={{ fontSize: 11.5, color: 'var(--vg-ink3)', marginTop: 4 }}>
+                  {usageSummary && usageSummary.planLimitTokens > 0
+                    ? isFa
+                      ? `${formatCompact(usageSummary.remainingTokens)} توکن چت باقی‌مانده`
+                      : `${formatCompact(usageSummary.remainingTokens)} chat tokens left`
+                    : isFa
+                      ? `${models.length} مدل آنلاین`
+                      : `${models.length} models online`}
+                </span>
+              </div>
+
+              <div className="card" style={kpiCard}>
+                <span className="lbl">{isFa ? 'کلیدهای فعال' : 'Active keys'}</span>
+                <div className="mn dash-kpi-val" dir="ltr" style={{ fontWeight: 700, textAlign: isFa ? 'right' : 'left' }}>
+                  {wallet.keys.length}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => switchTab('keys')}
+                  style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, cursor: 'pointer', fontSize: 12, color: 'var(--vg-orange-text)', textAlign: 'start' }}
+                >
+                  {isFa ? 'ساخت یا مدیریت کلیدها ←' : 'Manage API keys →'}
+                </button>
+              </div>
+
+              <div className="card" style={kpiCard}>
+                <span className="lbl">{isFa ? 'اتصال سریع' : 'Quick connect'}</span>
+                <div className="mn dash-kpi-val" dir="ltr" style={{ fontSize: 22, fontWeight: 700, textAlign: isFa ? 'right' : 'left', marginTop: 10 }}>
+                  p50 112ms
+                </div>
+                <button
+                  type="button"
+                  onClick={() => switchTab('connect')}
+                  style={{ background: 'none', border: 'none', padding: 0, marginTop: 6, cursor: 'pointer', fontSize: 12, color: 'var(--vg-indigo)', textAlign: 'start' }}
+                >
+                  {isFa ? 'Cursor · Python · Node ←' : 'Cursor · Python · Node →'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Active Panel View */}
+          {tab === 'overview' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div className="dash-desk-only" style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+                {renderCreditsSection()}
+                {renderUsageSection()}
+              </div>
+              {renderKeysSection()}
+            </div>
+          )}
+
+          {tab === 'keys' && renderKeysSection()}
+
+          {tab === 'credits' && (
+            <div className="dash-wallet-stack">
+              {renderCreditsSection()}
+              {renderUsageSection()}
+              <section className="card dash-desk-only" style={card}>
+                <div className="lbl">{isFa ? 'چرا اعتبار پیش‌پرداخت ویگاس؟' : 'How Vigas prepaid credits work'}</div>
+                <h3 className="sf" style={{ fontSize: isFa ? 22 : 26, margin: '8px 0 12px', fontWeight: isFa ? 700 : 400 }}>
+                  {isFa ? 'یک موجودی برای ۲۵+ مدل پیشتاز' : 'One balance across 25+ frontier models'}
+                </h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: 'var(--vg-ink2)' }}>
+                  {(isFa
+                    ? [
+                        'پرداخت امن با رمزارزها (USDT، BTC، ETH، TON) و Telegram Stars از طریق AvexPay.net',
+                        'بدون اشتراک ماهانه اجباری — فقط به اندازه توکن مصرفی کسر می‌شود',
+                        'سقف مصرف ماهانه دلاری جداگانه برای هر کلید API جهت کنترل هزینه',
+                        'همگام‌سازی خودکار موجودی بین پنل API، ابزارهای کدنویسی و چت AI',
+                      ]
+                    : [
+                        'Pay globally with Crypto (USDT, BTC, ETH, TON) & Telegram Stars via AvexPay.net',
+                        'No mandatory $20/mo subscriptions — pay strictly per token used',
+                        'Set per-key monthly USD spending limits to cap team or agent spend',
+                        'One unified account works across API Gateway, Cursor/Cline, and AI Chat',
+                      ]
+                  ).map((line) => (
+                    <li key={line} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <Icon name="check" size={16} style={{ color: 'var(--vg-green)', marginTop: 2, flexShrink: 0 }} />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          )}
+
+          {tab === 'models' && (
+            <DashboardModels
+              models={models}
+              balanceMicros={wallet.balanceMicros}
+              lang={lang}
+              onUseModelInCode={(modelId) => {
+                setSelectedModel(modelId);
+                switchTab('connect');
+              }}
+            />
+          )}
+
+          {tab === 'connect' && (
+            <DashboardConnect
+              models={models}
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+              apiKeyPreview={created?.key ?? null}
+              lang={lang}
+              onGoToKeys={() => switchTab('keys')}
+            />
+          )}
         </div>
       </div>
-
-      {/* Desktop Console Tab Bar (hidden on mobile <= 860px — zero duplicate menu!) */}
-      <nav aria-label={isFa ? 'بخش‌های پنل کاربری' : 'API Console sections'} role="tablist" className="dash-tabs dash-desk-only scroll-x">
-        {CONSOLE_TABS.map((item) => {
-          const active = tab === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => switchTab(item.id)}
-              className={`dash-tab${active ? ' on' : ''}`}
-            >
-              <Icon name={item.icon} size={15} />
-              <span>{isFa ? item.fa : item.en}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Active Panel View */}
-      {tab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Desktop overview shows Wallet + Usage; mobile focuses cleanly on Keys to match the active Bottom Bar tab */}
-          <div className="dash-desk-only" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-            {renderCreditsSection()}
-            {renderUsageSection()}
-          </div>
-
-          {renderKeysSection()}
-        </div>
-      )}
-
-      {tab === 'keys' && renderKeysSection()}
-
-      {tab === 'credits' && (
-        <div className="dash-wallet-stack">
-          {renderCreditsSection()}
-          {renderUsageSection()}
-          <section className="card dash-desk-only" style={card}>
-            <div className="lbl">{isFa ? 'چرا اعتبار پیش‌پرداخت ویگاس؟' : 'How Vigas prepaid credits work'}</div>
-            <h3 className="sf" style={{ fontSize: isFa ? 22 : 26, margin: '8px 0 12px', fontWeight: isFa ? 700 : 400 }}>
-              {isFa ? 'یک موجودی برای ۲۵+ مدل پیشتاز' : 'One balance across 25+ frontier models'}
-            </h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: 'var(--vg-ink2)' }}>
-              {(isFa
-                ? [
-                    'پرداخت امن با رمزارزها (USDT، BTC، ETH، TON) و Telegram Stars از طریق AvexPay.net',
-                    'بدون اشتراک ماهانه اجباری — فقط به اندازه توکن مصرفی کسر می‌شود',
-                    'سقف مصرف ماهانه دلاری جداگانه برای هر کلید API جهت کنترل هزینه',
-                    'همگام‌سازی خودکار موجودی بین پنل API، ابزارهای کدنویسی و چت AI',
-                  ]
-                : [
-                    'Pay globally with Crypto (USDT, BTC, ETH, TON) & Telegram Stars via AvexPay.net',
-                    'No mandatory $20/mo subscriptions — pay strictly per token used',
-                    'Set per-key monthly USD spending limits to cap team or agent spend',
-                    'One unified account works across API Gateway, Cursor/Cline, and AI Chat',
-                  ]
-              ).map((line) => (
-                <li key={line} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <Icon name="check" size={16} style={{ color: 'var(--vg-green)', marginTop: 2, flexShrink: 0 }} />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      )}
-
-      {tab === 'models' && (
-        <DashboardModels
-          models={models}
-          balanceMicros={wallet.balanceMicros}
-          lang={lang}
-          onUseModelInCode={(modelId) => {
-            setSelectedModel(modelId);
-            switchTab('connect');
-          }}
-        />
-      )}
-
-      {tab === 'connect' && (
-        <DashboardConnect
-          models={models}
-          selectedModel={selectedModel}
-          onSelectModel={setSelectedModel}
-          apiKeyPreview={created?.key ?? null}
-          lang={lang}
-          onGoToKeys={() => switchTab('keys')}
-        />
-      )}
     </div>
   );
 }
 
 const card: CSSProperties = { minWidth: 0, borderRadius: 24, padding: 22 };
-const kpiCard: CSSProperties = { minWidth: 0, borderRadius: 18, padding: '16px 18px', display: 'flex', flexDirection: 'column' };
+const kpiCard: CSSProperties = { minWidth: 0, borderRadius: 22, padding: '18px 20px', display: 'flex', flexDirection: 'column' };
 const fieldLabel: CSSProperties = { display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 8, color: 'var(--vg-ink2)' };
