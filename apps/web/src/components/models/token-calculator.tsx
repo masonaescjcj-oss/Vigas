@@ -57,7 +57,7 @@ export function TokenCalculatorCard({
         </span>
         <span
           className="mn"
-          dir="ltr"
+          dir={isFa ? 'rtl' : 'ltr'}
           style={{
             fontSize: 11.5,
             fontWeight: 600,
@@ -67,13 +67,19 @@ export function TokenCalculatorCard({
             color: 'var(--vg-green)',
           }}
         >
-          {tokensPer5Usd > 0
-            ? isFa
-              ? `۵ دلار = ${tokensPer5Usd >= 10 ? Math.round(tokensPer5Usd) : tokensPer5Usd.toFixed(1)}M توکن`
-              : `$5 = ${tokensPer5Usd >= 10 ? Math.round(tokensPer5Usd) : tokensPer5Usd.toFixed(1)}M tokens`
-            : isFa
-              ? 'رایگان'
-              : 'FREE'}
+          {tokensPer5Usd > 0 ? (
+            isFa ? (
+              <>
+                ۵ دلار = <bdi dir="ltr">{tokensPer5Usd >= 10 ? Math.round(tokensPer5Usd) : tokensPer5Usd.toFixed(1)}M</bdi> توکن
+              </>
+            ) : (
+              `$5 = ${tokensPer5Usd >= 10 ? Math.round(tokensPer5Usd) : tokensPer5Usd.toFixed(1)}M tokens`
+            )
+          ) : isFa ? (
+            'رایگان'
+          ) : (
+            'FREE'
+          )}
         </span>
       </div>
 

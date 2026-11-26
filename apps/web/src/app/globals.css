@@ -2329,11 +2329,11 @@ details[open] .pm {
     margin: 0 auto;
     padding: 0 8px;
     border-radius: 999px;
-    background: var(--vg-hdr-bg);
-    backdrop-filter: blur(22px) saturate(165%);
-    -webkit-backdrop-filter: blur(22px) saturate(165%);
+    background: color-mix(in srgb, var(--vg-bg2) 86%, transparent);
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
     border: 1px solid var(--vg-line2);
-    box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.72), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.78), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   }
   .vg-bnav-item {
     display: inline-flex;
@@ -2384,7 +2384,7 @@ details[open] .pm {
 .vg-sheet-scrim {
   position: fixed;
   inset: 0;
-  z-index: 95;
+  z-index: 120;
   background: var(--vg-scrim);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);

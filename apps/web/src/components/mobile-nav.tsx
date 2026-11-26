@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAdminHint } from '@/lib/client/admin-fetch';
 import { useSignedInHint } from '@/lib/client/session';
 import { LanguageSwitch } from './language-switch';
@@ -91,166 +92,171 @@ export function MobileNav({
         </div>
       )}
 
-      {open && (
-        <div
-          className="vg-sheet-scrim"
-          role="dialog"
-          aria-modal="true"
-          aria-label={isFa ? 'منوی ناوبری ویگاس' : 'Vigas navigation menu'}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) close();
-          }}
-        >
-          <div className="vg-sheet">
-            <div className="vg-sheet-handle" aria-hidden="true" />
-            <div className="vg-sheet-head" style={{ paddingBottom: 14, borderBottom: '1px solid var(--vg-line)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span
-                  className="bg-signal-grad"
-                  style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 999,
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: '#fff',
-                    flexShrink: 0,
-                    boxShadow: '0 8px 22px rgba(255, 90, 31, .35)',
-                  }}
-                >
-                  {signedIn ? (isAdmin ? 'AD' : 'VG') : <Icon name="users" size={18} />}
-                </span>
-                <div>
-                  <strong style={{ display: 'block', fontSize: 16, lineHeight: 1.25 }}>
-                    {signedIn ? (isFa ? 'حساب کاربری ویگاس' : 'Vigas Account') : isFa ? 'خوش آمدید به ویگاس' : 'Welcome to Vigas'}
-                  </strong>
-                  <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
-                    {isAdmin ? 'Admin · vigas.app' : 'vigas.app'}
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className={`vg-sheet-scrim${isFa ? ' fa-ui' : ''}`}
+            dir={isFa ? 'rtl' : 'ltr'}
+            lang={lang}
+            role="dialog"
+            aria-modal="true"
+            aria-label={isFa ? 'منوی ناوبری ویگاس' : 'Vigas navigation menu'}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) close();
+            }}
+          >
+            <div className="vg-sheet">
+              <div className="vg-sheet-handle" aria-hidden="true" />
+              <div className="vg-sheet-head" style={{ paddingBottom: 14, borderBottom: '1px solid var(--vg-line)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    className="bg-signal-grad"
+                    style={{
+                      width: 46,
+                      height: 46,
+                      borderRadius: 999,
+                      display: 'grid',
+                      placeItems: 'center',
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: '#fff',
+                      flexShrink: 0,
+                      boxShadow: '0 8px 22px rgba(255, 90, 31, .35)',
+                    }}
+                  >
+                    {signedIn ? (isAdmin ? 'AD' : 'VG') : <Icon name="users" size={18} />}
                   </span>
+                  <div>
+                    <strong style={{ display: 'block', fontSize: 16, lineHeight: 1.25 }}>
+                      {signedIn ? (isFa ? 'حساب کاربری ویگاس' : 'Vigas Account') : isFa ? 'خوش آمدید به ویگاس' : 'Welcome to Vigas'}
+                    </strong>
+                    <span className="mn" style={{ fontSize: 12, color: 'var(--vg-ink3)' }}>
+                      {isAdmin ? 'Admin · vigas.app' : 'vigas.app'}
+                    </span>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="ib boxed"
+                  aria-label={isFa ? 'بستن منو' : 'Close menu'}
+                  onClick={close}
+                >
+                  <Icon name="x" size={16} />
+                </button>
               </div>
-              <button
-                type="button"
-                className="ib boxed"
-                aria-label={isFa ? 'بستن منو' : 'Close menu'}
-                onClick={close}
-              >
-                <Icon name="x" size={16} />
-              </button>
-            </div>
 
-            {isAdmin && (
+              {isAdmin && (
+                <div className="vg-sheet-sec">
+                  <span className="lbl">{isFa ? 'پنل ادمین' : 'Admin Control Plane'}</span>
+                  <div className="vg-sheet-grid">
+                    <Link href="/admin/providers" className="vg-sheet-tile accent" onClick={close}>
+                      <Icon name="key" size={17} />
+                      <span>
+                        <strong>{isFa ? 'پروایدرها و کلیدها' : 'Providers & Keys'}</strong>
+                        <small>{isFa ? 'استخر چندکلیدی' : 'Multi-key pools'}</small>
+                      </span>
+                    </Link>
+                    <Link href="/admin/models" className="vg-sheet-tile" onClick={close}>
+                      <Icon name="cpu" size={17} />
+                      <span>
+                        <strong>{isFa ? 'مدل‌ها و روتینگ' : 'Models & Routing'}</strong>
+                        <small>{isFa ? 'مسیرهای Upstream' : 'Endpoints & pricing'}</small>
+                      </span>
+                    </Link>
+                    <Link href="/admin/users" className="vg-sheet-tile" onClick={close}>
+                      <Icon name="users" size={17} />
+                      <span>
+                        <strong>{isFa ? 'کاربران و اعتبار' : 'Users & Credits'}</strong>
+                        <small>{isFa ? 'کیف‌پول و کلیدها' : 'Balances & keys'}</small>
+                      </span>
+                    </Link>
+                    <Link href="/admin" className="vg-sheet-tile" onClick={close}>
+                      <Icon name="text" size={17} />
+                      <span>
+                        <strong>{isFa ? 'محتوا و ابزارها' : 'Content Desk'}</strong>
+                        <small>{isFa ? 'اخبار، اینباکس، ابزار' : 'News, Inbox, Tools'}</small>
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               <div className="vg-sheet-sec">
-                <span className="lbl">{isFa ? 'پنل ادمین' : 'Admin Control Plane'}</span>
+                <span className="lbl">{isFa ? 'بخش‌های اصلی' : 'Workspaces & Site'}</span>
                 <div className="vg-sheet-grid">
-                  <Link href="/admin/providers" className="vg-sheet-tile accent" onClick={close}>
-                    <Icon name="key" size={17} />
+                  <a href="/chat" className="vg-sheet-tile" onClick={close}>
+                    <Icon name="chat" size={17} style={{ color: 'var(--vg-orange-text)' }} />
                     <span>
-                      <strong>{isFa ? 'پروایدرها و کلیدها' : 'Providers & Keys'}</strong>
-                      <small>{isFa ? 'استخر چندکلیدی' : 'Multi-key pools'}</small>
+                      <strong>{isFa ? 'چت AI' : 'AI Chat'}</strong>
+                      <small>{isFa ? 'با دکمه‌ی بازگشت' : 'With Back bar'}</small>
+                    </span>
+                  </a>
+                  <Link href={signedIn ? '/dashboard#keys' : '/signin?next=/dashboard'} className="vg-sheet-tile" onClick={close}>
+                    <Icon name="wallet" size={17} />
+                    <span>
+                      <strong>{isFa ? 'پنل API و کیف‌پول' : 'API Console'}</strong>
+                      <small>{isFa ? 'کلیدها و شارژ' : 'Keys & AvexPay'}</small>
                     </span>
                   </Link>
-                  <Link href="/admin/models" className="vg-sheet-tile" onClick={close}>
-                    <Icon name="cube" size={17} />
+                  <Link href="/models" className="vg-sheet-tile" onClick={close}>
+                    <Icon name="cpu" size={17} />
                     <span>
-                      <strong>{isFa ? 'مدل‌ها و روتینگ' : 'Models & Routing'}</strong>
-                      <small>{isFa ? 'مسیرهای Upstream' : 'Endpoints & pricing'}</small>
+                      <strong>{isFa ? 'مدل‌ها و تعرفه' : 'Models & Pricing'}</strong>
+                      <small>{isFa ? '۵۸+ مدل پیشتاز' : '58+ frontier models'}</small>
                     </span>
                   </Link>
-                  <Link href="/admin/users" className="vg-sheet-tile" onClick={close}>
-                    <Icon name="users" size={17} />
+                  <Link href="/leaderboard" className="vg-sheet-tile" onClick={close}>
+                    <Icon name="bars" size={17} />
                     <span>
-                      <strong>{isFa ? 'کاربران و اعتبار' : 'Users & Credits'}</strong>
-                      <small>{isFa ? 'کیف‌پول و کلیدها' : 'Balances & keys'}</small>
+                      <strong>{isFa ? 'بنچمارک و رتبه‌بندی' : 'Benchmarks'}</strong>
+                      <small>{isFa ? 'رتبه‌بندی زنده' : 'Live benchmarks'}</small>
                     </span>
                   </Link>
-                  <Link href="/admin" className="vg-sheet-tile" onClick={close}>
+                  <Link href={isFa ? '/news/fa' : '/news'} className="vg-sheet-tile" onClick={close}>
                     <Icon name="text" size={17} />
                     <span>
-                      <strong>{isFa ? 'محتوا و ابزارها' : 'Content Desk'}</strong>
-                      <small>{isFa ? 'اخبار، اینباکس، ابزار' : 'News, Inbox, Tools'}</small>
+                      <strong>{isFa ? 'اخبار AI' : 'AI News'}</strong>
+                      <small>{isFa ? 'تحریریه دوزبانه' : 'Bilingual desk'}</small>
+                    </span>
+                  </Link>
+                  <Link href="/tools" className="vg-sheet-tile" onClick={close}>
+                    <Icon name="grid" size={17} />
+                    <span>
+                      <strong>{isFa ? 'دایرکتوری ابزارها' : 'Tools Directory'}</strong>
+                      <small>{isFa ? '۲۴ ابزار AI' : '24 curated apps'}</small>
                     </span>
                   </Link>
                 </div>
               </div>
-            )}
 
-            <div className="vg-sheet-sec">
-              <span className="lbl">{isFa ? 'بخش‌های اصلی' : 'Workspaces & Site'}</span>
-              <div className="vg-sheet-grid">
-                <a href="/chat" className="vg-sheet-tile" onClick={close}>
-                  <Icon name="chat" size={17} style={{ color: 'var(--vg-orange-text)' }} />
-                  <span>
-                    <strong>{isFa ? 'چت AI' : 'AI Chat'}</strong>
-                    <small>{isFa ? 'با دکمه‌ی بازگشت' : 'With Back bar'}</small>
-                  </span>
-                </a>
-                <Link href={signedIn ? '/dashboard#keys' : '/signin?next=/dashboard'} className="vg-sheet-tile" onClick={close}>
-                  <Icon name="wallet" size={17} />
-                  <span>
-                    <strong>{isFa ? 'پنل API و کیف‌پول' : 'API Console'}</strong>
-                    <small>{isFa ? 'کلیدها و شارژ' : 'Keys & AvexPay'}</small>
-                  </span>
+              <div className="vg-sheet-controls">
+                <LanguageSwitch variant="mobile" lang={lang} altHref={altHref} onNavigate={close} />
+                <ThemeToggle variant="drawer" lang={lang} />
+              </div>
+
+              <div className="vg-sheet-foot">
+                <Link
+                  href={signedIn ? '/dashboard' : '/signin'}
+                  className="btn gh"
+                  style={{ flex: '1 1 0', minHeight: 46, fontSize: 14 }}
+                  onClick={close}
+                >
+                  {signedIn ? (isFa ? 'داشبورد' : 'Dashboard') : isFa ? 'ورود' : 'Sign in'}
                 </Link>
-                <Link href="/models" className="vg-sheet-tile" onClick={close}>
-                  <Icon name="cube" size={17} />
-                  <span>
-                    <strong>{isFa ? 'مدل‌ها و تعرفه' : 'Models & Pricing'}</strong>
-                    <small>{isFa ? '۲۵+ مدل پیشتاز' : '25+ frontier models'}</small>
-                  </span>
-                </Link>
-                <Link href="/leaderboard" className="vg-sheet-tile" onClick={close}>
-                  <Icon name="bars" size={17} />
-                  <span>
-                    <strong>{isFa ? 'لیدربورد' : 'Leaderboard'}</strong>
-                    <small>{isFa ? 'رتبه‌بندی زنده' : 'Live benchmarks'}</small>
-                  </span>
-                </Link>
-                <Link href={isFa ? '/news/fa' : '/news'} className="vg-sheet-tile" onClick={close}>
-                  <Icon name="text" size={17} />
-                  <span>
-                    <strong>{isFa ? 'اخبار AI' : 'AI News'}</strong>
-                    <small>{isFa ? 'تحریریه دوزبانه' : 'Bilingual desk'}</small>
-                  </span>
-                </Link>
-                <Link href="/tools" className="vg-sheet-tile" onClick={close}>
-                  <Icon name="grid" size={17} />
-                  <span>
-                    <strong>{isFa ? 'دایرکتوری ابزارها' : 'Tools Directory'}</strong>
-                    <small>{isFa ? '۲۴ ابزار AI' : '24 curated apps'}</small>
-                  </span>
+                <Link
+                  href={signedIn ? '/dashboard#credits' : '/signup?next=/dashboard'}
+                  className="btn key"
+                  style={{ flex: '1 1 0', minHeight: 46, fontSize: 14 }}
+                  onClick={close}
+                >
+                  {signedIn ? (isFa ? 'خرید اعتبار' : 'Buy credits') : isFa ? 'دریافت کلید API' : 'Get API key'}
                 </Link>
               </div>
             </div>
-
-            <div className="vg-sheet-controls">
-              <LanguageSwitch variant="mobile" lang={lang} altHref={altHref} onNavigate={close} />
-              <ThemeToggle variant="drawer" lang={lang} />
-            </div>
-
-            <div className="vg-sheet-foot">
-              <Link
-                href={signedIn ? '/dashboard' : '/signin'}
-                className="btn gh"
-                style={{ flex: '1 1 0', minHeight: 42, fontSize: 13.5 }}
-                onClick={close}
-              >
-                {signedIn ? (isFa ? 'داشبورد' : 'Dashboard') : isFa ? 'ورود' : 'Sign in'}
-              </Link>
-              <Link
-                href={signedIn ? '/dashboard#credits' : '/signup?next=/dashboard'}
-                className="btn key"
-                style={{ flex: '1 1 0', minHeight: 42, fontSize: 13.5 }}
-                onClick={close}
-              >
-                {signedIn ? (isFa ? 'خرید اعتبار' : 'Buy credits') : isFa ? 'دریافت کلید API' : 'Get API key'}
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
