@@ -47,6 +47,11 @@ export async function exchangeSupabaseSession(accessToken: string): Promise<bool
 export async function signOutEverywhere(): Promise<void> {
   lastToken = null;
   inFlight = null;
+  try {
+    window.sessionStorage.removeItem('vigas_dash_cache_v2');
+  } catch {
+    // Ignore
+  }
   await Promise.allSettled([api.logout(), getSupabase().auth.signOut()]);
   syncSignedInHint(false);
   notifyAuthChanged();

@@ -61,13 +61,12 @@ async function DashboardInner() {
 
 function DashboardShellSkeleton() {
   return (
-    <main id="main" className="dash-shell">
+    <main id="main" className="dash-shell" aria-busy="true" aria-label="API Console">
       <aside className="dash-rail dash-desk-only" aria-hidden="true" />
       <div className="dash-workspace">
-        <div className="dash-body" aria-busy="true" aria-label="Loading your API Console">
-          <p style={{ margin: '0 0 12px', color: 'var(--vg-ink3)', fontSize: 14 }}>Loading your workspace…</p>
-          <div className="card" style={{ height: 220, borderRadius: 24 }} />
-          <div className="card" style={{ height: 180, borderRadius: 24 }} />
+        <div className="dash-body">
+          <div className="card" style={{ height: 210, borderRadius: 24, opacity: 0.5 }} />
+          <div className="card" style={{ height: 170, borderRadius: 24, opacity: 0.4 }} />
         </div>
       </div>
     </main>

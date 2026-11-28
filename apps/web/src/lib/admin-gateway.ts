@@ -22,13 +22,16 @@ export interface GatewayPoolTelemetry {
 }
 
 export async function fetchGatewayPools(): Promise<{ reachable: boolean; pools: Record<string, GatewayPoolTelemetry> }> {
-  const { gatewayUrl, internalToken } = serverEnv();
+  const { gatewayUrl, internalToken, production } = serverEnv();
   if (!internalToken) return { reachable: false, pools: {} };
+  if (production && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(gatewayUrl)) {
+    return { reachable: false, pools: {} };
+  }
   try {
     const res = await fetch(`${gatewayUrl}/v1/admin/pools`, {
       headers: { 'X-Vigas-Internal-Token': internalToken },
       cache: 'no-store',
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(1200),
     });
     if (!res.ok) return { reachable: false, pools: {} };
     const data = (await res.json()) as { pools?: Record<string, GatewayPoolTelemetry> };

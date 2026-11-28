@@ -160,8 +160,11 @@ export interface AdminDbHealth {
   message?: string;
 }
 
-/** Safe, non-throwing Postgres health probe for Admin pages and status endpoints. */
-export async function probeAdminDb(): Promise<AdminDbHealth> {
+const DB_PROBE_TTL_MS = 30_000;
+let cachedDbProbe: { value: AdminDbHealth; expiresAt: number } | null = null;
+
+/** Safe, non-throwing Postgres health probe for Admin pages and status endpoints (30s process cache). */
+export async function probeAdminDb(force = false): Promise<AdminDbHealth> {
   if (PREVIEW_MODE) {
     return {
       previewMode: true,
@@ -170,14 +173,21 @@ export async function probeAdminDb(): Promise<AdminDbHealth> {
       message: 'DATABASE_URL is not configured.',
     };
   }
+  const now = Date.now();
+  if (!force && cachedDbProbe && cachedDbProbe.expiresAt > now) {
+    return cachedDbProbe.value;
+  }
   const res = await probeDb(getDb());
-  if (res.ok) return { previewMode: false, connected: true };
-  return {
-    previewMode: false,
-    connected: false,
-    code: res.code,
-    message: res.message,
-  };
+  const value: AdminDbHealth = res.ok
+    ? { previewMode: false, connected: true }
+    : {
+        previewMode: false,
+        connected: false,
+        code: res.code,
+        message: res.message,
+      };
+  cachedDbProbe = { value, expiresAt: now + (res.ok ? DB_PROBE_TTL_MS : 5_000) };
+  return value;
 }
 
 /**
@@ -195,6 +205,20 @@ export async function requireAdmin(req: Request): Promise<RequestAuth | NextResp
       user: { id: 'internal-admin', email: DEFAULT_ADMIN_EMAILS[0]!, name: 'Vigas System Admin', role: 'admin', accountId: '' },
     };
   }
+  // Check zero-latency HMAC admin bridge cookie first before hitting Postgres.
+  const bridgeRaw = readCookieValue(req.headers.get('cookie'), ADMIN_BRIDGE_COOKIE);
+  const bridgeUser = verifyAdminBridgeToken(bridgeRaw);
+  if (bridgeUser) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const bad = originMismatch(req);
+      if (bad) return bad;
+    }
+    return {
+      via: 'cookie',
+      token: bridgeRaw!,
+      user: bridgeUser,
+    };
+  }
   const auth = await requireAuth(req);
   if (!(auth instanceof NextResponse)) {
     if (!isAdminUser(auth.user)) return apiError(404, 'not_found', 'Not found.');
@@ -210,38 +234,27 @@ export async function requireAdmin(req: Request): Promise<RequestAuth | NextResp
       };
     }
   }
-  const bridgeRaw = readCookieValue(req.headers.get('cookie'), ADMIN_BRIDGE_COOKIE);
-  const bridgeUser = verifyAdminBridgeToken(bridgeRaw);
-  if (bridgeUser) {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      const bad = originMismatch(req);
-      if (bad) return bad;
-    }
-    return {
-      via: 'cookie',
-      token: bridgeRaw!,
-      user: bridgeUser,
-    };
-  }
   return auth;
 }
 
 /**
- * Resolves the signed-in admin for request-time Server Components from either the Postgres
- * `vigas_session` cookie or the signed `vigas_admin_bridge` cookie (zero DB dependency).
+ * Resolves the signed-in admin for request-time Server Components from either the zero-latency
+ * signed `vigas_admin_bridge` cookie or the Postgres `vigas_session` cookie.
  */
 export async function getCurrentAdminUser(): Promise<{ user: SessionUser; via: 'postgres' | 'supabase_bridge' } | null> {
+  const cookieStore = await cookies();
+  const bridgeRaw = cookieStore.get(ADMIN_BRIDGE_COOKIE)?.value;
+  if (bridgeRaw) {
+    await connection();
+    const bridgeUser = verifyAdminBridgeToken(bridgeRaw);
+    if (bridgeUser) return { user: bridgeUser, via: 'supabase_bridge' };
+  }
   const user = await getCurrentUser();
   if (user) {
     if (!isAdminUser(user)) return null;
     return { user, via: 'postgres' };
   }
-  const bridgeRaw = (await cookies()).get(ADMIN_BRIDGE_COOKIE)?.value;
-  if (!bridgeRaw) return null;
-  await connection();
-  const bridgeUser = verifyAdminBridgeToken(bridgeRaw);
-  if (!bridgeUser) return null;
-  return { user: bridgeUser, via: 'supabase_bridge' };
+  return null;
 }
 
 /** For request-time admin pages (inside <Suspense>). */

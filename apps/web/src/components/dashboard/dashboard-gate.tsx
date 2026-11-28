@@ -6,8 +6,16 @@ import type { ModelListItem, PublicUser, WalletResponse } from '@vigas/core';
 import { api } from '@/lib/client/session';
 import { isAdminHintEmail } from '@/lib/client/admin-fetch';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
-import { consumeAuthNext, getSupabase, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
-import { fetchSupabaseAccount, type SupabaseUsageSummary } from '@/lib/client/supabase-account';
+import { consumeAuthNext, getSupabase, hasOAuthCallbackInUrl, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
+import { getStoredSessionSnapshot } from '@/lib/client/supabase-config';
+import {
+  emptyWallet,
+  fetchSupabaseUsage,
+  fetchSupabaseWalletFast,
+  readCachedDashboardSnapshot,
+  writeCachedDashboardSnapshot,
+  type SupabaseUsageSummary,
+} from '@/lib/client/supabase-account';
 import { DashboardClient } from './dashboard-client';
 
 interface ResolvedAccount {
@@ -33,6 +41,8 @@ export function DashboardGate({
 }) {
   const isFa = lang === 'fa';
   const router = useRouter();
+  const hasServerInitial = Boolean(initialUser && initialWallet);
+
   const [resolved, setResolved] = useState<ResolvedAccount | null>(() =>
     initialUser && initialWallet
       ? {
@@ -44,17 +54,45 @@ export function DashboardGate({
         }
       : null,
   );
+  const [syncing, setSyncing] = useState(!hasServerInitial);
 
   useEffect(() => {
-    if (resolved) return;
+    if (hasServerInitial) return;
     let active = true;
+
+    // Step 0 (0ms): Synchronously hydrate from sessionStorage cache or localStorage session
+    // so the real Dashboard UI paints instantly without any blank "Connecting..." blocker.
+    const stored = getStoredSessionSnapshot();
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time client-only sessionStorage/localStorage hydration */
+    if (stored) {
+      const cached = readCachedDashboardSnapshot(stored.id);
+      if (cached) {
+        setResolved({
+          user: { id: cached.userId, email: cached.email, name: cached.name },
+          wallet: cached.wallet,
+          backend: cached.backend,
+          supabaseRpcReady: cached.rpcReady,
+          supabaseUsage: cached.usage,
+        });
+        setSyncing(false);
+      } else {
+        setResolved({
+          user: { id: stored.id, email: stored.email, name: stored.name },
+          wallet: emptyWallet(),
+          backend: 'supabase',
+          supabaseRpcReady: true,
+          supabaseUsage: null,
+        });
+      }
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const resolveFromSession = async (session: { access_token: string; user: { id: string; email?: string; user_metadata?: Record<string, unknown> } }) => {
       if (!active || !session.user?.email) return;
       syncSignedInHint(true);
       const savedNext = consumeAuthNext();
 
-      // Pre-warm the signed httpOnly admin bridge cookie for admin accounts so /admin/* opens in 1 tap with zero flicker.
+      // Pre-warm the signed httpOnly admin bridge cookie in the background (never blocks dashboard render).
       if (isAdminHintEmail(session.user.email)) {
         const warm = fetch('/api/admin/session', {
           method: 'POST',
@@ -81,39 +119,87 @@ export function DashboardGate({
         name: userName,
       };
 
-      // Try Postgres exchange first when DATABASE_URL is enabled; otherwise fall back to Supabase backend seamlessly.
-      const exchanged = await exchangeSupabaseSession(session.access_token).catch(() => false);
-      if (exchanged && active) {
-        try {
-          const pgWallet = await api.wallet();
-          if (active) {
-            setResolved({
-              user: publicUser,
-              wallet: pgWallet,
-              backend: 'postgres',
-              supabaseRpcReady: true,
-              supabaseUsage: null,
-            });
-            return;
-          }
-        } catch {
-          // Fall through to Supabase backend
-        }
-      }
+      // Run Postgres exchange AND fast Supabase wallet fetch in PARALLEL (eliminates 2–4s sequential waterfall!).
+      const exchangePromise = exchangeSupabaseSession(session.access_token)
+        .then(async (ok) => {
+          if (!ok) return null;
+          return api.wallet().catch(() => null);
+        })
+        .catch(() => null);
 
-      const supaAccount = await fetchSupabaseAccount();
+      const supaWalletPromise = fetchSupabaseWalletFast(session.access_token);
+
+      // Show whichever resolves cleanly first (usually fast Supabase RPC or Postgres wallet in ~150-300ms).
+      const [pgWallet, supaCore] = await Promise.all([
+        exchangePromise.catch(() => null),
+        supaWalletPromise.catch(() => ({ wallet: emptyWallet(), rpcReady: false })),
+      ]);
       if (!active) return;
-      setResolved({
-        user: publicUser,
-        wallet: supaAccount.wallet,
-        backend: 'supabase',
-        supabaseRpcReady: supaAccount.rpcReady,
-        supabaseUsage: supaAccount.usage,
+
+      const finalAccount: ResolvedAccount = pgWallet
+        ? {
+            user: publicUser,
+            wallet: pgWallet,
+            backend: 'postgres',
+            supabaseRpcReady: true,
+            supabaseUsage: null,
+          }
+        : {
+            user: publicUser,
+            wallet: supaCore.wallet,
+            backend: 'supabase',
+            supabaseRpcReady: supaCore.rpcReady,
+            supabaseUsage: null,
+          };
+
+      setResolved((prev) => ({
+        ...finalAccount,
+        supabaseUsage: prev?.supabaseUsage ?? finalAccount.supabaseUsage,
+      }));
+      setSyncing(false);
+
+      writeCachedDashboardSnapshot({
+        userId: publicUser.id,
+        email: publicUser.email,
+        name: publicUser.name,
+        backend: finalAccount.backend,
+        wallet: finalAccount.wallet,
+        rpcReady: finalAccount.supabaseRpcReady,
+        usage: finalAccount.supabaseUsage,
       });
+
+      // Load slower Edge Function usage stats strictly in the background — NEVER blocks wallet or keys.
+      if (finalAccount.backend === 'supabase') {
+        void fetchSupabaseUsage().then((usage) => {
+          if (!active || !usage) return;
+          setResolved((prev) => (prev ? { ...prev, supabaseUsage: usage } : prev));
+          writeCachedDashboardSnapshot({
+            userId: publicUser.id,
+            email: publicUser.email,
+            name: publicUser.name,
+            backend: finalAccount.backend,
+            wallet: finalAccount.wallet,
+            rpcReady: finalAccount.supabaseRpcReady,
+            usage,
+          });
+        });
+      }
     };
 
     const load = async () => {
-      // First consume any `#access_token=...` or `?code=...` directly from the URL (Google OAuth landing on /dashboard).
+      const hasOAuth = hasOAuthCallbackInUrl();
+      if (!stored && !hasOAuth) {
+        const { data } = await getSupabase().auth.getSession();
+        if (!active) return;
+        if (data.session?.user?.email) {
+          await resolveFromSession(data.session);
+          return;
+        }
+        syncSignedInHint(false);
+        router.replace('/signin?next=/dashboard');
+        return;
+      }
+
       const { session } = await hydrateSessionFromUrl();
       if (!active) return;
       if (session?.user?.email) {
@@ -121,35 +207,25 @@ export function DashboardGate({
         return;
       }
 
-      // Brief grace wait in case supabase-js finishes initializing from localStorage/event asynchronously.
-      await new Promise((r) => setTimeout(r, 250));
-      if (!active) return;
-      const { data } = await getSupabase().auth.getSession();
-      if (data.session?.user?.email) {
-        await resolveFromSession(data.session);
-        return;
-      }
-
-      if (active) {
-        syncSignedInHint(false);
-        router.replace('/signin?next=/dashboard');
-      }
+      syncSignedInHint(false);
+      router.replace('/signin?next=/dashboard');
     };
 
     void load();
     return () => {
       active = false;
     };
-  }, [resolved, router]);
+  }, [hasServerInitial, router]);
 
   if (!resolved) {
     return (
-      <div aria-busy="true" aria-label={isFa ? 'در حال بارگذاری پنل کاربری' : 'Loading your API console'} style={{ paddingTop: 18 }}>
-        <p style={{ margin: '0 0 16px', color: 'var(--vg-ink3)', fontSize: 14 }}>
-          {isFa ? 'در حال اتصال به حساب…' : 'Connecting your account…'}
-        </p>
-        <div className="card" style={{ height: 210, borderRadius: 24, marginBottom: 14 }} />
-        <div className="card" style={{ height: 180, borderRadius: 22 }} />
+      <div className="dash-body" aria-busy="true" aria-label={isFa ? 'در حال باز کردن پنل کاربری' : 'Opening your API console'} style={{ maxWidth: 680, margin: '24px auto', padding: '0 16px' }}>
+        <div className="card" style={{ padding: 24, borderRadius: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="spin" aria-hidden="true" />
+          <span style={{ color: 'var(--vg-ink2)', fontSize: 14.5 }}>
+            {isFa ? 'در حال ورود به پنل کاربری…' : 'Opening your API console…'}
+          </span>
+        </div>
       </div>
     );
   }
@@ -163,6 +239,7 @@ export function DashboardGate({
       backend={resolved.backend}
       supabaseRpcReady={resolved.supabaseRpcReady}
       supabaseUsage={resolved.supabaseUsage}
+      syncing={syncing}
       lang={lang}
     />
   );

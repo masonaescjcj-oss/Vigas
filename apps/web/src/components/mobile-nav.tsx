@@ -43,11 +43,7 @@ export function MobileNav({
     };
   }, [open]);
 
-  const homeHref = isFa ? '/fa' : '/';
-  const currentLabel =
-    active === 'home' || active === 'none'
-      ? 'Vigas'
-      : (nav?.find(([id]) => id === active)?.[1] ?? 'Vigas');
+  const currentLabel = active === 'home' ? 'Vigas' : (nav?.find(([id]) => id === active)?.[1] ?? '');
 
   return (
     <>
@@ -62,34 +58,20 @@ export function MobileNav({
           <Icon name="menu" size={18} />
         </button>
       ) : (
-        <div className="hdr-mob-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0, flex: 1 }}>
-            <Link
-              href={homeHref}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'var(--vg-ink)', flexShrink: 0 }}
-              aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'}
-            >
-              <LogoMark size={24} />
-              <span className="dsp" dir="ltr" style={{ fontSize: 21, lineHeight: 1 }}>
-                vigas
-              </span>
-            </Link>
-            <span aria-hidden="true" style={{ width: 1, height: 20, background: 'var(--vg-line2)', flexShrink: 0 }} />
-            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--vg-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {currentLabel}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            className="hdr-mob-avatar bg-signal-grad"
-            aria-expanded={open}
-            aria-label={isFa ? 'منوی حساب و ناوبری' : 'Account and navigation menu'}
-            onClick={() => setOpen(true)}
-          >
-            {signedIn ? (isAdmin ? 'AD' : 'VG') : <Icon name="users" size={16} />}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="hdr-menu hdr-menu-pill"
+          aria-expanded={open}
+          aria-label={isFa ? 'باز کردن منو' : 'Open navigation menu'}
+          onClick={() => setOpen(true)}
+        >
+          <LogoMark size={20} />
+          <span className="sf" dir="ltr" style={{ fontSize: 21, lineHeight: 1, letterSpacing: '-.01em' }}>
+            Vigas
+          </span>
+          {currentLabel && active !== 'home' && active !== 'none' && <span className="mn hdr-menu-cur">{currentLabel}</span>}
+          <Icon name="chevDown" size={14} className="hdr-menu-chev" />
+        </button>
       )}
 
       {open &&

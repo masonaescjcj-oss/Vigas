@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { exchangeSupabaseSession } from '@/lib/client/session-sync';
-import { getSupabase, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
+import { getSupabase, hasOAuthCallbackInUrl, hydrateSessionFromUrl, syncSignedInHint } from '@/lib/client/supabase';
+import { getStoredSessionSnapshot } from '@/lib/client/supabase-config';
 import { Icon } from '../ui';
 
 const RELOAD_GUARD_KEY = 'vigas_admin_bridge_reload_ts';
@@ -65,16 +66,25 @@ export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
 
     const run = async () => {
       setState({ status: 'checking' });
-      const hydrated = await hydrateSessionFromUrl().catch(() => ({ session: null }));
-      let session = hydrated.session;
-      if (!session) {
-        await new Promise((r) => setTimeout(r, 220));
-        const { data } = await getSupabase().auth.getSession();
-        session = data.session;
+
+      // Fast path: read locally stored Supabase token synchronously (0ms) instead of sleeping.
+      const snap = !hasOAuthCallbackInUrl() ? getStoredSessionSnapshot() : null;
+      let accessToken = snap?.accessToken ?? null;
+      let userEmail = snap?.email ?? undefined;
+
+      if (!accessToken) {
+        const hydrated = await hydrateSessionFromUrl().catch(() => ({ session: null }));
+        let session = hydrated.session;
+        if (!session) {
+          const { data } = await getSupabase().auth.getSession();
+          session = data.session;
+        }
+        accessToken = session?.access_token ?? null;
+        userEmail = session?.user?.email ?? undefined;
       }
       if (!active) return;
 
-      if (!session?.access_token) {
+      if (!accessToken) {
         clearReloadGuard();
         router.replace(`/signin?next=${encodeURIComponent(pathname)}`);
         return;
@@ -88,7 +98,7 @@ export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
           method: 'POST',
           credentials: 'include',
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
             Accept: 'application/json',
           },
           cache: 'no-store',
@@ -97,18 +107,17 @@ export function AdminClientGate({ previewMode }: { previewMode: boolean }) {
 
         if (!res.ok) {
           clearReloadGuard();
-          setState({ status: 'denied', email: session.user?.email ?? undefined });
+          setState({ status: 'denied', email: userEmail });
           return;
         }
 
         const data = (await res.json()) as AdminSessionResponse;
-        const email = data.email ?? session.user?.email ?? 'admin';
+        const email = data.email ?? userEmail ?? 'admin';
 
-        // Step 2: Best-effort Postgres cookie exchange ONLY if Postgres is actually connected.
+        // Step 2: Best-effort Postgres cookie exchange in background (never blocks admin shell entry).
         if (!previewMode && data.dbConnected) {
-          await exchangeSupabaseSession(session.access_token).catch(() => false);
+          void exchangeSupabaseSession(accessToken).catch(() => false);
         }
-        if (!active) return;
 
         // Step 3: Reload at most ONCE so SSR AdminGate picks up the newly set cookie and renders full AdminShell.
         if (data.bridgeSet && canReloadOnce(pathname)) {

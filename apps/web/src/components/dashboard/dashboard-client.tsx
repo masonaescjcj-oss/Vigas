@@ -78,6 +78,7 @@ export function DashboardClient({
   backend = 'postgres',
   supabaseRpcReady = true,
   supabaseUsage = null,
+  syncing = false,
   lang = 'en',
 }: {
   user: PublicUser;
@@ -87,6 +88,7 @@ export function DashboardClient({
   backend?: 'postgres' | 'supabase';
   supabaseRpcReady?: boolean;
   supabaseUsage?: SupabaseUsageSummary | null;
+  syncing?: boolean;
   lang?: 'en' | 'fa';
 }) {
   const isFa = lang === 'fa';
@@ -102,6 +104,18 @@ export function DashboardClient({
   const [wallet, setWallet] = useState(initial);
   const [rpcReady, setRpcReady] = useState(supabaseRpcReady);
   const [usageSummary, setUsageSummary] = useState<SupabaseUsageSummary | null>(supabaseUsage);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- sync stale-while-revalidate props from DashboardGate */
+  useEffect(() => {
+    setWallet(initial);
+  }, [initial]);
+  useEffect(() => {
+    setRpcReady(supabaseRpcReady);
+  }, [supabaseRpcReady]);
+  useEffect(() => {
+    setUsageSummary(supabaseUsage);
+  }, [supabaseUsage]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const [amount, setAmount] = useState(25);
   const [custom, setCustom] = useState('');
@@ -385,8 +399,8 @@ export function DashboardClient({
       style={{ ...card, flex: '1 1 380px', scrollMarginTop: 24, position: 'relative', overflow: 'hidden' }}
     >
       <SignalRings
-        size={210}
-        style={{ position: 'absolute', insetInlineEnd: -54, top: -54, opacity: 0.72 }}
+        size={190}
+        style={{ position: 'absolute', insetInlineEnd: -58, bottom: -84, opacity: 0.28, pointerEvents: 'none' }}
       />
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <h2 id={`${ids}-credits`} className="lbl" style={{ margin: 0 }}>
@@ -422,9 +436,11 @@ export function DashboardClient({
           letterSpacing: '-.04em',
           margin: '12px 0 8px',
           textAlign: isFa ? 'right' : 'left',
+          opacity: syncing && wallet.balanceMicros === 0 ? 0.45 : 1,
+          transition: 'opacity .2s ease',
         }}
       >
-        {formatUsd(wallet.balanceMicros)}
+        {syncing && wallet.balanceMicros === 0 ? '$—.—' : formatUsd(wallet.balanceMicros)}
       </div>
       <div className="mn" style={{ position: 'relative', fontSize: 12, color: 'var(--vg-ink3)' }}>
         {isFa

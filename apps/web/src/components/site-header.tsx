@@ -7,7 +7,7 @@ import { LanguageSwitch } from './language-switch';
 import { MobileNav } from './mobile-nav';
 import { QuickSearch } from './quick-search';
 import { ThemeToggle } from './theme-toggle';
-import { LogoMark } from './ui';
+import { Icon, LogoMark } from './ui';
 
 export type NavKey = 'home' | 'chat' | 'models' | 'leaderboard' | 'news' | 'tools' | 'none';
 
@@ -48,23 +48,21 @@ export function SiteHeader({
         <div className="hdr">
           <Suspense
             fallback={
-              <div className="hdr-mob-bar" aria-hidden="true">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                  <LogoMark size={24} />
-                  <span className="dsp" dir="ltr" style={{ fontSize: 21, lineHeight: 1 }}>
-                    vigas
-                  </span>
-                </div>
-                <span className="hdr-mob-avatar bg-signal-grad">VG</span>
-              </div>
+              <span className="hdr-menu hdr-menu-pill" aria-hidden="true">
+                <LogoMark size={20} />
+                <span className="sf" dir="ltr" style={{ fontSize: 22, lineHeight: 1 }}>
+                  Vigas
+                </span>
+                <Icon name="chevDown" size={14} className="hdr-menu-chev" />
+              </span>
             }
           >
             <MobileNav active={active} nav={nav} lang={lang} altHref={altHref} />
           </Suspense>
           <Link href={homeHref} aria-label={isFa ? 'صفحه اصلی ویگاس' : 'Vigas home'} className="hdr-logo">
             <LogoMark size={26} />
-            <span className="dsp" dir="ltr" style={{ fontSize: 22, lineHeight: 1 }}>
-              vigas
+            <span className="sf" dir="ltr" style={{ fontSize: 26, lineHeight: 1, letterSpacing: '-.01em' }}>
+              Vigas
             </span>
           </Link>
           <nav aria-label={isFa ? 'منوی اصلی' : 'Primary'} className="hdr-nav">

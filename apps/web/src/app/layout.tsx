@@ -16,13 +16,13 @@ const serif = Instrument_Serif({
 });
 const display = Bricolage_Grotesque({
   subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
+  weight: ['600', '700', '800'],
   variable: '--font-display',
   display: 'swap',
 });
 const sans = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
-const fa = Vazirmatn({ subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700', '800', '900'], variable: '--font-fa', display: 'swap' });
+const fa = Vazirmatn({ subsets: ['arabic', 'latin'], weight: ['400', '500', '700', '800'], variable: '--font-fa', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

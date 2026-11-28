@@ -105,10 +105,59 @@ export async function fetchSupabaseUsage(): Promise<SupabaseUsageSummary | null>
   }
 }
 
-async function fetchWelcomePromoWallet(): Promise<WalletResponse | null> {
+const DASH_CACHE_KEY = 'vigas_dash_cache_v2';
+const DASH_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+
+export interface CachedDashboardSnapshot {
+  userId: string;
+  email: string;
+  name: string | null;
+  backend: 'postgres' | 'supabase';
+  wallet: WalletResponse;
+  rpcReady: boolean;
+  usage: SupabaseUsageSummary | null;
+  savedAt: number;
+}
+
+export function readCachedDashboardSnapshot(userId: string): CachedDashboardSnapshot | null {
+  if (typeof window === 'undefined') return null;
   try {
-    const { data } = await getSupabase().auth.getSession();
-    const token = data.session?.access_token;
+    const raw = window.sessionStorage.getItem(DASH_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedDashboardSnapshot | null;
+    if (!parsed || parsed.userId !== userId || !parsed.wallet) return null;
+    if (Date.now() - Number(parsed.savedAt ?? 0) > DASH_CACHE_MAX_AGE_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCachedDashboardSnapshot(snapshot: Omit<CachedDashboardSnapshot, 'savedAt'>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(DASH_CACHE_KEY, JSON.stringify({ ...snapshot, savedAt: Date.now() }));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function clearCachedDashboardSnapshot(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(DASH_CACHE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+async function fetchWelcomePromoWallet(accessToken?: string): Promise<WalletResponse | null> {
+  try {
+    let token = accessToken;
+    if (!token) {
+      const { data } = await getSupabase().auth.getSession();
+      token = data.session?.access_token;
+    }
     if (!token) return null;
     const res = await fetch('/api/app/welcome-wallet', {
       method: 'GET',
@@ -135,19 +184,18 @@ async function fetchWelcomePromoWallet(): Promise<WalletResponse | null> {
   }
 }
 
-export async function fetchSupabaseAccount(): Promise<SupabaseAccountState> {
+/**
+ * Fast core wallet & API-keys fetch that NEVER blocks on the slower `usage-check` Edge Function.
+ */
+export async function fetchSupabaseWalletFast(accessToken?: string): Promise<{ wallet: WalletResponse; rpcReady: boolean }> {
   const supabase = getSupabase();
-  const [rpcRes, usage] = await Promise.all([
-    supabase.rpc('vigas_account'),
-    fetchSupabaseUsage(),
-  ]);
+  const rpcRes = await supabase.rpc('vigas_account');
 
   if (rpcRes.error || !rpcRes.data) {
-    const promoWallet = await fetchWelcomePromoWallet();
+    const promoWallet = await fetchWelcomePromoWallet(accessToken);
     return {
       wallet: promoWallet ?? emptyWallet(),
       rpcReady: false,
-      usage,
     };
   }
 
@@ -164,7 +212,6 @@ export async function fetchSupabaseAccount(): Promise<SupabaseAccountState> {
 
   return {
     rpcReady: true,
-    usage,
     wallet: {
       balanceMicros: Number(raw.wallet?.balance_micros ?? 0),
       lifetimeTopupMicros: Number(raw.wallet?.lifetime_topup_micros ?? 0),
@@ -173,6 +220,18 @@ export async function fetchSupabaseAccount(): Promise<SupabaseAccountState> {
       bySource: weekSpend > 0 ? [{ source: 'api', costMicros: weekSpend }] : [],
       keys: mapKeys(raw.keys),
     },
+  };
+}
+
+export async function fetchSupabaseAccount(accessToken?: string): Promise<SupabaseAccountState> {
+  const [core, usage] = await Promise.all([
+    fetchSupabaseWalletFast(accessToken),
+    fetchSupabaseUsage(),
+  ]);
+  return {
+    wallet: core.wallet,
+    rpcReady: core.rpcReady,
+    usage,
   };
 }
 

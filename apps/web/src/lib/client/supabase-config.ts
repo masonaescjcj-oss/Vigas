@@ -42,3 +42,41 @@ export function getStoredSessionEmail(): string | null {
     return null;
   }
 }
+
+export interface StoredSessionSnapshot {
+  id: string;
+  email: string;
+  name: string | null;
+  accessToken: string;
+}
+
+/**
+ * Synchronously reads the locally stored Supabase session metadata so client consoles can render
+ * immediately (0ms) while revalidating live data in the background. Never grants server access.
+ */
+export function getStoredSessionSnapshot(): StoredSessionSnapshot | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SUPABASE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      access_token?: string;
+      user?: {
+        id?: string;
+        email?: string;
+        user_metadata?: { full_name?: string; name?: string };
+      };
+    } | null;
+    const id = parsed?.user?.id;
+    const email = parsed?.user?.email?.trim();
+    const accessToken = parsed?.access_token;
+    if (!id || !email || !accessToken) return null;
+    const name =
+      (typeof parsed.user?.user_metadata?.full_name === 'string' && parsed.user.user_metadata.full_name) ||
+      (typeof parsed.user?.user_metadata?.name === 'string' && parsed.user.user_metadata.name) ||
+      null;
+    return { id, email, name, accessToken };
+  } catch {
+    return null;
+  }
+}

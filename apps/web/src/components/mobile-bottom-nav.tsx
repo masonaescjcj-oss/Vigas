@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type MouseEvent } from 'react';
+import { useSignedInHint } from '@/lib/client/session';
 import { Icon, type IconName } from './ui';
 
 interface DockItem {
@@ -21,15 +22,18 @@ const HIDDEN_PREFIXES = ['/embed', '/signin', '/signup', '/auth', '/fa-app/signi
 
 /**
  * Unified Context-Aware Floating Glass Bottom Dock (mobile `<= 860px`).
- * - Inside `/admin/*`: transforms into the Admin Control Plane dock (Providers, Models, Users, Content, Exit App)
- *   so there is NEVER a double top+bottom menu.
- * - Across the user app: shows the API-First 4+1 dock (Chat, Keys, Wallet, Models, Admin/Ranks).
+ * - ONLY shown when the user is signed in (logged-out visitors should never see Wallet / API Keys tabs).
+ * - Inside `/admin/*`: transforms into the Admin Control Plane dock (Providers, Models, Users, Content, Exit App).
  * - Hidden on `/chat` (which uses its own slim top Return Rail so the chat composer is never obstructed).
  */
 export function MobileBottomNav() {
   const pathname = usePathname() || '/';
+  const signedIn = useSignedInHint();
   const [hash, setHash] = useState('');
   const [isFa, setIsFa] = useState(false);
+
+  const hiddenRoute = HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const shouldRender = signedIn && !hiddenRoute;
 
   useEffect(() => {
     const syncHash = () => setHash(window.location.hash.replace(/^#/, '').toLowerCase());
@@ -52,7 +56,14 @@ export function MobileBottomNav() {
     };
   }, [pathname]);
 
-  if (HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+  useEffect(() => {
+    document.body.classList.toggle('vg-has-dock', shouldRender);
+    return () => {
+      document.body.classList.remove('vg-has-dock');
+    };
+  }, [shouldRender]);
+
+  if (!shouldRender) {
     return null;
   }
 
