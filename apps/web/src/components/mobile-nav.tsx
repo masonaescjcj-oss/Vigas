@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useAdminHint } from '@/lib/client/admin-fetch';
 import { useSignedInHint } from '@/lib/client/session';
@@ -22,12 +23,21 @@ export function MobileNav({
   altHref?: string;
   compact?: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const signedIn = useSignedInHint();
   const isAdmin = useAdminHint();
   const isFa = lang === 'fa';
 
   const close = () => setOpen(false);
+  const onSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    close();
+    setQuery('');
+    router.push(q ? `/models?q=${encodeURIComponent(q)}` : '/models');
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -95,12 +105,12 @@ export function MobileNav({
                   <span
                     className="bg-signal-grad"
                     style={{
-                      width: 46,
-                      height: 46,
+                      width: 44,
+                      height: 44,
                       borderRadius: 999,
                       display: 'grid',
                       placeItems: 'center',
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: 700,
                       color: '#fff',
                       flexShrink: 0,
@@ -127,6 +137,18 @@ export function MobileNav({
                   <Icon name="x" size={16} />
                 </button>
               </div>
+
+              <form onSubmit={onSearch} role="search" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 42, padding: '0 14px', borderRadius: 999, background: 'var(--vg-surface)', border: '1px solid var(--vg-line2)' }}>
+                <Icon name="search" size={16} style={{ color: 'var(--vg-ink3)' }} />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={isFa ? 'جستجوی مدل، ابزار یا تعرفه…' : 'Search models, tools, pricing…'}
+                  aria-label={isFa ? 'جستجوی مدل‌ها' : 'Search models'}
+                  style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: 'transparent', color: 'var(--vg-ink)', fontSize: 13.5 }}
+                />
+              </form>
 
               {isAdmin && (
                 <div className="vg-sheet-sec">

@@ -847,7 +847,7 @@ details[open] .pm {
 @media (max-width: 860px) {
   .hdr {
     height: 60px;
-    gap: 8px;
+    gap: 10px;
   }
   .hdr-logo,
   .hdr-nav {
@@ -856,61 +856,18 @@ details[open] .pm {
   .hdr-menu {
     display: inline-flex;
   }
-  .hdr-actions {
-    gap: 6px;
-  }
-  .hdr-actions .ib {
-    width: 36px;
-    height: 36px;
-  }
-  .hdr-lang {
-    height: 36px;
-  }
-  .hdr-cta {
-    min-height: 36px;
-    padding: 0 14px;
-    font-size: 13px;
-  }
-}
-@media (max-width: 480px) {
-  .hdr {
-    gap: 6px;
-  }
-  .hdr-actions {
-    gap: 4px;
-  }
-  .hdr-signin {
-    display: none;
-  }
   .hdr-menu-pill {
-    padding: 4px 10px;
-    gap: 6px;
-    min-height: 34px;
     border-radius: 999px;
+    padding: 5px 12px;
+    min-height: 38px;
   }
-  .hdr-actions .ib {
-    width: 33px;
-    height: 33px;
-  }
-  .hdr-lang {
-    height: 33px;
-    padding: 2px;
-  }
-  .hdr-lang a,
-  .hdr-lang button {
-    padding: 4px 6px;
-    font-size: 11px;
+  .hdr-actions > :not(.hdr-cta) {
+    display: none !important;
   }
   .hdr-cta {
-    min-height: 34px;
-    padding: 0 11px;
-    font-size: 12.5px;
-  }
-  .hdr-cta .long {
-    display: none;
-  }
-  .hdr-menu-cur {
-    max-width: 60px;
+    min-height: 38px;
+    padding: 0 16px;
+    font-size: 13.5px;
   }
 }
 @media (max-width: 380px) {
